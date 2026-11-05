@@ -234,3 +234,17 @@ describe('البلاد', () => {
     for (const c of COUNTRIES) expect(REGIONS[c].currency).toMatch(/^[A-Z]{3}$/);
   });
 });
+
+describe('ترجمة أخطاء قاعدة البيانات', () => {
+  it('الكود بيتحول لرسالة باللغة الحالية', async () => {
+    const { errorMessage } = await import('./errors');
+    const i18n = (await import('../i18n')).default;
+    await i18n.changeLanguage('ar');
+    expect(errorMessage({ message: 'E_FINAL_COST_REQUIRED' })).toBe('لازم تكتب التكلفة النهائية قبل التسليم');
+    await i18n.changeLanguage('en');
+    expect(errorMessage({ message: 'E_FINAL_COST_REQUIRED' })).toBe('Enter the final cost before delivery');
+    expect(errorMessage({ message: 'Invalid login credentials' })).toBe('Wrong email or password');
+    expect(errorMessage({ message: 'something weird' })).toBe('something weird');
+    await i18n.changeLanguage('ar');
+  });
+});

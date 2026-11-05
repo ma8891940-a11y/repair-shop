@@ -8,6 +8,7 @@ export const LANGS: readonly Lang[] = ['ar', 'en'];
 const KEY = 'lang';
 
 export function readSavedLang(): Lang {
+  if (typeof localStorage === 'undefined') return 'ar';
   try {
     const v = localStorage.getItem(KEY);
     if (v === 'ar' || v === 'en') return v;
@@ -19,6 +20,7 @@ export function readSavedLang(): Lang {
 
 /** يطبّق اللغة على الصفحة كلها: الاتجاه (RTL/LTR) واللغة */
 export function applyLang(lang: Lang) {
+  if (typeof document === 'undefined') return; // الاختبارات بتشتغل من غير صفحة
   const root = document.documentElement;
   root.lang = lang;
   root.dir = lang === 'ar' ? 'rtl' : 'ltr';
