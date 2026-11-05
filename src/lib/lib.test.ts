@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatEGP, formatPounds, parsePounds, sumPiasters } from './money';
+import { formatPounds, parsePounds, sumPiasters } from './money';
 import { normalizeEgyptPhone, toInternational } from './phone';
 import { isValidImei, normalizeImei } from './imei';
 import { STATUSES, TRANSITIONS, canTransition, nextStatusesFor } from './status';
 import { cairoDay, cairoDayEnd, cairoDayStart, cairoOffsetMinutes, daysSince } from './dates';
 import { diffChanges } from './audit';
-import { computeDashboard, isLate } from './dashboard';
+import { checkPassword, isEmail } from './password';
+import { COUNTRIES, REGIONS } from './regions';
+import { computeDashboard, computeSeries, isLate, lastDays } from './dashboard';
 import { buildSearchFilter, sanitizeSearch } from './search';
 
 describe('الفلوس بالقروش', () => {
@@ -35,7 +37,6 @@ describe('الفلوس بالقروش', () => {
     expect(formatPounds(15000)).toBe('150');
     expect(formatPounds(5)).toBe('0.05');
     expect(formatPounds(123456700)).toBe('1,234,567');
-    expect(formatEGP(0)).toBe('0 ج.م');
   });
   it('يجمع ويتجاهل null ويرفض الكسور', () => {
     expect(sumPiasters([100, null, 250, undefined])).toBe(350);
@@ -175,5 +176,61 @@ describe('سجل النشاط: الفرق بين قبل وبعد', () => {
       ),
     ).toEqual([{ field: 'final_cost', before: null, after: 17550 }]);
     expect(diffChanges(null, { name: 'x' })).toEqual([{ field: 'name', before: null, after: 'x' }]);
+  });
+});
+
+describe('قيم الـ sparkline لآخر 14 يوم', () => {
+  const now = new Date('2026-11-05T12:00:00Z');
+  it('بيحسب كل يوم لوحده بتوقيت القاهرة', () => {
+    const s = computeSeries(
+      [
+        { status: 'in_repair', received_at: '2026-11-05T08:00:00Z', delivered_at: null, final_cost: null },
+        { status: 'delivered', received_at: '2026-11-03T08:00:00Z', delivered_at: '2026-11-04T10:00:00Z', final_cost: 15050 },
+        { status: 'in_repair', received_at: '2026-10-20T08:00:00Z', delivered_at: null, final_cost: null },
+      ],
+      [{ new_status: 'ready', created_at: '2026-11-04T09:00:00Z' }, { new_status: 'repaired', created_at: '2026-11-04T09:00:00Z' }],
+      now,
+    );
+    expect(s.today).toHaveLength(14);
+    expect(s.today.at(-1)).toBe(1);
+    expect(s.today.at(-3)).toBe(1);
+    expect(s.revenue.at(-2)).toBe(15050);
+    expect(s.ready.at(-2)).toBe(1);
+    expect(s.underRepair.at(-1)).toBe(2); // الجهاز المسلّم امبارح مش جوه المحل النهارده
+    expect(s.underRepair.at(-3)).toBe(2); // يوم 3: جهاز أكتوبر + جهاز يوم 3 (جهاز يوم 5 لسه ما دخلش)
+    expect(s.underRepair.at(-2)).toBe(1); // يوم 4: الجهاز اتسلّم في نفس اليوم، فاضل جهاز أكتوبر بس
+    expect(s.late.at(-1)).toBe(1);
+    expect(s.revenue.every(Number.isInteger)).toBe(true);
+  });
+  it('آخر يوم هو النهارده', () => {
+    expect(lastDays(now, 14).at(-1)).toBe('2026-11-05');
+    expect(lastDays(now, 14)).toHaveLength(14);
+  });
+});
+
+describe('قوة كلمة السر والإيميل', () => {
+  it('بتقيس القوة صح', () => {
+    expect(checkPassword('').score).toBe(0);
+    expect(checkPassword('abc').score).toBe(0);
+    expect(checkPassword('abcdefgh').score).toBe(1);
+    expect(checkPassword('abcdefg1').score).toBe(2);
+    expect(checkPassword('Abcdefg1').score).toBe(3);
+    expect(checkPassword('Abcdefg1!').score).toBe(4);
+    expect(checkPassword('Ab1!').score).toBe(1); // قصيرة: مهما كان فيها
+    expect(checkPassword('Abcdefg1!').rules).toEqual({ len: true, num: true, case: true, sym: true });
+  });
+  it('بيتحقق من الإيميل', () => {
+    expect(isEmail('a@b.co')).toBe(true);
+    expect(isEmail(' owner@shop.com ')).toBe(true);
+    expect(isEmail('a@b')).toBe(false);
+    expect(isEmail('ab.com')).toBe(false);
+    expect(isEmail('')).toBe(false);
+  });
+});
+
+describe('البلاد', () => {
+  it('مصر بتملا الجنيه وتوقيت القاهرة', () => {
+    expect(REGIONS.EG).toEqual({ currency: 'EGP', tz: 'Africa/Cairo', dial: '+20' });
+    for (const c of COUNTRIES) expect(REGIONS[c].currency).toMatch(/^[A-Z]{3}$/);
   });
 });

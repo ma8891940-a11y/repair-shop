@@ -14,7 +14,7 @@ export async function shrinkImage(file: File, maxSide = 1600, quality = 0.8): Pr
   canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('تعذّر تجهيز الصورة'))), 'image/jpeg', quality),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('IMAGE_PROCESSING_FAILED'))), 'image/jpeg', quality),
   );
 }
 

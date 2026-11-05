@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { Profile, Shop } from '../lib/types';
+import { SHOP_COLUMNS, type Profile, type Shop } from '../lib/types';
 
 interface AuthState {
   loading: boolean;
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (p && !p.deleted_at) {
       const r = await supabase
         .from('shops')
-        .select('id, name, phone, address, receipt_terms, warranty_days')
+        .select(SHOP_COLUMNS)
         .eq('id', p.shop_id)
         .maybeSingle();
       sh = (r.data as Shop) ?? null;

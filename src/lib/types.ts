@@ -7,7 +7,16 @@ export interface Shop {
   address: string | null;
   receipt_terms: string;
   warranty_days: number;
+  country: string;
+  currency: string;
+  payment_methods: string[];
+  logo_path: string | null;
+  theme: 'dark' | 'light';
+  locale: 'ar' | 'en';
+  setup_completed_at: string | null;
 }
+
+export const SHOP_COLUMNS = 'id, name, phone, address, receipt_terms, warranty_days, country, currency, payment_methods, logo_path, theme, locale, setup_completed_at';
 
 export interface Profile {
   id: string;
@@ -67,9 +76,3 @@ export interface DeviceCost {
   estimated_cost: number | null;
   final_cost: number | null;
 }
-
-export const ROLE_LABELS: Record<Role, string> = {
-  owner: 'صاحب المحل',
-  reception: 'موظف استقبال',
-  technician: 'فني',
-};

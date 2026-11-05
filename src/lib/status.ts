@@ -1,4 +1,4 @@
-// حالات الجهاز العشرة (الحالة 9 في المواصفات اتقسمت لحالتين بقرار صاحب المشروع)
+// حالات الجهاز العشرة (أسماؤها المعروضة في ملفات الترجمة: status.*) (الحالة 9 في المواصفات اتقسمت لحالتين بقرار صاحب المشروع)
 // مهم: نفس قواعد الانتقال موجودة في قاعدة البيانات (دالة is_valid_transition)،
 // ولو اتغيّرت هنا لازم تتغيّر هناك كمان. فيه اختبار بيتأكد إنهم متطابقين.
 
@@ -16,19 +16,6 @@ export const STATUSES = [
 ] as const;
 
 export type DeviceStatus = (typeof STATUSES)[number];
-
-export const STATUS_LABELS: Record<DeviceStatus, string> = {
-  received: 'تم الاستلام',
-  inspecting: 'جاري الفحص',
-  awaiting_approval: 'في انتظار موافقة العميل',
-  awaiting_part: 'في انتظار قطعة غيار',
-  in_repair: 'جاري الصيانة',
-  repaired: 'تم الإصلاح',
-  ready: 'جاهز للاستلام',
-  delivered: 'تم التسليم',
-  warranty_return: 'مرتجع (ضمان)',
-  unrepairable: 'لم يُصلَّح',
-};
 
 export const TRANSITIONS: Record<DeviceStatus, readonly DeviceStatus[]> = {
   received: ['inspecting', 'unrepairable'],

@@ -33,7 +33,12 @@ npm install
 2. من القائمة الشمال ادخل **SQL Editor**، ودوس **New query**.
 3. افتح الملف `supabase/migrations/0001_phase1.sql`، انسخ كل اللي فيه، الزقه، ودوس **Run**. لازم يقول Success.
 4. اعمل نفس الخطوة للملف `supabase/migrations/0002_storage.sql`.
-5. ادخل **Authentication** ثم **URL Configuration**، وخلّي **Site URL** هو `http://localhost:5173`.
+5. اعمل نفس الخطوة للملف `supabase/migrations/0003_shop_profile_realtime.sql`.
+6. ادخل **Authentication** ثم **URL Configuration**، وخلّي **Site URL** هو `http://localhost:5173`.
+7. **كود التأكيد من 6 أرقام:**
+   1. ادخل **Authentication** ثم **Email Templates** ثم **Confirm signup**.
+   2. انسخ محتوى الملف `supabase/templates/confirm.html` والزقه مكان القالب الموجود، واحفظ.
+   - من غير الخطوة دي، الإيميل هيوصل فيه رابط بس من غير كود.
 
 ### 4) اكتب مفاتيح Supabase (بنفسك)
 1. من Supabase: **Project Settings** ثم **API**. هتلاقي **Project URL** و **anon public key**.

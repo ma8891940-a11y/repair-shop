@@ -13,7 +13,7 @@ export const MAX_PIASTERS = 2_000_000_000; // حد أمان (20 مليون جن�
  */
 export function parsePounds(input: string): Piasters | null {
   const s = toLatinDigits(input.trim())
-    .replace(/[٫,،]/g, (ch) => (ch === '٫' ? '.' : '')) // ٫ فاصلة عشرية عربية، والفواصل الألفية تتشال
+    .replace(/[\u066B,\u060C]/g, (ch) => (ch === '\u066B' ? '.' : '')) // ٫ فاصلة عشرية عربية، والفواصل الألفية تتشال
     .replace(/\s+/g, '');
   if (s === '') return null;
   const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(s);
@@ -38,11 +38,6 @@ export function formatPounds(piasters: Piasters): string {
   return negative ? `-${text}` : text;
 }
 
-/** نفس formatPounds مع "ج.م" */
-export function formatEGP(piasters: Piasters): string {
-  return `${formatPounds(piasters)} ج.م`;
-}
-
 /** يجمع مبالغ بالقروش ويتأكد إنها كلها أعداد صحيحة */
 export function sumPiasters(values: Array<Piasters | null | undefined>): Piasters {
   let total = 0;
@@ -57,6 +52,6 @@ export function sumPiasters(values: Array<Piasters | null | undefined>): Piaster
 
 export function assertPiasters(v: number): void {
   if (!Number.isSafeInteger(v)) {
-    throw new Error(`المبلغ لازم يكون عدد صحيح بالقروش: ${v}`);
+    throw new Error(`AMOUNT_NOT_INTEGER_MINOR_UNITS: ${v}`);
   }
 }

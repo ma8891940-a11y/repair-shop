@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
-import { Camera, CheckCircle2, ImagePlus, KeyRound, Phone, ShieldCheck, ShieldAlert, Trash2, UserRound } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { CheckCircle2, ImagePlus, KeyRound, Phone, ShieldAlert, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { useMe } from '../app/auth';
 import { PageHeader } from '../app/AppShell';
 import { useShortcuts } from '../app/shortcuts';
 import { supabase } from '../lib/supabase';
 import { normalizeEgyptPhone } from '../lib/phone';
 import { isValidImei, normalizeImei } from '../lib/imei';
-import { formatPounds, parsePounds } from '../lib/money';
-import { arabicError } from '../lib/errors';
+import { parsePounds } from '../lib/money';
+import { errorMessage } from '../lib/errors';
 import { MAX_PHOTOS, uploadDevicePhoto } from '../lib/photos';
-import { formatDateTime } from '../lib/dates';
 import type { Customer } from '../lib/types';
+import { useFormat } from '../i18n/format';
 import { Button } from '../ui/Button';
 import { Field, Input, Textarea } from '../ui/Field';
 import { ChipToggle } from '../ui/Checkbox';
@@ -20,14 +21,16 @@ import { Panel, PanelHeader } from '../ui/Panel';
 import { Alert, Skeleton } from '../ui/Feedback';
 import { Dialog } from '../ui/Dialog';
 import { Kbd } from '../ui/Kbd';
+import { LineIcon } from '../ui/fx/LineIcon';
+import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
 
 const BRANDS = ['Samsung', 'iPhone', 'Xiaomi', 'Oppo', 'Realme', 'Infinix', 'Vivo', 'Honor', 'Huawei', 'Tecno'];
-const ACCESSORIES = ['شريحة', 'جراب', 'كارت ذاكرة', 'شاحن', 'سماعة', 'علبة'];
-const QUICK_ISSUES = ['شاشة مكسورة', 'بطارية', 'مش بيشحن', 'سوفت وير', 'دخل مية', 'السماعة', 'المايك', 'الكاميرا', 'مش بيفتح'];
+/** الملحقات بتتخزن كأكواد، والاسم المعروض من الترجمة */
+const ACCESSORIES = ['sim', 'case', 'sd', 'charger', 'earphones', 'box'] as const;
+const QUICK_ISSUES = ['screen', 'battery', 'charging', 'software', 'water', 'speaker', 'mic', 'camera', 'dead'] as const;
 
 type Lookup = { state: 'idle' } | { state: 'loading' } | { state: 'found'; customer: Customer; devices: number } | { state: 'new' };
-
 interface Prev {
   id: string;
   order_no: string;
@@ -35,15 +38,17 @@ interface Prev {
 }
 
 export function IntakeScreen() {
-  const { profile } = useMe();
+  const { t } = useTranslation();
+  const f = useFormat();
+  const { profile, shop } = useMe();
   const navigate = useNavigate();
+  const toast = useToast();
   const formRef = useRef<HTMLFormElement>(null);
 
   const [phone, setPhone] = useState('');
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' });
   const [custName, setCustName] = useState('');
   const [custArea, setCustArea] = useState('');
-
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
@@ -56,66 +61,53 @@ export function IntakeScreen() {
   const [condition, setCondition] = useState('');
   const [estimate, setEstimate] = useState('');
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
-
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [saved, setSaved] = useState<{ id: string; orderNo: string } | null>(null);
 
   const normPhone = normalizeEgyptPhone(phone);
   const imeiClean = normalizeImei(imei);
   const imeiOk = imeiClean.length > 0 && isValidImei(imeiClean);
-  const estPiasters = estimate.trim() ? parsePounds(estimate) : null;
+  const estMinor = estimate.trim() ? parsePounds(estimate) : null;
 
-  // البحث عن العميل تلقائيًا أول ما الرقم يكمل
   useEffect(() => {
     if (!normPhone) {
       setLookup({ state: 'idle' });
       return;
     }
-    let active = true;
+    let live = true;
     setLookup({ state: 'loading' });
     void (async () => {
       const { data, error } = await supabase.from('customers').select('id, name, phone, area').eq('phone', normPhone).is('deleted_at', null).maybeSingle();
-      if (!active) return;
+      if (!live) return;
       if (error) {
-        setFormError(arabicError(error));
-        setLookup({ state: 'idle' });
-        return;
+        setFormError(errorMessage(error));
+        return setLookup({ state: 'idle' });
       }
       if (!data) return setLookup({ state: 'new' });
       const { count } = await supabase.from('devices').select('id', { count: 'exact', head: true }).eq('customer_id', data.id).is('deleted_at', null);
-      if (active) setLookup({ state: 'found', customer: data as Customer, devices: count ?? 0 });
+      if (live) setLookup({ state: 'found', customer: data as Customer, devices: count ?? 0 });
     })();
     return () => {
-      active = false;
+      live = false;
     };
   }, [normPhone]);
 
-  // تنبيه IMEI دخل قبل كده في نفس المحل
   useEffect(() => {
-    if (imeiClean.length < 14) {
-      setPrev([]);
-      return;
-    }
-    let active = true;
-    const t = setTimeout(async () => {
-      const { data } = await supabase
-        .from('devices')
-        .select('id, order_no, received_at')
-        .eq('imei', imeiClean)
-        .is('deleted_at', null)
-        .order('received_at', { ascending: false })
-        .limit(5);
-      if (active) setPrev((data ?? []) as Prev[]);
+    if (imeiClean.length < 14) return setPrev([]);
+    let live = true;
+    const tm = setTimeout(async () => {
+      const { data } = await supabase.from('devices').select('id, order_no, received_at').eq('imei', imeiClean).is('deleted_at', null).order('received_at', { ascending: false }).limit(5);
+      if (live) setPrev((data ?? []) as Prev[]);
     }, 250);
     return () => {
-      active = false;
-      clearTimeout(t);
+      live = false;
+      clearTimeout(tm);
     };
   }, [imeiClean]);
 
-  // نمسح معاينات الصور من الذاكرة لما نخرج من الشاشة بس
   const photosRef = useRef(photos);
   photosRef.current = photos;
   useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
@@ -124,18 +116,18 @@ export function IntakeScreen() {
   useShortcuts(shortcuts);
 
   function addPhotos(files: File[]) {
-    setPhotos((cur) => [...cur, ...files.filter((f) => f.type.startsWith('image/')).map((file) => ({ file, url: URL.createObjectURL(file) }))].slice(0, MAX_PHOTOS));
+    setPhotos((cur) => [...cur, ...files.filter((x) => x.type.startsWith('image/')).map((file) => ({ file, url: URL.createObjectURL(file) }))].slice(0, MAX_PHOTOS));
   }
 
   function validate(): boolean {
     const e: Record<string, string> = {};
-    if (!normPhone) e.phone = 'رقم موبايل مصري من 11 رقم (010، 011، 012، 015)';
-    if (lookup.state === 'new' && !custName.trim()) e.custName = 'اكتب اسم العميل';
-    if (!brand.trim()) e.brand = 'اختار أو اكتب النوع';
-    if (!model.trim()) e.model = 'اكتب الموديل';
-    if (!issue.trim()) e.issue = 'اكتب العطل زي ما العميل قاله';
-    if (estimate.trim() && estPiasters === null) e.estimate = 'رقم غير صحيح. مثال: 350 أو 350.50';
-    if (lockType !== 'none' && !lockValue.trim()) e.lock = 'اكتب الرقم السري أو النمط، أو اختار «بدون قفل»';
+    if (!normPhone) e.phone = t('intake.phoneInvalid');
+    if (lookup.state === 'new' && !custName.trim()) e.custName = t('intake.custNameReq');
+    if (!brand.trim()) e.brand = t('intake.brandReq');
+    if (!model.trim()) e.model = t('intake.modelReq');
+    if (!issue.trim()) e.issue = t('intake.issueReq');
+    if (estimate.trim() && estMinor === null) e.estimate = t('intake.estimateBad');
+    if (lockType !== 'none' && !lockValue.trim()) e.lock = t('intake.lockReq');
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -143,8 +135,8 @@ export function IntakeScreen() {
   async function submit(ev: FormEvent) {
     ev.preventDefault();
     setFormError(null);
-    if (!validate()) return;
-    if (lookup.state === 'loading' || lookup.state === 'idle') return setFormError('استنى لحظة لحد ما نتأكد من العميل');
+    if (!validate()) return setAttempt((a) => a + 1);
+    if (lookup.state === 'loading' || lookup.state === 'idle') return setFormError(t('intake.wait'));
     setBusy(true);
     try {
       let customerId = lookup.state === 'found' ? lookup.customer.id : null;
@@ -156,22 +148,11 @@ export function IntakeScreen() {
       const id = crypto.randomUUID();
       const d = await supabase
         .from('devices')
-        .insert({
-          id,
-          shop_id: profile.shop_id,
-          customer_id: customerId,
-          brand: brand.trim(),
-          model: model.trim(),
-          imei: imeiClean || null,
-          color: color.trim() || null,
-          accessories,
-          issue: issue.trim(),
-          cosmetic_condition: condition.trim() || null,
-        })
+        .insert({ id, shop_id: profile.shop_id, customer_id: customerId, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null })
         .select('order_no')
         .single();
       if (d.error) throw d.error;
-      const c = await supabase.from('device_costs').insert({ shop_id: profile.shop_id, device_id: id, estimated_cost: estPiasters });
+      const c = await supabase.from('device_costs').insert({ shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor });
       if (c.error) throw c.error;
       if (lockType !== 'none' && lockValue.trim()) {
         const l = await supabase.rpc('set_device_passcode', { p_device_id: id, p_kind: lockType, p_value: lockValue.trim() });
@@ -180,13 +161,16 @@ export function IntakeScreen() {
       for (const p of photos) await uploadDevicePhoto(profile.shop_id, id, p.file);
       setSaved({ id, orderNo: d.data.order_no as string });
     } catch (e) {
-      setFormError(arabicError(e));
+      setAttempt((a) => a + 1);
+      setFormError(errorMessage(e));
+      toast({ tone: 'danger', title: t('common.errorTitle'), description: errorMessage(e) });
     } finally {
       setBusy(false);
     }
   }
 
   function reset() {
+    photos.forEach((p) => URL.revokeObjectURL(p.url));
     setPhone('');
     setCustName('');
     setCustArea('');
@@ -206,26 +190,29 @@ export function IntakeScreen() {
     setTimeout(() => document.getElementById('intake-phone')?.focus(), 50);
   }
 
+  const errCount = Object.keys(errors).length;
+  const cur = f.currency(shop.currency);
+
   return (
     <form ref={formRef} onSubmit={submit} noValidate>
       <PageHeader
-        title="استلام جهاز"
-        sub="سجّل الجهاز قدام العميل. كل حاجة هنا بتتطبع على الإيصال."
+        title={t('intake.title')}
+        sub={t('intake.subtitle')}
         actions={
           <span className="hidden items-center gap-1.5 text-xs text-fg-3 sm:flex">
-            حفظ <Kbd>Ctrl</Kbd>
+            {t('intake.saveHint')} <Kbd>Ctrl</Kbd>
             <Kbd>Enter</Kbd>
           </span>
         }
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
         <div className="flex min-w-0 flex-col gap-4">
           {/* 01 العميل */}
           <Panel>
-            <PanelHeader index="01" title="العميل" />
+            <PanelHeader index="01" title={t('intake.customer')} />
             <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-              <Field label="رقم الموبايل (واتساب)" required error={errors.phone}>
+              <Field label={t('intake.phone')} required error={errors.phone}>
                 <Input
                   id="intake-phone"
                   dir="ltr"
@@ -248,38 +235,42 @@ export function IntakeScreen() {
                     </motion.div>
                   )}
                   {lookup.state === 'found' && (
-                    <motion.div
-                      key="f"
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="flex h-full items-end"
-                    >
-                      <div className="flex w-full items-center gap-3 rounded-md border border-[color-mix(in_srgb,var(--ok)_30%,var(--line))] bg-ok-soft px-3 py-2">
+                    <motion.div key="f" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex h-full items-end">
+                      <div className="flex w-full items-center gap-3 rounded-md border border-[color-mix(in_srgb,var(--ok)_30%,var(--glass-border))] bg-ok-soft px-3 py-2">
                         <UserRound className="size-4 shrink-0 text-ok" aria-hidden />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-fg">{lookup.customer.name}</div>
+                          <div className="truncate text-sm font-semibold text-fg">
+                            <bdi>{lookup.customer.name}</bdi>
+                          </div>
                           <div className="text-xs text-fg-3">
-                            عميل متسجّل{lookup.customer.area && ` · ${lookup.customer.area}`} · <span className="num">{lookup.devices}</span> جهاز قبل كده
+                            {t('intake.registered')}
+                            {lookup.customer.area && (
+                              <>
+                                {' · '}
+                                <bdi>{lookup.customer.area}</bdi>
+                              </>
+                            )}
+                            {' · '}
+                            {t('intake.prevDevices', { n: f.number(lookup.devices) })}
                           </div>
                         </div>
                       </div>
                     </motion.div>
                   )}
                   {lookup.state === 'new' && (
-                    <motion.div key="n" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="grid gap-3 sm:grid-cols-2">
-                      <Field label="اسم العميل" required error={errors.custName} aside={<span className="text-2xs text-accent">عميل جديد</span>}>
+                    <motion.div key="n" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-3 sm:grid-cols-2">
+                      <Field label={t('intake.custName')} required error={errors.custName} aside={<span className="text-2xs text-accent">{t('intake.newCustomer')}</span>}>
                         <Input value={custName} onChange={(e) => setCustName(e.target.value)} maxLength={120} autoFocus />
                       </Field>
-                      <Field label="المنطقة">
+                      <Field label={t('intake.area')}>
                         <Input value={custArea} onChange={(e) => setCustArea(e.target.value)} />
                       </Field>
                     </motion.div>
                   )}
                   {lookup.state === 'idle' && (
-                    <motion.div key="i" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex h-full items-end pb-2 text-sm text-fg-3">
-                      <Phone className="me-2 size-4" aria-hidden />
-                      اكتب الرقم، وهنشوف العميل متسجّل ولا جديد.
+                    <motion.div key="i" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex h-full items-end gap-2 pb-2 text-sm text-fg-3">
+                      <Phone className="size-4" aria-hidden />
+                      {t('intake.phoneHint')}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -289,9 +280,9 @@ export function IntakeScreen() {
 
           {/* 02 الجهاز */}
           <Panel>
-            <PanelHeader index="02" title="الجهاز" />
+            <PanelHeader index="02" title={t('intake.device')} />
             <div className="flex flex-col gap-3 p-4">
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="اختيار سريع للنوع">
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('intake.brandQuick')}>
                 {BRANDS.map((b) => (
                   <ChipToggle key={b} pressed={brand === b} onChange={(v) => setBrand(v ? b : '')}>
                     <span dir="ltr">{b}</span>
@@ -299,69 +290,59 @@ export function IntakeScreen() {
                 ))}
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="النوع" required error={errors.brand}>
+                <Field label={t('intake.brand')} required error={errors.brand}>
                   <Input value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={60} dir="auto" />
                 </Field>
-                <Field label="الموديل" required error={errors.model}>
-                  <Input value={model} onChange={(e) => setModel(e.target.value)} maxLength={80} dir="auto" placeholder="A52، 13 Pro..." />
+                <Field label={t('intake.model')} required error={errors.model}>
+                  <Input value={model} onChange={(e) => setModel(e.target.value)} maxLength={80} dir="auto" placeholder={t('intake.modelPh')} />
                 </Field>
-                <Field label="اللون">
+                <Field label={t('intake.color')}>
                   <Input value={color} onChange={(e) => setColor(e.target.value)} />
                 </Field>
               </div>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field
-                  label="IMEI"
-                  hint={imeiClean && !imeiOk ? 'الرقم شكله مش صحيح (15 رقم). اتأكد منه، وتقدر تكمّل عادي.' : 'اطلب *#06# من الجهاز'}
+                  label={t('intake.imei')}
+                  hint={imeiClean && !imeiOk ? t('intake.imeiBad') : t('intake.imeiHint')}
                   aside={
                     imeiClean ? (
                       imeiOk ? (
                         <span className="flex items-center gap-1 text-2xs text-ok">
-                          <ShieldCheck className="size-3.5" /> صحيح
+                          <ShieldCheck className="size-3.5" /> {t('intake.imeiOk')}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-2xs text-warn">
-                          <ShieldAlert className="size-3.5" /> راجعه
+                          <ShieldAlert className="size-3.5" /> {t('intake.imeiCheck')}
                         </span>
                       )
                     ) : undefined
                   }
                 >
-                  <Input dir="ltr" inputMode="numeric" mono value={imei} onChange={(e) => setImei(e.target.value)} placeholder="15 رقم" className="text-start tracking-wider" />
+                  <Input dir="ltr" inputMode="numeric" mono value={imei} onChange={(e) => setImei(e.target.value)} placeholder={t('intake.imeiPh')} className="text-start tracking-wider" />
                 </Field>
-                <Field
-                  label="قفل الجهاز"
-                  error={errors.lock}
-                  hint="النمط: أرقام النقط بالترتيب. متشفّر، والفني وصاحب المحل بس يشوفوه، وبيتمسح عند التسليم."
-                  aside={<KeyRound className="size-3.5 text-fg-3" aria-hidden />}
-                >
+                <Field label={t('intake.lock')} error={errors.lock} hint={t('intake.lockHint')} aside={<KeyRound className="size-3.5 text-fg-3" aria-hidden />}>
                   <Input
                     dir="ltr"
                     mono
                     disabled={lockType === 'none'}
                     value={lockValue}
                     onChange={(e) => setLockValue(e.target.value)}
-                    placeholder={lockType === 'pattern' ? '1-5-9-6' : lockType === 'pin' ? '••••' : '—'}
+                    placeholder={lockType === 'pattern' ? '1-5-9-6' : lockType === 'pin' ? '••••' : t('common.none')}
                     autoComplete="off"
                     className="text-start"
                     leading={
-                      <div className="flex shrink-0 rounded-md border border-line bg-sunken/60 p-0.5" role="radiogroup" aria-label="نوع القفل">
-                        {(
-                          [
-                            ['none', 'بدون'],
-                            ['pin', 'رقم'],
-                            ['pattern', 'نمط'],
-                          ] as const
-                        ).map(([k, l]) => (
+                      <div className="flex shrink-0 rounded-md border border-glass-border bg-sunken/60 p-0.5" role="radiogroup" aria-label={t('intake.lockType')}>
+                        {(['none', 'pin', 'pattern'] as const).map((k) => (
                           <button
                             key={k}
                             type="button"
                             role="radio"
                             aria-checked={lockType === k}
                             onClick={() => setLockType(k)}
-                            className={cn('h-7 rounded-sm px-2.5 text-xs transition-colors', lockType === k ? 'bg-raised text-fg shadow-1' : 'text-fg-3 hover:text-fg')}
+                            className={cn('relative h-7 rounded-sm px-2.5 text-xs transition-colors', lockType === k ? 'text-fg' : 'text-fg-3 hover:text-fg')}
                           >
-                            {l}
+                            {lockType === k && <motion.span layoutId="lock-pill" className="absolute inset-0 rounded-sm bg-raised shadow-1" transition={{ duration: 0.18 }} />}
+                            <span className="relative">{t(k === 'none' ? 'intake.lockNone' : k === 'pin' ? 'intake.lockPin' : 'intake.lockPattern')}</span>
                           </button>
                         ))}
                       </div>
@@ -371,24 +352,24 @@ export function IntakeScreen() {
               </div>
               <AnimatePresence>
                 {prev.length > 0 && (
-                  <Alert tone="warn" title={`الجهاز ده دخل المحل قبل كده (${prev.length} مرة)`}>
+                  <Alert tone="warn" title={t('intake.seenBefore', { n: prev.length })}>
                     {prev.map((p) => (
                       <span key={p.id} className="me-3 inline-block">
                         <span className="num" dir="ltr">
                           {p.order_no}
                         </span>{' '}
-                        · {formatDateTime(p.received_at)}
+                        · {f.date(p.received_at)}
                       </span>
                     ))}
                   </Alert>
                 )}
               </AnimatePresence>
               <div>
-                <div className="mb-1.5 text-sm font-medium text-fg-2">الملحقات المستلمة</div>
+                <div className="mb-1.5 text-sm font-medium text-fg-2">{t('intake.accessories')}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {ACCESSORIES.map((a) => (
-                    <ChipToggle key={a} pressed={accessories.includes(a)} onChange={(v) => setAccessories((cur) => (v ? [...cur, a] : cur.filter((x) => x !== a)))}>
-                      {a}
+                    <ChipToggle key={a} pressed={accessories.includes(a)} onChange={(v) => setAccessories((c) => (v ? [...c, a] : c.filter((x) => x !== a)))}>
+                      {t(`intake.acc.${a}`)}
                     </ChipToggle>
                   ))}
                 </div>
@@ -398,81 +379,96 @@ export function IntakeScreen() {
 
           {/* 03 العطل والحالة */}
           <Panel>
-            <PanelHeader index="03" title="العطل والحالة" />
+            <PanelHeader index="03" title={t('intake.issueSec')} />
             <div className="grid gap-3 p-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2 sm:col-span-2">
-                <Field label="العطل زي ما العميل وصفه" required error={errors.issue}>
+                <Field label={t('intake.issue')} required error={errors.issue}>
                   <Textarea rows={2} value={issue} onChange={(e) => setIssue(e.target.value)} maxLength={1000} />
                 </Field>
                 <div className="flex flex-wrap gap-1.5">
-                  {QUICK_ISSUES.map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => setIssue((cur) => (cur.includes(q) ? cur : cur ? `${cur}، ${q}` : q))}
-                      className="h-6 rounded-sm border border-dashed border-line-strong px-2 text-xs text-fg-2 transition-colors hover:border-accent hover:text-accent"
-                    >
-                      + {q}
-                    </button>
-                  ))}
+                  {QUICK_ISSUES.map((q) => {
+                    const label = t(`intake.quick.${q}`);
+                    return (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setIssue((c) => (c.includes(label) ? c : c ? `${c}${t('common.sep')}${label}` : label))}
+                        className="h-6 rounded-sm border border-dashed border-line-strong px-2 text-xs text-fg-2 transition-[border-color,color,transform] active:scale-95 hover:border-accent hover:text-accent"
+                      >
+                        + {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <Field label="الحالة الشكلية" hint="خدوش، كسر، انحناء...">
+              <Field label={t('intake.condition')} hint={t('intake.conditionHint')}>
                 <Textarea rows={2} value={condition} onChange={(e) => setCondition(e.target.value)} />
               </Field>
-              <Field label="التكلفة التقديرية" error={errors.estimate} hint="اختياري. تقدر تحدّدها بعد الفحص.">
-                <Input dir="ltr" inputMode="decimal" mono value={estimate} onChange={(e) => setEstimate(e.target.value)} placeholder="0" suffix="ج.م" className="text-start text-md" />
+              <Field label={t('intake.estimate')} error={errors.estimate} hint={t('intake.estimateHint')}>
+                <Input dir="ltr" inputMode="decimal" mono value={estimate} onChange={(e) => setEstimate(e.target.value)} placeholder="0" suffix={cur} className="text-start text-md" />
               </Field>
             </div>
           </Panel>
 
           {/* 04 الصور */}
           <Panel>
-            <PanelHeader index="04" title="صور الجهاز" actions={<span className="num text-xs text-fg-3">{photos.length}/{MAX_PHOTOS}</span>} />
+            <PanelHeader index="04" title={t('intake.photos')} actions={<span className="num text-xs text-fg-3">{photos.length}/{MAX_PHOTOS}</span>} />
             <div className="p-4">
-              <PhotoDrop photos={photos} onAdd={addPhotos} onRemove={(i) =>
-                  setPhotos((cur) => {
-                    URL.revokeObjectURL(cur[i].url);
-                    return cur.filter((_, j) => j !== i);
+              <PhotoDrop
+                photos={photos}
+                onAdd={addPhotos}
+                onRemove={(i) =>
+                  setPhotos((c) => {
+                    URL.revokeObjectURL(c[i].url);
+                    return c.filter((_, j) => j !== i);
                   })
-                } />
+                }
+              />
             </div>
           </Panel>
         </div>
 
         {/* الملخص */}
         <aside className="lg:sticky lg:top-[72px]">
-          <Panel className="overflow-hidden">
-            <div className="border-b border-line bg-raised px-4 py-3">
-              <div className="readout-label">رقم الطلب</div>
+          <Panel elevated glow className="overflow-hidden">
+            <div className="border-b border-glass-border px-4 py-3">
+              <div className="readout-label">{t('intake.orderNo')}</div>
               <div className="num mt-0.5 text-lg text-fg-3" dir="ltr">
                 {new Date().getFullYear()}-····
               </div>
-              <div className="text-2xs text-fg-3">بيتحدد تلقائيًا عند الحفظ</div>
+              <div className="text-2xs text-fg-3">{t('intake.orderAuto')}</div>
             </div>
-            <dl className="divide-y divide-line text-sm">
-              <SummaryRow label="العميل" value={lookup.state === 'found' ? lookup.customer.name : custName || null} />
-              <SummaryRow label="الموبايل" value={normPhone} mono />
-              <SummaryRow label="الجهاز" value={[brand, model].filter(Boolean).join(' ') || null} />
+            <dl className="divide-y divide-glass-border text-sm">
+              <SummaryRow label={t('intake.customer')} value={lookup.state === 'found' ? lookup.customer.name : custName || null} />
+              <SummaryRow label={t('intake.phone')} value={normPhone} mono />
+              <SummaryRow label={t('intake.device')} value={[brand, model].filter(Boolean).join(' ') || null} />
               <SummaryRow label="IMEI" value={imeiClean || null} mono warn={!!imeiClean && !imeiOk} />
-              <SummaryRow label="الملحقات" value={accessories.length ? accessories.join('، ') : null} />
-              <SummaryRow label="قفل" value={lockType === 'none' ? 'بدون' : lockType === 'pin' ? 'رقم سري' : 'نمط'} />
-              <SummaryRow label="الصور" value={`${photos.length} من ${MAX_PHOTOS}`} />
+              <SummaryRow label={t('intake.accessories')} value={accessories.length ? accessories.map((a) => t(`intake.acc.${a}`)).join(t('common.sep')) : null} />
+              <SummaryRow label={t('intake.sumLock')} value={t(`intake.lockKind.${lockType}`)} />
+              <SummaryRow label={t('intake.photos')} value={t('intake.sumPhotos', { n: photos.length, max: MAX_PHOTOS })} />
             </dl>
-            <div className="border-t border-line px-4 py-3">
-              <div className="readout-label">التكلفة التقديرية</div>
-              <div className={cn('num mt-1 text-xl', estPiasters != null ? 'text-fg' : 'text-fg-3')}>
-                {estPiasters != null ? formatPounds(estPiasters) : '—'} <span className="font-sans text-sm text-fg-3">ج.م</span>
+            <div className="border-t border-glass-border px-4 py-3">
+              <div className="readout-label">{t('intake.estimate')}</div>
+              <div className={cn('num mt-1 text-xl', estMinor != null ? 'text-glow text-fg' : 'text-fg-3')}>
+                {estMinor != null ? f.money(estMinor) : t('common.none')} <span className="font-sans text-sm text-fg-3">{cur}</span>
               </div>
             </div>
-            <div className="flex flex-col gap-2 border-t border-line p-4">
-              {formError && <Alert tone="danger">{formError}</Alert>}
-              {Object.keys(errors).length > 0 && <Alert tone="warn">فيه {Object.keys(errors).length} حقل محتاج مراجعة.</Alert>}
-              <Button type="submit" variant="primary" size="lg" loading={busy} className="w-full justify-center" shortcut="Ctrl+Enter" tip="حفظ الاستلام">
-                حفظ الاستلام
+            <div className="flex flex-col gap-2 border-t border-glass-border p-4">
+              {formError && (
+                <div key={`e${attempt}`}>
+                  <Alert tone="danger">{formError}</Alert>
+                </div>
+              )}
+              {errCount > 0 && (
+                <div key={`w${attempt}`}>
+                  <Alert tone="warn">{t('intake.fix', { n: errCount })}</Alert>
+                </div>
+              )}
+              <Button type="submit" variant="primary" size="lg" loading={busy} className="w-full justify-center" shortcut="Ctrl+Enter" tip={t('intake.save')}>
+                {t('intake.save')}
               </Button>
               <Button variant="ghost" size="sm" className="w-full justify-center" onClick={() => navigate('/')}>
-                إلغاء
+                {t('common.cancel')}
               </Button>
             </div>
           </Panel>
@@ -482,24 +478,26 @@ export function IntakeScreen() {
       <Dialog
         open={!!saved}
         onOpenChange={(v) => !v && reset()}
-        title="اتسجّل الجهاز"
-        description="اطبع الإيصال واديه للعميل."
+        title={t('intake.saved')}
+        description={t('intake.savedText')}
         footer={
           <>
             <Button variant="ghost" onClick={reset}>
-              استلام جهاز تاني
+              {t('intake.another')}
             </Button>
             <Button variant="primary" onClick={() => saved && navigate(`/devices/${saved.id}`)}>
-              فتح الجهاز
+              {t('intake.open')}
             </Button>
           </>
         }
       >
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="size-8 text-ok" aria-hidden />
+          <motion.span initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 16 }}>
+            <CheckCircle2 className="size-9 text-ok drop-shadow-[0_0_10px_var(--ok)]" aria-hidden />
+          </motion.span>
           <div>
-            <div className="readout-label">رقم الطلب</div>
-            <div className="num text-2xl text-fg" dir="ltr">
+            <div className="readout-label">{t('intake.orderNo')}</div>
+            <div className="num text-glow text-2xl text-fg" dir="ltr">
               {saved?.orderNo}
             </div>
           </div>
@@ -510,36 +508,50 @@ export function IntakeScreen() {
 }
 
 function SummaryRow({ label, value, mono, warn }: { label: string; value: string | null; mono?: boolean; warn?: boolean }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-baseline justify-between gap-3 px-4 py-2">
       <dt className="shrink-0 text-xs text-fg-3">{label}</dt>
-      <dd className={cn('min-w-0 truncate text-end', value ? 'text-fg' : 'text-fg-3', mono && 'num', warn && 'text-warn')} dir={mono ? 'ltr' : undefined}>
-        {value || '—'}
-      </dd>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.dd
+          key={value ?? '-'}
+          initial={{ opacity: 0, y: 3 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -3 }}
+          transition={{ duration: 0.14 }}
+          className={cn('min-w-0 truncate text-end', value ? 'text-fg' : 'text-fg-3', mono && 'num', warn && 'text-warn')}
+          dir={mono ? 'ltr' : undefined}
+        >
+          {value || t('common.none')}
+        </motion.dd>
+      </AnimatePresence>
     </div>
   );
 }
 
 function PhotoDrop({ photos, onAdd, onRemove }: { photos: { url: string }[]; onAdd: (f: File[]) => void; onRemove: (i: number) => void }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const full = photos.length >= MAX_PHOTOS;
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-      {photos.map((p, i) => (
-        <motion.div key={p.url} layout initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} className="group relative aspect-square overflow-hidden rounded-md border border-line bg-sunken">
-          <img src={p.url} alt={`صورة ${i + 1}`} className="size-full object-cover" />
-          <button
-            type="button"
-            onClick={() => onRemove(i)}
-            aria-label={`شيل الصورة ${i + 1}`}
-            className="absolute end-1 top-1 grid size-6 place-items-center rounded-sm bg-[rgb(0_0_0/0.6)] text-white opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-          <span className="num absolute bottom-1 start-1 rounded-xs bg-[rgb(0_0_0/0.55)] px-1 text-2xs text-white">{i + 1}</span>
-        </motion.div>
-      ))}
+      <AnimatePresence initial={false}>
+        {photos.map((p, i) => (
+          <motion.div key={p.url} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="group relative aspect-square overflow-hidden rounded-md border border-glass-border bg-sunken">
+            <img src={p.url} alt={t('intake.photoN', { n: i + 1 })} className="size-full object-cover" />
+            <button
+              type="button"
+              onClick={() => onRemove(i)}
+              aria-label={t('intake.photoRemove', { n: i + 1 })}
+              className="absolute end-1 top-1 grid size-6 place-items-center rounded-sm bg-[rgb(0_0_0/0.6)] text-white opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+            <span className="num absolute bottom-1 start-1 rounded-xs bg-[rgb(0_0_0/0.55)] px-1 text-2xs text-white">{i + 1}</span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
       {!full && (
         <button
           type="button"
@@ -557,11 +569,11 @@ function PhotoDrop({ photos, onAdd, onRemove }: { photos: { url: string }[]; onA
           className={cn(
             'flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs transition-colors',
             over ? 'border-accent bg-accent-soft text-accent' : 'border-line-strong text-fg-3 hover:border-accent hover:text-accent',
-            photos.length === 0 && 'col-span-3 aspect-auto h-24 flex-row gap-2 text-sm sm:col-span-6',
+            photos.length === 0 && 'col-span-3 aspect-auto h-28 flex-row gap-3 text-sm sm:col-span-6',
           )}
         >
-          {photos.length === 0 ? <Camera className="size-5" aria-hidden /> : <ImagePlus className="size-5" aria-hidden />}
-          {photos.length === 0 ? 'صوّر الجهاز من كل الجهات، أو اسحب الصور هنا' : 'إضافة'}
+          {photos.length === 0 ? <LineIcon name="scan" size={44} /> : <ImagePlus className="size-5" aria-hidden />}
+          {photos.length === 0 ? t('intake.photosEmpty') : t('intake.photoAdd')}
         </button>
       )}
       <input

@@ -1,34 +1,23 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from './cn';
 
-/** اللوح الأساسي: سطح جرافيت بحافة رفيعة ولمعة خفيفة من فوق */
-export function Panel({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-lg border border-line bg-surface shadow-1', className)} {...rest} />;
+/** لوح زجاجي (المستوى التاني). elevated = المستوى التالت (لوح مرفوع) */
+export function Panel({ className, elevated, glow, ...rest }: HTMLAttributes<HTMLDivElement> & { elevated?: boolean; glow?: boolean }) {
+  return <div className={cn('relative rounded-lg', elevated ? 'glass-strong' : 'glass', glow && 'edge-glow', className)} {...rest} />;
 }
 
-export function PanelHeader({
-  title,
-  index,
-  actions,
-  className,
-}: {
-  title: ReactNode;
-  /** رقم القسم الصغير (01، 02...) زي لوحات الأجهزة */
-  index?: string;
-  actions?: ReactNode;
-  className?: string;
-}) {
+export function PanelHeader({ title, index, actions, className }: { title: ReactNode; index?: string; actions?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-center justify-between gap-3 border-b border-line px-4 py-2.5', className)}>
-      <div className="flex items-center gap-2.5">
-        {index && <span className="num text-2xs text-accent">{index}</span>}
-        <h2 className="text-sm font-semibold text-fg">{title}</h2>
+    <div className={cn('flex items-center justify-between gap-3 border-b border-glass-border px-4 py-3', className)}>
+      <div className="flex min-w-0 items-center gap-2.5">
+        {index && (
+          <span className="num grid h-5 min-w-7 place-items-center rounded-xs border border-[rgb(var(--accent-rgb)/0.3)] bg-accent-soft px-1 text-2xs text-accent">
+            {index}
+          </span>
+        )}
+        <h2 className="truncate text-sm font-semibold text-fg">{title}</h2>
       </div>
       {actions}
     </div>
   );
-}
-
-export function PanelBody({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-4', className)} {...rest} />;
 }

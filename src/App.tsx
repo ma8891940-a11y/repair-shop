@@ -1,90 +1,126 @@
-import { lazy, Suspense } from 'react';
-import { HashRouter, Navigate, Route, Routes } from 'react-router';
-import { MotionConfig } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { HashRouter, Navigate, Route, Routes, useLocation, type Location } from 'react-router';
+import { AnimatePresence, MotionConfig } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './app/auth';
-import { ThemeProvider } from './app/theme';
+import { PrefsProvider, usePrefs } from './app/prefs';
 import { AppShell } from './app/AppShell';
 import { isConfigured } from './lib/supabase';
 import { TooltipProvider } from './ui/Tooltip';
-import { Mark } from './ui/Logo';
-import { LoginScreen } from './screens/LoginScreen';
-import { OnboardingScreen } from './screens/OnboardingScreen';
+import { ToastProvider } from './ui/Toast';
+import { SplashScreen } from './screens/SplashScreen';
+import { LoginScreen } from './screens/auth/LoginScreen';
+import { RegisterWizard, hasRegisterDraft } from './screens/auth/RegisterWizard';
+import { JoinScreen } from './screens/auth/JoinScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { IntakeScreen } from './screens/IntakeScreen';
+import { DeviceDetailScreen } from './screens/DeviceDetailScreen';
 import { PendingScreen } from './screens/PendingScreen';
 
-const DesignSystemScreen = import.meta.env.DEV ? lazy(() => import('./screens/DesignSystemScreen')) : null;
-
-function Splash() {
-  return (
-    <div className="grid min-h-dvh place-items-center bg-bg">
-      <div className="animate-shimmer">
-        <Mark size={40} />
-      </div>
-    </div>
-  );
-}
+// الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
+const SPLASH_MS = 1500;
 
 function NotConfigured() {
+  const { t } = useTranslation();
   return (
-    <div className="bg-grid grid min-h-dvh place-items-center bg-bg px-4">
-      <div className="max-w-md rounded-xl border border-line bg-surface p-6 shadow-2">
-        <h1 className="text-lg font-semibold">البرنامج محتاج إعداد</h1>
-        <p className="mt-2 text-sm text-fg-2">
-          ملف <code className="num">.env.local</code> مش موجود أو ناقص. انسخ <code className="num">.env.example</code> باسم{' '}
-          <code className="num">.env.local</code> واكتب فيه رابط مشروع Supabase والـ anon key، وشغّل البرنامج تاني.
-        </p>
+    <div className="grid min-h-dvh place-items-center px-4">
+      <div className="glass-strong max-w-md rounded-xl p-6">
+        <h1 className="text-lg font-semibold">{t('errors.notConfiguredTitle')}</h1>
+        <p className="mt-2 text-sm text-fg-2">{t('errors.notConfigured')}</p>
       </div>
     </div>
   );
 }
 
 function Gate() {
-  const { loading, session, profile, shop, error } = useAuth();
-  if (loading) return <Splash />;
+  const { loading, session, profile, shop } = useAuth();
+  const location = useLocation();
+  if (loading) return null;
+
+  // المعالج بيفضل في نفس المكان من الشجرة طول الخطوات، فحالته ما بتضيعش وقت تأكيد الإيميل
+  const wizard =
+    (!session && location.pathname === '/register') ||
+    (session && !profile && hasRegisterDraft()) ||
+    (session && profile?.role === 'owner' && shop && !shop.setup_completed_at);
+  if (wizard) return <RegisterWizard />;
+
   if (!session) {
     return (
       <Routes>
-        {DesignSystemScreen && <Route path="/design" element={<Suspense fallback={<Splash />}><DesignSystemScreen /></Suspense>} />}
         <Route path="*" element={<LoginScreen />} />
       </Routes>
     );
   }
-  if (!profile || profile.deleted_at || !shop) return <OnboardingScreen blocked={Boolean(profile?.deleted_at)} loadError={error} />;
-  const front = profile.role !== 'technician';
+  if (!profile || profile.deleted_at || !shop) return <JoinScreen blocked={Boolean(profile?.deleted_at)} />;
+  return <AppRoutes front={profile.role !== 'technician'} />;
+}
+
+function AppRoutes({ front }: { front: boolean }) {
+  const location = useLocation();
+  // لو الجهاز اتفتح من كارت، الشاشة اللي ورا بتفضل ظاهرة والتفاصيل تطلع فوقها
+  const bg = (location.state as { bg?: Location } | null)?.bg;
   return (
-    <Routes>
-      {DesignSystemScreen && <Route path="/design" element={<Suspense fallback={<Splash />}><DesignSystemScreen /></Suspense>} />}
-      <Route element={<AppShell />}>
-        <Route index element={<DashboardScreen />} />
-        {front && <Route path="intake" element={<IntakeScreen />} />}
-        <Route path="devices" element={<PendingScreen title="الأجهزة" />} />
-        <Route path="devices/:id" element={<PendingScreen title="تفاصيل الجهاز" />} />
-        <Route path="users" element={<PendingScreen title="الفريق" />} />
-        <Route path="audit" element={<PendingScreen title="سجل النشاط" />} />
-        <Route path="settings" element={<PendingScreen title="الإعدادات" />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      <Routes location={bg ?? location}>
+        <Route element={<AppShell />}>
+          <Route index element={<DashboardScreen />} />
+          {front && <Route path="intake" element={<IntakeScreen />} />}
+          <Route path="devices" element={<PendingScreen titleKey="nav.devices" />} />
+          <Route path="devices/:id" element={<DeviceDetailScreen />} />
+          <Route path="users" element={<PendingScreen titleKey="nav.team" />} />
+          <Route path="audit" element={<PendingScreen titleKey="nav.audit" />} />
+          <Route path="settings" element={<PendingScreen titleKey="nav.settings" />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+      <AnimatePresence>
+        {bg && (
+          <Routes location={location} key={location.pathname}>
+            <Route path="/devices/:id" element={<DeviceDetailScreen overlay />} />
+          </Routes>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function Boot() {
+  const { calm } = usePrefs();
+  const { loading } = useAuth();
+  const ms = calm ? 400 : SPLASH_MS;
+  const [minDone, setMinDone] = useState(false);
+  useEffect(() => {
+    const left = Math.max(0, ms - performance.now());
+    const tm = setTimeout(() => setMinDone(true), left);
+    return () => clearTimeout(tm);
+  }, [ms]);
+  const show = !minDone || loading;
+  return (
+    <>
+      {!loading && <Gate />}
+      <AnimatePresence>{show && <SplashScreen key="splash" duration={Math.max(300, ms - performance.now())} />}</AnimatePresence>
+    </>
   );
 }
 
 export function App() {
   return (
-    <ThemeProvider>
+    <PrefsProvider>
       <MotionConfig reducedMotion="user">
         <TooltipProvider>
-          {isConfigured ? (
-            <HashRouter>
-              <AuthProvider>
-                <Gate />
-              </AuthProvider>
-            </HashRouter>
-          ) : (
-            <NotConfigured />
-          )}
+          <ToastProvider>
+            {isConfigured ? (
+              <HashRouter>
+                <AuthProvider>
+                  <Boot />
+                </AuthProvider>
+              </HashRouter>
+            ) : (
+              <NotConfigured />
+            )}
+          </ToastProvider>
         </TooltipProvider>
       </MotionConfig>
-    </ThemeProvider>
+    </PrefsProvider>
   );
 }

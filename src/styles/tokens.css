@@ -1,6 +1,7 @@
 /*
- * نظام التصميم — "تقني حديث"
- * كل الألوان والمقاسات هنا بس. الشاشات بتستخدم المتغيرات دي عن طريق Tailwind.
+ * نظام التصميم v2 — "لوحة دوائر / إشارة سكان"
+ * عمق بأربع مستويات: خلفية ← لوح ← لوح مرفوع ← نافذة
+ * ألواح شبه زجاجية بحدود 1px فاتحة، وظلال متعددة الطبقات، ولون إبراز سماوي واحد بيتوهج.
  * التباين متقاس: كل نص على خلفيته >= 4.5 (WCAG AA).
  */
 
@@ -8,48 +9,61 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  /* طبقات الجرافيت: من الأعمق للأعلى */
-  --bg: #0e1113;
-  --surface: #14181b;
-  --raised: #1a1f23;
-  --overlay: #20262b;
-  --sunken: #0b0d0f;
+  /* المستويات */
+  --bg: #0b0f12;
+  --bg-2: #0f1418; /* لتدرج الخلفية */
+  --surface: #12181c; /* اللوح (بدون زجاج) */
+  --raised: #182026;
+  --overlay: #1c252c;
+  --sunken: #090c0f;
 
-  --line: #262d32;
-  --line-strong: #353e45;
-  --hairline: rgb(255 255 255 / 0.045); /* لمعة خفيفة على الحافة العليا للوح */
+  /* الزجاج */
+  --glass: rgb(18 24 29 / 0.82);
+  --glass-strong: rgb(24 32 38 / 0.78);
+  --glass-border: rgb(255 255 255 / 0.075);
+  --glass-border-strong: rgb(255 255 255 / 0.13);
+  --glass-highlight: rgb(255 255 255 / 0.06);
 
-  --text: #e7ebee;
-  --text-2: #a9b3bb;
-  --text-3: #87929b;
+  --line: #242d34;
+  --line-strong: #33404a;
 
-  /* لون الإبراز الوحيد: سماوي مضيء، بيتستخدم بحساب */
-  --accent: #3fd2e8;
-  --accent-hover: #6adcee;
-  --accent-soft: rgb(63 210 232 / 0.12);
-  --accent-glow: rgb(63 210 232 / 0.35);
-  --on-accent: #04252b;
+  --text: #e9eef2;
+  --text-2: #aab5be;
+  --text-3: #8a96a0;
+
+  /* لون الإبراز الوحيد */
+  --accent: #38d6f0;
+  --accent-hover: #6ae1f4;
+  --accent-rgb: 56 214 240;
+  --accent-soft: rgb(56 214 240 / 0.12);
+  --accent-glow: rgb(56 214 240 / 0.42);
+  --on-accent: #032830;
 
   --danger: #ff6b63;
   --danger-soft: rgb(255 107 99 / 0.12);
-  --warn: #f0b44c;
-  --warn-soft: rgb(240 180 76 / 0.12);
+  --warn: #f2b54a;
+  --warn-soft: rgb(242 181 74 / 0.12);
   --ok: #4fd18b;
   --ok-soft: rgb(79 209 139 / 0.12);
 
-  --focus: #3fd2e8;
-  --grid-dot: rgb(255 255 255 / 0.05);
+  --focus: #38d6f0;
+  --trace: rgb(56 214 240 / 0.09); /* خطوط الدوائر في الخلفية */
+  --trace-pad: rgb(56 214 240 / 0.16);
 
-  --shadow-1: 0 1px 0 var(--hairline) inset, 0 1px 2px rgb(0 0 0 / 0.35);
-  --shadow-2: 0 1px 0 var(--hairline) inset, 0 8px 24px rgb(0 0 0 / 0.38);
-  --shadow-3: 0 1px 0 var(--hairline) inset, 0 24px 64px rgb(0 0 0 / 0.55);
+  --shadow-1: 0 1px 0 0 var(--glass-highlight) inset, 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.35);
+  --shadow-2: 0 1px 0 0 var(--glass-highlight) inset, 0 2px 4px rgb(0 0 0 / 0.3), 0 12px 32px -8px rgb(0 0 0 / 0.55);
+  --shadow-3: 0 1px 0 0 var(--glass-highlight) inset, 0 8px 16px rgb(0 0 0 / 0.35), 0 32px 80px -16px rgb(0 0 0 / 0.7);
+  --shadow-glow: 0 0 0 1px rgb(56 214 240 / 0.35), 0 8px 30px -6px rgb(56 214 240 / 0.35);
+
+  --page-gradient: radial-gradient(1200px 600px at 85% -10%, rgb(56 214 240 / 0.07), transparent 60%),
+    radial-gradient(900px 500px at 0% 110%, rgb(56 214 240 / 0.04), transparent 60%), linear-gradient(180deg, var(--bg), var(--bg-2));
 
   /* ألوان الحالات العشرة */
   --st-received: #8fb4ff;
   --st-inspecting: #b9a2ff;
-  --st-awaiting_approval: #f0b44c;
+  --st-awaiting_approval: #f2b54a;
   --st-awaiting_part: #ff9a5c;
-  --st-in_repair: #3fd2e8;
+  --st-in_repair: #38d6f0;
   --st-repaired: #6fdca0;
   --st-ready: #4fd18b;
   --st-delivered: #9aa5ae;
@@ -60,45 +74,57 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --bg: #eef1f3;
+  --bg: #eef3f9;
+  --bg-2: #e6edf6;
   --surface: #ffffff;
-  --raised: #f7f9fa;
+  --raised: #f6f9fc;
   --overlay: #ffffff;
-  --sunken: #e4e8eb;
+  --sunken: #e8eef5;
 
-  --line: #dde3e7;
-  --line-strong: #c7cfd5;
-  --hairline: rgb(255 255 255 / 0.9);
+  --glass: rgb(255 255 255 / 0.8);
+  --glass-strong: rgb(255 255 255 / 0.84);
+  --glass-border: rgb(18 40 64 / 0.08);
+  --glass-border-strong: rgb(18 40 64 / 0.14);
+  --glass-highlight: rgb(255 255 255 / 0.95);
 
-  --text: #13181c;
-  --text-2: #4a555e;
-  --text-3: #5f6b74;
+  --line: #dbe3ec;
+  --line-strong: #c3cfdb;
 
-  --accent: #00718a;
-  --accent-hover: #005f74;
-  --accent-soft: rgb(0 113 138 / 0.1);
-  --accent-glow: rgb(0 113 138 / 0.25);
+  --text: #0f1a24;
+  --text-2: #43515e;
+  --text-3: #5a6875;
+
+  --accent: #006f88;
+  --accent-hover: #005b70;
+  --accent-rgb: 0 111 136;
+  --accent-soft: rgb(0 111 136 / 0.09);
+  --accent-glow: rgb(0 140 170 / 0.28);
   --on-accent: #ffffff;
 
   --danger: #c22b22;
-  --danger-soft: rgb(194 43 34 / 0.09);
+  --danger-soft: rgb(194 43 34 / 0.08);
   --warn: #8f5a00;
-  --warn-soft: rgb(143 90 0 / 0.1);
+  --warn-soft: rgb(143 90 0 / 0.09);
   --ok: #16794a;
-  --ok-soft: rgb(22 121 74 / 0.1);
+  --ok-soft: rgb(22 121 74 / 0.09);
 
-  --focus: #00718a;
-  --grid-dot: rgb(19 24 28 / 0.06);
+  --focus: #006f88;
+  --trace: rgb(0 111 136 / 0.09);
+  --trace-pad: rgb(0 111 136 / 0.15);
 
-  --shadow-1: 0 1px 2px rgb(19 24 28 / 0.06), 0 0 0 1px rgb(19 24 28 / 0.02);
-  --shadow-2: 0 6px 20px rgb(19 24 28 / 0.08), 0 1px 2px rgb(19 24 28 / 0.06);
-  --shadow-3: 0 24px 60px rgb(19 24 28 / 0.18);
+  --shadow-1: 0 1px 0 0 var(--glass-highlight) inset, 0 1px 2px rgb(16 40 70 / 0.06), 0 2px 8px -2px rgb(16 40 70 / 0.08);
+  --shadow-2: 0 1px 0 0 var(--glass-highlight) inset, 0 2px 4px rgb(16 40 70 / 0.05), 0 16px 36px -10px rgb(16 40 70 / 0.16);
+  --shadow-3: 0 1px 0 0 var(--glass-highlight) inset, 0 10px 24px rgb(16 40 70 / 0.1), 0 40px 90px -20px rgb(16 40 70 / 0.28);
+  --shadow-glow: 0 0 0 1px rgb(0 111 136 / 0.28), 0 10px 28px -8px rgb(0 140 170 / 0.3);
+
+  --page-gradient: radial-gradient(1100px 600px at 85% -10%, rgb(120 190 235 / 0.28), transparent 60%),
+    radial-gradient(900px 600px at 0% 110%, rgb(160 210 240 / 0.22), transparent 60%), linear-gradient(180deg, #f3f7fc, #e7eef7);
 
   --st-received: #2a5bc4;
   --st-inspecting: #6a45c9;
   --st-awaiting_approval: #8f5a00;
   --st-awaiting_part: #a8461a;
-  --st-in_repair: #00718a;
+  --st-in_repair: #006f88;
   --st-repaired: #1f7a4d;
   --st-ready: #16794a;
   --st-delivered: #535e67;

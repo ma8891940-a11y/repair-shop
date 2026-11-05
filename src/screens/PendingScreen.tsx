@@ -1,16 +1,17 @@
-import { Hammer } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { PageHeader } from '../app/AppShell';
 import { Panel } from '../ui/Panel';
 import { EmptyState } from '../ui/Feedback';
 
 /** مؤقت لحد ما الشاشة تتبني (بعد موافقة التصميم) */
-export function PendingScreen({ title }: { title: string }) {
+export function PendingScreen({ titleKey }: { titleKey: string }) {
+  const { t } = useTranslation();
   return (
     <div>
-      <PageHeader title={title} />
+      <PageHeader title={t(titleKey)} />
       <Panel>
-        <EmptyState icon={<Hammer className="size-5" />} title="الشاشة دي لسه بتتبني">
-          هتكون جاهزة بعد موافقتك على التصميم.
+        <EmptyState line="tool" title={t('shell.pending')}>
+          {t('shell.pendingHint')}
         </EmptyState>
       </Panel>
     </div>

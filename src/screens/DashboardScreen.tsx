@@ -1,66 +1,73 @@
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { AlarmClock, ArrowLeft, CheckCheck, Inbox, PackagePlus, Wrench, type LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { AlarmClock, ArrowRight, CheckCheck, Inbox, PackagePlus, Wallet, Wrench, type LucideIcon } from 'lucide-react';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
-import { PageHeader } from '../app/AppShell';
+import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { supabase } from '../lib/supabase';
-import { computeDashboard, isLate } from '../lib/dashboard';
-import { daysSince, SHOP_TZ } from '../lib/dates';
-import { formatPounds } from '../lib/money';
-import { STATUSES, STATUS_LABELS, type DeviceStatus } from '../lib/status';
+import { computeDashboard, computeSeries, isLate, type StatusEvent } from '../lib/dashboard';
+import { daysSince } from '../lib/dates';
+import { STATUSES, type DeviceStatus } from '../lib/status';
 import type { DeviceListRow } from '../lib/types';
+import { useFormat } from '../i18n/format';
 import { Button } from '../ui/Button';
 import { Panel, PanelHeader } from '../ui/Panel';
 import { StatusBadge } from '../ui/StatusBadge';
-import { AnimatedNumber } from '../ui/AnimatedNumber';
+import { CountUp, Ring, Sparkline } from '../ui/viz';
 import { EmptyState, ErrorState, Skeleton } from '../ui/Feedback';
 import { cn } from '../ui/cn';
-
-const todayFmt = new Intl.DateTimeFormat('ar-EG-u-nu-latn', { timeZone: SHOP_TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
 type Row = Pick<DeviceListRow, 'id' | 'order_no' | 'brand' | 'model' | 'status' | 'received_at' | 'delivered_at' | 'final_cost' | 'customer_name'>;
 
 export function DashboardScreen() {
-  const { profile } = useMe();
+  const { t } = useTranslation();
+  const f = useFormat();
+  const { profile, shop } = useMe();
   const navigate = useNavigate();
   const owner = profile.role === 'owner';
   const front = profile.role !== 'technician';
 
   const { data, error, loading, reload } = useLoad(
     async () => {
-      const since = new Date(Date.now() - 2 * 86_400_000).toISOString();
-      const rows = must(
-        await supabase
+      const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
+      const [rows, events] = await Promise.all([
+        supabase
           .from('devices_list')
           .select('id, order_no, brand, model, status, received_at, delivered_at, final_cost, customer_name')
           .is('deleted_at', null)
           .or(`status.neq.delivered,delivered_at.gte."${since}"`)
           .order('received_at', { ascending: true })
           .limit(5000),
-      ) as Row[];
-      return rows;
+        supabase.from('status_log').select('new_status, created_at').eq('new_status', 'ready').gte('created_at', since).limit(5000),
+      ]);
+      return { rows: must(rows) as Row[], events: must(events) as StatusEvent[] };
     },
     [],
-    { pollMs: 60_000 },
+    { pollMs: 120_000 },
   );
 
+  // تحديث لحظي: أي تغيير في الأجهزة أو الأسعار أو الحالات بيحدّث اللوحة
+  useLiveRefresh(reload);
+
   const now = new Date();
-  const stats = data ? computeDashboard(data, now) : null;
-  const active = (data ?? []).filter((d) => d.status !== 'delivered');
+  const rows = data?.rows ?? [];
+  const stats = data ? computeDashboard(rows, now) : null;
+  const series = data ? computeSeries(rows, data.events, now) : null;
+  const active = rows.filter((d) => d.status !== 'delivered');
   const late = active.filter((d) => isLate(d, now)).slice(0, 6);
   const ready = active.filter((d) => d.status === 'ready').slice(0, 6);
-  const dist = STATUSES.filter((s) => s !== 'delivered').map((s) => ({ s, n: active.filter((d) => d.status === s).length }));
+  const segments = STATUSES.filter((s) => s !== 'delivered').map((s) => ({ key: s, value: active.filter((d) => d.status === s).length, color: `var(--st-${s})`, label: t(`status.${s}`) }));
 
   return (
     <div>
       <PageHeader
-        title="لوحة التحكم"
-        sub={todayFmt.format(now)}
+        title={t('dashboard.title')}
+        sub={f.dateLong(now)}
         actions={
           front && (
-            <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="F2" tip="استلام جهاز جديد" onClick={() => navigate('/intake')}>
-              استلام جهاز
+            <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="F2" tip={t('dashboard.newDeviceTip')} onClick={() => navigate('/intake')}>
+              {t('dashboard.newDevice')}
             </Button>
           )
         }
@@ -73,98 +80,77 @@ export function DashboardScreen() {
       ) : (
         <>
           <div className={cn('grid gap-3', owner ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4')}>
-            <Readout i={0} label="أجهزة اليوم" icon={Inbox} value={stats?.today} to="/devices?filter=today" loading={loading} caption="اتسلّمت النهارده" />
-            <Readout i={1} label="تحت الصيانة" icon={Wrench} value={stats?.underRepair} to="/devices?filter=under_repair" loading={loading} caption="جوه المحل دلوقتي" />
-            <Readout i={2} label="جاهزة للاستلام" icon={CheckCheck} value={stats?.ready} to="/devices?status=ready" loading={loading} tone="ok" caption="مستنية العميل" />
-            <Readout
-              i={3}
-              label="متأخرة"
-              icon={AlarmClock}
-              value={stats?.late}
-              to="/devices?filter=late"
-              loading={loading}
-              tone={stats && stats.late > 0 ? 'danger' : undefined}
-              caption="أكتر من 7 أيام"
-            />
+            <Kpi i={0} label={t('dashboard.today')} caption={t('dashboard.todayCap')} icon={Inbox} value={stats?.today} series={series?.today} to="/devices?filter=today" loading={loading} />
+            <Kpi i={1} label={t('dashboard.under')} caption={t('dashboard.underCap')} icon={Wrench} value={stats?.underRepair} series={series?.underRepair} to="/devices?filter=under_repair" loading={loading} />
+            <Kpi i={2} label={t('dashboard.ready')} caption={t('dashboard.readyCap')} icon={CheckCheck} value={stats?.ready} series={series?.ready} to="/devices?status=ready" loading={loading} tone="ok" />
+            <Kpi i={3} label={t('dashboard.late')} caption={t('dashboard.lateCap')} icon={AlarmClock} value={stats?.late} series={series?.late} to="/devices?filter=late" loading={loading} tone={stats && stats.late > 0 ? 'danger' : undefined} />
             {owner && (
-              <Readout
+              <Kpi
                 i={4}
-                label="إيراد اليوم"
+                label={t('dashboard.revenue')}
+                caption={t('dashboard.revenueCap')}
+                icon={Wallet}
                 value={stats?.revenueToday}
+                series={series?.revenue}
                 loading={loading}
-                money
                 tone="accent"
-                caption="التكلفة النهائية للأجهزة المسلّمة"
+                format={(n) => f.money(n)}
+                unit={f.currency(shop.currency)}
                 className="col-span-2 lg:col-span-1"
               />
             )}
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-            <Panel>
-              <PanelHeader index="01" title="توزيع الأجهزة في المحل" actions={<span className="text-xs text-fg-3"><span className="num">{active.length}</span> جهاز</span>} />
-              <div className="p-4">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <Panel className="min-w-0">
+              <PanelHeader index="01" title={t('dashboard.dist')} actions={<span className="text-xs text-fg-3">{t('units.devices', { n: f.number(active.length) })}</span>} />
+              <div className="p-5">
                 {loading ? (
-                  <Skeleton className="h-3 w-full" />
+                  <div className="flex items-center gap-6">
+                    <Skeleton className="size-[180px] rounded-full" />
+                    <div className="flex flex-1 flex-col gap-2">
+                      {[0, 1, 2, 3].map((k) => (
+                        <Skeleton key={k} className="h-4 w-full" />
+                      ))}
+                    </div>
+                  </div>
                 ) : active.length === 0 ? (
-                  <EmptyState title="المحل فاضي" icon={<Inbox className="size-5" />}>
-                    مفيش أجهزة جوه المحل دلوقتي.
+                  <EmptyState line="phone" title={t('dashboard.emptyShop')}>
+                    {t('dashboard.emptyShopText')}
                   </EmptyState>
                 ) : (
-                  <>
-                    <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full bg-sunken" role="img" aria-label="توزيع الحالات">
-                      {dist
-                        .filter((x) => x.n > 0)
-                        .map((x, i) => (
-                          <motion.div
-                            key={x.s}
-                            initial={{ scaleX: 0 }}
-                            animate={{ scaleX: 1 }}
-                            transition={{ duration: 0.4, delay: 0.05 * i, ease: [0.2, 0.8, 0.2, 1] }}
-                            style={{ flexGrow: x.n, backgroundColor: `var(--st-${x.s})`, transformOrigin: 'right' }}
-                            className="h-full first:rounded-s-full last:rounded-e-full"
-                            title={`${STATUS_LABELS[x.s]}: ${x.n}`}
-                          />
-                        ))}
-                    </div>
-                    <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
-                      {dist.map((x) => (
-                        <li key={x.s}>
-                          <Link to={`/devices?status=${x.s}`} className="flex items-center gap-2 rounded-sm py-0.5 text-sm text-fg-2 hover:text-fg">
-                            <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: `var(--st-${x.s})` }} aria-hidden />
-                            <span className="flex-1 truncate">{STATUS_LABELS[x.s]}</span>
-                            <span className={cn('num text-sm', x.n ? 'text-fg' : 'text-fg-3')}>{x.n}</span>
+                  <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+                    <Ring
+                      segments={segments}
+                      label={segments.map((x) => `${x.label}: ${f.number(x.value)}`).join(t('common.sep'))}
+                      center={(a) => (
+                        <div>
+                          <div className="num text-3xl font-medium text-fg">{f.number(a ? a.value : active.length)}</div>
+                          <div className="mt-0.5 max-w-[110px] text-2xs text-fg-3">{a ? a.label : t('dashboard.inShop')}</div>
+                        </div>
+                      )}
+                    />
+                    <ul className="grid w-full flex-1 grid-cols-1 gap-x-5 gap-y-1 sm:grid-cols-1 xl:grid-cols-2">
+                      {segments.map((x) => (
+                        <li key={x.key}>
+                          <Link to={`/devices?status=${x.key}`} className="flex items-center gap-2 rounded-sm px-1 py-1 text-sm text-fg-2 transition-colors hover:bg-raised/60 hover:text-fg">
+                            <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: x.color, boxShadow: x.value ? `0 0 6px ${x.color}` : undefined }} aria-hidden />
+                            <span className="flex-1 truncate">{x.label}</span>
+                            <span className={cn('num text-sm', x.value ? 'text-fg' : 'text-fg-3')}>{f.number(x.value)}</span>
                           </Link>
                         </li>
                       ))}
                     </ul>
-                  </>
+                  </div>
                 )}
               </div>
             </Panel>
 
-            <DeviceMiniList
-              index="02"
-              title="متأخرة — الأقدم الأول"
-              rows={late}
-              loading={loading}
-              showCustomer={front}
-              empty="مفيش أجهزة متأخرة. كله ماشي في وقته."
-              danger
-              moreTo="/devices?filter=late"
-            />
+            <DeviceList index="02" title={t('dashboard.lateList')} rows={late} loading={loading} showCustomer={front} empty={t('dashboard.lateEmpty')} danger moreTo="/devices?filter=late" />
           </div>
 
           <div className="mt-4">
-            <DeviceMiniList
-              index="03"
-              title="جاهزة ومستنية العميل"
-              rows={ready}
-              loading={loading}
-              showCustomer={front}
-              empty="مفيش أجهزة جاهزة دلوقتي."
-              moreTo="/devices?status=ready"
-            />
+            <DeviceList index="03" title={t('dashboard.readyList')} rows={ready} loading={loading} showCustomer={front} empty={t('dashboard.readyEmpty')} moreTo="/devices?status=ready" />
           </div>
         </>
       )}
@@ -172,62 +158,64 @@ export function DashboardScreen() {
   );
 }
 
-function Readout({
+function Kpi({
   label,
-  value,
   caption,
+  value,
+  series,
   icon: Icon,
   to,
   tone,
-  money,
   loading,
   i,
+  format,
+  unit,
   className,
 }: {
   label: string;
+  caption: string;
   value: number | undefined;
-  caption?: string;
-  icon?: LucideIcon;
+  series?: number[];
+  icon: LucideIcon;
   to?: string;
   tone?: 'ok' | 'danger' | 'accent';
-  money?: boolean;
   loading: boolean;
   i: number;
+  format?: (n: number) => string;
+  unit?: string;
   className?: string;
 }) {
+  const f = useFormat();
   const toneText = tone === 'danger' ? 'text-danger' : tone === 'ok' ? 'text-ok' : tone === 'accent' ? 'text-accent' : 'text-fg';
+  const line = tone === 'danger' ? 'var(--danger)' : tone === 'ok' ? 'var(--ok)' : 'var(--accent)';
   const body = (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, delay: i * 0.04, ease: [0.2, 0.8, 0.2, 1] }}
-      className={cn(
-        'group relative h-full overflow-hidden rounded-lg border border-line bg-surface p-4 shadow-1 transition-[border-color,background-color] duration-150',
-        to && 'hover:border-line-strong hover:bg-raised',
-        tone === 'danger' && 'border-[color-mix(in_srgb,var(--danger)_35%,var(--line))]',
-      )}
+      transition={{ duration: 0.26, delay: i * 0.05, ease: [0.2, 0.8, 0.2, 1] }}
+      className={cn('glass lift group relative h-full overflow-hidden rounded-lg p-4', tone === 'danger' && 'border-[color-mix(in_srgb,var(--danger)_35%,var(--glass-border))]')}
     >
       <div className="flex items-center justify-between">
         <span className="readout-label">{label}</span>
-        {Icon && <Icon className={cn('size-4', tone ? toneText : 'text-fg-3')} aria-hidden />}
+        <span className={cn('grid size-7 place-items-center rounded-md border border-glass-border bg-sunken/50', tone ? toneText : 'text-fg-3')}>
+          <Icon className="size-3.5" aria-hidden />
+        </span>
       </div>
-      <div className={cn('num mt-3 flex items-baseline gap-1.5 text-2xl font-medium', toneText)}>
+      <div className={cn('num mt-2 flex items-baseline gap-1.5 text-2xl font-medium', toneText, tone === 'accent' && 'text-glow')}>
         {loading || value === undefined ? (
           <Skeleton className="h-9 w-16" />
-        ) : money ? (
-          <>
-            <AnimatedNumber value={value} format={(n) => formatPounds(n)} />
-            <span className="font-sans text-sm text-fg-3">ج.م</span>
-          </>
         ) : (
-          <AnimatedNumber value={value} />
+          <>
+            <CountUp value={value} format={format ?? ((n) => f.number(n))} />
+            {unit && <span className="font-sans text-sm text-fg-3">{unit}</span>}
+          </>
         )}
       </div>
-      <div className="mt-2 flex items-center justify-between text-xs text-fg-3">
-        <span>{caption}</span>
-        {to && <ArrowLeft className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />}
+      <div className="mt-2 -mx-1">{series && !loading ? <Sparkline data={series} color={line} /> : <div className="h-8" />}</div>
+      <div className="mt-1 flex items-center justify-between text-xs text-fg-3">
+        <span className="truncate">{caption}</span>
+        {to && <ArrowRight className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100 rtl:-scale-x-100" aria-hidden />}
       </div>
-      <div className="ruler absolute inset-x-4 bottom-0 opacity-50" aria-hidden />
     </motion.div>
   );
   return to ? (
@@ -239,25 +227,10 @@ function Readout({
   );
 }
 
-function DeviceMiniList({
-  index,
-  title,
-  rows,
-  loading,
-  showCustomer,
-  empty,
-  danger,
-  moreTo,
-}: {
-  index: string;
-  title: string;
-  rows: Row[];
-  loading: boolean;
-  showCustomer: boolean;
-  empty: string;
-  danger?: boolean;
-  moreTo: string;
-}) {
+function DeviceList({ index, title, rows, loading, showCustomer, empty, danger, moreTo }: { index: string; title: string; rows: Row[]; loading: boolean; showCustomer: boolean; empty: string; danger?: boolean; moreTo: string }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const location = useLocation();
   const now = new Date();
   return (
     <Panel className="flex min-w-0 flex-col">
@@ -266,38 +239,43 @@ function DeviceMiniList({
         title={title}
         actions={
           <Link to={moreTo} className="text-xs text-fg-3 hover:text-accent">
-            عرض الكل
+            {t('common.viewAll')}
           </Link>
         }
       />
       {loading ? (
-        <div className="flex flex-col gap-2 p-4">
+        <div className="flex flex-col gap-2 p-3">
           {[0, 1, 2].map((k) => (
-            <Skeleton key={k} className="h-8 w-full" />
+            <Skeleton key={k} className="h-12 w-full rounded-md" />
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <EmptyState title={empty} />
+        <EmptyState line={danger ? 'shield' : 'receipt'} title={empty} />
       ) : (
-        <ul className="divide-y divide-line">
+        <ul className="flex flex-col gap-1.5 p-2.5">
           {rows.map((d, i) => (
-            <motion.li key={d.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03, duration: 0.18 }}>
-              <Link to={`/devices/${d.id}`} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-raised">
-                <span className="num w-[86px] shrink-0 text-sm text-fg" dir="ltr">
-                  {d.order_no}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm">
-                  <span className="text-fg">
-                    {d.brand} {d.model}
+            <motion.li key={d.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i, duration: 0.2 }}>
+              <Link to={`/devices/${d.id}`} state={{ bg: location }} className="block rounded-md">
+                <motion.div layoutId={`device-card-${d.id}`} className="lift flex items-center gap-3 rounded-md border border-glass-border bg-sunken/40 px-3 py-2.5" transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}>
+                  <motion.span layoutId={`device-order-${d.id}`} className="num w-[86px] shrink-0 text-sm text-fg" dir="ltr">
+                    {d.order_no}
+                  </motion.span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    <span className="text-fg">
+                      {d.brand} {d.model}
+                    </span>
+                    {showCustomer && d.customer_name && (
+                      <span className="text-fg-3">
+                        {' · '}
+                        <bdi>{d.customer_name}</bdi>
+                      </span>
+                    )}
                   </span>
-                  {showCustomer && d.customer_name && <span className="text-fg-3"> · {d.customer_name}</span>}
-                </span>
-                <span className="hidden shrink-0 sm:block">
-                  <StatusBadge status={d.status as DeviceStatus} size="sm" />
-                </span>
-                <span className={cn('w-14 shrink-0 text-end text-xs', danger ? 'text-danger' : 'text-fg-3')}>
-                  <span className="num">{daysSince(d.received_at, now)}</span> يوم
-                </span>
+                  <span className="hidden shrink-0 sm:block">
+                    <StatusBadge status={d.status as DeviceStatus} size="sm" />
+                  </span>
+                  <span className={cn('w-16 shrink-0 text-end text-xs', danger ? 'text-danger' : 'text-fg-3')}>{f.days(daysSince(d.received_at, now))}</span>
+                </motion.div>
               </Link>
             </motion.li>
           ))}

@@ -18,7 +18,7 @@ export function normalizeEgyptPhone(input: string): string | null {
 /** يحوّل 01012345678 => 201012345678 (الصيغة اللي wa.me محتاجها) */
 export function toInternational(phone: string): string {
   const n = normalizeEgyptPhone(phone);
-  if (!n) throw new Error('رقم غير صالح');
+  if (!n) throw new Error('INVALID_PHONE');
   return '20' + n.slice(1);
 }
 

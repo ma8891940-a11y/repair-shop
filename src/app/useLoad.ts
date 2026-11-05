@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react';
-import { arabicError } from '../lib/errors';
+import { errorMessage } from '../lib/errors';
 
 export interface Loaded<T> {
   data: T | undefined;
@@ -33,7 +33,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { p
       })
       .catch((e: unknown) => {
         if (my !== seq.current) return;
-        setError(arabicError(e));
+        setError(errorMessage(e));
       })
       .finally(() => {
         if (my === seq.current) setLoading(false);

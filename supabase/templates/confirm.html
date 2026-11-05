@@ -1,0 +1,8 @@
+<!-- قالب إيميل التأكيد: فيه كود من 6 أرقام. انسخه في Supabase > Authentication > Email Templates > Confirm signup -->
+<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#13181c">
+  <h2 style="margin:0 0 12px">كود تأكيد الحساب</h2>
+  <p style="margin:0 0 16px">اكتب الكود ده في البرنامج عشان تكمّل تسجيل المحل:</p>
+  <div style="font-family:Consolas,monospace;font-size:32px;letter-spacing:8px;font-weight:bold;background:#eef1f3;border-radius:10px;padding:14px;text-align:center" dir="ltr">{{ .Token }}</div>
+  <p style="margin:16px 0 0;color:#5f6b74;font-size:13px">لو ما طلبتش الكود ده، تجاهل الرسالة.</p>
+  <p style="margin:8px 0 0;color:#5f6b74;font-size:13px" dir="ltr">Your verification code: {{ .Token }}</p>
+</div>

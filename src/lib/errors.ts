@@ -1,19 +1,26 @@
-// تحويل رسائل الأخطاء التقنية لكلام مفهوم بالعربي
-export function arabicError(e: unknown): string {
+import i18n from '../i18n';
+
+const ARABIC = /[\u0600-\u06FF]/;
+
+/** يحوّل أي خطأ (Supabase/شبكة/قاعدة بيانات) لرسالة مفهومة باللغة الحالية */
+export function errorMessage(e: unknown): string {
+  const t = i18n.t.bind(i18n);
   const msg =
-    typeof e === 'string'
-      ? e
-      : e && typeof e === 'object' && 'message' in e
-        ? String((e as { message: unknown }).message)
-        : 'حصل خطأ غير متوقع';
-  if (/[؀-ۿ]/.test(msg)) return msg; // رسالة عربية جاية من قاعدة البيانات
-  if (/Invalid login credentials/i.test(msg)) return 'الإيميل أو كلمة السر غلط';
-  if (/Email not confirmed/i.test(msg)) return 'لازم تأكّد الإيميل الأول من الرسالة اللي وصلتك';
-  if (/User already registered/i.test(msg)) return 'الإيميل ده عنده حساب بالفعل. سجّل دخول';
-  if (/Password should be at least/i.test(msg)) return 'كلمة السر لازم تكون 6 حروف على الأقل';
-  if (/duplicate key.*customers_phone/i.test(msg)) return 'فيه عميل متسجّل بنفس الرقم';
-  if (/Failed to fetch|NetworkError|network/i.test(msg)) return 'مفيش اتصال بالإنترنت أو السيرفر مش متاح';
-  if (/row-level security|permission denied/i.test(msg)) return 'مش مسموح لك تعمل العملية دي';
-  if (/rate limit/i.test(msg)) return 'محاولات كتير. استنى شوية وجرّب تاني';
-  return msg;
+    typeof e === 'string' ? e : e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : '';
+  if (/Invalid login credentials/i.test(msg)) return t('errors.badLogin');
+  if (/Email not confirmed/i.test(msg)) return t('errors.notConfirmed');
+  if (/already registered|already been registered/i.test(msg)) return t('errors.exists');
+  if (/Password should be at least/i.test(msg)) return t('errors.weakPassword');
+  if (/duplicate key.*customers_phone/i.test(msg)) return t('errors.dupPhone');
+  if (/Failed to fetch|NetworkError|network/i.test(msg)) return t('errors.network');
+  if (/row-level security|permission denied/i.test(msg)) return t('errors.forbidden');
+  if (/rate limit|too many/i.test(msg)) return t('errors.rateLimit');
+  if (/IMAGE_PROCESSING_FAILED/.test(msg)) return t('errors.imageFail');
+  if (/token has expired|otp|invalid token/i.test(msg)) return t('errors.otp');
+  // رسايل قاعدة البيانات لسه بالعربي (هتتحول لأكواد في المرحلة 1)
+  if (ARABIC.test(msg)) return i18n.language === 'ar' ? msg : t('errors.generic');
+  return msg || t('errors.generic');
 }
+
+/** اسم قديم، لسه مستخدم في كام مكان */
+export const arabicError = errorMessage;

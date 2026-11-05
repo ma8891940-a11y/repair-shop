@@ -1,23 +1,4 @@
-// عرض سجل النشاط بكلام مفهوم
-export const ENTITY_LABELS: Record<string, string> = {
-  shops: 'إعدادات المحل',
-  profiles: 'مستخدم',
-  staff_invites: 'دعوة موظف',
-  customers: 'عميل',
-  devices: 'جهاز',
-  device_costs: 'تكلفة جهاز',
-  device_photos: 'صورة جهاز',
-  device_notes: 'ملاحظة داخلية',
-};
-
-export const ACTION_LABELS: Record<string, string> = {
-  insert: 'إضافة',
-  update: 'تعديل',
-  soft_delete: 'حذف',
-  create_shop: 'إنشاء المحل',
-  join: 'انضمام موظف',
-};
-
+// عرض سجل النشاط: الفرق بين القيمة قبل وبعد (أسماء العمليات في ملفات الترجمة)
 const IGNORED = new Set(['updated_at', 'created_at', 'id', 'shop_id']);
 
 export interface Change {
