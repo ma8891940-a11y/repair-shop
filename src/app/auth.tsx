@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProfile = useCallback(async (s: Session | null) => {
+  const load = useCallback(async (s: Session | null) => {
     setError(null);
     if (!s) {
       setProfile(null);
@@ -36,55 +36,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('id', s.user.id)
       .maybeSingle();
     if (pe) setError(pe.message);
+    let sh: Shop | null = null;
     if (p && !p.deleted_at) {
-      const { data: sh } = await supabase
+      const r = await supabase
         .from('shops')
         .select('id, name, phone, address, receipt_terms, warranty_days')
         .eq('id', p.shop_id)
         .maybeSingle();
-      setProfile(p as Profile);
-      setShop((sh as Shop) ?? null);
-    } else {
-      setProfile(p ? (p as Profile) : null);
-      setShop(null);
+      sh = (r.data as Shop) ?? null;
     }
+    setProfile((p as Profile) ?? null);
+    setShop(sh);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
+    void supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session);
-      void loadProfile(data.session);
+      void load(data.session);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      // نأجل القراءة عشان ما نعملش طلب جوه callback المصادقة نفسه
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
-        setTimeout(() => void loadProfile(s), 0);
+        // خارج callback المصادقة عشان ما يحصلش قفل
+        setTimeout(() => void load(s), 0);
       }
     });
     return () => {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadProfile]);
+  }, [load]);
 
   const refresh = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
-    await loadProfile(data.session);
-  }, [loadProfile]);
+    await load(data.session);
+  }, [load]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
 
-  return (
-    <Ctx.Provider value={{ loading, session, profile, shop, error, refresh, signOut }}>
-      {children}
-    </Ctx.Provider>
-  );
+  return <Ctx.Provider value={{ loading, session, profile, shop, error, refresh, signOut }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthState {
@@ -93,7 +88,7 @@ export function useAuth(): AuthState {
   return v;
 }
 
-/** للصفحات اللي جوه البرنامج (بعد ما المستخدم يدخل ويبقى ليه محل) */
+/** للشاشات اللي جوه البرنامج: المستخدم داخل وليه محل */
 export function useMe(): { profile: Profile; shop: Shop; refresh: () => Promise<void> } {
   const { profile, shop, refresh } = useAuth();
   if (!profile || !shop) throw new Error('not signed in');

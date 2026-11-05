@@ -1,0 +1,107 @@
+/*
+ * نظام التصميم — "تقني حديث"
+ * كل الألوان والمقاسات هنا بس. الشاشات بتستخدم المتغيرات دي عن طريق Tailwind.
+ * التباين متقاس: كل نص على خلفيته >= 4.5 (WCAG AA).
+ */
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* طبقات الجرافيت: من الأعمق للأعلى */
+  --bg: #0e1113;
+  --surface: #14181b;
+  --raised: #1a1f23;
+  --overlay: #20262b;
+  --sunken: #0b0d0f;
+
+  --line: #262d32;
+  --line-strong: #353e45;
+  --hairline: rgb(255 255 255 / 0.045); /* لمعة خفيفة على الحافة العليا للوح */
+
+  --text: #e7ebee;
+  --text-2: #a9b3bb;
+  --text-3: #87929b;
+
+  /* لون الإبراز الوحيد: سماوي مضيء، بيتستخدم بحساب */
+  --accent: #3fd2e8;
+  --accent-hover: #6adcee;
+  --accent-soft: rgb(63 210 232 / 0.12);
+  --accent-glow: rgb(63 210 232 / 0.35);
+  --on-accent: #04252b;
+
+  --danger: #ff6b63;
+  --danger-soft: rgb(255 107 99 / 0.12);
+  --warn: #f0b44c;
+  --warn-soft: rgb(240 180 76 / 0.12);
+  --ok: #4fd18b;
+  --ok-soft: rgb(79 209 139 / 0.12);
+
+  --focus: #3fd2e8;
+  --grid-dot: rgb(255 255 255 / 0.05);
+
+  --shadow-1: 0 1px 0 var(--hairline) inset, 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-2: 0 1px 0 var(--hairline) inset, 0 8px 24px rgb(0 0 0 / 0.38);
+  --shadow-3: 0 1px 0 var(--hairline) inset, 0 24px 64px rgb(0 0 0 / 0.55);
+
+  /* ألوان الحالات العشرة */
+  --st-received: #8fb4ff;
+  --st-inspecting: #b9a2ff;
+  --st-awaiting_approval: #f0b44c;
+  --st-awaiting_part: #ff9a5c;
+  --st-in_repair: #3fd2e8;
+  --st-repaired: #6fdca0;
+  --st-ready: #4fd18b;
+  --st-delivered: #9aa5ae;
+  --st-warranty_return: #ff86b8;
+  --st-unrepairable: #ff6b63;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #eef1f3;
+  --surface: #ffffff;
+  --raised: #f7f9fa;
+  --overlay: #ffffff;
+  --sunken: #e4e8eb;
+
+  --line: #dde3e7;
+  --line-strong: #c7cfd5;
+  --hairline: rgb(255 255 255 / 0.9);
+
+  --text: #13181c;
+  --text-2: #4a555e;
+  --text-3: #5f6b74;
+
+  --accent: #00718a;
+  --accent-hover: #005f74;
+  --accent-soft: rgb(0 113 138 / 0.1);
+  --accent-glow: rgb(0 113 138 / 0.25);
+  --on-accent: #ffffff;
+
+  --danger: #c22b22;
+  --danger-soft: rgb(194 43 34 / 0.09);
+  --warn: #8f5a00;
+  --warn-soft: rgb(143 90 0 / 0.1);
+  --ok: #16794a;
+  --ok-soft: rgb(22 121 74 / 0.1);
+
+  --focus: #00718a;
+  --grid-dot: rgb(19 24 28 / 0.06);
+
+  --shadow-1: 0 1px 2px rgb(19 24 28 / 0.06), 0 0 0 1px rgb(19 24 28 / 0.02);
+  --shadow-2: 0 6px 20px rgb(19 24 28 / 0.08), 0 1px 2px rgb(19 24 28 / 0.06);
+  --shadow-3: 0 24px 60px rgb(19 24 28 / 0.18);
+
+  --st-received: #2a5bc4;
+  --st-inspecting: #6a45c9;
+  --st-awaiting_approval: #8f5a00;
+  --st-awaiting_part: #a8461a;
+  --st-in_repair: #00718a;
+  --st-repaired: #1f7a4d;
+  --st-ready: #16794a;
+  --st-delivered: #535e67;
+  --st-warranty_return: #b0306c;
+  --st-unrepairable: #c22b22;
+}
