@@ -19,7 +19,7 @@ export function daysSince(from: Date | string, now: Date): number {
   return Math.floor(ms / 86_400_000);
 }
 
-const displayFmt = new Intl.DateTimeFormat('ar-EG', {
+const displayFmt = new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
   timeZone: SHOP_TZ,
   year: 'numeric',
   month: '2-digit',

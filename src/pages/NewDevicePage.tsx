@@ -9,6 +9,7 @@ import { MAX_PHOTOS, uploadDevicePhoto } from '../lib/photos';
 import type { Customer } from '../lib/types';
 import { useMe } from '../auth/AuthContext';
 import { ImeiWarning } from '../components/ImeiWarning';
+import { PhotoPicker } from '../components/PhotoPicker';
 
 const ACCESSORIES = ['شريحة', 'جراب', 'كارت ذاكرة', 'شاحن', 'سماعة', 'علبة'];
 const BRANDS = ['Samsung', 'iPhone', 'Xiaomi', 'Oppo', 'Realme', 'Vivo', 'Infinix', 'Tecno', 'Huawei', 'Honor', 'Nokia'];
@@ -234,17 +235,9 @@ export function NewDevicePage() {
 
       <section className="card">
         <h2>صور الجهاز (حتى {MAX_PHOTOS} صور)</h2>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          capture="environment"
-          onChange={(e) => {
-            const files = Array.from(e.target.files ?? []);
-            setPhotos((cur) => [...cur, ...files].slice(0, MAX_PHOTOS));
-            e.target.value = '';
-          }}
+        <PhotoPicker
           disabled={photos.length >= MAX_PHOTOS}
+          onPick={(files) => setPhotos((cur) => [...cur, ...files].slice(0, MAX_PHOTOS))}
         />
         {photos.length > 0 && (
           <ul className="file-list">

@@ -10,6 +10,7 @@ import type { Customer, Device, DeviceCost } from '../lib/types';
 import { useMe } from '../auth/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { ImeiWarning } from '../components/ImeiWarning';
+import { PhotoPicker } from '../components/PhotoPicker';
 
 interface LogRow {
   id: string;
@@ -279,17 +280,7 @@ export function DeviceDetailPage() {
           ))}
         </div>
         {front && photos.length < MAX_PHOTOS && (
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            capture="environment"
-            disabled={busy}
-            onChange={(e) => {
-              addPhotos(Array.from(e.target.files ?? []));
-              e.target.value = '';
-            }}
-          />
+          <PhotoPicker disabled={busy} onPick={addPhotos} />
         )}
       </section>
 
