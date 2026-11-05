@@ -488,6 +488,18 @@ begin
   return p;
 end $$;
 
+-- قبل أول دخول: هل فيه دعوة للإيميل ده؟ (يرجّع اسم المحل والدور بس)
+create or replace function public.my_pending_invite()
+returns table(shop_name text, role public.app_role)
+language sql stable security definer set search_path = public as $$
+  select s.name, i.role
+  from public.staff_invites i
+  join public.shops s on s.id = i.shop_id
+  join auth.users u on u.id = auth.uid()
+  where lower(i.email) = lower(u.email) and i.accepted_at is null and i.deleted_at is null
+  order by i.created_at desc limit 1
+$$;
+
 -- ---------- عرض البحث في الأجهزة ----------
 -- security_invoker = الصلاحيات بتاعة المستخدم نفسه (RLS بتشتغل). الفني هيشوف اسم العميل فاضي.
 create view public.devices_list with (security_invoker = true) as
@@ -510,6 +522,8 @@ grant insert, update on public.shops, public.profiles, public.staff_invites, pub
 revoke insert, update on public.audit_log, public.status_log, public.order_counters from authenticated;
 revoke execute on function public.bootstrap_account(text, text) from public;
 grant execute on function public.bootstrap_account(text, text) to authenticated;
+revoke execute on function public.my_pending_invite() from public;
+grant execute on function public.my_pending_invite() to authenticated;
 
 alter table public.shops enable row level security;
 alter table public.profiles enable row level security;

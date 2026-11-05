@@ -52,8 +52,8 @@ async function addDevice(uid: string, customerId: string, imei: string | null = 
   const id = randomUUID();
   const r = await as<{ order_no: string }>(
     uid,
-    `insert into devices(id, shop_id, customer_id, order_no, brand, model, imei, issue)
-     values ($1, gen_random_uuid(), $2, 'x', 'Samsung', 'A52', $3, 'الشاشة مكسورة') returning order_no`,
+    `insert into devices(id, customer_id, brand, model, imei, issue)
+     values ($1, $2, 'Samsung', 'A52', $3, 'الشاشة مكسورة') returning order_no`,
     [id, customerId, imei],
   );
   return { id, orderNo: r.rows[0].order_no };
@@ -73,6 +73,9 @@ d('قاعدة البيانات: العزل والصلاحيات', () => {
     await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), 'rec@shop.test', 'سارة', 'reception')`);
     await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), 'tech@shop.test', 'كريم', 'technician')`);
     recA = await newUser('rec@shop.test');
+    const inv = await as(recA, `select * from my_pending_invite()`);
+    expect(inv.rows[0]).toEqual({ shop_name: 'محل أ', role: 'reception' });
+    expect((await as(ownerB.id, `select * from my_pending_invite()`)).rowCount).toBe(0);
     techA = await newUser('tech@shop.test');
     await as(recA, `select bootstrap_account('سارة')`);
     await as(techA, `select bootstrap_account('كريم')`);

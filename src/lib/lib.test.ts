@@ -3,7 +3,8 @@ import { formatEGP, formatPounds, parsePounds, sumPiasters } from './money';
 import { normalizeEgyptPhone, toInternational } from './phone';
 import { isValidImei, normalizeImei } from './imei';
 import { STATUSES, TRANSITIONS, canTransition, nextStatusesFor } from './status';
-import { cairoDay, daysSince } from './dates';
+import { cairoDay, cairoDayEnd, cairoDayStart, cairoOffsetMinutes, daysSince } from './dates';
+import { diffChanges } from './audit';
 import { computeDashboard, isLate } from './dashboard';
 import { buildSearchFilter, sanitizeSearch } from './search';
 
@@ -103,6 +104,13 @@ describe('التواريخ بتوقيت القاهرة', () => {
     expect(cairoDay('2026-11-04T23:30:00Z')).toBe('2026-11-05');
     expect(cairoDay('2026-11-04T20:00:00Z')).toBe('2026-11-04');
   });
+  it('بيراعي التوقيت الصيفي في مصر', () => {
+    expect(cairoOffsetMinutes(new Date('2026-01-15T12:00:00Z'))).toBe(120);
+    expect(cairoOffsetMinutes(new Date('2026-07-15T12:00:00Z'))).toBe(180);
+    expect(cairoDayStart('2026-01-15').toISOString()).toBe('2026-01-14T22:00:00.000Z');
+    expect(cairoDayStart('2026-07-15').toISOString()).toBe('2026-07-14T21:00:00.000Z');
+    expect(cairoDayEnd('2026-12-31').toISOString()).toBe('2026-12-31T22:00:00.000Z');
+  });
   it('يحسب الأيام', () => {
     expect(daysSince('2026-11-01T10:00:00Z', new Date('2026-11-09T10:00:01Z'))).toBe(8);
   });
@@ -155,5 +163,17 @@ describe('تنضيف البحث', () => {
   it('يبني الفلتر', () => {
     expect(buildSearchFilter('010', ['phone', 'imei'])).toBe('phone.ilike.*010*,imei.ilike.*010*');
     expect(buildSearchFilter('  ,, ', ['phone'])).toBeNull();
+  });
+});
+
+describe('سجل النشاط: الفرق بين قبل وبعد', () => {
+  it('يطلّع الحقول اللي اتغيرت بس ويتجاهل updated_at', () => {
+    expect(
+      diffChanges(
+        { final_cost: null, estimated_cost: 15000, updated_at: 'a', id: '1' },
+        { final_cost: 17550, estimated_cost: 15000, updated_at: 'b', id: '1' },
+      ),
+    ).toEqual([{ field: 'final_cost', before: null, after: 17550 }]);
+    expect(diffChanges(null, { name: 'x' })).toEqual([{ field: 'name', before: null, after: 'x' }]);
   });
 });
