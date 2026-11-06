@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, FileText, Search } from 'lucide-react';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { WhatsAppButton, WhatsAppDialog, type MessageTarget } from '../app/messaging';
@@ -151,7 +151,7 @@ export function CustomerProfileScreen() {
   const { id = '' } = useParams();
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop } = useMe();
+  const { shop, profile } = useMe();
   const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
@@ -204,6 +204,11 @@ export function CustomerProfileScreen() {
               {c.area && ` · ${c.area}`}
             </div>
           </div>
+          {profile.role === 'owner' && (
+            <Link to={`/finance/customer/${c.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent hover:text-fg">
+              <FileText className="size-4" aria-hidden /> {t('fin.statement')}
+            </Link>
+          )}
           {target && <WhatsAppButton onClick={() => setWa(true)} />}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
