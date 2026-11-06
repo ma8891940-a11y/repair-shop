@@ -117,7 +117,9 @@ d('المرحلة 3: الدفتر المحاسبي', () => {
   it('المحل الجديد بياخد الحسابات الأساسية وخزنة لكل طريقة دفع', async () => {
     const r = await as(A.owner, `select code from accounts where code is not null order by code`);
     const codes = r.rows.map((x) => x.code);
-    for (const c of ['ar', 'ap', 'inventory', 'capital', 'drawings', 'rev_repair', 'cogs', 'exp_rent', 'cash_cash', 'cash_wallet']) expect(codes).toContain(c);
+    for (const c of ['ar', 'ap', 'inventory', 'capital', 'drawings', 'rev_repair', 'cogs', 'exp_rent']) expect(codes).toContain(c);
+    // الخزن الخمسة الأساسية: الدرج، فودافون كاش، InstaPay، البنك، الكارت
+    for (const c of ['cash_cash', 'cash_wallet', 'cash_instapay', 'cash_bank_transfer', 'cash_card']) expect(codes).toContain(c);
   });
 
   it('قبول 3: يوم كامل فيه 22 عملية، وكل أرقام الوضع المالي مطابقة لحساب يدوي، والمعادلة متوازنة', async () => {
