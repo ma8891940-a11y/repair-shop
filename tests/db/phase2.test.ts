@@ -36,6 +36,8 @@ async function user(email: string) {
 }
 
 const tag = randomUUID().slice(0, 8);
+// عنوان شبكة مختلف لكل تشغيلة، عشان محاولات التشغيلات اللي فاتت ما تأثرش
+const NET = `10.${Math.floor(Math.random() * 250) + 1}`;
 let owner = '';
 let tech = '';
 let other = '';
@@ -93,8 +95,8 @@ d('المرحلة 2: العميل', () => {
   });
 
   it('بيانات غلط = مفيش نتيجة، والزائر ما يقدرش يقرا الجداول مباشرة', async () => {
-    expect((await as(null, `select * from get_tracking($1, '0000')`, [order], '10.9.9.1')).rowCount).toBe(0);
-    expect((await as(null, `select * from get_tracking(p_token => 'ffffffffffffffffffffffff')`, [], '10.9.9.1')).rowCount).toBe(0);
+    expect((await as(null, `select * from get_tracking($1, '0000')`, [order], `${NET}.9.1`)).rowCount).toBe(0);
+    expect((await as(null, `select * from get_tracking(p_token => 'ffffffffffffffffffffffff')`, [], `${NET}.9.1`)).rowCount).toBe(0);
     for (const tbl of ['devices', 'customers', 'device_costs', 'tracking_attempts', 'quote_decisions']) {
       await expect(as(null, `select * from ${tbl}`)).rejects.toThrow(/permission denied/);
     }
@@ -104,33 +106,35 @@ d('المرحلة 2: العميل', () => {
     const victim = randomUUID();
     const r = await as<{ order_no: string }>(owner, `insert into devices(id, customer_id, brand, model, issue) values ($1, $2, 'Oppo', 'A78', 'x') returning order_no`, [victim, customer]);
     const o = r.rows[0].order_no;
-    for (let i = 0; i < 5; i++) expect((await as(null, `select * from get_tracking($1, $2)`, [o, String(1000 + i)], `10.1.0.${i}`)).rowCount).toBe(0);
-    await expect(as(null, `select * from get_tracking($1, '6789')`, [o], '10.1.0.99')).rejects.toThrow(/E_RATE_LIMIT/);
+    // رقم الطلب مش فريد بين المحلات، فممكن يكون عليه محاولات غلط من تشغيلات قبل كده: بنكمّل لحد 5
+    const prev = Number((await admin(`select count(*) from tracking_attempts where order_no = $1 and not success and created_at > now() - interval '15 minutes'`, [o])).rows[0].count);
+    for (let i = prev; i < 5; i++) expect((await as(null, `select * from get_tracking($1, $2)`, [o, String(1000 + i)], `${NET}.1.${i}`)).rowCount).toBe(0);
+    await expect(as(null, `select * from get_tracking($1, '6789')`, [o], `${NET}.1.99`)).rejects.toThrow(/E_RATE_LIMIT/);
   });
 
   it('حد المحاولات: بعد 10 محاولات غلط من نفس الجهاز بيقفل', async () => {
-    const ip = '10.2.2.2';
+    const ip = `${NET}.2.2`;
     for (let i = 0; i < 10; i++) await as(null, `select * from get_tracking($1, '1111')`, [`2099-${String(i).padStart(4, '0')}`], ip);
     await expect(as(null, `select * from get_tracking(p_token => $1)`, [token], ip)).rejects.toThrow(/E_RATE_LIMIT/);
     // جهاز تاني لسه يقدر
-    expect((await as(null, `select order_no from get_tracking(p_token => $1)`, [token], '10.2.2.3')).rowCount).toBe(1);
+    expect((await as(null, `select order_no from get_tracking(p_token => $1)`, [token], `${NET}.2.3`)).rowCount).toBe(1);
   });
 
   it('الموافقة على التكلفة: مسموحة بس وهو مستني موافقة، وبتنقله لجاري الصيانة وبتتسجل', async () => {
-    await expect(as(null, `select decide_quote('approved', p_token => $1)`, [token], '10.3.0.1')).rejects.toThrow(/E_BAD_TRANSITION/);
+    await expect(as(null, `select decide_quote('approved', p_token => $1)`, [token], `${NET}.3.1`)).rejects.toThrow(/E_BAD_TRANSITION/);
     await as(owner, `update devices set status = 'awaiting_approval' where id = $1`, [dev]);
-    let r = await as(null, `select can_decide from get_tracking(p_token => $1)`, [token], '10.3.0.1');
+    let r = await as(null, `select can_decide from get_tracking(p_token => $1)`, [token], `${NET}.3.1`);
     expect(r.rows[0].can_decide).toBe(true);
-    const s = await as(null, `select decide_quote('approved', p_token => $1) as s`, [token], '10.3.0.1');
+    const s = await as(null, `select decide_quote('approved', p_token => $1) as s`, [token], `${NET}.3.1`);
     expect(s.rows[0].s).toBe('in_repair');
-    r = await as(null, `select can_decide, decision, status from get_tracking(p_token => $1)`, [token], '10.3.0.1');
+    r = await as(null, `select can_decide, decision, status from get_tracking(p_token => $1)`, [token], `${NET}.3.1`);
     expect(r.rows[0]).toEqual({ can_decide: false, decision: 'approved', status: 'in_repair' });
     const q = await as(owner, `select decision, amount from quote_decisions where device_id = $1`, [dev]);
     expect(q.rows[0]).toEqual({ decision: 'approved', amount: 160000 });
     const log = await as(owner, `select old_status::text, new_status::text, changed_by from status_log where device_id = $1 order by created_at desc limit 1`, [dev]);
     expect(log.rows[0]).toEqual({ old_status: 'awaiting_approval', new_status: 'in_repair', changed_by: null });
     // مرة واحدة بس
-    await expect(as(null, `select decide_quote('rejected', p_token => $1)`, [token], '10.3.0.1')).rejects.toThrow(/E_BAD_TRANSITION/);
+    await expect(as(null, `select decide_quote('rejected', p_token => $1)`, [token], `${NET}.3.1`)).rejects.toThrow(/E_BAD_TRANSITION/);
     await expect(as(owner, `update quote_decisions set decision = 'rejected'`)).rejects.toThrow();
   });
 
@@ -139,7 +143,7 @@ d('المرحلة 2: العميل', () => {
     const r = await as<{ tracking_token: string }>(owner, `insert into devices(id, customer_id, brand, model, issue) values ($1, $2, 'Vivo', 'Y36', 'x') returning tracking_token`, [x, customer]);
     await as(owner, `update devices set status = 'inspecting' where id = $1`, [x]);
     await as(owner, `update devices set status = 'awaiting_approval' where id = $1`, [x]);
-    const s = await as(null, `select decide_quote('rejected', p_token => $1) as s`, [r.rows[0].tracking_token], '10.4.0.1');
+    const s = await as(null, `select decide_quote('rejected', p_token => $1) as s`, [r.rows[0].tracking_token], `${NET}.4.1`);
     expect(s.rows[0].s).toBe('unrepairable');
   });
 

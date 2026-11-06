@@ -33,6 +33,10 @@ async function as<T extends pg.QueryResultRow = pg.QueryResultRow>(
   }
 }
 
+// إيميلات مختلفة كل تشغيلة، عشان الاختبار يتكرر على نفس القاعدة من غير ما نمسحها
+const RUN = Math.random().toString(36).slice(2, 8);
+const E = (n: string) => `${n}-${RUN}@shop.test`;
+
 async function newUser(email: string, confirmed = true) {
   const id = randomUUID();
   await admin('insert into auth.users(id, email, email_confirmed_at) values ($1, $2, $3)', [id, email, confirmed ? new Date() : null]);
@@ -65,18 +69,18 @@ d('قاعدة البيانات: العزل والصلاحيات', () => {
     await db.connect();
     year = (await admin(`select extract(year from now() at time zone 'Africa/Cairo')::int as y`)).rows[0].y;
 
-    ownerA.id = await newUser('a@shop.test');
-    ownerB.id = await newUser('b@shop.test');
+    ownerA.id = await newUser(E('a'));
+    ownerB.id = await newUser(E('b'));
     ownerA.shop = (await as(ownerA.id, `select (bootstrap_account('أحمد', 'محل أ')).shop_id as s`)).rows[0].s;
     ownerB.shop = (await as(ownerB.id, `select (bootstrap_account('بسمة', 'محل ب')).shop_id as s`)).rows[0].s;
 
-    await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), 'rec@shop.test', 'سارة', 'reception')`);
-    await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), 'tech@shop.test', 'كريم', 'technician')`);
-    recA = await newUser('rec@shop.test');
+    await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), $1, 'سارة', 'reception')`, [E('rec')]);
+    await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), $1, 'كريم', 'technician')`, [E('tech')]);
+    recA = await newUser(E('rec'));
     const inv = await as(recA, `select * from my_pending_invite()`);
     expect(inv.rows[0]).toEqual({ shop_name: 'محل أ', role: 'reception', full_name: 'سارة' });
     expect((await as(ownerB.id, `select * from my_pending_invite()`)).rowCount).toBe(0);
-    techA = await newUser('tech@shop.test');
+    techA = await newUser(E('tech'));
     await as(recA, `select bootstrap_account('سارة')`);
     await as(techA, `select bootstrap_account('كريم')`);
 
@@ -92,18 +96,18 @@ d('قاعدة البيانات: العزل والصلاحيات', () => {
   });
 
   it('أول تسجيل بيعمل محل وصاحب محل، والدعوة بتضيف الموظف بالدور الصح', async () => {
-    const roles = await admin(`select email, role::text, shop_id from profiles order by email`);
+    const roles = await admin(`select email, role::text, shop_id from profiles where email like $1 order by email`, [`%-${RUN}@shop.test`]);
     const byEmail = Object.fromEntries(roles.rows.map((r) => [r.email, r]));
-    expect(byEmail['a@shop.test'].role).toBe('owner');
-    expect(byEmail['b@shop.test'].role).toBe('owner');
-    expect(byEmail['rec@shop.test']).toMatchObject({ role: 'reception', shop_id: ownerA.shop });
-    expect(byEmail['tech@shop.test']).toMatchObject({ role: 'technician', shop_id: ownerA.shop });
+    expect(byEmail[E('a')].role).toBe('owner');
+    expect(byEmail[E('b')].role).toBe('owner');
+    expect(byEmail[E('rec')]).toMatchObject({ role: 'reception', shop_id: ownerA.shop });
+    expect(byEmail[E('tech')]).toMatchObject({ role: 'technician', shop_id: ownerA.shop });
     expect(ownerA.shop).not.toBe(ownerB.shop);
   });
 
   it('الدعوة ما تشتغلش لو الإيميل مش متأكَّد منه', async () => {
-    await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), 'fake@shop.test', 'x', 'reception')`);
-    const fake = await newUser('fake@shop.test', false);
+    await as(ownerA.id, `insert into staff_invites(shop_id, email, full_name, role) values (gen_random_uuid(), $1, 'x', 'reception')`, [E('fake')]);
+    const fake = await newUser(E('fake'), false);
     await expect(as(fake, `select bootstrap_account('x')`)).rejects.toThrow(/E_EMAIL_UNCONFIRMED/);
   });
 
