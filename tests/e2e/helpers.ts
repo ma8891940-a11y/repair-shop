@@ -48,11 +48,11 @@ export async function noHorizontalScroll(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-export async function registerShop(page: Page, email: string) {
+export async function registerShop(page: Page, email: string, shopName = 'مركز الاختبار') {
   await page.goto('/#/register');
   await afterSplash(page);
   const inputs = page.locator('form input');
-  await inputs.nth(0).fill('مركز الاختبار');
+  await inputs.nth(0).fill(shopName);
   await inputs.nth(1).fill('محمود حسن');
   await page.getByRole('button', { name: 'التالي' }).click();
   await page.locator('input[type=email]').fill(email);
@@ -66,7 +66,10 @@ export async function registerShop(page: Page, email: string) {
   await page.getByRole('button', { name: 'التالي' }).click();
   await expect(page.getByRole('heading', { name: 'طرق الدفع' })).toBeVisible();
   await page.getByRole('button', { name: 'التالي' }).click();
-  await expect(page.getByRole('heading', { name: 'الشعار والمظهر' })).toBeVisible();
+  // هوية المحل: خطوة اختيارية
+  await expect(page.getByRole('heading', { name: 'هوية المحل' })).toBeVisible();
+  await page.getByRole('button', { name: 'تخطّي' }).click();
+  await expect(page.getByRole('heading', { name: 'المظهر' })).toBeVisible();
   await page.getByRole('button', { name: 'ابدأ الشغل' }).click();
   await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
 }
@@ -90,3 +93,18 @@ export async function activateInvite(browser: Browser, info: TestInfo, email: st
   return { ctx, page };
 }
 
+
+/** استلام جهاز سريع، وبيرجّع رابط صفحة الجهاز */
+export async function quickIntake(page: Page, phone: string, name = 'عميل') {
+  await page.goto('/#/intake');
+  await page.locator('#intake-phone').fill(phone);
+  await page.getByLabel('اسم العميل').fill(name);
+  await page.getByRole('button', { name: 'Samsung', exact: true }).click();
+  await page.getByLabel('الموديل').fill('A35');
+  await page.getByLabel('العطل زي ما العميل وصفه').fill('شاشة مكسورة');
+  await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
+  await expect(page.getByText('اتسجّل الجهاز')).toBeVisible();
+  await page.getByRole('button', { name: 'فتح الجهاز' }).click();
+  await expect(page.getByRole('button', { name: 'جاري الفحص', exact: true })).toBeVisible();
+  return page.url().replace(/^.*#/, '/#');
+}

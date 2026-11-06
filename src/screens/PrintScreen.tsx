@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import type { Customer, Device, DeviceCost } from '../lib/types';
 import { useFormat } from '../i18n/format';
 import { Skeleton } from '../ui/Feedback';
+import { ColorHeader, PoweredBy, ThermalHeader, useBranding } from '../app/brand/branding';
 
 /**
  * الطباعة:
@@ -25,6 +26,8 @@ export function PrintScreen() {
   const isLabel = kind === 'label';
   const isReceipt = kind === 'receipt';
   const [qr, setQr] = useState<string | null>(null);
+  const branding = useBranding();
+  const b = branding.data ?? null;
 
   const { data, error } = useLoad(async () => {
     const d = must(await supabase.from('devices').select('*').eq('id', id).maybeSingle()) as Device | null;
@@ -44,10 +47,10 @@ export function PrintScreen() {
   }, [data, isLabel, isReceipt]);
 
   useEffect(() => {
-    if (!data || ((isLabel || isReceipt) && !qr)) return;
+    if (!data || branding.loading || ((isLabel || isReceipt) && !qr)) return;
     const tm = setTimeout(() => window.print(), 350);
     return () => clearTimeout(tm);
-  }, [data, qr, isLabel, isReceipt]);
+  }, [data, qr, isLabel, isReceipt, branding.loading]);
 
   // الفاتورة كرسالة واتساب للعميل
   const invoiceLink =
@@ -66,7 +69,6 @@ export function PrintScreen() {
             .join('\n'),
         )
       : null;
-  const logo = shop.logo_path ? supabase.storage.from('shop-logos').getPublicUrl(shop.logo_path).data.publicUrl : null;
   const cur = f.currency(shop.currency);
   const terms = shop.receipt_terms
     .split('\n')
@@ -101,7 +103,7 @@ export function PrintScreen() {
         <article className="mx-auto flex w-[76mm] items-center gap-3 p-[2mm] text-[11px] print:w-full print:p-0" aria-label={t('label.title')}>
           {qr ? <img src={qr} alt="" className="size-[30mm] shrink-0" /> : <div className="size-[30mm] shrink-0 bg-neutral-100" />}
           <div className="min-w-0">
-            <div className="truncate font-bold">{shop.name}</div>
+            {b?.logo_thermal ? <img src={b.logo_thermal} alt={shop.name} className="mb-0.5 h-[7mm] w-auto max-w-full object-contain" data-testid="shop-logo-thermal" /> : <div className="truncate text-[13px] font-extrabold" data-testid="shop-name-big">{shop.name}</div>}
             <div className="font-mono text-[20px] font-bold leading-tight" dir="ltr">
               {data.d.order_no}
             </div>
@@ -114,30 +116,17 @@ export function PrintScreen() {
         </article>
       ) : (
         <article className={isReceipt ? 'mx-auto w-[76mm] p-[2mm] text-[12px] print:w-full print:p-0' : 'mx-auto max-w-[190mm] p-[10mm] text-[14px] print:max-w-none print:p-0'}>
-          <header className={isReceipt ? 'border-b border-dashed border-black pb-2 text-center' : 'flex items-center justify-between border-b-2 border-black pb-4'}>
-            <div className={isReceipt ? '' : 'flex items-center gap-4'}>
-              {logo && <img src={logo} alt="" className={isReceipt ? 'mx-auto mb-1 h-12 object-contain' : 'h-16 object-contain'} />}
-              <div>
-                <div className={isReceipt ? 'text-[16px] font-bold' : 'text-[22px] font-bold'}>{shop.name}</div>
-                {(shop.address || shop.phone) && (
-                  <div className="text-[11px]">
-                    {shop.address}{' '}
-                    {shop.phone && (
-                      <span dir="ltr" className="font-mono">
-                        {shop.phone}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className={isReceipt ? 'mt-1' : 'text-end'}>
-              <div className="font-semibold">{isReceipt ? t('print.receipt') : t('print.invoice')}</div>
+          {isReceipt ? (
+            <header className="border-b border-dashed border-black pb-2 text-center">
+              <ThermalHeader shop={shop} b={b} />
+              <div className="mt-1 font-semibold">{t('print.receipt')}</div>
               <div className="font-mono text-[20px] font-bold tracking-wide" dir="ltr">
                 {data.d.order_no}
               </div>
-            </div>
-          </header>
+            </header>
+          ) : (
+            <ColorHeader shop={shop} b={b} title={t('print.invoice')} sub={data.d.order_no} />
+          )}
 
           <table className={isReceipt ? 'mt-2 w-full' : 'mt-6 w-full'}>
             <tbody className="[&_td]:border-b [&_td]:border-dotted [&_td]:border-neutral-400 [&_td]:px-1 [&_td]:py-1 [&_th]:border-b [&_th]:border-dotted [&_th]:border-neutral-400 [&_th]:px-1 [&_th]:py-1 [&_th]:text-start [&_th]:align-top [&_th]:font-semibold">
@@ -243,6 +232,7 @@ export function PrintScreen() {
             </div>
             <div className="text-[11px] text-neutral-600">{t('print.thanks')}</div>
           </footer>
+          <PoweredBy b={b} />
         </article>
       )}
     </div>

@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { cairoDayEnd, cairoDayStart } from '../../lib/dates';
 import { useFormat } from '../../i18n/format';
 import { Skeleton } from '../../ui/Feedback';
+import { ColorHeader, useBranding } from '../../app/brand/branding';
 
 function PrintFrame({ ready, children }: { ready: boolean; children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -37,14 +38,11 @@ function PrintFrame({ ready, children }: { ready: boolean; children: React.React
 
 function Header({ title, sub }: { title: string; sub: string }) {
   const { shop } = useMe();
+  const branding = useBranding();
   return (
-    <header className="mb-4 flex items-end justify-between border-b-2 border-black pb-3">
-      <div>
-        <div className="text-[18px] font-bold">{shop.name}</div>
-        <div className="text-[11px] text-neutral-700">{sub}</div>
-      </div>
-      <div className="text-[15px] font-semibold">{title}</div>
-    </header>
+    <div className="mb-4">
+      <ColorHeader shop={shop} b={branding.data ?? null} title={title} sub={sub} />
+    </div>
   );
 }
 

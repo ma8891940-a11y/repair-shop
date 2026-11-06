@@ -9,7 +9,6 @@ import type { DeviceStatus } from '../lib/status';
 import { useFormat } from '../i18n/format';
 import { CircuitField } from '../ui/fx/CircuitField';
 import { LineIcon } from '../ui/fx/LineIcon';
-import { Mark } from '../ui/Logo';
 import { LangToggle, ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
 import { Field, Input } from '../ui/Field';
@@ -102,7 +101,8 @@ export function TrackingScreen() {
   }
 
   const cost = data ? (data.final_cost ?? data.estimated_cost) : null;
-  const logo = data?.shop_logo ? supabase.storage.from('shop-logos').getPublicUrl(data.shop_logo).data.publicUrl : null;
+  // لوجو المحل (صورة جاهزة من الهوية)، مش لوجو التطبيق
+  const logo = data?.shop_logo?.startsWith('data:image/') ? data.shop_logo : null;
   const st = data ? stage(data.status) : 0;
 
   return (
@@ -111,8 +111,8 @@ export function TrackingScreen() {
       <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-10">
         <header className="flex items-center justify-between py-4">
           <div className="flex items-center gap-2.5">
-            {logo ? <img src={logo} alt="" className="size-9 rounded-md border border-glass-border bg-surface object-contain p-0.5" /> : <Mark size={32} />}
-            <div className="text-sm font-semibold text-fg">{data?.shop_name ?? t('track.title')}</div>
+            {logo && <img src={logo} alt={data?.shop_name ?? ''} className="h-10 max-w-[140px] rounded-md bg-white object-contain p-1" data-testid="shop-logo-color" />}
+            <div className={logo ? 'text-sm font-semibold text-fg' : 'text-lg font-bold text-fg'}>{data?.shop_name ?? t('track.title')}</div>
           </div>
           <div className="flex items-center gap-1">
             <LangToggle />

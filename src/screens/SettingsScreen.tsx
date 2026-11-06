@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Banknote, Building2, CreditCard, ImagePlus, Landmark, Languages, Moon, Smartphone, Sparkles, Sun, Wallet, Zap, type LucideIcon } from 'lucide-react';
+import { Banknote, CreditCard, Landmark, Languages, Moon, Smartphone, Sparkles, Sun, Wallet, Zap, type LucideIcon } from 'lucide-react';
 import { useMe } from '../app/auth';
 import { usePrefs } from '../app/prefs';
 import { PageHeader } from '../app/AppShell';
@@ -10,14 +10,14 @@ import { supabase } from '../lib/supabase';
 import { errorMessage } from '../lib/errors';
 import { PAYMENT_METHODS, type PaymentMethod } from '../lib/regions';
 import { Button } from '../ui/Button';
-import { Field, Input, Textarea } from '../ui/Field';
-import { Panel, PanelHeader } from '../ui/Panel';
+import { Panel } from '../ui/Panel';
 import { Alert } from '../ui/Feedback';
 import { useToast } from '../ui/Toast';
 import { MessagesTab } from './settings/MessagesTab';
 import { LedgerTab } from './settings/LedgerTab';
 import { TechTab } from './settings/TechTab';
 import { BackupTab } from './settings/BackupTab';
+import { IdentityTab } from './settings/IdentityTab';
 import { cn } from '../ui/cn';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
@@ -42,7 +42,7 @@ export function SettingsScreen() {
         </Tabs.List>
         {owner && (
           <Tabs.Content value="shop">
-            <ShopTab />
+            <IdentityTab />
           </Tabs.Content>
         )}
         {owner && (
@@ -74,106 +74,6 @@ export function SettingsScreen() {
           <AppearanceTab />
         </Tabs.Content>
       </Tabs.Root>
-    </div>
-  );
-}
-
-function ShopTab() {
-  const { t } = useTranslation();
-  const { shop, refresh } = useMe();
-  const toast = useToast();
-  const [name, setName] = useState(shop.name);
-  const [phone, setPhone] = useState(shop.phone ?? '');
-  const [address, setAddress] = useState(shop.address ?? '');
-  const [terms, setTerms] = useState(shop.receipt_terms);
-  const [warranty, setWarranty] = useState(String(shop.warranty_days));
-  const [logo, setLogo] = useState<{ file: File; url: string } | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const current = shop.logo_path ? supabase.storage.from('shop-logos').getPublicUrl(shop.logo_path).data.publicUrl : null;
-
-  async function save() {
-    setErr(null);
-    const days = Number(warranty);
-    if (!Number.isInteger(days) || days < 0 || days > 3650) return setErr(t('settings.warrantyBad'));
-    if (!name.trim()) return setErr(t('common.required'));
-    setBusy(true);
-    try {
-      let logo_path = shop.logo_path;
-      if (logo) {
-        const ext = logo.file.type === 'image/png' ? 'png' : logo.file.type === 'image/webp' ? 'webp' : 'jpg';
-        logo_path = `${shop.id}/logo-${crypto.randomUUID()}.${ext}`;
-        const up = await supabase.storage.from('shop-logos').upload(logo_path, logo.file, { contentType: logo.file.type });
-        if (up.error) throw up.error;
-      }
-      const { error } = await supabase
-        .from('shops')
-        .update({ name: name.trim(), phone: phone.trim() || null, address: address.trim() || null, receipt_terms: terms, warranty_days: days, logo_path })
-        .eq('id', shop.id);
-      if (error) throw error;
-      toast({ tone: 'ok', title: t('settings.saved') });
-      setLogo(null);
-      await refresh();
-    } catch (e) {
-      setErr(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <Panel>
-        <PanelHeader index="01" title={t('settings.shopSec')} />
-        <div className="grid gap-3 p-4 sm:grid-cols-[96px_minmax(0,1fr)]">
-          <label className="group relative grid size-24 cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed border-line-strong bg-sunken/50 hover:border-accent">
-            {logo || current ? <img src={logo?.url ?? current!} alt="" className="size-full object-contain p-2" /> : <Building2 className="size-7 text-fg-3" aria-hidden />}
-            <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-[rgb(0_0_0/0.55)] py-0.5 text-2xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-              <ImagePlus className="size-3" /> {t('settings.logoChange')}
-            </span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="sr-only"
-              aria-label={t('settings.logo')}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setLogo({ file, url: URL.createObjectURL(file) });
-                e.target.value = '';
-              }}
-            />
-          </label>
-          <div className="grid gap-3">
-            <p className="text-xs text-fg-3">{t('settings.shopHint')}</p>
-            <Field label={t('settings.name')} required>
-              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t('settings.phone')}>
-                <Input dir="ltr" mono value={phone} onChange={(e) => setPhone(e.target.value)} className="text-start" />
-              </Field>
-              <Field label={t('settings.address')}>
-                <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-              </Field>
-            </div>
-          </div>
-        </div>
-      </Panel>
-      <Panel>
-        <PanelHeader index="02" title={t('settings.terms')} />
-        <div className="grid gap-3 p-4">
-          <Field label={t('settings.terms')} hint={t('settings.termsHint')}>
-            <Textarea rows={5} value={terms} onChange={(e) => setTerms(e.target.value)} />
-          </Field>
-          <Field label={t('settings.warranty')} className="max-w-xs">
-            <Input type="number" min={0} max={3650} dir="ltr" mono value={warranty} onChange={(e) => setWarranty(e.target.value)} className="text-start" />
-          </Field>
-        </div>
-      </Panel>
-      {err && <Alert tone="danger">{err}</Alert>}
-      <Button variant="primary" loading={busy} onClick={() => void save()} className="self-start">
-        {t('common.save')}
-      </Button>
     </div>
   );
 }

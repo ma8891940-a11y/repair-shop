@@ -13,15 +13,17 @@ import { COUNTRIES, PAYMENT_METHODS, REGIONS, type Country, type PaymentMethod }
 import type { LineIconName } from '../../ui/fx/LineIcon';
 import { Button } from '../../ui/Button';
 import { Field, Input } from '../../ui/Field';
+import { checkLogoFile, loadImage, renderColor, renderThermal, trimCanvas } from '../../lib/brandImage';
+import { toLatinDigits } from '../../lib/digits';
 import { Alert } from '../../ui/Feedback';
 import { OtpInput } from '../../ui/OtpInput';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 import { AuthLayout } from './AuthLayout';
 
-const STEPS = ['shop', 'account', 'verify', 'region', 'payments', 'brand'] as const;
+const STEPS = ['shop', 'account', 'verify', 'region', 'payments', 'identity', 'brand'] as const;
 type StepKey = (typeof STEPS)[number];
-const STEP_ICON: Record<StepKey, LineIconName> = { shop: 'store', account: 'shield', verify: 'mail', region: 'globe', payments: 'wallet', brand: 'palette' };
+const STEP_ICON: Record<StepKey, LineIconName> = { shop: 'store', account: 'shield', verify: 'mail', region: 'globe', payments: 'wallet', identity: 'receipt', brand: 'palette' };
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
 
 const DRAFT = 'reg-draft';
@@ -86,6 +88,9 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   const [country, setCountry] = useState<Country>((shop?.country as Country) ?? 'EG');
   const [methods, setMethods] = useState<PaymentMethod[]>((shop?.payment_methods as PaymentMethod[]) ?? ['cash', 'wallet', 'instapay']);
   const [logo, setLogo] = useState<{ file: File; url: string } | null>(null);
+  const [idNameEn, setIdNameEn] = useState('');
+  const [idTagline, setIdTagline] = useState('');
+  const [idWhatsapp, setIdWhatsapp] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -180,18 +185,42 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
         const { error: ue } = await supabase.from('shops').update({ payment_methods: methods }).eq('id', shopId());
         if (ue) return fail(ue);
         go(5);
+      } else if (key === 'identity') {
+        // هوية المحل (اختيارية): اللوجو الأصلي في Storage تحت المحل، ونسخة ملونة ونسخة حرارية جاهزين للطباعة
+        const id = shopId();
+        if (logo || idNameEn.trim() || idTagline.trim() || idWhatsapp.trim()) {
+          let logo_path: string | null = null;
+          let logo_color: string | null = null;
+          let logo_thermal: string | null = null;
+          if (logo) {
+            if (checkLogoFile(logo.file) !== 'ok') return fail(t('identity.errType'));
+            const ext = logo.file.type === 'image/png' ? 'png' : logo.file.type === 'image/svg+xml' ? 'svg' : logo.file.type === 'image/webp' ? 'webp' : 'jpg';
+            logo_path = `${id}/logo-${crypto.randomUUID()}.${ext}`;
+            const up = await supabase.storage.from('shop-logos').upload(logo_path, logo.file, { contentType: logo.file.type, upsert: false });
+            if (up.error) return fail(up.error);
+            const img = await loadImage(logo.file);
+            const color = trimCanvas(renderColor(img, 1, 0, 0));
+            logo_color = color.toDataURL('image/png');
+            logo_thermal = trimCanvas(renderThermal(color, 50)).toDataURL('image/png');
+          }
+          const { error: be } = await supabase.from('shop_branding').insert({
+            id: crypto.randomUUID(),
+            shop_id: id,
+            name_en: idNameEn.trim() || null,
+            tagline: idTagline.trim() || null,
+            whatsapp: toLatinDigits(idWhatsapp.trim()) || null,
+            logo_path,
+            logo_color,
+            logo_thermal,
+          });
+          if (be && !/duplicate key/i.test(be.message)) return fail(be);
+        }
+        go(6);
       } else if (key === 'brand') {
         const id = shopId();
-        let logo_path: string | null = null;
-        if (logo) {
-          const ext = logo.file.type === 'image/png' ? 'png' : logo.file.type === 'image/webp' ? 'webp' : 'jpg';
-          logo_path = `${id}/logo-${crypto.randomUUID()}.${ext}`;
-          const up = await supabase.storage.from('shop-logos').upload(logo_path, logo.file, { contentType: logo.file.type, upsert: false });
-          if (up.error) return fail(up.error);
-        }
         const { error: ue } = await supabase
           .from('shops')
-          .update({ theme, ...(logo_path ? { logo_path } : {}), setup_completed_at: new Date().toISOString() })
+          .update({ theme, setup_completed_at: new Date().toISOString() })
           .eq('id', id);
         if (ue) return fail(ue);
         saveDraft(null);
@@ -404,7 +433,7 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
                   </div>
                 )}
 
-                {key === 'brand' && (
+                {key === 'identity' && (
                   <>
                     <div className="flex items-center gap-4">
                       <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-dashed border-line-strong bg-sunken/50">
@@ -419,8 +448,9 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
                           </span>
                           <input
                             type="file"
-                            accept="image/png,image/jpeg,image/webp"
+                            accept="image/png,image/jpeg,image/svg+xml,image/webp"
                             className="sr-only"
+                            aria-label={t('identity.logo')}
                             onChange={(e) => {
                               const f = e.target.files?.[0];
                               if (f) setLogo({ file: f, url: URL.createObjectURL(f) });
@@ -430,6 +460,23 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
                         </label>
                       </div>
                     </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label={t('identity.nameEn')}>
+                        <Input dir="ltr" value={idNameEn} onChange={(e) => setIdNameEn(e.target.value)} maxLength={120} className="text-start" />
+                      </Field>
+                      <Field label={t('identity.whatsapp')}>
+                        <Input dir="ltr" mono inputMode="tel" value={idWhatsapp} onChange={(e) => setIdWhatsapp(e.target.value)} className="text-start" />
+                      </Field>
+                      <Field label={t('identity.tagline')} className="sm:col-span-2">
+                        <Input value={idTagline} onChange={(e) => setIdTagline(e.target.value)} maxLength={120} />
+                      </Field>
+                    </div>
+                    <p className="text-xs text-fg-3">{t('register.identityLater')}</p>
+                  </>
+                )}
+
+                {key === 'brand' && (
+                  <>
                     <div>
                       <div className="mb-2 text-sm font-medium text-fg-2">{t('register.theme')}</div>
                       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('register.theme')}>
@@ -469,6 +516,11 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
               </span>
             ) : (
               <span />
+            )}
+            {key === 'identity' && (
+              <Button variant="ghost" className="ms-auto" onClick={() => go(6)} disabled={busy}>
+                {t('register.skip')}
+              </Button>
             )}
             {key !== 'verify' && (
               <Button type="submit" variant="primary" loading={busy}>

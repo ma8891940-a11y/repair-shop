@@ -150,8 +150,12 @@
         "desc": "Choose the methods your shop accepts."
       },
       "brand": {
-        "title": "Logo & theme",
-        "desc": "A final touch to make it feel like your shop."
+        "title": "Appearance",
+        "desc": "A final touch to make the app feel yours."
+      },
+      "identity": {
+        "title": "Shop identity",
+        "desc": "The logo and name shown on receipts, invoices and the customer tracking page. You can skip this and finish it later."
       }
     },
     "shopName": "Shop name",
@@ -211,7 +215,9 @@
       "desc": "Use the email the shop owner invited, and choose a password.",
       "link": "Invited by a shop?",
       "linkCta": "Activate your account"
-    }
+    },
+    "skip": "Skip",
+    "identityLater": "You can change all of this later in Settings → Shop identity."
   },
   "countries": {
     "EG": "Egypt",
@@ -613,7 +619,7 @@
   "settings": {
     "title": "Settings",
     "tabs": {
-      "shop": "Shop",
+      "shop": "Shop identity",
       "payments": "Payment methods",
       "appearance": "Appearance",
       "messages": "Messages",
@@ -1303,5 +1309,41 @@
     "valid": "Backup is valid",
     "errPassword": "Wrong password or the file was modified",
     "errFormat": "This isn't a Warsha backup file"
+  },
+  "identity": {
+    "names": "Name",
+    "nameAr": "Shop name (Arabic)",
+    "nameEn": "Shop name (English)",
+    "tagline": "Short tagline",
+    "taglineHint": "e.g. All phone repairs, with warranty",
+    "logo": "Shop logo",
+    "logoHint": "PNG, JPG or SVG up to 2 MB. Shown on receipts, invoices, labels, statements and the tracking page. Without a logo, the shop name is printed large.",
+    "logoPick": "Upload logo",
+    "logoChange": "Change logo",
+    "logoRemove": "Remove logo",
+    "zoom": "Zoom",
+    "panX": "Left / right",
+    "panY": "Up / down",
+    "thermal": "Thermal printer version (black & white)",
+    "contrast": "Contrast",
+    "thermalHint": "Generated from the logo. If it prints faint, increase the contrast.",
+    "thermalUpload": "Upload a custom thermal version",
+    "contact": "Contact",
+    "phones": "More phones",
+    "phonesHint": "Separate with commas (up to 4)",
+    "whatsapp": "Shop WhatsApp",
+    "socials": {
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "website": "Website"
+    },
+    "poweredByToggle": "Print a small line at the end of receipts: \"Powered by {{app}}\"",
+    "poweredBy": "Powered by {{app}}",
+    "previewReceipt": "Receipt preview (80mm)",
+    "previewInvoice": "Invoice preview (A4)",
+    "errType": "File must be PNG, JPG or SVG",
+    "errSize": "File is larger than 2 MB",
+    "errRead": "Couldn't open the image"
   }
 }
