@@ -27,11 +27,13 @@
     "darkMode": "Dark mode",
     "language": "Language",
     "switchTo": "التبديل إلى العربية",
-    "lite": "Lite mode",
-    "liteHint": "Turns off the live background and heavy effects on slower machines",
-    "liteOn": "Lite mode on",
-    "liteOff": "Lite mode off",
-    "otherLangShort": "ع"
+    "otherLangShort": "ع",
+    "effects": "Full effects",
+    "effectsHint": "Live background, glow and glass. Turns off by itself if the device slows down.",
+    "effectsOn": "Full effects on",
+    "effectsOff": "Full effects off",
+    "autoOff": "Full effects were turned off to keep this device fast",
+    "restore": "Turn back on"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -85,7 +87,7 @@
     "open": "Open",
     "toggleTheme": "Toggle dark/light mode",
     "toggleLang": "Switch language to Arabic",
-    "toggleLite": "Toggle lite mode"
+    "toggleEffects": "Toggle full effects"
   },
   "shell": {
     "searchPlaceholder": "Order no., phone, name, IMEI",

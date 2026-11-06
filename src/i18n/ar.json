@@ -27,11 +27,13 @@
     "darkMode": "الوضع الداكن",
     "language": "اللغة",
     "switchTo": "Switch to English",
-    "lite": "وضع خفيف",
-    "liteHint": "بيوقف الخلفية الحية والتأثيرات التقيلة للأجهزة الضعيفة",
-    "liteOn": "الوضع الخفيف شغّال",
-    "liteOff": "الوضع الخفيف اتقفل",
-    "otherLangShort": "EN"
+    "otherLangShort": "EN",
+    "effects": "المؤثرات الكاملة",
+    "effectsHint": "خلفية حية وتوهج وزجاج. بتتقفل لوحدها لو الجهاز بقى بطيء.",
+    "effectsOn": "المؤثرات الكاملة اشتغلت",
+    "effectsOff": "المؤثرات الكاملة اتقفلت",
+    "autoOff": "اتقفلت المؤثرات الكاملة عشان الجهاز يفضل سريع",
+    "restore": "رجّعها"
   },
   "nav": {
     "dashboard": "لوحة التحكم",
@@ -89,7 +91,7 @@
     "open": "فتح",
     "toggleTheme": "تبديل الوضع الداكن/الفاتح",
     "toggleLang": "تغيير اللغة إلى English",
-    "toggleLite": "تشغيل/إيقاف الوضع الخفيف"
+    "toggleEffects": "تشغيل/إيقاف المؤثرات الكاملة"
   },
   "shell": {
     "searchPlaceholder": "رقم الطلب، الموبايل، الاسم، IMEI",

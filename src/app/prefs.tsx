@@ -25,10 +25,10 @@ interface Prefs {
   theme: Theme;
   setTheme: (t: Theme) => void;
   toggleTheme: () => void;
-  /** وضع خفيف للأجهزة الضعيفة: بيوقف الخلفية الحية والتأثيرات التقيلة */
-  lite: boolean;
-  setLite: (v: boolean) => void;
-  /** true لو المفروض نوقف الحركة التقيلة (وضع خفيف أو "تقليل الحركة" في الجهاز) */
+  /** المؤثرات الكاملة (الخلفية الحية والتوهج والزجاج): مقفولة افتراضيًا، والاختيار محفوظ لكل جهاز لوحده */
+  effects: boolean;
+  setEffects: (v: boolean) => void;
+  /** true لو المفروض نوقف الحركة التقيلة (المؤثرات مقفولة أو "تقليل الحركة" في الجهاز) */
   calm: boolean;
   lang: Lang;
   setLang: (l: Lang) => void;
@@ -39,7 +39,7 @@ const Ctx = createContext<Prefs | null>(null);
 
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => read('theme', ['dark', 'light'] as const, 'dark'));
-  const [lite, setLiteState] = useState<boolean>(() => read('lite', ['1', '0'] as const, '0') === '1');
+  const [effects, setEffectsState] = useState<boolean>(() => read('effects', ['1', '0'] as const, '0') === '1');
   const [lang, setLangState] = useState<Lang>(() => (i18n.language === 'en' ? 'en' : 'ar'));
   const reduced = useReducedMotion() ?? false;
 
@@ -50,9 +50,10 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
-    document.documentElement.toggleAttribute('data-lite', lite);
-    write('lite', lite ? '1' : '0');
-  }, [lite]);
+    // data-lite = المؤثرات الكاملة مقفولة (الـ CSS بيشيل الزجاج والتوهج)
+    document.documentElement.toggleAttribute('data-lite', !effects);
+    write('effects', effects ? '1' : '0');
+  }, [effects]);
 
   useEffect(() => {
     void i18n.changeLanguage(lang);
@@ -60,12 +61,12 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
 
   const setTheme = useCallback((t: Theme) => setThemeState(t), []);
   const toggleTheme = useCallback(() => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')), []);
-  const setLite = useCallback((v: boolean) => setLiteState(v), []);
+  const setEffects = useCallback((v: boolean) => setEffectsState(v), []);
   const setLang = useCallback((l: Lang) => setLangState(l), []);
   const toggleLang = useCallback(() => setLangState((l) => (l === 'ar' ? 'en' : 'ar')), []);
 
   return (
-    <Ctx.Provider value={{ theme, setTheme, toggleTheme, lite, setLite, calm: lite || reduced, lang, setLang, toggleLang }}>
+    <Ctx.Provider value={{ theme, setTheme, toggleTheme, effects, setEffects, calm: !effects || reduced, lang, setLang, toggleLang }}>
       {children}
     </Ctx.Provider>
   );

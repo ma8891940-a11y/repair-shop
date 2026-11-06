@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Feather, Gauge, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Users, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Users, type LucideIcon } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
@@ -52,7 +52,7 @@ export function AppShell() {
   const { t } = useTranslation();
   const { profile, shop } = useMe();
   const { signOut } = useAuth();
-  const { toggleTheme, toggleLang, lite, setLite } = usePrefs();
+  const { toggleTheme, toggleLang, effects, setEffects } = usePrefs();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -90,9 +90,9 @@ export function AppShell() {
     { to: '/settings', key: 'settings', icon: Settings, show: owner },
   ].filter((n) => n.show);
 
-  const toggleLite = () => {
-    setLite(!lite);
-    toast({ tone: 'info', title: !lite ? t('prefs.liteOn') : t('prefs.liteOff') });
+  const toggleEffects = () => {
+    setEffects(!effects);
+    toast({ tone: 'info', title: !effects ? t('prefs.effectsOn') : t('prefs.effectsOff') });
   };
 
   const commands: Command[] = useMemo(
@@ -100,10 +100,10 @@ export function AppShell() {
       ...nav.map((n) => ({ id: `nav-${n.key}`, label: t(`nav.${n.key}`), icon: <n.icon className="size-4" />, shortcut: n.shortcut, run: () => navigate(n.to) })),
       { id: 'theme', label: t('palette.toggleTheme'), icon: <Moon className="size-4" />, shortcut: 'Ctrl+J', run: toggleTheme },
       { id: 'lang', label: t('palette.toggleLang'), icon: <Languages className="size-4" />, shortcut: 'Ctrl+L', run: toggleLang },
-      { id: 'lite', label: t('palette.toggleLite'), icon: <Feather className="size-4" />, run: toggleLite },
+      { id: 'effects', label: t('palette.toggleEffects'), icon: <Sparkles className="size-4" />, run: toggleEffects },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, navigate, toggleTheme, toggleLang, lite, front, owner],
+    [t, navigate, toggleTheme, toggleLang, effects, front, owner],
   );
 
   const shortcuts = useMemo(
@@ -143,15 +143,15 @@ export function AppShell() {
             <div className="mb-2 flex items-center gap-1">
               <ThemeToggle />
               <LangToggle />
-              <Tip label={t('prefs.lite')}>
+              <Tip label={t('prefs.effects')}>
                 <button
                   type="button"
-                  onClick={toggleLite}
-                  aria-pressed={lite}
-                  aria-label={t('prefs.lite')}
-                  className={cn('grid size-9 place-items-center rounded-md transition-colors hover:bg-raised/70', lite ? 'text-accent' : 'text-fg-2 hover:text-fg')}
+                  onClick={toggleEffects}
+                  aria-pressed={effects}
+                  aria-label={t('prefs.effects')}
+                  className={cn('grid size-9 place-items-center rounded-md transition-colors hover:bg-raised/70', effects ? 'text-accent' : 'text-fg-2 hover:text-fg')}
                 >
-                  <Feather className="size-4" />
+                  <Sparkles className="size-4" />
                 </button>
               </Tip>
             </div>

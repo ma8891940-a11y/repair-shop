@@ -14,7 +14,7 @@
         if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
         var l = localStorage.getItem('lang');
         if (l === 'en') { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
-        if (localStorage.getItem('lite') === '1') document.documentElement.setAttribute('data-lite', '');
+        if (localStorage.getItem('effects') !== '1') document.documentElement.setAttribute('data-lite', '');
       } catch (e) {}
     </script>
   </head>

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './app/auth';
 import { PrefsProvider, usePrefs } from './app/prefs';
 import { AppShell } from './app/AppShell';
+import { EffectsGuard } from './app/EffectsGuard';
 import { isConfigured } from './lib/supabase';
 import { TooltipProvider } from './ui/Tooltip';
 import { ToastProvider } from './ui/Toast';
@@ -97,6 +98,7 @@ function Boot() {
   const show = !minDone || loading;
   return (
     <>
+      <EffectsGuard />
       {!loading && <Gate />}
       <AnimatePresence>{show && <SplashScreen key="splash" duration={Math.max(300, ms - performance.now())} />}</AnimatePresence>
     </>

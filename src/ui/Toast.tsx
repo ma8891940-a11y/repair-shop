@@ -11,6 +11,10 @@ interface Toast {
   tone: Tone;
   title: ReactNode;
   description?: ReactNode;
+  /** زرار جوه التنبيه (مثال: "رجّعها") */
+  action?: { label: string; onClick: () => void };
+  /** مدة الظهور بالمللي ثانية (الافتراضي 4.2 ثانية) */
+  duration?: number;
 }
 
 const Ctx = createContext<(t: Omit<Toast, 'id'>) => void>(() => {});
@@ -25,7 +29,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (toast: Omit<Toast, 'id'>) => {
       const id = ++seq.current;
       setItems((cur) => [...cur.slice(-3), { ...toast, id }]);
-      setTimeout(() => dismiss(id), 4200);
+      setTimeout(() => dismiss(id), toast.duration ?? 4200);
     },
     [dismiss],
   );
@@ -49,6 +53,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-fg">{x.title}</div>
                 {x.description && <div className="mt-0.5 text-fg-2">{x.description}</div>}
+                {x.action && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      x.action!.onClick();
+                      dismiss(x.id);
+                    }}
+                    className="mt-2 inline-flex h-7 items-center rounded-sm border border-[rgb(var(--accent-rgb)/0.4)] bg-accent-soft px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-[rgb(var(--accent-rgb)/0.2)]"
+                  >
+                    {x.action.label}
+                  </button>
+                )}
               </div>
               <button type="button" onClick={() => dismiss(x.id)} className="rounded-sm p-0.5 text-fg-3 hover:text-fg" aria-label={t('common.close')}>
                 <X className="size-3.5" />
