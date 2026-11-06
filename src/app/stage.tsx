@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { motion } from 'motion/react';
 import { usePrefs } from './prefs';
 import { CircuitField } from '../ui/fx/CircuitField';
+import { BG_GUARD, FpsGuard } from '../lib/fpsGuard';
 import logoSrc from '../assets/app-logo.png';
 
 /**
@@ -27,9 +28,60 @@ const Ctx = createContext<Stage | null>(null);
 /** مدة الانتقال المشترك بالثواني */
 export const HANDOFF_S = 0.45;
 
+/**
+ * شرط أمان: لو الأداء في الافتتاحية أو الدخول (الخلفية الحية) نزل تحت 50 إطار لمدة 2 ثانية متواصلة،
+ * الخلفية بتثبت لوحدها بنعومة (الخطوط بتفضل، والإشارات والسكان بينطفوا)، وده بيتحفظ للجهاز ده بس.
+ * أول 0.8 ثانية بعد فتح الصفحة ما بتتحسبش (تحميل الكود نفسه).
+ * مستقل عن "المؤثرات الكاملة": دي للزجاج والتأثيرات التقيلة بس.
+ */
+export const BG_STILL_KEY = 'bg-still';
+function readBgStill() {
+  try {
+    return localStorage.getItem(BG_STILL_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+export function setBgStillSaved(v: boolean) {
+  try {
+    if (v) localStorage.setItem(BG_STILL_KEY, '1');
+    else localStorage.removeItem(BG_STILL_KEY);
+  } catch {
+    /* التخزين ممكن يكون مقفول */
+  }
+  window.dispatchEvent(new CustomEvent('bg-still', { detail: v }));
+}
+/** هل الخلفية اتثبتت لوحدها على الجهاز ده (عشان الإعدادات تعرض "رجّع الحركة") */
+export function useBgStillSaved() {
+  const [v, setV] = useState(readBgStill);
+  useEffect(() => {
+    const on = (e: Event) => setV(Boolean((e as CustomEvent<boolean>).detail));
+    window.addEventListener('bg-still', on);
+    return () => window.removeEventListener('bg-still', on);
+  }, []);
+  return v;
+}
+
 export function StageProvider({ phase, children }: { phase: SplashPhase; children: ReactNode }) {
   const [mode, setMode] = useState<BgMode>('live');
-  const { rich } = usePrefs();
+  const { rich, calm } = usePrefs();
+  const autoStill = useBgStillSaved();
+  // حارس الأداء للخلفية الحية (الافتتاحية والدخول والتسجيل)
+  useEffect(() => {
+    if (mode !== 'live' || calm || autoStill) return;
+    const guard = new FpsGuard(BG_GUARD);
+    guard.start(performance.now());
+    let raf = 0;
+    const tick = (now: number) => {
+      if (guard.frame(now)) {
+        setBgStillSaved(true);
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [mode, calm, autoStill]);
   const heroEl = useRef<HTMLElement | null>(null);
   const targets = useRef(new Set<HTMLElement>());
   const [fly, setFly] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
@@ -66,8 +118,9 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
           aria-hidden
           data-testid="stage-bg"
           data-mode={mode}
+          data-auto-still={autoStill ? '' : undefined}
         >
-          <CircuitField density={1.1} still={mode === 'still'} glowFollow={mode === 'live' && rich && phase === 'done'} />
+          <CircuitField density={1.1} still={mode === 'still' || autoStill} glowFollow={mode === 'live' && rich && !autoStill && phase === 'done'} />
         </motion.div>
       )}
       {children}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FpsGuard } from './fpsGuard';
+import { BG_GUARD, FpsGuard } from './fpsGuard';
 
 /** بيشغّل الحارس بمعدل إطارات ثابت لمدة معيّنة، ويرجّع وقت القفل (لو حصل) */
 function run(g: FpsGuard, segments: Array<[fps: number, ms: number]>, start = 0): number | null {
@@ -63,5 +63,35 @@ describe('حارس أداء المؤثرات الكاملة', () => {
     let trips = 0;
     for (let t = 0; t < 15_000; t += 1000 / 20) if (g.frame(t)) trips++;
     expect(trips).toBe(1);
+  });
+});
+
+describe('حارس الخلفية الحية (الافتتاحية والدخول)', () => {
+  /** بيشغّل الحارس بمعدل إطارات معيّن لفترة، وبيرجّع وقت ما وقف الحركة (أو null) */
+  const run = (g: FpsGuard, from: number, to: number, fps: number) => {
+    const step = 1000 / fps;
+    for (let t = from; t <= to; t += step) if (g.frame(t)) return t;
+    return null;
+  };
+  it('تحت 50 إطار لمدة 2 ثانية متواصلة (بعد 0.8 ثانية من الفتح) بيثبّت الخلفية، ومش قبل كده', () => {
+    const g = new FpsGuard(BG_GUARD);
+    g.start(0);
+    const at = run(g, 0, 6000, 30);
+    expect(at).not.toBeNull();
+    expect(at!).toBeGreaterThanOrEqual(800 + 2000);
+    expect(at!).toBeLessThan(800 + 2000 + 700);
+  });
+  it('بطء أقل من 2 ثانية وبعدين الأداء رجع: الخلفية بتفضل شغالة', () => {
+    const g = new FpsGuard(BG_GUARD);
+    g.start(0);
+    // 1.6 ثانية بطء بعد فترة السماح (القياس على نوافذ نص ثانية، فبنسيب هامش نافذة)
+    expect(run(g, 0, 2400, 30)).toBeNull();
+    expect(run(g, 2400, 8000, 60)).toBeNull();
+  });
+  it('بطء أول 0.8 ثانية بس (تحميل الكود) ما بيتحسبش', () => {
+    const g = new FpsGuard(BG_GUARD);
+    g.start(0);
+    expect(run(g, 0, 790, 10)).toBeNull();
+    expect(run(g, 790, 8000, 60)).toBeNull();
   });
 });

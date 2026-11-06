@@ -36,7 +36,10 @@
     "autoOff": "Full effects were turned off to keep this device fast",
     "restore": "Turn back on",
     "langAr": "العربية",
-    "langEn": "English"
+    "langEn": "English",
+    "bgStillTitle": "Background is still on this device",
+    "bgStillHint": "It was made still automatically because the motion was heavy for this device (under 50 fps). You can bring it back.",
+    "bgRestore": "Bring motion back"
   },
   "nav": {
     "dashboard": "Dashboard",

@@ -20,6 +20,7 @@ import { BackupTab } from './settings/BackupTab';
 import { IdentityTab } from './settings/IdentityTab';
 import { PlanUsage } from '../app/PlanUsage';
 import { ExtrasTab } from './settings/ExtrasTab';
+import { setBgStillSaved, useBgStillSaved } from '../app/stage';
 import { cn } from '../ui/cn';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
@@ -139,6 +140,7 @@ function AppearanceTab() {
   const { t } = useTranslation();
   const { theme, setTheme, lang, setLang, effects, setEffects } = usePrefs();
   const toast = useToast();
+  const bgStill = useBgStillSaved();
   return (
     <div className="flex flex-col gap-4">
       <Row icon={theme === 'dark' ? Moon : Sun} title={t('settings.theme')}>
@@ -147,6 +149,13 @@ function AppearanceTab() {
       <Row icon={Languages} title={t('settings.language')}>
         <Seg value={lang} onChange={(v) => setLang(v as 'ar' | 'en')} options={[['ar', t('prefs.langAr')], ['en', t('prefs.langEn')]]} label={t('settings.language')} />
       </Row>
+      {bgStill && (
+        <Row icon={Sparkles} title={t('prefs.bgStillTitle')} hint={t('prefs.bgStillHint')}>
+          <Button size="sm" onClick={() => setBgStillSaved(false)}>
+            {t('prefs.bgRestore')}
+          </Button>
+        </Row>
+      )}
       <Row icon={Sparkles} title={t('prefs.effects')} hint={t('settings.effectsHint')}>
         <button
           type="button"

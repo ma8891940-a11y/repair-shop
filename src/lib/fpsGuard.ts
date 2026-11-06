@@ -82,3 +82,9 @@ export class FpsGuard {
     return false;
   }
 }
+
+/**
+ * حارس الخلفية الحية (الافتتاحية والدخول): تحت 50 إطار لمدة 2 ثانية متواصلة = الخلفية تثبت وتتحفظ للجهاز.
+ * فترة السماح 0.8 ثانية بس (تحميل الكود)، عشان الافتتاحية نفسها قصيرة.
+ */
+export const BG_GUARD: FpsGuardOptions = { threshold: 50, sustainMs: 2000, graceMs: 800 };

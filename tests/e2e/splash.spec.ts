@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { prefs } from './helpers';
+import { afterSplash, prefs, registerShop, uniq } from './helpers';
 
 /** بيسجّل كل فريم: الافتتاحية واللوجو والتوهج والسكان والانتقال، وهل الخلفية هي نفس الـ canvas */
 async function record(page: Page) {
@@ -102,4 +102,40 @@ test('الافتتاحية مع "تقليل الحركة": الخلفية ثاب
   await page.waitForTimeout(500);
   expect(await shot()).toBe(a);
   await ctx.close();
+});
+
+test('شرط الأمان: الأداء تحت 50 إطار لمدة 2 ثانية في الدخول ← الخلفية بتثبت بنعومة من غير ما تختفي، وبتتحفظ للجهاز، و"رجّع الحركة" من الإعدادات', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium', 'إبطاء المعالج متاح في Chromium بس');
+  test.setTimeout(150_000);
+  await prefs(page, info);
+  await page.goto('/');
+  await afterSplash(page);
+  const stage = page.getByTestId('stage-bg');
+  await expect(stage).not.toHaveAttribute('data-auto-still', '');
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+  await expect(stage).toHaveAttribute('data-auto-still', '', { timeout: 25_000 });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  expect(await page.evaluate(() => localStorage.getItem('bg-still'))).toBe('1');
+  // ما اختفتش: نفس الخلفية والخطوط لسه مرسومة، وبعد ما الحركة تنطفي بتثبت
+  const shot = () => page.evaluate(() => document.querySelector<HTMLCanvasElement>('[data-testid="stage-bg"] canvas')!.toDataURL());
+  await page.waitForTimeout(800);
+  const a = await shot();
+  expect(a.length).toBeGreaterThan(1000);
+  await page.waitForTimeout(500);
+  expect(await shot()).toBe(a);
+  // المرة الجاية بتفتح ثابتة على طول
+  await page.reload();
+  await expect(page.getByTestId('stage-bg')).toHaveAttribute('data-auto-still', '');
+  await afterSplash(page);
+  const b = await shot();
+  await page.waitForTimeout(600);
+  expect(await shot()).toBe(b);
+  // "رجّع الحركة" من الإعدادات (المظهر)
+  await registerShop(page, uniq('bgstill'));
+  await page.goto('/#/settings');
+  await page.getByRole('tab', { name: 'المظهر' }).click();
+  await page.getByRole('button', { name: 'رجّع الحركة' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('bg-still'))).toBeNull();
+  await expect(page.getByRole('button', { name: 'رجّع الحركة' })).toHaveCount(0);
 });

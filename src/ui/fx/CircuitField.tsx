@@ -117,6 +117,9 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
   const { calm, rich, theme } = usePrefs();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+  // "ثابت" بيتغيّر من غير ما الخلفية تترسم من الأول: الإشارات والسكان بينطفوا بنعومة والخطوط زي ما هي
+  const stillRef = useRef(still);
+  const wakeRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -135,6 +138,8 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
     let last = performance.now();
     let scan = 0;
     let clock = 0;
+    // شدة الحركة (الإشارات والسكان): 1 = شغالة، 0 = ثابتة. بتتغير بنعومة في نص ثانية
+    let k = stillRef.current || calm ? 0 : 1;
 
     const setup = () => {
       const rect = canvas.getBoundingClientRect();
@@ -180,7 +185,7 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
 
     // التجمّع: خطوط بتعدّي قريب من النقطة، وإشارة على كل خط ماشية ناحية أقرب نقطة فيه
     const converge = (cx: number, cy: number, radius: number) => {
-      if (calm || still || !traces.length) return;
+      if (calm || stillRef.current || !traces.length) return;
       const near: { trace: number; at: number; d: number }[] = [];
       traces.forEach((tr, i) => {
         let best = Infinity;
@@ -218,8 +223,11 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(base, 0, 0);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // الوضع الهادي (خفيف/تقليل الحركة/ثابت): الخطوط بس، من غير إشارات ولا سكان
-      if (!traces.length || calm || still) return;
+      // الوضع الهادي (تقليل الحركة/ثابت): الخطوط بس، من غير إشارات ولا سكان. والتحويل بينهم بنعومة
+      const goal = calm || stillRef.current ? 0 : 1;
+      k = goal > k ? Math.min(1, k + dt / 500) : Math.max(0, k - dt / 500);
+      if (!traces.length || k === 0) return;
+      ctx.globalAlpha = k;
       // خط السكان: شريط أفقي باهت بينزل ببطء
       scan = (scan + dt * 0.035) % (h + 200);
       const sy = scan - 100;
@@ -277,21 +285,26 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
         ctx.fillStyle = rg;
         ctx.fillRect(hx - hr, hy - hr, hr * 2, hr * 2);
       }
+      ctx.globalAlpha = 1;
     };
 
     const loop = (now: number) => {
       const dt = Math.min(64, now - last);
       last = now;
       draw(dt);
+      // ثابتة خلاص (بعد ما الحركة انطفت): الرسم بيقف لحد ما تتشغل تاني
+      if (k === 0 && (calm || stillRef.current)) return;
       raf = requestAnimationFrame(loop);
     };
 
     const start = () => {
       cancelAnimationFrame(raf);
-      if (calm || still || document.hidden) return;
+      if (document.hidden) return;
+      if ((calm || stillRef.current) && k === 0) return;
       last = performance.now();
       raf = requestAnimationFrame(loop);
     };
+    wakeRef.current = start;
 
     setup();
     start();
@@ -314,7 +327,12 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('circuit:converge', onConverge);
     };
-  }, [calm, theme, density, still]);
+  }, [calm, theme, density]);
+
+  useEffect(() => {
+    stillRef.current = still;
+    wakeRef.current();
+  }, [still]);
 
   // توهج بيتبع الماوس (transform بس، بتنعيم)
   useEffect(() => {

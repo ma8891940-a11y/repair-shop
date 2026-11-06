@@ -37,24 +37,36 @@ test.describe('المؤثرات الكاملة', () => {
     await ctx.close();
   });
 
-  test('القفل التلقائي: بطء تحت 50 إطار لمدة 3 ثواني بيقفلها، والتنبيه فيه "رجّعها"', async ({ page, browserName }, info) => {
-    test.skip(browserName !== 'chromium', 'إبطاء المعالج متاح في Chromium بس');
+  test('القفل التلقائي: بطء تحت 50 إطار لمدة 3 ثواني بيقفلها، والتنبيه فيه "رجّعها"', async ({ page }, info) => {
     await prefs(page, info, { effects: true });
+    // بنختبر حارس المؤثرات لوحده: الخلفية ثابتة من الأول، عشان حارس الخلفية (2 ثانية) ما يسبقوش ويخفّف الحمل
+    await page.addInitScript(() => localStorage.setItem('bg-still', '1'));
     // فترة السماح بتبدأ من فتح الشاشة، فبنقيس من قبل الفتح
     const opened = Date.now();
     await page.goto('/');
     await afterSplash(page);
     await expect(page.locator('html')).not.toHaveAttribute('data-lite', '');
-    // نبطّأ المعالج 20 مرة عشان الأداء ينزل
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+    // حمل تقيل على الصفحة: كل إطار بياخد 30 مللي ثانية زيادة (حوالي 30 إطار في الثانية)، بغض النظر عن اللي ظاهر على الشاشة
+    await page.evaluate(() => {
+      const w = window as unknown as { __heavy: boolean };
+      w.__heavy = true;
+      const spin = () => {
+        if (!w.__heavy) return;
+        const t = performance.now();
+        while (performance.now() - t < 30) {
+          /* شغل تقيل */
+        }
+        requestAnimationFrame(spin);
+      };
+      requestAnimationFrame(spin);
+    });
     const notice = page.getByText('اتقفلت المؤثرات الكاملة عشان الجهاز يفضل سريع');
     await expect(notice).toBeVisible({ timeout: 25_000 });
     // مش قبل فترة السماح (2 ثانية) + مدة البطء (3 ثواني) من فتح الشاشة
     expect(Date.now() - opened).toBeGreaterThanOrEqual(5_000);
     await expect(page.locator('html')).toHaveAttribute('data-lite', '');
     expect(await page.evaluate(() => localStorage.getItem('effects'))).toBe('0');
-    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+    await page.evaluate(() => ((window as unknown as { __heavy: boolean }).__heavy = false));
     // "رجّعها" بيشغّلها تاني
     await page.getByRole('button', { name: 'رجّعها' }).click();
     await expect(page.locator('html')).not.toHaveAttribute('data-lite', '');
