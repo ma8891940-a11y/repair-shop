@@ -28,6 +28,10 @@
 - [ ] e2e للمسار الأساسي: تسجيل ← استلام ← حالات ← تسليم ← طباعة.
 - [ ] بوابة الجودة الكاملة، وكسر حماية عمدًا، وتحديث PROGRESS.
 
+## المرحلة 3: اتعدّلت بطلب صاحب المشروع
+- بقت بدفتر قيود مزدوج، وشاشة "الوضع المالي"، واختبارات قبول إلزامية.
+- التفاصيل كاملة في `docs/phase-3-ledger.md`. **لازم تتقرا قبل ما المرحلة 3 تبدأ.**
+
 ## تشغيل الاختبارات (للجلسة الجاية)
 - **Supabase المحلي:** في `/tmp/claude-0/-home-user-repair-shop/dac6950d-1233-52f1-a723-e51a3f360a9a/scratchpad/sb`.
   - التشغيل: `npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta`
