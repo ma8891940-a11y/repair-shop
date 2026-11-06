@@ -1,18 +1,18 @@
--- ورشة / Warsha: بيانات تجريبية للتجربة على طول.
+-- جوالك / Gawalak: بيانات تجريبية للتجربة على طول.
 -- شغّله بعد supabase/setup_all.sql (SQL Editor ← New query ← الصق ← Run).
 -- آمن تشغّله أكتر من مرة: لو المحل التجريبي موجود، الملف ما بيعملش حاجة.
 --
--- الحسابات (كلمة السر لكلهم: Warsha#2026):
---   owner@warsha.demo      صاحب المحل
---   reception@warsha.demo  موظفة الاستقبال (مسؤولة عن كاش الدرج)
---   tech@warsha.demo       الفني
+-- الحسابات (كلمة السر لكلهم: Gawalak#2026):
+--   owner@gawalak.demo      صاحب المحل
+--   reception@gawalak.demo  موظفة الاستقبال (مسؤولة عن كاش الدرج)
+--   tech@gawalak.demo       الفني
 --
 -- كل العمليات المالية بتتسجل بدوال البرنامج نفسها، فالقيود متوازنة زي ما تكون اتعملت من الشاشات.
 -- البيانات كلها وهمية (أسماء وأرقام موبايل مش حقيقية).
 
 do $seed$
 declare
-  pw text := 'Warsha#2026';
+  pw text := 'Gawalak#2026';
   owner_id uuid := 'a0000000-0000-4000-8000-000000000001';
   rec_id uuid := 'a0000000-0000-4000-8000-000000000002';
   tech_id uuid := 'a0000000-0000-4000-8000-000000000003';
@@ -46,7 +46,7 @@ begin
   end if;
 
   -- المستخدمين (كلمة السر متشفّرة bcrypt زي Supabase Auth بالظبط)
-  for u in select * from (values (owner_id, 'owner@warsha.demo'), (rec_id, 'reception@warsha.demo'), (tech_id, 'tech@warsha.demo')) as x(id, email) loop
+  for u in select * from (values (owner_id, 'owner@gawalak.demo'), (rec_id, 'reception@gawalak.demo'), (tech_id, 'tech@gawalak.demo')) as x(id, email) loop
     insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
                             confirmation_token, email_change, email_change_token_new, recovery_token)
     values ('00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email, crypt(pw, gen_salt('bf')), now(),
@@ -57,11 +57,11 @@ begin
 
   -- صاحب المحل بيعمل المحل
   perform set_config('request.jwt.claims', jsonb_build_object('sub', owner_id, 'role', 'authenticated')::text, true);
-  shop := (public.bootstrap_account('محمود حسن', 'ورشة التجربة')).shop_id;
+  shop := (public.bootstrap_account('محمود حسن', 'محل التجربة')).shop_id;
   update public.shops set phone = '01000000000', address = 'شارع التحرير، الدقي، الجيزة',
     payment_methods = array['cash', 'wallet', 'instapay', 'card'], setup_completed_at = now() where id = shop;
   insert into public.staff_invites(shop_id, email, full_name, role) values
-    (shop, 'reception@warsha.demo', 'سارة محمد', 'reception'), (shop, 'tech@warsha.demo', 'كريم عبد الله', 'technician');
+    (shop, 'reception@gawalak.demo', 'سارة محمد', 'reception'), (shop, 'tech@gawalak.demo', 'كريم عبد الله', 'technician');
 
   perform set_config('request.jwt.claims', jsonb_build_object('sub', rec_id, 'role', 'authenticated')::text, true);
   perform public.bootstrap_account('سارة محمد');
@@ -179,6 +179,6 @@ begin
   perform public.close_drawer(gen_random_uuid(), cash, public.ledger_balance(cash) - 1000, 'تقفيل آخر اليوم');
 
   perform set_config('request.jwt.claims', '', true);
-  raise notice 'اتعملت البيانات التجريبية: ورشة التجربة (كلمة السر Warsha#2026)';
+  raise notice 'اتعملت البيانات التجريبية: محل التجربة (كلمة السر Gawalak#2026)';
 end
 $seed$;

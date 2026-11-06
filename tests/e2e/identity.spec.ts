@@ -53,7 +53,7 @@ test('هوية المحل: كل محل بيطبع باسمه ولوجوه، ال
   expect(th.black).toBeGreaterThan(0);
   expect(th.colored + th.gray).toBe(0);
   await expect(page.getByTestId('powered-by')).toHaveCount(0);
-  await expect(page.getByText('ورشة', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('جوالك', { exact: true })).toHaveCount(0);
 
   // الفاتورة A4: اللوجو ملون
   await page.goto(devA.replace('/devices/', '/print/invoice/'));
@@ -87,7 +87,7 @@ test('هوية المحل: كل محل بيطبع باسمه ولوجوه، ال
   await page.getByRole('button', { name: 'حفظ', exact: true }).click();
   await expect(page.getByText('اتحفظ').first()).toBeVisible();
   await page.goto(devA.replace('/devices/', '/print/receipt/'));
-  await expect(page.getByTestId('powered-by')).toContainText('بواسطة ورشة');
+  await expect(page.getByTestId('powered-by')).toContainText('بواسطة جوالك');
 
   // المحل التاني من غير لوجو: الاسم كبير، ومفيش أي أثر لهوية المحل الأول
   const ctxB = await browser.newContext(info.project.use);

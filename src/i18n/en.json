@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Warsha",
+    "name": "Gawalak",
     "tagline": "Phone repair management",
     "loading": "Loading"
   },
@@ -110,7 +110,7 @@
     "pendingHint": "It will be ready after you approve the design."
   },
   "splash": {
-    "booting": "Preparing the workshop"
+    "booting": "Getting ready"
   },
   "login": {
     "title": "Sign in",
@@ -1319,7 +1319,7 @@
     "pick": "Choose file",
     "valid": "Backup is valid",
     "errPassword": "Wrong password or the file was modified",
-    "errFormat": "This isn't a Warsha backup file"
+    "errFormat": "This isn't a Gawalak backup file"
   },
   "identity": {
     "names": "Name",

@@ -6,9 +6,13 @@ const sample = { format: 'warsha-backup', shop_id: 's', devices: [{ id: 1, issue
 describe('تشفير النسخة الاحتياطية', () => {
   it('بيتفك بنفس كلمة السر بالظبط، وما فيهوش البيانات كنص واضح', async () => {
     const f = await encryptBackup(sample, 'كلمة-سر-قوية-1', 1000);
-    expect(f.format).toBe('warsha-backup-enc');
+    expect(f.format).toBe('gawalak-backup-enc');
     expect(JSON.stringify(f)).not.toContain('شاشة');
     expect(await decryptBackup(f, 'كلمة-سر-قوية-1')).toEqual(sample);
+  });
+  it('النسخ القديمة (قبل تغيير اسم التطبيق) بتتفتح برضه', async () => {
+    const f = await encryptBackup(sample, 'كلمة-سر-قوية-1', 1000);
+    expect(await decryptBackup({ ...f, format: 'warsha-backup-enc' }, 'كلمة-سر-قوية-1')).toEqual(sample);
   });
   it('كلمة سر غلط أو ملف متعدّل: ما بيتفكش', async () => {
     const f = await encryptBackup(sample, 'password-123', 1000);

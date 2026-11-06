@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { usePrefs } from '../../app/prefs';
 import { CircuitField } from '../../ui/fx/CircuitField';
 import { LineIcon, MorphIcon, type LineIconName } from '../../ui/fx/LineIcon';
-import { Mark } from '../../ui/Logo';
+import { AppLogo } from '../../ui/Logo';
 import { LangToggle, ThemeToggle } from '../../ui/ThemeToggle';
 
 /**
@@ -35,7 +35,7 @@ export function AuthLayout({
       <div className="relative z-10 flex min-h-dvh flex-col">
         <header className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <Mark size={30} />
+            <AppLogo height={36} />
             <div>
               <div className="text-sm font-semibold text-fg">{t('app.name')}</div>
               <div className="readout-label">{t('app.tagline')}</div>

@@ -1,32 +1,23 @@
 import { motion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { usePrefs } from '../app/prefs';
+import logo from '../assets/app-logo.png';
+import logoSm from '../assets/app-logo-sm.png';
 
-/** علامة البرنامج: دايرة معايرة بأربع علامات قياس ونقطة إبراز (تصميم أصلي). draw = تترسم بالحركة */
-export function Mark({ size = 28, draw = false }: { size?: number; draw?: boolean }) {
+/**
+ * لوجو التطبيق (بتاع صاحب المشروع، brand/app-logo.png) كما هو من غير أي تعديل في الشكل أو الألوان أو النسب.
+ * مكانه جوه التطبيق بس: الافتتاحية، والدخول، والشريط الجانبي، ومعالج التسجيل. ممنوع على أي حاجة مطبوعة أو بتوصل للعميل.
+ * height بالبكسل، والعرض بيتحسب من نسبة اللوجو. intro = ظهور الافتتاحية (أقل من 1.2 ثانية، وبيتلغي مع تقليل الحركة).
+ */
+export function AppLogo({ height = 28, intro = false }: { height?: number; intro?: boolean }) {
+  const { t } = useTranslation();
   const { calm } = usePrefs();
-  const anim = draw && !calm;
-  const p = (delay: number) =>
-    anim
-      ? { initial: { pathLength: 0, opacity: 0 }, animate: { pathLength: 1, opacity: 1 }, transition: { duration: 0.8, delay, ease: [0.65, 0, 0.35, 1] as const } }
-      : {};
+  const src = height > 64 ? logo : logoSm;
+  const img = <img src={src} alt={t('app.name')} height={height} style={{ height, width: 'auto' }} className="block select-none" draggable={false} data-testid="app-mark" />;
+  if (!intro || calm) return img;
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <rect x="0.5" y="0.5" width="31" height="31" rx="8" fill="var(--raised)" stroke="var(--glass-border-strong)" />
-      <motion.circle cx="16" cy="16" r="8" fill="none" stroke="var(--text)" strokeWidth="1.6" {...p(0)} />
-      <g stroke="var(--text)" strokeWidth="1.6" strokeLinecap="round">
-        <motion.path d="M16 5.5v3" {...p(0.35)} />
-        <motion.path d="M16 23.5v3" {...p(0.45)} />
-        <motion.path d="M5.5 16h3" {...p(0.55)} />
-        <motion.path d="M23.5 16h3" {...p(0.65)} />
-      </g>
-      <motion.circle
-        cx="16"
-        cy="16"
-        r="2.4"
-        fill="var(--accent)"
-        style={{ filter: 'drop-shadow(0 0 3px var(--accent))' }}
-        {...(anim ? { initial: { scale: 0 }, animate: { scale: 1 }, transition: { delay: 0.8, type: 'spring', stiffness: 400, damping: 15 } } : {})}
-      />
-    </svg>
+    <motion.div initial={{ opacity: 0, scale: 0.92, filter: 'blur(6px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
+      {img}
+    </motion.div>
   );
 }

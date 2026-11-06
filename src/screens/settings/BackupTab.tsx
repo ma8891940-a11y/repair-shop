@@ -41,7 +41,7 @@ export function BackupTab() {
     try {
       const raw = data ?? (await rpc('export_backup'));
       const file = await encryptBackup(raw, pw);
-      save(`warsha-backup-${label}-${new Date().toISOString().slice(0, 10)}.warsha`, JSON.stringify(file));
+      save(`gawalak-backup-${label}-${new Date().toISOString().slice(0, 10)}.gawalak`, JSON.stringify(file));
       toast({ tone: 'ok', title: t('backup.saved') });
     } catch (e) {
       setErr(errorMessage(e));
@@ -110,7 +110,7 @@ export function BackupTab() {
             </Field>
             <label className="inline-flex h-9 cursor-pointer items-center gap-2 self-end rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent hover:text-fg">
               <FolderOpen className="size-4" aria-hidden /> {t('backup.pick')}
-              <input type="file" accept=".warsha,application/json" className="sr-only" onChange={(e) => {
+              <input type="file" accept=".gawalak,.warsha,application/json" className="sr-only" onChange={(e) => {
                   const file = e.target.files?.[0];
                   e.target.value = ''; // عشان نفس الملف يتفتح تاني (مثلًا بكلمة سر مختلفة)
                   if (file) void openFile(file);

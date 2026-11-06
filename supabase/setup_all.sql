@@ -1,4 +1,4 @@
--- ورشة / Warsha: إعداد قاعدة البيانات كاملة في خطوة واحدة.
+-- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.
 -- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).
 -- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file
 -- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql

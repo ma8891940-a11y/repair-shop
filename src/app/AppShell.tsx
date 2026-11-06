@@ -6,7 +6,7 @@ import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, Packa
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
-import { Mark } from '../ui/Logo';
+import { AppLogo } from '../ui/Logo';
 import { LangToggle, ThemeToggle } from '../ui/ThemeToggle';
 import { Tip } from '../ui/Tooltip';
 import { Kbd } from '../ui/Kbd';
@@ -146,7 +146,7 @@ export function AppShell() {
         {/* الشريط الجانبي (كمبيوتر) */}
         <aside className="glass sticky top-0 z-20 hidden h-dvh w-[236px] shrink-0 flex-col rounded-none border-y-0 border-s-0 md:flex">
           <div className="flex items-center gap-2.5 px-4 pb-3 pt-4">
-            <Mark size={32} />
+            <AppLogo height={34} />
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-fg">{shop.name}</div>
               <div className="readout-label">{t('app.tagline')}</div>
@@ -192,7 +192,7 @@ export function AppShell() {
         <div className="relative z-10 flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-glass-border bg-[color-mix(in_srgb,var(--bg)_72%,transparent)] px-4 backdrop-blur-xl md:px-6">
             <div className="flex shrink-0 items-center gap-2 md:hidden">
-              <Mark size={26} />
+              <AppLogo height={26} />
             </div>
             <button
               type="button"

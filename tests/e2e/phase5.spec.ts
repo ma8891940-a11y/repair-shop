@@ -58,7 +58,7 @@ test('المرحلة 5: النت فصل ← تغيير حالة واستلام �
   await page.getByLabel('تأكيد كلمة السر').fill('backup-pass-2026');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'صدّر النسخة' }).click()]);
   const path = await dl.path();
-  expect(dl.suggestedFilename()).toMatch(/\.warsha$/);
+  expect(dl.suggestedFilename()).toMatch(/\.gawalak$/);
   await page.getByLabel('كلمة سر النسخة').last().fill('backup-pass-2026');
   await page.locator('input[type=file]').setInputFiles(path);
   await expect(page.getByTestId('backup-summary')).toContainText('devices: 2');

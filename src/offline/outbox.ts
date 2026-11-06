@@ -30,22 +30,23 @@ export interface BlobItem {
   createdAt: number;
 }
 
-export class WarshaDB extends Dexie {
+export class LocalDB extends Dexie {
   outbox!: Table<OutboxItem, string>;
   cache!: Table<CacheItem, string>;
   blobs!: Table<BlobItem, string>;
+  // اسم قاعدة البيانات على الجهاز فاضل 'warsha' من قبل تغيير اسم التطبيق: لو اتغيّر، العمليات اللي لسه ما اتبعتتش على الأجهزة هتضيع
   constructor(name = 'warsha') {
     super(name);
     this.version(1).stores({ outbox: 'id, seq, status', cache: 'key', blobs: 'id, deviceId' });
   }
 }
 
-let shared: WarshaDB | null = null;
-export const localDb = () => (shared ??= new WarshaDB());
+let shared: LocalDB | null = null;
+export const localDb = () => (shared ??= new LocalDB());
 
 let counter = 0;
 /** يضيف عملية للطابور. لو نفس الـ id موجود، ما بيتضافش تاني */
-export async function enqueue(db: WarshaDB, kind: OpKind, id: string, payload: Record<string, unknown>, now = Date.now()): Promise<boolean> {
+export async function enqueue(db: LocalDB, kind: OpKind, id: string, payload: Record<string, unknown>, now = Date.now()): Promise<boolean> {
   return db.transaction('rw', db.outbox, async () => {
     if (await db.outbox.get(id)) return false;
     counter = (counter + 1) % 1000;
@@ -54,15 +55,15 @@ export async function enqueue(db: WarshaDB, kind: OpKind, id: string, payload: R
   });
 }
 
-export const pendingCount = (db: WarshaDB) => db.outbox.where('status').equals('pending').count();
-export const failedItems = (db: WarshaDB) => db.outbox.where('status').equals('failed').sortBy('seq');
+export const pendingCount = (db: LocalDB) => db.outbox.where('status').equals('pending').count();
+export const failedItems = (db: LocalDB) => db.outbox.where('status').equals('failed').sortBy('seq');
 
 /** نتيجة تنفيذ عملية: تمت، أو مشكلة شبكة (نوقف ونحاول بعدين بنفس الترتيب)، أو رفض نهائي من السيرفر */
 export type RunResult = { ok: true } | { ok: false; network: true; error: string } | { ok: false; network: false; error: string };
 export type Runner = (item: OutboxItem) => Promise<RunResult>;
 
 /** بيبعت الطابور بالترتيب. مشكلة الشبكة بتوقف الإرسال (عشان الترتيب يفضل صح). الرفض النهائي بيتعلّم "فشل" ويكمّل */
-export async function flush(db: WarshaDB, run: Runner): Promise<{ sent: number; failed: number; stopped: boolean }> {
+export async function flush(db: LocalDB, run: Runner): Promise<{ sent: number; failed: number; stopped: boolean }> {
   let sent = 0;
   let failed = 0;
   const items = await db.outbox.where('status').equals('pending').sortBy('seq');
@@ -84,16 +85,16 @@ export async function flush(db: WarshaDB, run: Runner): Promise<{ sent: number; 
 }
 
 /** رجّع العمليات اللي فشلت للطابور (بعد ما المستخدم يصلّح السبب) */
-export async function retryFailed(db: WarshaDB): Promise<number> {
+export async function retryFailed(db: LocalDB): Promise<number> {
   const f = await failedItems(db);
   await Promise.all(f.map((x) => db.outbox.update(x.id, { status: 'pending' })));
   return f.length;
 }
 
-export async function cacheSet(db: WarshaDB, key: string, value: unknown, now = Date.now()) {
+export async function cacheSet(db: LocalDB, key: string, value: unknown, now = Date.now()) {
   await db.cache.put({ key, value, updatedAt: now });
 }
-export async function cacheGet<T>(db: WarshaDB, key: string): Promise<{ value: T; updatedAt: number } | null> {
+export async function cacheGet<T>(db: LocalDB, key: string): Promise<{ value: T; updatedAt: number } | null> {
   const r = await db.cache.get(key);
   return r ? { value: r.value as T, updatedAt: r.updatedAt } : null;
 }

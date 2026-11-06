@@ -7,7 +7,7 @@ export function buildSetup(root = process.cwd()) {
   const dir = join(root, 'supabase', 'migrations');
   const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
   const head = [
-    '-- ورشة / Warsha: إعداد قاعدة البيانات كاملة في خطوة واحدة.',
+    '-- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.',
     '-- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).',
     '-- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file',
     `-- الملفات: ${files.join(', ')}`,

@@ -8,7 +8,8 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 export interface EncryptedBackup {
-  format: 'warsha-backup-enc';
+  /** الاسم القديم warsha-backup-enc بيتقري برضه (نسخ اتعملت قبل تغيير اسم التطبيق) */
+  format: 'gawalak-backup-enc' | 'warsha-backup-enc';
   v: 1;
   kdf: 'PBKDF2-SHA256';
   iter: number;
@@ -39,11 +40,11 @@ export async function encryptBackup(data: unknown, password: string, iter = ITER
   const iv = crypto.getRandomValues(new Uint8Array(new ArrayBuffer(12)));
   const key = await keyFrom(password, salt, iter);
   const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data))));
-  return { format: 'warsha-backup-enc', v: 1, kdf: 'PBKDF2-SHA256', iter, salt: b64(salt), iv: b64(iv), data: b64(ct) };
+  return { format: 'gawalak-backup-enc', v: 1, kdf: 'PBKDF2-SHA256', iter, salt: b64(salt), iv: b64(iv), data: b64(ct) };
 }
 
 export async function decryptBackup<T = unknown>(file: EncryptedBackup, password: string): Promise<T> {
-  if (file?.format !== 'warsha-backup-enc' || file.v !== 1) throw new Error('E_BACKUP_FORMAT');
+  if ((file?.format !== 'gawalak-backup-enc' && file?.format !== 'warsha-backup-enc') || file.v !== 1) throw new Error('E_BACKUP_FORMAT');
   const key = await keyFrom(password, unb64(file.salt), file.iter);
   try {
     const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(file.iv) }, key, unb64(file.data));

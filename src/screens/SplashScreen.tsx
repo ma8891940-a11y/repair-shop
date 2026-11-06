@@ -2,11 +2,11 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { usePrefs } from '../app/prefs';
 import { CircuitField } from '../ui/fx/CircuitField';
-import { Mark } from '../ui/Logo';
+import { AppLogo } from '../ui/Logo';
 
 /** الشاشة الافتتاحية: الشعار بيترسم فوق الخلفية الحية، وخط تحميل رفيع. مش صفحة تعريفية. */
 export function SplashScreen({ duration }: { duration: number }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { calm } = usePrefs();
   return (
     <motion.div
@@ -21,10 +21,11 @@ export function SplashScreen({ duration }: { duration: number }) {
       <div className="relative flex flex-col items-center">
         <motion.div initial={calm ? false : { scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.4 }} className="relative">
           <div className="absolute inset-0 -m-6 rounded-full opacity-70 blur-2xl" style={{ background: 'radial-gradient(closest-side, rgb(var(--accent-rgb) / 0.35), transparent)' }} />
-          <Mark size={84} draw />
+          <AppLogo height={150} intro />
         </motion.div>
-        <motion.div initial={calm ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.3 }} className="mt-5 text-center">
-          <div className="text-glow text-2xl font-semibold tracking-tight text-fg">{t('app.name')}</div>
+        <motion.div initial={calm ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.3 }} className="mt-5 text-center">
+          {/* الاسم العربي مكتوب في اللوجو نفسه، فبيظهر كنص في الإنجليزي بس */}
+          {i18n.language !== 'ar' && <div className="text-glow text-2xl font-semibold tracking-tight text-fg">{t('app.name')}</div>}
           <div className="mt-1 text-sm text-fg-3">{t('app.tagline')}</div>
         </motion.div>
         <div className="mt-8 h-[2px] w-40 overflow-hidden rounded-full bg-line">

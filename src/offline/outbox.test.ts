@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { WarshaDB, cacheGet, cacheSet, enqueue, failedItems, flush, isDuplicate, isNetworkError, pendingCount, retryFailed, type OutboxItem, type RunResult } from './outbox';
+import { LocalDB, cacheGet, cacheSet, enqueue, failedItems, flush, isDuplicate, isNetworkError, pendingCount, retryFailed, type OutboxItem, type RunResult } from './outbox';
 
-let db: WarshaDB;
+let db: LocalDB;
 let n = 0;
 beforeEach(async () => {
-  db = new WarshaDB(`test-${++n}`);
+  db = new LocalDB(`test-${++n}`);
   await db.open();
 });
 

@@ -22,7 +22,7 @@ describe.skipIf(!url)('البيانات التجريبية', () => {
     const sql = readFileSync(join(__dirname, '..', '..', 'supabase', 'seed_demo.sql'), 'utf8');
     await db.query(sql);
     await db.query(sql); // التكرار آمن
-    const shop = (await db.query(`select shop_id from profiles where email = 'owner@warsha.demo'`)).rows;
+    const shop = (await db.query(`select shop_id from profiles where email = 'owner@gawalak.demo'`)).rows;
     expect(shop).toHaveLength(1);
     const s = shop[0].shop_id;
     const roles = (await db.query(`select role::text from profiles where shop_id = $1 order by role`, [s])).rows.map((r) => r.role);
@@ -32,7 +32,7 @@ describe.skipIf(!url)('البيانات التجريبية', () => {
     const bal = (await db.query(`select sum(debit) = sum(credit) as ok, count(distinct entry_id)::int n from journal_lines where shop_id = $1`, [s])).rows[0];
     expect(bal.ok).toBe(true);
     expect(bal.n).toBeGreaterThanOrEqual(20);
-    const pw = (await db.query(`select count(*)::int n from auth.users where email like '%@warsha.demo' and encrypted_password = crypt('Warsha#2026', encrypted_password)`)).rows[0].n;
+    const pw = (await db.query(`select count(*)::int n from auth.users where email like '%@gawalak.demo' and encrypted_password = crypt('Gawalak#2026', encrypted_password)`)).rows[0].n;
     expect(pw).toBe(3);
   });
 });
