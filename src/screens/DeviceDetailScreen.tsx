@@ -2,10 +2,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowRight, Eye, ImagePlus, KeyRound, Printer, Receipt, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, ImagePlus, KeyRound, Printer, QrCode, Receipt, ShieldCheck, X } from 'lucide-react';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
 import { useLiveRefresh } from '../app/AppShell';
+import { WhatsAppButton, WhatsAppDialog, type MessageTarget } from '../app/messaging';
+import type { CheckItems } from '../lib/checks';
+import { inWarranty } from '../lib/customers';
+import { CheckCompare, QuickCheck } from '../ui/QuickCheck';
 import { supabase } from '../lib/supabase';
 import { nextStatusesFor, type DeviceStatus } from '../lib/status';
 import { errorMessage } from '../lib/errors';
@@ -38,6 +42,11 @@ interface PhotoRow {
   id: string;
   storage_path: string;
 }
+interface CheckRow {
+  id: string;
+  stage: 'intake' | 'delivery';
+  items: CheckItems;
+}
 interface LockRow {
   kind: 'pin' | 'pattern';
   secret_id: string | null;
@@ -60,17 +69,19 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ msg: string; n: number } | null>(null);
   const [confirmDeliver, setConfirmDeliver] = useState(false);
+  const [wa, setWa] = useState(false);
 
   const { data, error, loading, reload } = useLoad(async () => {
     const d = must(await supabase.from('devices').select('*').eq('id', id).is('deleted_at', null).maybeSingle()) as Device | null;
     if (!d) return null;
-    const [c, k, l, n, p, lk] = await Promise.all([
+    const [c, k, l, n, p, lk, ck] = await Promise.all([
       front ? supabase.from('customers').select('id, name, phone, area').eq('id', d.customer_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
       front ? supabase.from('device_costs').select('id, device_id, estimated_cost, final_cost').eq('device_id', id).is('deleted_at', null).maybeSingle() : Promise.resolve({ data: null, error: null }),
       supabase.from('status_log').select('id, new_status, created_at, profiles(full_name)').eq('device_id', id).order('created_at'),
       supabase.from('device_notes').select('id, body, created_at, profiles(full_name)').eq('device_id', id).is('deleted_at', null).order('created_at'),
       supabase.from('device_photos').select('id, storage_path').eq('device_id', id).is('deleted_at', null).order('created_at'),
       supabase.from('device_passcodes').select('kind, secret_id, erased_at').eq('device_id', id).maybeSingle(),
+      supabase.from('device_checks').select('id, stage, items').eq('device_id', id).is('deleted_at', null),
     ]);
     const photos = (must(p) ?? []) as PhotoRow[];
     let urls: Record<string, string> = {};
@@ -88,6 +99,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
       photos,
       urls,
       lock: (lk.data as LockRow | null) ?? null,
+      checks: (must(ck) ?? []) as CheckRow[],
     };
   }, [id, front]);
   useLiveRefresh(reload);
@@ -128,6 +140,24 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   }
 
   const d = data?.device;
+  const readyLog = data?.log.filter((l) => l.new_status === 'ready').at(-1);
+  const target: MessageTarget | null =
+    d && data?.customer
+      ? {
+          deviceId: d.id,
+          customerId: data.customer.id,
+          customerName: data.customer.name,
+          phone: data.customer.phone,
+          orderNo: d.order_no,
+          device: `${d.brand} ${d.model}`,
+          status: d.status,
+          token: d.tracking_token,
+          cost: data.cost?.final_cost ?? data.cost?.estimated_cost ?? null,
+          readySince: readyLog?.created_at ?? null,
+          warrantyUntil: d.warranty_until,
+        }
+      : null;
+  const waInitial = d ? (d.status === 'ready' ? 'ready' : d.status === 'awaiting_approval' ? 'approval' : d.status === 'delivered' ? 'delivered' : d.status === 'received' ? 'received' : 'status') : 'status';
   const body = (
     <div className={cn('mx-auto w-full max-w-6xl', overlay && 'px-4 py-6 md:px-6')}>
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -136,7 +166,11 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
           {t('device.back')}
         </button>
         {front && d && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {target && <WhatsAppButton onClick={() => setWa(true)} />}
+            <Link to={`/print/label/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong">
+              <QrCode className="size-4" /> {t('detail.label')}
+            </Link>
             <Link to={`/print/receipt/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong">
               <Printer className="size-4" /> {t('detail.receipt')}
             </Link>
@@ -252,8 +286,18 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                   <Row label={t('device.accessories')}>{d.accessories.length ? d.accessories.map((a) => t(`intake.acc.${a}`, { defaultValue: a })).join(t('common.sep')) : t('device.withoutAcc')}</Row>
                   <Row label={t('device.issue')}>{d.issue}</Row>
                   <Row label={t('device.condition')}>{d.cosmetic_condition || t('common.none')}</Row>
+                  {d.warranty_until && (
+                    <Row label={t('print.warranty')}>
+                      <span className={cn('inline-flex items-center gap-1', inWarranty(d.warranty_until, new Date()) ? 'text-ok' : 'text-fg-3')}>
+                        <ShieldCheck className="size-3.5" aria-hidden />
+                        {inWarranty(d.warranty_until, new Date()) ? t('warranty.until', { d: f.date(d.warranty_until) }) : t('warranty.expired')}
+                      </span>
+                    </Row>
+                  )}
                 </dl>
               </Panel>
+
+              <ChecksPanel deviceId={id} shopId={profile.shop_id} status={d.status} checks={data.checks} onSaved={reload} />
 
               <PhotosPanel deviceId={id} shopId={profile.shop_id} photos={data.photos} urls={data.urls} canEdit={front && d.status !== 'delivered'} onChanged={reload} />
             </div>
@@ -280,6 +324,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
         )
       )}
 
+      <WhatsAppDialog open={wa} onOpenChange={setWa} target={target} initial={waInitial} />
       <Dialog
         open={confirmDeliver}
         onOpenChange={setConfirmDeliver}
@@ -579,6 +624,60 @@ function PhotosPanel({ deviceId, shopId, photos, urls, canEdit, onChanged }: { d
             e.target.value = '';
           }}
         />
+      </div>
+    </Panel>
+  );
+}
+
+function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: string; shopId: string; status: DeviceStatus; checks: CheckRow[]; onSaved: () => void }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const intake = checks.find((c) => c.stage === 'intake') ?? null;
+  const delivery = checks.find((c) => c.stage === 'delivery') ?? null;
+  // فحص التسليم بيتفتح لما الجهاز يخلص صيانة
+  const deliveryOpen = ['repaired', 'ready', 'delivered', 'unrepairable'].includes(status);
+  const [stage, setStage] = useState<'intake' | 'delivery'>(deliveryOpen ? 'delivery' : 'intake');
+  const current = stage === 'intake' ? intake : delivery;
+  const [items, setItems] = useState<CheckItems>(current?.items ?? {});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setItems((stage === 'intake' ? intake : delivery)?.items ?? {}), [stage, intake, delivery]);
+
+  async function save() {
+    setBusy(true);
+    const r = current
+      ? await supabase.from('device_checks').update({ items }).eq('id', current.id)
+      : await supabase.from('device_checks').insert({ shop_id: shopId, device_id: deviceId, stage, items });
+    setBusy(false);
+    if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
+    toast({ tone: 'ok', title: t('checks.saved') });
+    onSaved();
+  }
+
+  return (
+    <Panel>
+      <PanelHeader
+        title={t('checks.title')}
+        actions={
+          <div className="flex rounded-sm border border-glass-border p-0.5" role="tablist">
+            {(['intake', 'delivery'] as const).map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={stage === k} disabled={k === 'delivery' && !deliveryOpen} onClick={() => setStage(k)} className={cn('h-6 rounded-xs px-2 text-2xs disabled:opacity-40', stage === k ? 'bg-raised text-fg' : 'text-fg-3')}>
+                {t(`checks.${k}`)}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <div className="flex flex-col gap-3 p-4">
+        <QuickCheck value={items} onChange={setItems} disabled={status === 'delivered' && stage === 'delivery' && !!delivery} />
+        <Button size="sm" loading={busy} onClick={() => void save()} className="self-start">
+          {t('checks.save')}
+        </Button>
+        {intake && delivery && (
+          <div className="mt-1 border-t border-glass-border pt-3">
+            <div className="mb-1 text-xs font-medium text-fg-2">{t('checks.compare')}</div>
+            <CheckCompare intake={intake.items} delivery={delivery.items} />
+          </div>
+        )}
       </div>
     </Panel>
   );

@@ -22,6 +22,9 @@ import { Alert, Skeleton } from '../ui/Feedback';
 import { Dialog } from '../ui/Dialog';
 import { Kbd } from '../ui/Kbd';
 import { LineIcon } from '../ui/fx/LineIcon';
+import { QuickCheck } from '../ui/QuickCheck';
+import type { CheckItems } from '../lib/checks';
+import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
 
@@ -35,6 +38,8 @@ interface Prev {
   id: string;
   order_no: string;
   received_at: string;
+  status: string;
+  warranty_until: string | null;
 }
 
 export function IntakeScreen() {
@@ -61,6 +66,7 @@ export function IntakeScreen() {
   const [condition, setCondition] = useState('');
   const [estimate, setEstimate] = useState('');
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
+  const [check, setCheck] = useState<CheckItems>({});
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -99,7 +105,7 @@ export function IntakeScreen() {
     if (imeiClean.length < 14) return setPrev([]);
     let live = true;
     const tm = setTimeout(async () => {
-      const { data } = await supabase.from('devices').select('id, order_no, received_at').eq('imei', imeiClean).is('deleted_at', null).order('received_at', { ascending: false }).limit(5);
+      const { data } = await supabase.from('devices').select('id, order_no, received_at, status, warranty_until').eq('imei', imeiClean).is('deleted_at', null).order('received_at', { ascending: false }).limit(5);
       if (live) setPrev((data ?? []) as Prev[]);
     }, 250);
     return () => {
@@ -158,6 +164,10 @@ export function IntakeScreen() {
         const l = await supabase.rpc('set_device_passcode', { p_device_id: id, p_kind: lockType, p_value: lockValue.trim() });
         if (l.error) throw l.error;
       }
+      if (Object.keys(check).length > 0) {
+        const ck = await supabase.from('device_checks').insert({ shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check });
+        if (ck.error) throw ck.error;
+      }
       for (const p of photos) await uploadDevicePhoto(profile.shop_id, id, p.file);
       setSaved({ id, orderNo: d.data.order_no as string });
     } catch (e) {
@@ -185,12 +195,23 @@ export function IntakeScreen() {
     setCondition('');
     setEstimate('');
     setPhotos([]);
+    setCheck({});
     setErrors({});
     setSaved(null);
     setTimeout(() => document.getElementById('intake-phone')?.focus(), 50);
   }
 
   const errCount = Object.keys(errors).length;
+  // نفس الجهاز اتسلّم قبل كده ولسه في الضمان: الأنسب يتسجل مرتجع ضمان على نفس الطلب
+  const warrantyHit = prev.find((p) => p.status === 'delivered' && inWarranty(p.warranty_until, new Date())) ?? null;
+  async function asWarrantyReturn(deviceId: string) {
+    setBusy(true);
+    const { error } = await supabase.from('devices').update({ status: 'warranty_return' }).eq('id', deviceId);
+    setBusy(false);
+    if (error) return setFormError(errorMessage(error));
+    toast({ tone: 'ok', title: t('warranty.returned') });
+    navigate(`/devices/${deviceId}`);
+  }
   const cur = f.currency(shop.currency);
 
   return (
@@ -350,6 +371,19 @@ export function IntakeScreen() {
                   />
                 </Field>
               </div>
+              {warrantyHit && (
+                <Alert
+                  tone="info"
+                  title={t('warranty.inTitle')}
+                  action={
+                    <Button size="sm" variant="primary" loading={busy} onClick={() => void asWarrantyReturn(warrantyHit.id)}>
+                      {t('warranty.asReturn')}
+                    </Button>
+                  }
+                >
+                  {t('warranty.inText', { order: warrantyHit.order_no, until: f.date(warrantyHit.warranty_until!) })}
+                </Alert>
+              )}
               <AnimatePresence>
                 {prev.length > 0 && (
                   <Alert tone="warn" title={t('intake.seenBefore', { n: prev.length })}>
@@ -410,9 +444,17 @@ export function IntakeScreen() {
             </div>
           </Panel>
 
-          {/* 04 الصور */}
+ {/* 04 الفحص السريع */}
           <Panel>
-            <PanelHeader index="04" title={t('intake.photos')} actions={<span className="num text-xs text-fg-3">{photos.length}/{MAX_PHOTOS}</span>} />
+            <PanelHeader index="04" title={t('checks.title')} actions={<span className="text-2xs text-fg-3">{t('common.optional')}</span>} />
+            <div className="p-4">
+              <QuickCheck value={check} onChange={setCheck} />
+            </div>
+          </Panel>
+
+          {/* 05 الصور */}
+          <Panel>
+            <PanelHeader index="05" title={t('intake.photos')} actions={<span className="num text-xs text-fg-3">{photos.length}/{MAX_PHOTOS}</span>} />
             <div className="p-4">
               <PhotoDrop
                 photos={photos}

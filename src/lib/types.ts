@@ -50,6 +50,9 @@ export interface Device {
   received_by: string | null;
   received_at: string;
   delivered_at: string | null;
+  tracking_token: string;
+  warranty_days: number | null;
+  warranty_until: string | null;
 }
 
 /** صف من عرض devices_list (الأجهزة + اسم العميل + الأسعار لو مسموح) */
@@ -68,6 +71,7 @@ export interface DeviceListRow {
   customer_phone: string | null;
   estimated_cost: number | null;
   final_cost: number | null;
+  warranty_until?: string | null;
 }
 
 export interface DeviceCost {

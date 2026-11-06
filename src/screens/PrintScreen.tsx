@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+import { trackingUrl } from '../lib/messages';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../app/auth';
@@ -20,7 +22,9 @@ export function PrintScreen() {
   const f = useFormat();
   const { shop } = useMe();
   const navigate = useNavigate();
-  const isReceipt = kind !== 'invoice';
+  const isLabel = kind === 'label';
+  const isReceipt = kind === 'receipt';
+  const [qr, setQr] = useState<string | null>(null);
 
   const { data, error } = useLoad(async () => {
     const d = must(await supabase.from('devices').select('*').eq('id', id).maybeSingle()) as Device | null;
@@ -32,11 +36,17 @@ export function PrintScreen() {
     return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null };
   }, [id]);
 
+  // الـ QR بيفتح صفحة تتبع العميل بالرمز السري بتاع الجهاز
   useEffect(() => {
-    if (!data) return;
+    if (!data || (!isLabel && !isReceipt)) return;
+    void QRCode.toDataURL(trackingUrl(window.location.href, data.d.tracking_token), { margin: 0, width: 360, errorCorrectionLevel: 'M' }).then(setQr);
+  }, [data, isLabel, isReceipt]);
+
+  useEffect(() => {
+    if (!data || ((isLabel || isReceipt) && !qr)) return;
     const tm = setTimeout(() => window.print(), 350);
     return () => clearTimeout(tm);
-  }, [data]);
+  }, [data, qr, isLabel, isReceipt]);
 
   const logo = shop.logo_path ? supabase.storage.from('shop-logos').getPublicUrl(shop.logo_path).data.publicUrl : null;
   const cur = f.currency(shop.currency);
@@ -47,7 +57,7 @@ export function PrintScreen() {
 
   return (
     <div className="min-h-dvh bg-white text-black">
-      <style>{isReceipt ? '@page { size: 80mm auto; margin: 3mm; }' : '@page { size: A4; margin: 14mm; }'}</style>
+      <style>{isLabel ? '@page { size: 80mm 40mm; margin: 2mm; }' : isReceipt ? '@page { size: 80mm auto; margin: 3mm; }' : '@page { size: A4; margin: 14mm; }'}</style>
       <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden">
         <button type="button" onClick={() => window.print()} className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-on-accent">
           {t('print.print')}
@@ -55,7 +65,7 @@ export function PrintScreen() {
         <button type="button" onClick={() => navigate(-1)} className="h-9 rounded-md border border-neutral-300 px-4 text-sm">
           {t('print.back')}
         </button>
-        <span className="text-xs text-neutral-600">{isReceipt ? t('print.hintReceipt') : t('print.hintInvoice')}</span>
+        <span className="text-xs text-neutral-600">{isReceipt || isLabel ? t('print.hintReceipt') : t('print.hintInvoice')}</span>
       </div>
 
       {error ? (
@@ -64,6 +74,21 @@ export function PrintScreen() {
         <div className="mx-auto w-[76mm] p-4">
           <Skeleton className="h-40 w-full" />
         </div>
+      ) : isLabel ? (
+        <article className="mx-auto flex w-[76mm] items-center gap-3 p-[2mm] text-[11px] print:w-full print:p-0" aria-label={t('label.title')}>
+          {qr ? <img src={qr} alt="" className="size-[30mm] shrink-0" /> : <div className="size-[30mm] shrink-0 bg-neutral-100" />}
+          <div className="min-w-0">
+            <div className="truncate font-bold">{shop.name}</div>
+            <div className="font-mono text-[20px] font-bold leading-tight" dir="ltr">
+              {data.d.order_no}
+            </div>
+            <div className="truncate">
+              {data.d.brand} {data.d.model}
+            </div>
+            <div className="truncate">{data.c && <bdi>{data.c.name.split(' ')[0]}</bdi>}</div>
+            <div className="mt-0.5 text-[9px] text-neutral-600">{t('label.scan')}</div>
+          </div>
+        </article>
       ) : (
         <article className={isReceipt ? 'mx-auto w-[76mm] p-[2mm] text-[12px] print:w-full print:p-0' : 'mx-auto max-w-[190mm] p-[10mm] text-[14px] print:max-w-none print:p-0'}>
           <header className={isReceipt ? 'border-b border-dashed border-black pb-2 text-center' : 'flex items-center justify-between border-b-2 border-black pb-4'}>
@@ -170,6 +195,12 @@ export function PrintScreen() {
                 ))}
               </ol>
             </section>
+          )}
+          {isReceipt && qr && (
+            <div className="mt-2 flex items-center justify-center gap-2 border-t border-dashed border-black pt-2">
+              <img src={qr} alt="" className="size-[22mm]" />
+              <span className="text-[10px]">{t('label.scan')}</span>
+            </div>
           )}
           <footer className={isReceipt ? 'mt-3 text-center' : 'mt-12 flex items-end justify-between'}>
             <div className={isReceipt ? 'mb-2 text-start' : ''}>
