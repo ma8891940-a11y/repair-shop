@@ -1,23 +1,5 @@
-import { expect, test, type Browser } from '@playwright/test';
-import { PASS, afterSplash, noHorizontalScroll, otpFor, prefs, registerShop, uniq } from './helpers';
-
-async function activateInvite(browser: Browser, info: Parameters<typeof prefs>[1], email: string) {
-  const ctx = await browser.newContext(info.project.use);
-  const page = await ctx.newPage();
-  await prefs(page, info);
-  await page.goto('/#/join');
-  await afterSplash(page);
-  await expect(page.getByRole('heading', { name: 'تفعيل حساب موظف' })).toBeVisible();
-  await page.locator('input[type=email]').fill(email);
-  await page.locator('input[type=password]').nth(0).fill(PASS);
-  await page.locator('input[type=password]').nth(1).fill(PASS);
-  await page.getByRole('button', { name: 'التالي' }).click();
-  await page.locator('input[autocomplete=one-time-code]').waitFor();
-  await page.locator('input[autocomplete=one-time-code]').click();
-  await page.keyboard.type(await otpFor(email));
-  await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
-  return { ctx, page };
-}
+import { expect, test } from '@playwright/test';
+import { activateInvite, noHorizontalScroll, prefs, registerShop, uniq } from './helpers';
 
 test('المرحلة 1: تسجيل ← استلام ← فني ← حالات ← تسليم ← طباعة ← بحث', async ({ page, browser }, info) => {
   test.setTimeout(180_000);
@@ -81,6 +63,14 @@ test('المرحلة 1: تسجيل ← استلام ← فني ← حالات �
   await page.getByLabel('التكلفة النهائية').fill('1,400.75');
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
+  // المرحلة 3: التسليم قبل السداد ممنوع، والدفعة بتتسجل من فلوس الجهاز
+  await page.getByRole('button', { name: 'تم التسليم', exact: true }).click();
+  await page.getByRole('button', { name: 'تأكيد' }).click();
+  await expect(page.getByText('لازم الجهاز يتدفع بالكامل قبل التسليم').first()).toBeVisible();
+  await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
+  await expect(page.getByText('اتسجلت العملية')).toBeVisible();
+  await expect(page.getByTestId('device-due')).toHaveText('0');
   await page.getByRole('button', { name: 'تم التسليم', exact: true }).click();
   await page.getByRole('button', { name: 'تأكيد' }).click();
   await expect(page.getByText('القفل اتمسح بعد التسليم.')).toBeVisible();

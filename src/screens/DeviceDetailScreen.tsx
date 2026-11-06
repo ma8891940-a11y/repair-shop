@@ -264,7 +264,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
               </Panel>
 
               {front && <CostPanel deviceId={id} shopId={profile.shop_id} cost={data.cost} currency={f.currency(shop.currency)} onSaved={reload} />}
-              {front && <DeviceMoneyPanel deviceId={id} customer={data.customer ? { id: data.customer.id, name: data.customer.name } : null} orderNo={d.order_no} status={d.status} onChanged={reload} />}
+              {front && <DeviceMoneyPanel deviceId={id} customer={data.customer ? { id: data.customer.id, name: data.customer.name } : null} orderNo={d.order_no} status={d.status} finalCost={data.cost?.final_cost} onChanged={reload} />}
               {profile.role !== 'reception' && <PartsPanel deviceId={id} status={d.status} onChanged={reload} />}
 
               <Panel>

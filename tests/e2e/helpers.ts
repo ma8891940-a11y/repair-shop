@@ -1,4 +1,4 @@
-import { expect, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Browser, type Page, type TestInfo } from '@playwright/test';
 
 /** يظبط اللغة والوضع والمؤثرات قبل ما الصفحة تفتح */
 export async function prefs(page: Page, info: TestInfo, o: { lang?: 'ar' | 'en'; effects?: boolean } = {}) {
@@ -69,5 +69,24 @@ export async function registerShop(page: Page, email: string) {
   await expect(page.getByRole('heading', { name: 'الشعار والمظهر' })).toBeVisible();
   await page.getByRole('button', { name: 'ابدأ الشغل' }).click();
   await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
+}
+
+
+export async function activateInvite(browser: Browser, info: TestInfo, email: string) {
+  const ctx = await browser.newContext(info.project.use);
+  const page = await ctx.newPage();
+  await prefs(page, info);
+  await page.goto('/#/join');
+  await afterSplash(page);
+  await expect(page.getByRole('heading', { name: 'تفعيل حساب موظف' })).toBeVisible();
+  await page.locator('input[type=email]').fill(email);
+  await page.locator('input[type=password]').nth(0).fill(PASS);
+  await page.locator('input[type=password]').nth(1).fill(PASS);
+  await page.getByRole('button', { name: 'التالي' }).click();
+  await page.locator('input[autocomplete=one-time-code]').waitFor();
+  await page.locator('input[autocomplete=one-time-code]').click();
+  await page.keyboard.type(await otpFor(email));
+  await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
+  return { ctx, page };
 }
 

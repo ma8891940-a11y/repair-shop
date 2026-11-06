@@ -20,7 +20,7 @@ import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 
 /** فلوس الجهاز (صاحب المحل والاستقبال): التكلفة، والمدفوع، والباقي، والدفعات، والتسليم بالآجل */
-export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; onChanged: () => void }) {
+export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCost, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; finalCost: number | null | undefined; onChanged: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile, shop } = useMe();
@@ -28,7 +28,7 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, onChange
   const owner = profile.role === 'owner';
   const [pay, setPay] = useState(false);
   const [calc, setCalc] = useState(false);
-  const { data, error, loading, reload } = useLoad(() => rpc<DeviceMoney>('device_money', { p_device: deviceId }), [deviceId, status]);
+  const { data, error, loading, reload } = useLoad(() => rpc<DeviceMoney>('device_money', { p_device: deviceId }), [deviceId, status, finalCost]);
   const cur = f.currency(shop.currency);
   const done = () => {
     reload();

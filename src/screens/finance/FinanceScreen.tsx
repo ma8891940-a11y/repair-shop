@@ -6,7 +6,7 @@ import { ArrowDownUp, Banknote, Boxes, CheckCircle2, HandCoins, Landmark, PiggyB
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
-import { rpc, useAccountName, type Position } from '../../app/ledgerApi';
+import { rpc, sortCashboxes, useAccountName, type Position } from '../../app/ledgerApi';
 import { OpDialog, type Op } from '../../app/finance/OpDialog';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { fillDaily } from '../../lib/ledger';
@@ -91,6 +91,11 @@ export function FinanceScreen() {
         </Panel>
       ) : (
         <>
+          {p && !p.balanced && (
+            <Alert tone="danger" className="mb-4" title={t('fin.unbalancedTitle')}>
+              <span data-testid="ledger-unbalanced">{t('fin.unbalancedText', { n: p.unbalanced_entries, d: f.money(p.debits), c: f.money(p.credits) })}</span>
+            </Alert>
+          )}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             {kpis.map((k, i) => (
               <motion.div key={k.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: i * 0.04 }}>
@@ -142,13 +147,7 @@ export function FinanceScreen() {
                     ) : null}
                   </div>
                 </div>
-                {!p.balanced && (
-                  <Alert tone="danger" className="mt-3" title={t('fin.unbalancedTitle')}>
-                    <span data-testid="ledger-unbalanced">
-                      {t('fin.unbalancedText', { n: p.unbalanced_entries, d: f.money(p.debits), c: f.money(p.credits) })}
-                    </span>
-                  </Alert>
-                )}
+                {!p.balanced && <p className="mt-2 text-sm font-medium text-danger">{t('fin.unbalancedTitle')}</p>}
               </>
             )}
           </Panel>
@@ -168,7 +167,7 @@ export function FinanceScreen() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {loading || !p
                 ? [0, 1, 2].map((k) => <Skeleton key={k} className="h-24 w-full" />)
-                : p.cashboxes.map((cb) => (
+                : sortCashboxes(p.cashboxes).map((cb) => (
                     <Link key={cb.id} to={`/finance/cashbox/${cb.id}${query}`} className="glass lift block rounded-lg p-3" data-testid="cashbox-card">
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-sm font-medium text-fg">{accName(cb)}</span>

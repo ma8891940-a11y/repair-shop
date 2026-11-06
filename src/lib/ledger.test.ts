@@ -69,3 +69,11 @@ describe('التصدير لـ Excel', () => {
     expect(matchMove(m, '', '')).toBe(true);
   });
 });
+
+describe('ترتيب الخزن', () => {
+  it('كاش الدرج الأول دايمًا، والمضافة في الآخر', async () => {
+    const { sortCashboxes } = await import('../app/ledgerApi');
+    const r = sortCashboxes([{ code: 'cash_bank_transfer' }, { code: null }, { code: 'cash_wallet' }, { code: 'cash_cash' }]);
+    expect(r.map((x) => x.code)).toEqual(['cash_cash', 'cash_wallet', 'cash_bank_transfer', null]);
+  });
+});

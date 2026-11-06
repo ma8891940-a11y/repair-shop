@@ -102,5 +102,12 @@ export function useAccountName() {
 export async function loadCashboxes(): Promise<Cashbox[]> {
   const { data, error } = await supabase.from('accounts').select('id, code, name, method, holder_id, active').eq('kind', 'cash').eq('active', true).is('deleted_at', null).order('created_at');
   if (error) throw error;
-  return (data ?? []) as Cashbox[];
+  return sortCashboxes((data ?? []) as Cashbox[]);
+}
+
+/** ترتيب ثابت للخزن: كاش الدرج الأول، وبعدين باقي الأساسية بالترتيب ده، وبعدين المضافة */
+const CASH_ORDER = ['cash_cash', 'cash_wallet', 'cash_instapay', 'cash_bank_transfer', 'cash_card', 'cash_installments'];
+export function sortCashboxes<T extends { code: string | null }>(list: T[]): T[] {
+  const rank = (c: T) => (c.code && CASH_ORDER.includes(c.code) ? CASH_ORDER.indexOf(c.code) : CASH_ORDER.length);
+  return [...list].sort((a, b) => rank(a) - rank(b));
 }
