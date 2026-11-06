@@ -102,14 +102,31 @@ d('المرحلة 2: العميل', () => {
     }
   });
 
-  it('حد المحاولات: بعد 5 محاولات غلط لنفس رقم الطلب بيقفل، حتى بالبيانات الصح', async () => {
+  it('حد المحاولات: بعد 5 تخمينات مختلفة لنفس رقم الطلب بيقفل، حتى بالبيانات الصح', async () => {
     const victim = randomUUID();
     const r = await as<{ order_no: string }>(owner, `insert into devices(id, customer_id, brand, model, issue) values ($1, $2, 'Oppo', 'A78', 'x') returning order_no`, [victim, customer]);
     const o = r.rows[0].order_no;
-    // رقم الطلب مش فريد بين المحلات، فممكن يكون عليه محاولات غلط من تشغيلات قبل كده: بنكمّل لحد 5
-    const prev = Number((await admin(`select count(*) from tracking_attempts where order_no = $1 and not success and created_at > now() - interval '15 minutes'`, [o])).rows[0].count);
-    for (let i = prev; i < 5; i++) expect((await as(null, `select * from get_tracking($1, $2)`, [o, String(1000 + i)], `${NET}.1.${i}`)).rowCount).toBe(0);
-    await expect(as(null, `select * from get_tracking($1, '6789')`, [o], `${NET}.1.99`)).rejects.toThrow(/E_RATE_LIMIT/);
+    // رقم الطلب مش فريد بين المحلات، فممكن يكون عليه تخمينات من تشغيلات قبل كده: بنكمّل لحد 5 مختلفين
+    const seen = new Set((await admin(`select distinct guess from tracking_attempts where order_no = $1 and not success and guess is not null and created_at > now() - interval '15 minutes'`, [o])).rows.map((x) => x.guess));
+    for (let v = 1000; seen.size < 5; v++) {
+      const h = (await admin(`select tracking_guess($1, $2) as h`, [o, String(v)])).rows[0].h;
+      if (seen.has(h)) continue;
+      expect((await as(null, `select * from get_tracking($1, $2)`, [o, String(v)], `${NET}.1.${v % 250}`)).rowCount).toBe(0);
+      seen.add(h);
+    }
+    await expect(as(null, `select * from get_tracking($1, '6789')`, [o], `${NET}.1.251`)).rejects.toThrow(/E_RATE_LIMIT/);
+    // التخمين نفسه ما بيتخزنش، بيتخزن hash بس
+    const stored = await admin(`select guess from tracking_attempts where order_no = $1 and guess is not null limit 1`, [o]);
+    expect(stored.rows[0].guess).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('حد المحاولات: تكرار نفس الغلطة ما بيقفلش رقم الطلب (عشان عميل محل تاني بنفس الرقم ما يتأثرش)', async () => {
+    const x = randomUUID();
+    const r = await as<{ order_no: string }>(owner, `insert into devices(id, customer_id, brand, model, issue) values ($1, $2, 'Oppo', 'A16', 'x') returning order_no`, [x, customer]);
+    const o = r.rows[0].order_no;
+    const wrong = '1234'; // ثابت عشان التشغيلات المتكررة تبقى نفس الغلطة
+    for (let i = 0; i < 8; i++) await as(null, `select * from get_tracking($1, $2)`, [o, wrong], `${NET}.5.${i}`);
+    expect((await as(null, `select order_no from get_tracking($1, '6789')`, [o], `${NET}.5.99`)).rows[0].order_no).toBe(o);
   });
 
   it('حد المحاولات: بعد 10 محاولات غلط من نفس الجهاز بيقفل', async () => {
@@ -151,6 +168,7 @@ d('المرحلة 2: العميل', () => {
     await as(owner, `update shops set warranty_days = 45`);
     for (const st of ['repaired', 'ready']) await as(owner, `update devices set status = $2 where id = $1`, [dev, st]);
     await as(owner, `update device_costs set final_cost = 160000 where device_id = $1`, [dev]);
+    await as(owner, `select record_payment($1, $2, (select id from accounts where code = 'cash_cash'), 160000, $3)`, [randomUUID(), customer, dev]);
     await as(owner, `update devices set status = 'delivered' where id = $1`, [dev]);
     const r = await as(owner, `select warranty_days, extract(day from warranty_until - delivered_at)::int as days from devices where id = $1`, [dev]);
     expect(r.rows[0]).toEqual({ warranty_days: 45, days: 45 });

@@ -183,6 +183,9 @@ d('قاعدة البيانات: العزل والصلاحيات', () => {
   it('التسليم محتاج تكلفة نهائية، وبيسجّل وقت التسليم تلقائيًا', async () => {
     await expect(as(recA, `update devices set status = 'delivered' where id = $1`, [deviceA])).rejects.toThrow(/E_FINAL_COST_REQUIRED/);
     await as(recA, `update device_costs set final_cost = 17550 where device_id = $1`, [deviceA]);
+    // المرحلة 3: التسليم محتاج سداد
+    await expect(as(recA, `update devices set status = 'delivered' where id = $1`, [deviceA])).rejects.toThrow(/E_UNPAID/);
+    await as(recA, `select record_payment($1, $2, (select id from accounts where code = 'cash_cash'), 17550, $3)`, [randomUUID(), customerA, deviceA]);
     await as(recA, `update devices set status = 'delivered' where id = $1`, [deviceA]);
     const r = await as(recA, `select delivered_at, final_cost from devices_list where id = $1`, [deviceA]);
     expect(r.rows[0].delivered_at).toBeInstanceOf(Date);
@@ -274,6 +277,7 @@ d('قاعدة البيانات: العزل والصلاحيات', () => {
     // التسليم بيمسحها نهائيًا
     await as(recA, `update device_costs set final_cost = 0 where device_id = $1`, [dev]).catch(() => null);
     await as(recA, `insert into device_costs(shop_id, device_id, final_cost) values (gen_random_uuid(), $1, 5000)`, [dev]);
+    await as(recA, `select record_payment($1, $2, (select id from accounts where code = 'cash_cash'), 5000, $3)`, [randomUUID(), customerA, dev]);
     for (const st of ['inspecting', 'in_repair', 'repaired', 'ready', 'delivered']) await as(recA, `update devices set status = $2 where id = $1`, [dev, st]);
     const after = await admin(`select secret_id, erased_at from device_passcodes where device_id = $1`, [dev]);
     expect(after.rows[0].secret_id).toBeNull();
