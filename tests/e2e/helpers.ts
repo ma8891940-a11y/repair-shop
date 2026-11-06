@@ -75,7 +75,7 @@ export async function registerShop(page: Page, email: string, shopName = 'مرك
 }
 
 
-export async function activateInvite(browser: Browser, info: TestInfo, email: string) {
+export async function activateInvite(browser: Browser, info: TestInfo, email: string, landing = 'لوحة التحكم') {
   const ctx = await browser.newContext(info.project.use);
   const page = await ctx.newPage();
   await prefs(page, info);
@@ -89,7 +89,7 @@ export async function activateInvite(browser: Browser, info: TestInfo, email: st
   await page.locator('input[autocomplete=one-time-code]').waitFor();
   await page.locator('input[autocomplete=one-time-code]').click();
   await page.keyboard.type(await otpFor(email));
-  await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: landing })).toBeVisible();
   return { ctx, page };
 }
 

@@ -60,7 +60,7 @@ test('المرحلة 4: مسار IC بين فنيين بالترتيب ← نف�
   await expect(itemA).toContainText('عاجل');
   await expect(itemA).toContainText('خطوة 1 من 3: فك وتركيب');
   await A.page.getByRole('button', { name: 'ابدأ' }).click();
-  await expect(A.page.getByText(/بدأت/)).toBeVisible();
+  await expect(A.page.getByRole('button', { name: 'خلّصت' })).toBeVisible();
   await A.page.getByRole('button', { name: 'خلّصت' }).click();
   await expect(A.page.getByText('مع محمد')).toBeVisible();
   await expect(A.page.getByText('مفيش شغل دلوقتي')).toBeVisible();
@@ -70,7 +70,7 @@ test('المرحلة 4: مسار IC بين فنيين بالترتيب ← نف�
   await afterSplash(M.page);
   await expect(M.page.getByTestId('work-item')).toContainText('خطوة 2 من 3: ميكروسكوب');
   await M.page.getByRole('button', { name: 'ابدأ' }).click();
-  await expect(M.page.getByText(/بدأت/)).toBeVisible();
+  await expect(M.page.getByRole('button', { name: 'خلّصت' })).toBeVisible();
   await M.page.getByRole('button', { name: 'خلّصت' }).click();
   await expect(M.page.getByText('مع أحمد')).toBeVisible();
   await noHorizontalScroll(M.page);
@@ -80,7 +80,7 @@ test('المرحلة 4: مسار IC بين فنيين بالترتيب ← نف�
   await afterSplash(A.page);
   await expect(A.page.getByTestId('work-item')).toContainText('خطوة 3 من 3');
   await A.page.getByRole('button', { name: 'ابدأ' }).click();
-  await expect(A.page.getByText(/بدأت/)).toBeVisible();
+  await expect(A.page.getByRole('button', { name: 'خلّصت' })).toBeVisible();
   await A.page.getByRole('button', { name: 'خلّصت' }).click();
   const dlg = A.page.getByRole('dialog');
   await expect(dlg.getByRole('heading', { name: 'الفحص النهائي' })).toBeVisible();

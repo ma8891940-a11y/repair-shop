@@ -5,3 +5,5 @@ dist/
 dev-dist/
 *.log
 *.tsbuildinfo
+test-results/
+playwright-report/
