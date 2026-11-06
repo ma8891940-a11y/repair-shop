@@ -197,7 +197,13 @@
     "preview": "Preview",
     "doneTitle": "Your shop is ready",
     "doneText": "Everything is set up. Let's begin.",
-    "shopNamePh": "Repair Shop"
+    "shopNamePh": "Repair Shop",
+    "invite": {
+      "title": "Activate staff account",
+      "desc": "Use the email the shop owner invited, and choose a password.",
+      "link": "Invited by a shop?",
+      "linkCta": "Activate your account"
+    }
   },
   "countries": {
     "EG": "Egypt",

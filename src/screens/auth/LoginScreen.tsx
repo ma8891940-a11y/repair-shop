@@ -75,6 +75,12 @@ export function LoginScreen() {
           <Link to="/register" className="font-medium text-accent underline-offset-4 hover:underline">
             {t('login.newShop')}
           </Link>
+          <div className="mt-1.5 text-xs">
+            {t('register.invite.link')}{' '}
+            <Link to="/join" className="font-medium text-accent underline-offset-4 hover:underline">
+              {t('register.invite.linkCta')}
+            </Link>
+          </div>
         </div>
       </div>
     </AuthLayout>

@@ -11,7 +11,7 @@ import { TooltipProvider } from './ui/Tooltip';
 import { ToastProvider } from './ui/Toast';
 import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/auth/LoginScreen';
-import { RegisterWizard, hasRegisterDraft } from './screens/auth/RegisterWizard';
+import { RegisterWizard, draftMode, hasRegisterDraft } from './screens/auth/RegisterWizard';
 import { JoinScreen } from './screens/auth/JoinScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { IntakeScreen } from './screens/IntakeScreen';
@@ -43,11 +43,13 @@ function Gate() {
   if (loading) return null;
 
   // المعالج بيفضل في نفس المكان من الشجرة طول الخطوات، فحالته ما بتضيعش وقت تأكيد الإيميل
+  const joinPath = !session && location.pathname === '/join';
   const wizard =
+    joinPath ||
     (!session && location.pathname === '/register') ||
     (session && !profile && hasRegisterDraft()) ||
     (session && profile?.role === 'owner' && shop && !shop.setup_completed_at);
-  if (wizard) return <RegisterWizard />;
+  if (wizard) return <RegisterWizard mode={joinPath ? 'invite' : session ? draftMode() : 'shop'} />;
 
   if (!session) {
     return (

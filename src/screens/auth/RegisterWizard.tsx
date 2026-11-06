@@ -25,7 +25,10 @@ const STEP_ICON: Record<StepKey, LineIconName> = { shop: 'store', account: 'shie
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
 
 const DRAFT = 'reg-draft';
+/** shop = تسجيل محل جديد (6 خطوات) · invite = موظف معاه دعوة (الحساب والكود بس) */
+export type WizardMode = 'shop' | 'invite';
 interface Draft {
+  mode?: WizardMode;
   step: number;
   shopName: string;
   ownerName: string;
@@ -52,15 +55,21 @@ function saveDraft(d: Draft | null) {
 export function hasRegisterDraft(): boolean {
   return loadDraft() !== null;
 }
+export function draftMode(): WizardMode {
+  return loadDraft()?.mode ?? 'shop';
+}
 
 /** تسجيل محل جديد على 6 خطوات. لو المستخدم رجع بعد التأكيد، بيكمّل من آخر خطوة. */
-export function RegisterWizard() {
+export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   const { t } = useTranslation();
   const { session, profile, shop, refresh } = useAuth();
   const { setTheme, theme } = usePrefs();
   const toast = useToast();
   const draft = loadDraft();
-  const resumeAt = profile && shop && !shop.setup_completed_at ? Math.max(3, draft?.step ?? 3) : (draft?.step ?? 0);
+  const mode: WizardMode = modeProp ?? draft?.mode ?? 'shop';
+  const invite = mode === 'invite';
+  const first = invite ? 1 : 0;
+  const resumeAt = profile && shop && !shop.setup_completed_at ? Math.max(3, draft?.step ?? 3) : Math.max(first, draft?.step ?? first);
   const [step, setStep] = useState(resumeAt);
   const [dir, setDir] = useState(1);
 
@@ -92,8 +101,8 @@ export function RegisterWizard() {
   const pw = checkPassword(password);
 
   useEffect(() => {
-    saveDraft({ step, shopName, ownerName, shopPhone, area, email });
-  }, [step, shopName, ownerName, shopPhone, area, email]);
+    saveDraft({ mode, step, shopName, ownerName, shopPhone, area, email });
+  }, [mode, step, shopName, ownerName, shopPhone, area, email]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -112,6 +121,7 @@ export function RegisterWizard() {
   };
 
   async function bootstrapAndContinue() {
+    if (invite) return joinInvite();
     const { error: be } = await supabase.rpc('bootstrap_account', { p_full_name: ownerName.trim(), p_shop_name: shopName.trim() || null });
     if (be) throw be;
     const { data: me } = await supabase.from('profiles').select('shop_id').single();
@@ -121,6 +131,19 @@ export function RegisterWizard() {
       await supabase.from('shops').update({ phone, address: area.trim() || null }).eq('id', me.shop_id);
     }
     go(3);
+  }
+
+  // موظف معاه دعوة: بينضم للمحل اللي عزمه، بالاسم اللي صاحب المحل كتبه
+  async function joinInvite() {
+    const { data: inv, error: ie } = await supabase.rpc('my_pending_invite');
+    if (ie) throw ie;
+    const row = Array.isArray(inv) ? (inv[0] as { shop_name: string; full_name: string } | undefined) : undefined;
+    if (!row) throw new Error(t('onboarding.noInvite'));
+    const { error: be } = await supabase.rpc('bootstrap_account', { p_full_name: row.full_name, p_shop_name: null });
+    if (be) throw be;
+    saveDraft(null);
+    toast({ tone: 'ok', title: t('onboarding.joinTitle'), description: row.shop_name });
+    await refresh();
   }
 
   async function next() {
@@ -220,26 +243,30 @@ export function RegisterWizard() {
     toast({ tone: 'info', title: t('register.resent') });
   }
 
-  const canBack = step > 0 && step !== 3 && step !== 2;
+  const canBack = step > first && step !== 3 && step !== 2;
+  const visible = invite ? (['account', 'verify'] as StepKey[]) : [...STEPS];
+  const vIndex = Math.max(0, visible.indexOf(key));
+  const title = invite && key === 'account' ? t('register.invite.title') : t(`register.steps.${key}.title`);
+  const desc = invite && key === 'account' ? t('register.invite.desc') : t(`register.steps.${key}.desc`);
 
   return (
-    <AuthLayout asideIcon={STEP_ICON[key]} asideKey={key} asideTitle={t(`register.steps.${key}.title`)} asideText={t(`register.steps.${key}.desc`)}>
+    <AuthLayout asideIcon={STEP_ICON[key]} asideKey={key} asideTitle={title} asideText={desc}>
       <div className="glass edge-glow relative shadow-3 overflow-hidden rounded-2xl">
         {/* المؤشر وشريط التقدم */}
         <div className="px-7 pt-6">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-accent">{t('register.step', { n: step + 1, total: STEPS.length })}</span>
+            <span className="font-medium text-accent">{t('register.step', { n: vIndex + 1, total: visible.length })}</span>
             <span className="flex gap-1" aria-hidden>
-              {STEPS.map((s, i) => (
-                <span key={s} className={cn('h-1 w-5 rounded-full transition-colors duration-300', i <= step ? 'bg-accent shadow-[0_0_8px_var(--accent-glow)]' : 'bg-line-strong')} />
+              {visible.map((s, i) => (
+                <span key={s} className={cn('h-1 w-5 rounded-full transition-colors duration-300', i <= vIndex ? 'bg-accent shadow-[0_0_8px_var(--accent-glow)]' : 'bg-line-strong')} />
               ))}
             </span>
           </div>
-          <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-sunken" role="progressbar" aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={step + 1}>
-            <motion.div className="h-full rounded-full bg-accent shadow-[0_0_10px_var(--accent-glow)]" style={{ transformOrigin: rtl ? 'right' : 'left' }} animate={{ scaleX: (step + 1) / STEPS.length }} transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }} />
+          <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-sunken" role="progressbar" aria-valuemin={1} aria-valuemax={visible.length} aria-valuenow={vIndex + 1}>
+            <motion.div className="h-full rounded-full bg-accent shadow-[0_0_10px_var(--accent-glow)]" style={{ transformOrigin: rtl ? 'right' : 'left' }} animate={{ scaleX: (vIndex + 1) / visible.length }} transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }} />
           </div>
-          <h1 className="mt-5 text-xl font-semibold text-fg">{t(`register.steps.${key}.title`)}</h1>
-          <p className="mt-1 text-sm text-fg-3">{t(`register.steps.${key}.desc`)}</p>
+          <h1 className="mt-5 text-xl font-semibold text-fg">{title}</h1>
+          <p className="mt-1 text-sm text-fg-3">{desc}</p>
         </div>
 
         <form
@@ -433,7 +460,7 @@ export function RegisterWizard() {
               <Button variant="ghost" onClick={() => go(step - 1)} icon={<ArrowLeft className="size-4 rtl:-scale-x-100" />}>
                 {t('common.back')}
               </Button>
-            ) : step === 0 ? (
+            ) : step === first ? (
               <span className="text-sm text-fg-3">
                 {t('register.haveAccount')}{' '}
                 <Link to="/" className="font-medium text-accent hover:underline">
