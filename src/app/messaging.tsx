@@ -8,6 +8,7 @@ import { TEMPLATE_KEYS, fillTemplate, trackingUrl, waLink, type TemplateKey } fr
 import type { DeviceStatus } from '../lib/status';
 import { useFormat } from '../i18n/format';
 import { useMe } from './auth';
+import { useDuration } from './tech/names';
 import { useLoad } from './useLoad';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -36,6 +37,10 @@ export interface MessageTarget {
   device: string;
   status: DeviceStatus;
   token: string | null;
+  /** اسم الفني الحالي (الرسايل باسمه) */
+  tech?: string | null;
+  /** المدة المتوقعة بالدقايق */
+  etaMinutes?: number | null;
   /** الرصيد المستحق على العميل (للتذكير بالدين) */
   balance?: number | null;
   cost: number | null;
@@ -48,6 +53,7 @@ export function useMessageVars(target: MessageTarget | null) {
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
+  const dur = useDuration();
   return useMemo(() => {
     if (!target) return {};
     return {
@@ -60,9 +66,11 @@ export function useMessageVars(target: MessageTarget | null) {
       shop: shop.name,
       days: target.readySince ? String(daysSince(target.readySince, new Date())) : '',
       warranty: target.warrantyUntil ? f.date(target.warrantyUntil) : '',
+      tech: target.tech || t('wa.team'),
+      eta: target.etaMinutes ? dur(target.etaMinutes) : '',
       balance: target.balance != null ? `${f.money(target.balance)} ${f.currency(shop.currency)}` : '',
     };
-  }, [target, t, f, shop]);
+  }, [target, t, f, shop, dur]);
 }
 
 /** نافذة رسالة واتساب: اختار القالب، عدّل لو عايز، وافتح واتساب. الرسالة بتتسجل في سجل الرسايل. */

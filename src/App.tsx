@@ -28,6 +28,8 @@ import { StatementScreen } from './screens/finance/StatementScreen';
 import { BalancesScreen, ProfitScreen } from './screens/finance/BalancesScreen';
 import { InventoryScreen } from './screens/finance/InventoryScreen';
 import { DrawerScreen } from './screens/finance/DrawerScreen';
+import { WorkScreen } from './screens/WorkScreen';
+import { ReportsScreen } from './screens/ReportsScreen';
 import { DayReportPrint, StatementPrint } from './screens/finance/FinancePrint';
 
 // الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
@@ -101,6 +103,8 @@ function AppRoutes({ front, owner }: { front: boolean; owner: boolean }) {
           {owner && <Route path="finance/balances/:kind" element={<BalancesScreen />} />}
           {owner && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
           <Route path="inventory" element={<InventoryScreen />} />
+          <Route path="work" element={<WorkScreen />} />
+          {owner && <Route path="reports" element={<ReportsScreen />} />}
           {front && <Route path="drawer" element={<DrawerScreen />} />}
           {owner && <Route path="users" element={<TeamScreen />} />}
           {owner && <Route path="audit" element={<AuditScreen />} />}

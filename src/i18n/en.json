@@ -50,7 +50,9 @@
     "customers": "Customers",
     "finance": "Finances",
     "drawer": "Drawer",
-    "inventory": "Inventory"
+    "inventory": "Inventory",
+    "work": "My work",
+    "reports": "Reports"
   },
   "roles": {
     "owner": "Owner",
@@ -613,7 +615,8 @@
       "payments": "Payment methods",
       "appearance": "Appearance",
       "messages": "Messages",
-      "ledger": "Cashboxes & expenses"
+      "ledger": "Cashboxes & expenses",
+      "tech": "Technicians & routes"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -691,15 +694,16 @@
       "debt": "Payment reminder"
     },
     "defaults": {
-      "received": "Hi {name}, we received your {device}, order {order}. Track it here: {link}\n{shop}",
-      "status": "Hi {name}, your {device} ({order}) is now: {status}. Details: {link}",
+      "received": "Hi {name}, we received your {device}, order {order}. Expected time: {eta}. Track it here: {link}\n{shop}",
+      "status": "Hi {name}, this is {tech} from {shop}. Your {device} ({order}) is now: {status}. Details: {link}",
       "approval": "Hi {name}, the repair cost for your {device} is {cost}. Do you approve? Reply or approve here: {link}",
       "ready": "Hi {name}, your {device} is ready for pickup. Order {order}.\n{shop}",
       "reminder": "Hi {name}, your {device} has been ready for {days} days. Order {order}.\n{shop}",
       "delivered": "Thank you {name}! Your {device} has been picked up and is under warranty until {warranty}.\n{shop}",
       "debt": "Hi {name}, a friendly reminder that you owe {balance} to {shop}. Thank you."
     },
-    "placeholders": "Available placeholders"
+    "placeholders": "Available placeholders",
+    "team": "the repair team"
   },
   "checks": {
     "title": "Quick check",
@@ -1135,5 +1139,120 @@
     "area": "Signature area",
     "hint": "Sign here with the mouse or your finger",
     "clear": "Clear signature"
+  },
+  "tech": {
+    "priority": "Priority",
+    "priorities": {
+      "urgent": "Urgent",
+      "normal": "Normal",
+      "warranty": "Warranty"
+    },
+    "route": "Issue type (route)",
+    "routeAuto": "Detected from the description; you can change it",
+    "routeManual": "Chosen manually",
+    "estimate": "Expected time",
+    "estUnit": "Unit",
+    "estSuggested": "Suggested from {{n}} similar devices; you can edit it",
+    "estManual": "Not enough similar devices ({{n}} of 5); enter it manually",
+    "units": {
+      "minute": "minutes",
+      "hour": "hours",
+      "day": "days"
+    },
+    "dur": {
+      "minute_one": "1 minute",
+      "minute_other": "{{n}} minutes",
+      "hour_one": "1 hour",
+      "hour_other": "{{n}} hours",
+      "day_one": "1 day",
+      "day_other": "{{n}} days"
+    },
+    "spec": {
+      "assembly": "Assembly",
+      "micro": "Microscope",
+      "software": "Software"
+    },
+    "routes": {
+      "screen_battery": "Screen or battery replacement",
+      "board": "Charging, IC or network",
+      "software": "Software & flashing",
+      "unknown": "Unknown fault"
+    },
+    "stepsTitle": "Route & technicians",
+    "noSteps": "No route yet.",
+    "unassigned": "Unassigned",
+    "assignTo": "Technician",
+    "stepStatus": {
+      "pending": "Waiting",
+      "active": "In progress",
+      "done": "Done",
+      "skipped": "Cancelled"
+    }
+  },
+  "work": {
+    "title": "My work",
+    "sub": "Only your devices, by priority then oldest. Late ones are red.",
+    "empty": "No work right now",
+    "emptyText": "Devices assigned to you will appear here.",
+    "start": "Start",
+    "finish": "Done",
+    "started": "Started {{o}}",
+    "moved": "{{o}} moved to the next step",
+    "movedTo": "with {{n}}",
+    "unassigned": "No technician has this specialty; the owner will assign it",
+    "ready": "{{o}} is ready for pickup",
+    "you": "you",
+    "late": "Late",
+    "return": "Warranty return",
+    "waitApproval": "Waiting for the customer to approve the cost. Don't continue before that.",
+    "step": "Step {{i}} of {{n}}: {{s}}",
+    "finalTitle": "Final check",
+    "finalHint": "Check every item before the device becomes ready. The comparison shows differences from intake.",
+    "finalEmpty": "Check at least one item",
+    "finalSave": "Device OK, done",
+    "routeTitle": "Choose the issue type",
+    "routeSave": "Route device"
+  },
+  "techSettings": {
+    "staff": "Technician specialties",
+    "noTechs": "No technicians yet. Add them from Team.",
+    "generalHint": "A technician with no specialty is a generalist and can take any step.",
+    "newSpec": "New specialty",
+    "routes": "Routes",
+    "routesHint": "Each issue type has ordered steps, each step a specialty. Devices move between technicians automatically, and the last technician does the final check. Keywords pick the route from the description.",
+    "routeName": "Route name",
+    "newRoute": "New route",
+    "keywords": "Words in the description",
+    "keywordsHint": "Separate with commas",
+    "diagnoseHint": "For faults with no matching word: the technician inspects and picks the route",
+    "steps": "Steps",
+    "step": "Step",
+    "up": "Earlier",
+    "down": "Later",
+    "removeStep": "Remove step",
+    "addStep": "Step",
+    "errRoute": "Enter a name and at least one step"
+  },
+  "reports": {
+    "title": "Reports",
+    "sub": "For any period; every report exports to Excel or PDF.",
+    "tech": "Technician performance",
+    "devices": "Devices",
+    "steps": "Steps",
+    "avgTime": "Avg step",
+    "returns": "Returns",
+    "returnRate": "Return rate",
+    "revenue": "Revenue",
+    "issue": "Profitability per issue type",
+    "parts": "Parts",
+    "profit": "Profit",
+    "top": {
+      "model": "Top models",
+      "route": "Top faults"
+    },
+    "short": "Inventory & shortages",
+    "noShort": "No shortages",
+    "noRoute": "No route",
+    "debtsHint": "Debts and overdue:"
   }
 }

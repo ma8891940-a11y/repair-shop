@@ -24,6 +24,7 @@ import { Kbd } from '../ui/Kbd';
 import { LineIcon } from '../ui/fx/LineIcon';
 import { QuickCheck } from '../ui/QuickCheck';
 import { SignaturePad } from '../ui/SignaturePad';
+import { RoutingFields, type Routing } from '../app/tech/RoutingFields';
 import type { CheckItems } from '../lib/checks';
 import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
@@ -69,6 +70,7 @@ export function IntakeScreen() {
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [check, setCheck] = useState<CheckItems>({});
   const [signature, setSignature] = useState<string | null>(null);
+  const [routing, setRouting] = useState<Routing>({ routeId: null, priority: 'normal', estMinutes: null });
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -156,12 +158,17 @@ export function IntakeScreen() {
       const id = crypto.randomUUID();
       const d = await supabase
         .from('devices')
-        .insert({ id, shop_id: profile.shop_id, customer_id: customerId, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature })
+        .insert({ id, shop_id: profile.shop_id, customer_id: customerId, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature, priority: routing.priority, est_minutes: routing.estMinutes })
         .select('order_no')
         .single();
       if (d.error) throw d.error;
       const c = await supabase.from('device_costs').insert({ id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor });
       if (c.error) throw c.error;
+      // المرحلة 4: المسار والتوزيع على الفنيين
+      if (routing.routeId) {
+        const rt = await supabase.rpc('set_route', { p_device: id, p_route: routing.routeId });
+        if (rt.error) throw rt.error;
+      }
       if (lockType !== 'none' && lockValue.trim()) {
         const l = await supabase.rpc('set_device_passcode', { p_device_id: id, p_kind: lockType, p_value: lockValue.trim() });
         if (l.error) throw l.error;
@@ -199,6 +206,7 @@ export function IntakeScreen() {
     setPhotos([]);
     setCheck({});
     setSignature(null);
+    setRouting({ routeId: null, priority: 'normal', estMinutes: null });
     setErrors({});
     setSaved(null);
     setTimeout(() => document.getElementById('intake-phone')?.focus(), 50);
@@ -438,6 +446,7 @@ export function IntakeScreen() {
                   })}
                 </div>
               </div>
+              <RoutingFields issue={issue} brand={brand} value={routing} onChange={setRouting} />
               <Field label={t('intake.condition')} hint={t('intake.conditionHint')}>
                 <Textarea rows={2} value={condition} onChange={(e) => setCondition(e.target.value)} />
               </Field>

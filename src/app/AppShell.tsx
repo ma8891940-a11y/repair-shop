@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Users, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Users, type LucideIcon } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
@@ -74,6 +74,7 @@ export function AppShell() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'status_log', filter }, emit)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'journal_entries', filter }, emit)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments', filter }, emit)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'repair_steps', filter }, emit)
       .subscribe((status) => setLive(status === 'SUBSCRIBED'));
     return () => {
       setLive(false);
@@ -84,6 +85,7 @@ export function AppShell() {
   const front = profile.role !== 'technician';
 
   const nav: NavItem[] = [
+    { to: '/work', key: 'work', icon: Wrench, show: profile.role === 'technician' },
     { to: '/', key: 'dashboard', icon: Gauge, shortcut: 'F1', end: true, show: true },
     { to: '/devices', key: 'devices', icon: ClipboardList, shortcut: 'F3', end: true, show: true },
     { to: '/intake', key: 'intake', icon: PackagePlus, shortcut: 'F2', show: front },
@@ -91,6 +93,7 @@ export function AppShell() {
     { to: '/finance', key: 'finance', icon: Landmark, shortcut: 'F5', show: owner },
     { to: '/drawer', key: 'drawer', icon: Wallet, show: front && !owner },
     { to: '/inventory', key: 'inventory', icon: Boxes, show: true },
+    { to: '/reports', key: 'reports', icon: BarChart3, show: owner },
     { to: '/users', key: 'team', icon: Users, show: owner },
     { to: '/audit', key: 'audit', icon: History, show: owner },
     { to: '/settings', key: 'settings', icon: Settings, show: true },
@@ -214,17 +217,10 @@ export function AppShell() {
           </header>
 
           <main className="flex-1 px-4 pb-24 pt-5 md:px-6 md:pb-8">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-              >
-                {outlet}
-              </motion.div>
-            </AnimatePresence>
+            {/* دخول الشاشة بحركة خفيفة. من غير انتظار خروج الشاشة القديمة (mode="wait" كان ممكن يعلّق الصفحة فاضية لو التنقل كان سريع) */}
+            <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}>
+              {outlet}
+            </motion.div>
           </main>
         </div>
 

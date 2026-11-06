@@ -55,6 +55,10 @@ export interface Device {
   warranty_days: number | null;
   warranty_until: string | null;
   intake_signature?: string | null;
+  priority?: 'urgent' | 'normal' | 'warranty';
+  route_id?: string | null;
+  est_minutes?: number | null;
+  return_of_tech?: string | null;
 }
 
 /** صف من عرض devices_list (الأجهزة + اسم العميل + الأسعار لو مسموح) */
