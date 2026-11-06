@@ -369,7 +369,9 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone }: { m
       setCbs(c);
       setCashbox(mode === 'purchase' ? '' : (c[0]?.id ?? ''));
     });
-  }, [open, mode, suppliers]);
+    // بيتصفّر لما الفورم يتفتح بس (مش مع كل تحديث للصفحة، وإلا السطور بتضيع وانت بتكتب)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode]);
 
   const parsed = useMemo(
     () =>

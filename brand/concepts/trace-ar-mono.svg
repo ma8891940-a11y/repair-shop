@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 134 48" width="134" height="48">
+<g transform="translate(86 0)"><g><path d="M9 9V29L16 36L24 28L32 36L39 29V9" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="9" cy="9" r="3.6750000000000003" fill="none" stroke="currentColor" stroke-width="2.4499999999999997"/>
+<circle cx="39" cy="9" r="3.6750000000000003" fill="currentColor"/></g></g>
+<g transform="translate(0 0)"><path d="M72 30V22A4 4 0 0 0 64 22A4 4 0 0 0 68 26H72V31Q72 37 64 39" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<path d="M57 24V31Q57 37 50 39" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<path d="M43 24V30H37V24M37 30H31V24M31 30H22" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<rect x="35.08" y="11.08" width="3.84" height="3.84" rx="0.8" fill="currentColor"/>
+<rect x="30.58" y="11.08" width="3.84" height="3.84" rx="0.8" fill="currentColor"/>
+<rect x="32.83" y="7.08" width="3.84" height="3.84" rx="0.8" fill="currentColor"/>
+<path d="M22 30H10A4 4 0 0 1 6 26V24A4 4 0 0 1 10 20H14A4 4 0 0 1 18 24V30" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<rect x="7.58" y="11.08" width="3.84" height="3.84" rx="0.8" fill="currentColor"/>
+<rect x="12.58" y="11.08" width="3.84" height="3.84" rx="0.8" fill="currentColor"/></g>
+</svg>

@@ -52,7 +52,8 @@
     "drawer": "Drawer",
     "inventory": "Inventory",
     "work": "My work",
-    "reports": "Reports"
+    "reports": "Reports",
+    "more": "More"
   },
   "roles": {
     "owner": "Owner",

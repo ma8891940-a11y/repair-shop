@@ -15,7 +15,18 @@ test('التنقل السريع بين الشاشات ما بيسيبش الصف
     await page.goto(path);
     if (label) await expect(page.getByLabel(label).first()).toBeVisible();
   }
-  // ضغط متتالي سريع على القائمة
-  for (const n of ['الأجهزة', 'الفريق', 'العملاء', 'الفريق']) await page.getByRole('link', { name: n }).filter({ visible: true }).first().click();
+  // ضغط متتالي سريع على القائمة (على الموبايل الفريق جوه "المزيد")
+  const mobile = info.project.name.startsWith('mobile');
+  const go = async (n: string) => {
+    const link = page.getByRole('link', { name: n }).filter({ visible: true });
+    if (mobile && (await link.count()) === 0) await page.getByRole('button', { name: 'المزيد' }).click();
+    await page.getByRole('link', { name: n }).filter({ visible: true }).first().click();
+  };
+  for (const n of ['الأجهزة', 'الفريق', 'العملاء', 'الفريق']) await go(n);
   await expect(page.getByLabel('الاسم')).toBeVisible();
+  if (mobile) {
+    // كل صفحات القائمة متاحة من "المزيد"
+    await page.getByRole('button', { name: 'المزيد' }).click();
+    for (const n of ['الوضع المالي', 'التقارير', 'الإعدادات', 'سجل النشاط']) await expect(page.getByRole('dialog').getByRole('link', { name: n })).toBeVisible();
+  }
 });

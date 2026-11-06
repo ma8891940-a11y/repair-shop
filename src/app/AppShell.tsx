@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Users, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Menu, Users, type LucideIcon } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
@@ -13,6 +13,7 @@ import { Kbd } from '../ui/Kbd';
 import { CommandPalette, type Command } from '../ui/CommandPalette';
 import { CircuitField } from '../ui/fx/CircuitField';
 import { useToast } from '../ui/Toast';
+import { Dialog } from '../ui/Dialog';
 import { supabase } from '../lib/supabase';
 import { cn } from '../ui/cn';
 
@@ -58,6 +59,7 @@ export function AppShell() {
   const location = useLocation();
   const outlet = useOutlet();
   const [palette, setPalette] = useState(false);
+  const [more, setMore] = useState(false);
   const [live, setLive] = useState(false);
   const listeners = useRef(new Set<Listener>());
   const subscribe = useCallback((fn: Listener) => {
@@ -232,11 +234,33 @@ export function AppShell() {
               {t(`nav.${n.key}`)}
             </NavLink>
           ))}
-          <button type="button" onClick={() => void signOut()} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-2xs text-fg-3">
-            <LogOut className="size-5 rtl:-scale-x-100" aria-hidden />
-            {t('common.signOut')}
+          <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className="flex flex-1 flex-col items-center gap-0.5 py-2 text-2xs text-fg-3">
+            <Menu className="size-5" aria-hidden />
+            {t('nav.more')}
           </button>
         </nav>
+
+        {/* "المزيد" على الموبايل: باقي القائمة والخروج */}
+        <Dialog open={more} onOpenChange={setMore} title={t('nav.more')}>
+          <nav aria-label={t('nav.more')} className="grid grid-cols-3 gap-2">
+            {nav.slice(4).map((n) => (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.end}
+                onClick={() => setMore(false)}
+                className={({ isActive }) => cn('flex flex-col items-center gap-1 rounded-md border border-glass-border p-3 text-xs', isActive ? 'border-accent text-accent' : 'text-fg-2 hover:text-fg')}
+              >
+                <n.icon className="size-5" aria-hidden />
+                {t(`nav.${n.key}`)}
+              </NavLink>
+            ))}
+            <button type="button" onClick={() => void signOut()} className="flex flex-col items-center gap-1 rounded-md border border-glass-border p-3 text-xs text-fg-2 hover:text-danger">
+              <LogOut className="size-5 rtl:-scale-x-100" aria-hidden />
+              {t('common.signOut')}
+            </button>
+          </nav>
+        </Dialog>
 
         <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} showCustomer={front} onOpenDevice={(id) => navigate(`/devices/${id}`)} />
       </div>

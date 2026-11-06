@@ -19,7 +19,7 @@ test('المرحلة 1: تسجيل ← استلام ← فني ← حالات �
   await page.locator('input[placeholder="1-5-9-6"]').fill('1-5-9-6');
   await page.getByRole('button', { name: 'شريحة', exact: true }).click();
   await page.getByRole('button', { name: '+ شاشة مكسورة' }).click();
-  await page.locator('input[placeholder="0"]').fill('1250.5');
+  await page.getByLabel('التكلفة التقديرية').fill('1250.5');
   await page.locator('input[type=file]').setInputFiles(['public/icon-192.png']);
   // حفظ فاضي الأول؟ لأ: كل الحقول المطلوبة متملية
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();

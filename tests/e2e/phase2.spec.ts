@@ -31,7 +31,7 @@ test('المرحلة 2: قالب رسالة ← استلام بفحص ← وات
   await page.getByRole('button', { name: 'iPhone', exact: true }).click();
   await page.getByLabel('الموديل').fill('12 Pro');
   await page.getByRole('button', { name: '+ شاشة مكسورة' }).click();
-  await page.locator('input[placeholder="0"]').fill('850');
+  await page.getByLabel('التكلفة التقديرية').fill('850');
   await page.getByRole('radiogroup', { name: 'الواي فاي' }).getByRole('radio', { name: 'عطلان' }).click();
   await page.getByRole('radiogroup', { name: 'الشحن' }).getByRole('radio', { name: 'شغال' }).click();
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
