@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Users, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Users, type LucideIcon } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
@@ -85,6 +85,7 @@ export function AppShell() {
     { to: '/', key: 'dashboard', icon: Gauge, shortcut: 'F1', end: true, show: true },
     { to: '/devices', key: 'devices', icon: ClipboardList, shortcut: 'F3', end: true, show: true },
     { to: '/intake', key: 'intake', icon: PackagePlus, shortcut: 'F2', show: front },
+    { to: '/customers', key: 'customers', icon: Contact, shortcut: 'F4', show: front },
     { to: '/users', key: 'team', icon: Users, show: owner },
     { to: '/audit', key: 'audit', icon: History, show: owner },
     { to: '/settings', key: 'settings', icon: Settings, show: true },
@@ -111,6 +112,7 @@ export function AppShell() {
       { combo: 'F1', handler: () => navigate('/') },
       { combo: 'F2', handler: () => front && navigate('/intake') },
       { combo: 'F3', handler: () => setPalette(true) },
+      { combo: 'F4', handler: () => front && navigate('/customers') },
       { combo: 'Ctrl+K', handler: () => setPalette((v) => !v), allowInInputs: true },
       { combo: 'Ctrl+J', handler: () => toggleTheme(), allowInInputs: true },
       { combo: 'Ctrl+L', handler: () => toggleLang(), allowInInputs: true },

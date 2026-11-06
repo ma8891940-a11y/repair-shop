@@ -1,35 +1,5 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
-import { afterSplash, otpFor, prefs, uniq } from './helpers';
-
-const PASS = 'Secure#2026x';
-
-async function noHorizontalScroll(page: Page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow).toBeLessThanOrEqual(1);
-}
-
-async function registerShop(page: Page, email: string) {
-  await page.goto('/#/register');
-  await afterSplash(page);
-  const inputs = page.locator('form input');
-  await inputs.nth(0).fill('مركز الاختبار');
-  await inputs.nth(1).fill('محمود حسن');
-  await page.getByRole('button', { name: 'التالي' }).click();
-  await page.locator('input[type=email]').fill(email);
-  await page.locator('input[type=password]').nth(0).fill(PASS);
-  await page.locator('input[type=password]').nth(1).fill(PASS);
-  await page.getByRole('button', { name: 'التالي' }).click();
-  await page.locator('input[autocomplete=one-time-code]').waitFor();
-  await page.locator('input[autocomplete=one-time-code]').click();
-  await page.keyboard.type(await otpFor(email));
-  await expect(page.getByRole('heading', { name: 'البلد والعملة' })).toBeVisible();
-  await page.getByRole('button', { name: 'التالي' }).click();
-  await expect(page.getByRole('heading', { name: 'طرق الدفع' })).toBeVisible();
-  await page.getByRole('button', { name: 'التالي' }).click();
-  await expect(page.getByRole('heading', { name: 'الشعار والمظهر' })).toBeVisible();
-  await page.getByRole('button', { name: 'ابدأ الشغل' }).click();
-  await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
-}
+import { expect, test, type Browser } from '@playwright/test';
+import { PASS, afterSplash, noHorizontalScroll, otpFor, prefs, registerShop, uniq } from './helpers';
 
 async function activateInvite(browser: Browser, info: Parameters<typeof prefs>[1], email: string) {
   const ctx = await browser.newContext(info.project.use);

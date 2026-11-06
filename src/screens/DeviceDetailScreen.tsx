@@ -386,7 +386,7 @@ function CostPanel({ deviceId, shopId, cost, currency, onSaved }: { deviceId: st
     setBusy(true);
     const r = cost
       ? await supabase.from('device_costs').update({ estimated_cost: a, final_cost: b }).eq('id', cost.id)
-      : await supabase.from('device_costs').insert({ shop_id: shopId, device_id: deviceId, estimated_cost: a, final_cost: b });
+      : await supabase.from('device_costs').insert({ id: crypto.randomUUID(), shop_id: shopId, device_id: deviceId, estimated_cost: a, final_cost: b });
     setBusy(false);
     if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
     toast({ tone: 'ok', title: t('detail.costsSaved') });
@@ -513,7 +513,7 @@ function NotesPanel({ deviceId, shopId, notes, onAdded }: { deviceId: string; sh
     const b = body.trim();
     if (!b) return;
     setBusy(true);
-    const { error } = await supabase.from('device_notes').insert({ shop_id: shopId, device_id: deviceId, body: b });
+    const { error } = await supabase.from('device_notes').insert({ id: crypto.randomUUID(), shop_id: shopId, device_id: deviceId, body: b });
     setBusy(false);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     setBody('');
@@ -646,7 +646,7 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
     setBusy(true);
     const r = current
       ? await supabase.from('device_checks').update({ items }).eq('id', current.id)
-      : await supabase.from('device_checks').insert({ shop_id: shopId, device_id: deviceId, stage, items });
+      : await supabase.from('device_checks').insert({ id: crypto.randomUUID(), shop_id: shopId, device_id: deviceId, stage, items });
     setBusy(false);
     if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
     toast({ tone: 'ok', title: t('checks.saved') });

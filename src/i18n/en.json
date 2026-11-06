@@ -752,6 +752,12 @@
   "settingsMsg": {
     "tab": "Messages",
     "hint": "Templates are filled from the device and customer automatically. Text in { } is replaced.",
-    "reset": "Reset to default"
+    "reset": "Reset to default",
+    "sample": {
+      "name": "Ahmed",
+      "tech": "Mahmoud"
+    },
+    "custom": "Customized",
+    "empty": "The message can't be empty"
   }
 }

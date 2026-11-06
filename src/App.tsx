@@ -22,6 +22,7 @@ import { AuditScreen } from './screens/AuditScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { PrintScreen } from './screens/PrintScreen';
 import { TrackingScreen } from './screens/TrackingScreen';
+import { CustomersScreen, CustomerProfileScreen } from './screens/CustomersScreen';
 
 // الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
 const SPLASH_MS = 1500;
@@ -45,8 +46,8 @@ function Gate() {
   if (location.pathname === '/t' || location.pathname.startsWith('/t/')) {
     return (
       <Routes>
-        <Route path="/t" element={<TrackingScreen />} />
-        <Route path="/t/:token" element={<TrackingScreen />} />
+        <Route path="/t" element={<TrackingScreen key="form" />} />
+        <Route path="/t/:token" element={<TrackingScreen key="token" />} />
       </Routes>
     );
   }
@@ -85,6 +86,8 @@ function AppRoutes({ front, owner }: { front: boolean; owner: boolean }) {
           {front && <Route path="intake" element={<IntakeScreen />} />}
           <Route path="devices" element={<DevicesScreen />} />
           <Route path="devices/:id" element={<DeviceDetailScreen />} />
+          {front && <Route path="customers" element={<CustomersScreen />} />}
+          {front && <Route path="customers/:id" element={<CustomerProfileScreen />} />}
           {owner && <Route path="users" element={<TeamScreen />} />}
           {owner && <Route path="audit" element={<AuditScreen />} />}
           <Route path="settings" element={<SettingsScreen />} />

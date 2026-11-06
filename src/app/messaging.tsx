@@ -85,7 +85,7 @@ export function WhatsAppDialog({ open, onOpenChange, target, initial }: { open: 
   async function send() {
     if (!target || !link) return setErr(t('wa.noPhone'));
     window.open(link, '_blank', 'noopener');
-    const { error } = await supabase.from('message_log').insert({ shop_id: profile.shop_id, device_id: target.deviceId, customer_id: target.customerId, template_key: key, body: text });
+    const { error } = await supabase.from('message_log').insert({ id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: target.deviceId, customer_id: target.customerId, template_key: key, body: text });
     if (error) toast({ tone: 'warn', title: errorMessage(error) });
     else toast({ tone: 'ok', title: t('wa.logged') });
     onOpenChange(false);

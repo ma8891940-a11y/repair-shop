@@ -55,7 +55,7 @@ export function TeamScreen() {
     if (!isEmail(email)) return setErr(t('register.emailInvalid'));
     setBusy(true);
     const em = email.trim().toLowerCase();
-    const { error: ie } = await supabase.from('staff_invites').insert({ shop_id: me.shop_id, email: em, full_name: name.trim(), role });
+    const { error: ie } = await supabase.from('staff_invites').insert({ id: crypto.randomUUID(), shop_id: me.shop_id, email: em, full_name: name.trim(), role });
     setBusy(false);
     if (ie) return setErr(/staff_invites_open/.test(ie.message) ? t('team.dupInvite') : errorMessage(ie));
     setSent(t('team.sentText', { name: name.trim(), email: em }));

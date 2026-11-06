@@ -13,6 +13,7 @@ import type { DeviceListRow } from '../lib/types';
 import { useFormat } from '../i18n/format';
 import { Button } from '../ui/Button';
 import { Panel, PanelHeader } from '../ui/Panel';
+import { FollowUpPanel } from '../app/FollowUpPanel';
 import { StatusBadge } from '../ui/StatusBadge';
 import { CountUp, Ring, Sparkline } from '../ui/viz';
 import { EmptyState, ErrorState, Skeleton } from '../ui/Feedback';
@@ -149,8 +150,9 @@ export function DashboardScreen() {
             <DeviceList index="02" title={t('dashboard.lateList')} rows={late} loading={loading} showCustomer={front} empty={t('dashboard.lateEmpty')} danger moreTo="/devices?filter=late" />
           </div>
 
-          <div className="mt-4">
+          <div className={front ? 'mt-4 grid gap-4 lg:grid-cols-2' : 'mt-4'}>
             <DeviceList index="03" title={t('dashboard.readyList')} rows={ready} loading={loading} showCustomer={front} empty={t('dashboard.readyEmpty')} moreTo="/devices?status=ready" />
+            {front && <FollowUpPanel />}
           </div>
         </>
       )}

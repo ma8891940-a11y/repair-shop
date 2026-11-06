@@ -158,14 +158,14 @@ export function IntakeScreen() {
         .select('order_no')
         .single();
       if (d.error) throw d.error;
-      const c = await supabase.from('device_costs').insert({ shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor });
+      const c = await supabase.from('device_costs').insert({ id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor });
       if (c.error) throw c.error;
       if (lockType !== 'none' && lockValue.trim()) {
         const l = await supabase.rpc('set_device_passcode', { p_device_id: id, p_kind: lockType, p_value: lockValue.trim() });
         if (l.error) throw l.error;
       }
       if (Object.keys(check).length > 0) {
-        const ck = await supabase.from('device_checks').insert({ shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check });
+        const ck = await supabase.from('device_checks').insert({ id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check });
         if (ck.error) throw ck.error;
       }
       for (const p of photos) await uploadDevicePhoto(profile.shop_id, id, p.file);

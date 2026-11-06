@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fillTemplate, trackingUrl, waLink } from './messages';
 import { checkSummary, compareChecks } from './checks';
-import { inWarranty, suggestCategory } from './customers';
+import { inWarranty, overdueReady, suggestCategory } from './customers';
 
 describe('قوالب واتساب', () => {
   it('بيملا المتغيرات ويشيل اللي مش موجود', () => {
@@ -44,5 +44,43 @@ describe('تصنيف العملاء والضمان', () => {
     expect(inWarranty('2026-11-07T00:00:00Z', now)).toBe(true);
     expect(inWarranty('2026-11-05T00:00:00Z', now)).toBe(false);
     expect(inWarranty(null, now)).toBe(false);
+  });
+});
+
+describe('متابعة الأجهزة الجاهزة', () => {
+  const now = new Date('2026-03-20T10:00:00Z');
+  const ago = (d: number) => new Date(now.getTime() - d * 86_400_000).toISOString();
+  it('بيطلع الجاهز من 10 أيام أو أكتر بس، والأقدم الأول', () => {
+    const devices = [
+      { id: 'a', status: 'ready' },
+      { id: 'b', status: 'ready' },
+      { id: 'c', status: 'ready' },
+      { id: 'd', status: 'delivered' },
+    ];
+    const events = [
+      { device_id: 'a', new_status: 'ready', created_at: ago(10) },
+      { device_id: 'b', new_status: 'ready', created_at: ago(9.9) },
+      { device_id: 'c', new_status: 'ready', created_at: ago(25) },
+      { device_id: 'd', new_status: 'ready', created_at: ago(40) },
+    ];
+    const r = overdueReady(devices, events, now);
+    expect(r.map((x) => x.id)).toEqual(['c', 'a']);
+    expect(r[0].days).toBe(25);
+  });
+  it('لو الجهاز رجع للصيانة وجهز تاني، العدّ من آخر مرة', () => {
+    const r = overdueReady(
+      [{ id: 'a', status: 'ready' }],
+      [
+        { device_id: 'a', new_status: 'ready', created_at: ago(30) },
+        { device_id: 'a', new_status: 'in_repair', created_at: ago(29) },
+        { device_id: 'a', new_status: 'ready', created_at: ago(3) },
+      ],
+      now,
+    );
+    expect(r).toEqual([]);
+  });
+  it('من غير أحداث أو قائمة فاضية', () => {
+    expect(overdueReady([{ id: 'x', status: 'ready' }], [], now)).toEqual([]);
+    expect(overdueReady([], [], now)).toEqual([]);
   });
 });
