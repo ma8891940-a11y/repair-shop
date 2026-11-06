@@ -45,7 +45,8 @@
     "audit": "Activity log",
     "settings": "Settings",
     "menu": "Main menu",
-    "search": "Search"
+    "search": "Search",
+    "customers": "Customers"
   },
   "roles": {
     "owner": "Owner",
@@ -471,7 +472,7 @@
     "lockSaved": "Lock saved",
     "print": "Print",
     "receipt": "80mm receipt",
-    "label": "Label",
+    "label": "QR label",
     "invoice": "A4 invoice",
     "deliverTitle": "Confirm delivery",
     "deliverText": "The device will be marked as delivered and the lock erased permanently.",
@@ -590,7 +591,8 @@
     "tabs": {
       "shop": "Shop",
       "payments": "Payment methods",
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "messages": "Messages"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -609,5 +611,147 @@
     "effectsHint": "Live background, glow and glass. Turns off by itself if performance stays under 50 fps for 3 seconds. This choice is saved on this device only.",
     "on": "On",
     "off": "Off"
+  },
+  "track": {
+    "title": "Track your device",
+    "sub": "Enter your order number and the last 4 digits of your phone.",
+    "order": "Order number",
+    "last4": "Last 4 digits of your phone",
+    "go": "Track",
+    "notFound": "We couldn't find a device with these details. Check the order number and last 4 digits.",
+    "rateLimit": "Too many wrong attempts. Please wait 15 minutes and try again.",
+    "status": "Status",
+    "updated": "Last update",
+    "received": "Received on",
+    "cost": "Cost",
+    "estimated": "Estimated cost",
+    "final": "Final cost",
+    "tech": "Technician",
+    "warranty": "Warranty until",
+    "approveTitle": "We need your approval",
+    "approveText": "The repair cost is {{cost}}. If you agree, we'll start right away.",
+    "approve": "Approve, start the repair",
+    "reject": "Decline",
+    "approved": "Thank you! Your approval is recorded and we'll start the repair.",
+    "rejected": "Your decision is recorded. We'll let you know when to pick up the device.",
+    "decided": "Your decision: {{d}}",
+    "decisions": {
+      "approved": "Approved",
+      "rejected": "Declined"
+    },
+    "call": "Call the shop",
+    "steps": {
+      "received": "Received",
+      "work": "Repair",
+      "ready": "Ready",
+      "delivered": "Picked up"
+    },
+    "another": "Track another device",
+    "privacy": "This page never shows personal information."
+  },
+  "wa": {
+    "send": "WhatsApp",
+    "title": "WhatsApp message",
+    "template": "Message",
+    "preview": "Preview",
+    "open": "Open WhatsApp",
+    "noPhone": "The customer's number isn't valid",
+    "logged": "Message logged",
+    "keys": {
+      "received": "Device received",
+      "status": "Status update",
+      "approval": "Cost approval request",
+      "ready": "Device ready",
+      "reminder": "Pickup reminder",
+      "delivered": "Thanks after pickup"
+    },
+    "defaults": {
+      "received": "Hi {name}, we received your {device}, order {order}. Track it here: {link}\n{shop}",
+      "status": "Hi {name}, your {device} ({order}) is now: {status}. Details: {link}",
+      "approval": "Hi {name}, the repair cost for your {device} is {cost}. Do you approve? Reply or approve here: {link}",
+      "ready": "Hi {name}, your {device} is ready for pickup. Order {order}.\n{shop}",
+      "reminder": "Hi {name}, your {device} has been ready for {days} days. Order {order}.\n{shop}",
+      "delivered": "Thank you {name}! Your {device} has been picked up and is under warranty until {warranty}.\n{shop}"
+    },
+    "placeholders": "Available placeholders"
+  },
+  "checks": {
+    "title": "Quick check",
+    "intake": "At check-in",
+    "delivery": "At pickup",
+    "ok": "Works",
+    "fail": "Faulty",
+    "na": "N/A",
+    "save": "Save check",
+    "saved": "Check saved",
+    "compare": "Comparison",
+    "regressed": "Worked at check-in",
+    "fixed": "Fixed",
+    "none": "No check yet",
+    "hint": "Set each item. If the customer later says something broke, the comparison shows whether it worked before.",
+    "allOk": "All working",
+    "items": {
+      "wifi": "Wi-Fi",
+      "bluetooth": "Bluetooth",
+      "front_camera": "Front camera",
+      "rear_camera": "Rear camera",
+      "fingerprint": "Fingerprint",
+      "speaker": "Speaker",
+      "mic": "Microphone",
+      "charging": "Charging",
+      "screen_touch": "Screen & touch",
+      "network": "Network"
+    }
+  },
+  "warranty": {
+    "inTitle": "This device is still under warranty",
+    "inText": "Delivered on order {{order}}; warranty until {{until}}.",
+    "asReturn": "Register as warranty return",
+    "until": "Warranty until {{d}}",
+    "expired": "Warranty expired",
+    "returned": "Registered as warranty return"
+  },
+  "customers": {
+    "title": "Customers",
+    "sub": "Every customer with their devices and category.",
+    "search": "Search by name or phone",
+    "cols": {
+      "name": "Customer",
+      "phone": "Phone",
+      "area": "Area",
+      "devices": "Devices",
+      "spent": "Paid",
+      "category": "Category",
+      "last": "Last visit"
+    },
+    "categories": {
+      "new": "New",
+      "regular": "Regular",
+      "vip": "VIP",
+      "late": "Late payer"
+    },
+    "suggested": "Suggested: {{c}}",
+    "empty": "No customers yet",
+    "emptyText": "Customers are added automatically when you check in a device.",
+    "profile": "Customer profile",
+    "history": "Previous devices",
+    "marketing": "Agreed to marketing messages",
+    "saved": "Saved",
+    "spent": "Total paid",
+    "visits": "Devices"
+  },
+  "follow": {
+    "title": "Ready for 10+ days",
+    "empty": "No devices ready for more than 10 days.",
+    "remind": "Remind"
+  },
+  "label": {
+    "title": "Device label",
+    "scan": "Scan to track your device"
+  },
+  "settingsMsg": {
+    "tab": "Messages",
+    "hint": "Templates are filled from the device and customer automatically. Text in { } is replaced.",
+    "reset": "Reset to default"
   }
 }

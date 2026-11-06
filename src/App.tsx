@@ -21,6 +21,7 @@ import { TeamScreen } from './screens/TeamScreen';
 import { AuditScreen } from './screens/AuditScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { PrintScreen } from './screens/PrintScreen';
+import { TrackingScreen } from './screens/TrackingScreen';
 
 // الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
 const SPLASH_MS = 1500;
@@ -40,6 +41,15 @@ function NotConfigured() {
 function Gate() {
   const { loading, session, profile, shop } = useAuth();
   const location = useLocation();
+  // صفحة تتبع العميل: عامة، بتشتغل بتسجيل دخول أو من غيره
+  if (location.pathname === '/t' || location.pathname.startsWith('/t/')) {
+    return (
+      <Routes>
+        <Route path="/t" element={<TrackingScreen />} />
+        <Route path="/t/:token" element={<TrackingScreen />} />
+      </Routes>
+    );
+  }
   if (loading) return null;
 
   // المعالج بيفضل في نفس المكان من الشجرة طول الخطوات، فحالته ما بتضيعش وقت تأكيد الإيميل
@@ -102,11 +112,14 @@ function Boot() {
     const tm = setTimeout(() => setMinDone(true), left);
     return () => clearTimeout(tm);
   }, [ms]);
-  const show = !minDone || loading;
+  const location = useLocation();
+  // العميل اللي بيفتح صفحة التتبع ما يستناش الشاشة الافتتاحية
+  const publicPage = location.pathname === '/t' || location.pathname.startsWith('/t/');
+  const show = !publicPage && (!minDone || loading);
   return (
     <>
       <EffectsGuard />
-      {!loading && <Gate />}
+      {(!loading || publicPage) && <Gate />}
       <AnimatePresence>{show && <SplashScreen key="splash" duration={Math.max(300, ms - performance.now())} />}</AnimatePresence>
     </>
   );
