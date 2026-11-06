@@ -104,5 +104,5 @@ d('المرحلة 5: بدون إنترنت والنسخ الاحتياطي', () 
     expect(old.deleted_at).toBeInstanceOf(Date);
     expect(old.data).toEqual({});
     expect((await as(owner, `select id from list_backups()`)).rows.map((r) => r.id)).not.toContain(list[0].id);
-  });
+  }, 60_000); // بيعمل نسخة لكل المحلات في القاعدة (قاعدة الاختبار فيها مئات المحلات من اختبارات e2e)
 });

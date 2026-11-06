@@ -6,6 +6,7 @@ import { useMe } from '../app/auth';
 import { StaleNote } from '../ui/StaleNote';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
+import { DaySummaryButton } from '../app/DaySummaryButton';
 import { supabase } from '../lib/supabase';
 import { computeDashboard, computeSeries, isLate, type StatusEvent } from '../lib/dashboard';
 import { daysSince } from '../lib/dates';
@@ -69,9 +70,12 @@ export function DashboardScreen() {
         sub={f.dateLong(now)}
         actions={
           front && (
-            <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="F2" tip={t('dashboard.newDeviceTip')} onClick={() => navigate('/intake')}>
-              {t('dashboard.newDevice')}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <DaySummaryButton />
+              <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="F2" tip={t('dashboard.newDeviceTip')} onClick={() => navigate('/intake')}>
+                {t('dashboard.newDevice')}
+              </Button>
+            </div>
           )
         }
       />

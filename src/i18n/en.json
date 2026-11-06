@@ -635,7 +635,8 @@
       "messages": "Messages",
       "ledger": "Cashboxes & expenses",
       "tech": "Technicians & routes",
-      "backup": "Backup"
+      "backup": "Backup",
+      "extras": "Extras"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -1518,6 +1519,40 @@
       "title": "Overheating",
       "causes": "Heavy apps, battery, board short.",
       "steps": "1. Check draining apps.\n2. Measure current.\n3. Locate the heat (thermal camera or rosin)."
+    }
+  },
+  "extras": {
+    "title": "Extra features",
+    "quick_issues": {
+      "name": "Ready-made faults at intake",
+      "hint": "Common faults with an estimated price appear as buttons at intake; one tap fills the fault and the cost."
+    },
+    "auto_print": {
+      "name": "Print the receipt automatically after intake",
+      "hint": "After saving an intake, the receipt print page opens right away."
+    },
+    "day_summary": {
+      "name": "Daily summary on WhatsApp",
+      "hint": "A dashboard button prepares a message with today’s numbers (devices and money) without any customer data; you choose who gets it."
+    },
+    "presets": "Ready-made faults",
+    "presetLabel": "Button name",
+    "presetLabelPh": "e.g. A54 screen",
+    "presetIssue": "Fault description",
+    "presetPrice": "Estimated cost",
+    "add": "Add",
+    "presetReq": "Enter a button name and a fault description",
+    "noPresets": "No ready-made faults yet",
+    "archive": "Archive {{name}}",
+    "summary": {
+      "button": "Daily summary",
+      "tip": "WhatsApp message with today’s numbers",
+      "title": "Daily summary",
+      "received": "Devices in",
+      "delivered": "Devices delivered",
+      "ready": "Ready and waiting",
+      "profit": "Profit",
+      "collected": "Collected"
     }
   }
 }

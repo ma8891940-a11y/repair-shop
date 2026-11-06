@@ -48,6 +48,20 @@ export async function noHorizontalScroll(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
+/**
+ * بيكتب في الخانة ويتأكد إن النص وصل. أول تحميل على سيرفر التطوير بطيء، والخطوة اللي قبلها بتفضل ظاهرة
+ * لحظة وهي بتختفي، فالكتابة ممكن تروح لنسخة بتتشال. لو ده حصل بيكتب تاني.
+ */
+export async function fillSure(page: Page, selector: string, index: number, value: string) {
+  for (let i = 0; i < 4; i++) {
+    const el = page.locator(selector).nth(index);
+    await el.fill(value);
+    if ((await el.inputValue().catch(() => '')) === value) return;
+    await page.waitForTimeout(300);
+  }
+  await expect(page.locator(selector).nth(index)).toHaveValue(value);
+}
+
 export async function registerShop(page: Page, email: string, shopName = 'مركز الاختبار') {
   await page.goto('/#/register');
   await afterSplash(page);
@@ -56,8 +70,9 @@ export async function registerShop(page: Page, email: string, shopName = 'مرك
   await inputs.nth(1).fill('محمود حسن');
   await page.getByRole('button', { name: 'التالي' }).click();
   await page.locator('input[type=email]').fill(email);
-  await page.locator('input[type=password]').nth(0).fill(PASS);
-  await page.locator('input[type=password]').nth(1).fill(PASS);
+  await fillSure(page, 'input[type=password]', 0, PASS);
+  await fillSure(page, 'input[type=password]', 1, PASS);
+  await expect(page.locator('input[type=password]').nth(0)).toHaveValue(PASS);
   await page.getByRole('button', { name: 'التالي' }).click();
   await page.locator('input[autocomplete=one-time-code]').waitFor();
   await page.locator('input[autocomplete=one-time-code]').click();
@@ -83,8 +98,9 @@ export async function activateInvite(browser: Browser, info: TestInfo, email: st
   await afterSplash(page);
   await expect(page.getByRole('heading', { name: 'تفعيل حساب موظف' })).toBeVisible();
   await page.locator('input[type=email]').fill(email);
-  await page.locator('input[type=password]').nth(0).fill(PASS);
-  await page.locator('input[type=password]').nth(1).fill(PASS);
+  await fillSure(page, 'input[type=password]', 0, PASS);
+  await fillSure(page, 'input[type=password]', 1, PASS);
+  await expect(page.locator('input[type=password]').nth(0)).toHaveValue(PASS);
   await page.getByRole('button', { name: 'التالي' }).click();
   await page.locator('input[autocomplete=one-time-code]').waitFor();
   await page.locator('input[autocomplete=one-time-code]').click();

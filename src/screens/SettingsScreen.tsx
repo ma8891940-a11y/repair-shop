@@ -19,6 +19,7 @@ import { TechTab } from './settings/TechTab';
 import { BackupTab } from './settings/BackupTab';
 import { IdentityTab } from './settings/IdentityTab';
 import { PlanUsage } from '../app/PlanUsage';
+import { ExtrasTab } from './settings/ExtrasTab';
 import { cn } from '../ui/cn';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
@@ -28,14 +29,14 @@ export function SettingsScreen() {
   const { profile } = useMe();
   const owner = profile.role === 'owner';
   const [tab, setTab] = useState(owner ? 'shop' : 'appearance');
-  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'messages', 'backup', 'appearance'] : ['appearance']) as string[];
+  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
       <Tabs.Root value={tab} onValueChange={setTab}>
-        <Tabs.List className="glass mb-4 inline-flex rounded-md p-1" aria-label={t('settings.title')}>
+        <Tabs.List className="glass mb-4 inline-flex max-w-full flex-wrap gap-0.5 rounded-md p-1" aria-label={t('settings.title')}>
           {tabs.map((k) => (
-            <Tabs.Trigger key={k} value={k} className={cn('relative h-8 rounded-sm px-3.5 text-sm transition-colors', tab === k ? 'text-fg' : 'text-fg-3 hover:text-fg')}>
+            <Tabs.Trigger key={k} value={k} className={cn('relative h-8 whitespace-nowrap rounded-sm px-3.5 text-sm transition-colors', tab === k ? 'text-fg' : 'text-fg-3 hover:text-fg')}>
               {tab === k && <motion.span layoutId="settings-tab" className="absolute inset-0 rounded-sm border border-glass-border-strong bg-raised" transition={{ duration: 0.18 }} />}
               <span className="relative">{t(`settings.tabs.${k}`)}</span>
             </Tabs.Trigger>
@@ -65,6 +66,11 @@ export function SettingsScreen() {
         {owner && (
           <Tabs.Content value="ledger">
             <LedgerTab />
+          </Tabs.Content>
+        )}
+        {owner && (
+          <Tabs.Content value="extras">
+            <ExtrasTab />
           </Tabs.Content>
         )}
         {owner && (

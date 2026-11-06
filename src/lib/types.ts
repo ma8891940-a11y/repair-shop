@@ -15,9 +15,11 @@ export interface Shop {
   locale: 'ar' | 'en';
   setup_completed_at: string | null;
   default_margin_pct?: number;
+  /** مفاتيح الميزات الإضافية (lib/extras) */
+  extras?: unknown;
 }
 
-export const SHOP_COLUMNS = 'id, name, phone, address, receipt_terms, warranty_days, country, currency, payment_methods, logo_path, theme, locale, setup_completed_at, default_margin_pct';
+export const SHOP_COLUMNS = 'id, name, phone, address, receipt_terms, warranty_days, country, currency, payment_methods, logo_path, theme, locale, setup_completed_at, default_margin_pct, extras';
 
 export interface Profile {
   id: string;

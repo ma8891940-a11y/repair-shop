@@ -15,10 +15,11 @@ test.describe('المؤثرات الكاملة', () => {
     await afterSplash(page);
     await expect(page.locator('html')).toHaveAttribute('data-lite', '');
     const frame = () => page.evaluate(() => document.querySelector('canvas')?.toDataURL() ?? '');
+    // أول تحميل على سيرفر التطوير ممكن ياخد وقت لحد ما الخلفية ترسم أول إطار
+    await expect.poll(async () => (await frame()).length, { timeout: 15_000 }).toBeGreaterThan(1000);
     const a = await frame();
     await page.waitForTimeout(700);
     const b = await frame();
-    expect(a.length).toBeGreaterThan(1000);
     expect(b).not.toBe(a);
   });
 

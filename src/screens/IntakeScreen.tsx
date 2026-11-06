@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { readExtras } from '../lib/extras';
+import type { Preset } from './settings/ExtrasTab';
 import { useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +11,7 @@ import { useShortcuts } from '../app/shortcuts';
 import { supabase } from '../lib/supabase';
 import { normalizeEgyptPhone } from '../lib/phone';
 import { isValidImei, normalizeImei } from '../lib/imei';
-import { parsePounds } from '../lib/money';
+import { formatPounds, parsePounds } from '../lib/money';
 import { errorMessage } from '../lib/errors';
 import { MAX_PHOTOS, uploadDevicePhoto } from '../lib/photos';
 import type { Customer } from '../lib/types';
@@ -78,6 +80,18 @@ export function IntakeScreen() {
   const [formError, setFormError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [saved, setSaved] = useState<{ id: string; orderNo: string | null } | null>(null);
+  const extras = readExtras(shop.extras);
+  const [presets, setPresets] = useState<Preset[]>([]);
+  useEffect(() => {
+    if (!extras.quick_issues) return;
+    void supabase
+      .from('issue_presets')
+      .select('id, label, issue, est_cost, sort')
+      .is('deleted_at', null)
+      .order('sort')
+      .order('created_at')
+      .then(({ data }) => setPresets((data as Preset[] | null) ?? []));
+  }, [extras.quick_issues]);
   const sync = useSync();
 
   const normPhone = normalizeEgyptPhone(phone);
@@ -213,6 +227,8 @@ export function IntakeScreen() {
       }
       for (const p of photos) await uploadDevicePhoto(profile.shop_id, id, p.file);
       setSaved({ id, orderNo: d.data.order_no as string });
+      // الطباعة التلقائية (ميزة إضافية): الإيصال بيتفتح للطباعة على طول
+      if (extras.auto_print) navigate(`/print/receipt/${id}`);
     } catch (e) {
       if (shouldQueue(e)) {
         // النت قطع في النص: الباقي بيتسجل على الجهاز ويكمّل بعدين
@@ -469,6 +485,24 @@ export function IntakeScreen() {
                 <Field label={t('intake.issue')} required error={errors.issue}>
                   <Textarea rows={2} value={issue} onChange={(e) => setIssue(e.target.value)} maxLength={1000} />
                 </Field>
+                {extras.quick_issues && presets.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('extras.presets')} data-testid="intake-presets">
+                    {presets.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setIssue(p.issue);
+                          if (p.est_cost != null) setEstimate(formatPounds(p.est_cost));
+                        }}
+                        className="h-7 rounded-sm border border-accent/50 px-2.5 text-xs font-medium text-fg transition-[border-color,transform] active:scale-95 hover:border-accent"
+                      >
+                        {p.label}
+                        {p.est_cost != null && <span className="num ms-1.5 text-fg-3">{f.money(p.est_cost)}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_ISSUES.map((q) => {
                     const label = t(`intake.quick.${q}`);
