@@ -20,7 +20,8 @@
     "none": "—",
     "live": "Live",
     "offlineRealtime": "Live updates paused",
-    "sep": ", "
+    "sep": ", ",
+    "all": "All"
   },
   "prefs": {
     "lightMode": "Light mode",
@@ -46,7 +47,10 @@
     "settings": "Settings",
     "menu": "Main menu",
     "search": "Search",
-    "customers": "Customers"
+    "customers": "Customers",
+    "finance": "Finances",
+    "drawer": "Drawer",
+    "inventory": "Inventory"
   },
   "roles": {
     "owner": "Owner",
@@ -397,7 +401,18 @@
       "E_FORBIDDEN": "You're not allowed to do this",
       "E_BAD_INPUT": "The entered data isn't valid",
       "E_NOT_FOUND": "Not found",
-      "E_DELIVERED_LOCKED": "The device is already delivered and can't be changed"
+      "E_DELIVERED_LOCKED": "The device is already delivered and can't be changed",
+      "E_UNPAID": "The device must be fully paid before delivery (or the owner delivers on credit)",
+      "E_LEDGER_IMMUTABLE": "Entries can't be edited or deleted. Correct with a reversing entry",
+      "E_UNBALANCED": "The entry isn't balanced, so it wasn't recorded",
+      "E_BAD_ACCOUNT": "This cashbox or account isn't available",
+      "E_BAD_AMOUNT": "Invalid amount",
+      "E_STOCK": "Not enough stock",
+      "E_ALREADY_REVERSED": "This entry was already corrected",
+      "E_SAME_CASHBOX": "Choose two different cashboxes",
+      "E_INSUFFICIENT": "Not enough balance in the cashbox",
+      "E_COST_LOCKED": "Revenue is already recorded. Correct with a reversing entry",
+      "E_CASHBOX_NOT_EMPTY": "Can't disable a cashbox that has money. Transfer it first"
     }
   },
   "onboarding": {
@@ -592,7 +607,8 @@
       "shop": "Shop",
       "payments": "Payment methods",
       "appearance": "Appearance",
-      "messages": "Messages"
+      "messages": "Messages",
+      "ledger": "Cashboxes & expenses"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -663,7 +679,8 @@
       "approval": "Cost approval request",
       "ready": "Device ready",
       "reminder": "Pickup reminder",
-      "delivered": "Thanks after pickup"
+      "delivered": "Thanks after pickup",
+      "debt": "Payment reminder"
     },
     "defaults": {
       "received": "Hi {name}, we received your {device}, order {order}. Track it here: {link}\n{shop}",
@@ -671,7 +688,8 @@
       "approval": "Hi {name}, the repair cost for your {device} is {cost}. Do you approve? Reply or approve here: {link}",
       "ready": "Hi {name}, your {device} is ready for pickup. Order {order}.\n{shop}",
       "reminder": "Hi {name}, your {device} has been ready for {days} days. Order {order}.\n{shop}",
-      "delivered": "Thank you {name}! Your {device} has been picked up and is under warranty until {warranty}.\n{shop}"
+      "delivered": "Thank you {name}! Your {device} has been picked up and is under warranty until {warranty}.\n{shop}",
+      "debt": "Hi {name}, a friendly reminder that you owe {balance} to {shop}. Thank you."
     },
     "placeholders": "Available placeholders"
   },
@@ -759,5 +777,315 @@
     },
     "custom": "Customized",
     "empty": "The message can't be empty"
+  },
+  "drawer": {
+    "title": "Drawer",
+    "sub": "Count the cash in the drawer and enter the amount. The system calculates and records any difference.",
+    "subOwner": "All cashboxes with their expected balance. Closing records any shortage or overage under the employee's name.",
+    "none": "You're not responsible for any drawer",
+    "noneText": "The owner assigns each drawer's holder in Settings → Cashboxes & expenses.",
+    "history": "Recent closings"
+  },
+  "fin": {
+    "title": "Finances",
+    "sub": "Every number is computed from journal entries. Click one for details.",
+    "period": "Period",
+    "periods": {
+      "today": "Today",
+      "week": "Week",
+      "month": "Month",
+      "custom": "Date range"
+    },
+    "fromDate": "From",
+    "toDate": "To",
+    "until": "to",
+    "kpi": {
+      "cash": "Cash on hand",
+      "receivables": "Owed to me",
+      "payables": "I owe",
+      "inventory": "Inventory value",
+      "profit": "Net profit",
+      "net_worth": "Shop net worth"
+    },
+    "kpiCap": {
+      "cash": "All cashboxes",
+      "receivables": "Customer debts and advances",
+      "payables": "Suppliers and salaries due",
+      "inventory": "Weighted average",
+      "profit": "For the selected period",
+      "net_worth": "Cash + owed to me + inventory − I owe"
+    },
+    "equation": "Accounting equation",
+    "eq": {
+      "assets": "Assets",
+      "liabilities": "Liabilities",
+      "equity": "Capital",
+      "earnings": "Earnings"
+    },
+    "balanced": "Ledger balanced",
+    "unbalancedTitle": "The ledger is NOT balanced!",
+    "unbalancedText": "{{n}} unbalanced entries. Total debits {{d}}, credits {{c}}. Stop recording and contact support now.",
+    "cashboxes": "Cashboxes",
+    "dailyChart": "Revenue, expenses and profit by day",
+    "day": "Day",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "profit": "Profit",
+    "topCustomers": "Top 5 customers who owe",
+    "topSuppliers": "Top 5 suppliers owed",
+    "noDebtors": "No customers owe money",
+    "noCreditors": "No suppliers are owed",
+    "dayReport": "Daily report",
+    "byMethod": "Payments by method",
+    "closings": "Drawer closings",
+    "noClosings": "No closings",
+    "deliveredCount": "Devices delivered",
+    "ops": {
+      "payment": "Record payment",
+      "expense": "Expense",
+      "transfer": "Transfer between cashboxes",
+      "capital": "Add capital",
+      "drawing": "Owner drawing",
+      "supplier_payment": "Pay supplier",
+      "salary": "Salary due",
+      "salary_payment": "Pay salary",
+      "advance": "Advance",
+      "advance_settle": "Deduct advance from salary"
+    },
+    "opsHint": {
+      "payment": "Money goes into the cashbox and the customer's debt goes down.",
+      "expense": "Paid from the selected cashbox.",
+      "transfer": "One entry: total cash does not change.",
+      "capital": "Money you put into the shop.",
+      "drawing": "Reduces capital. It is not an expense.",
+      "supplier_payment": "Reduces what you owe them.",
+      "salary": "Recorded as an expense and owed to the employee until paid.",
+      "salary_payment": "Paid from the cashbox and reduces what's owed.",
+      "advance": "Money the employee owes, deducted later.",
+      "advance_settle": "Reduces the advance and the salary due by the same amount."
+    },
+    "customer": "Customer",
+    "device": "Device",
+    "supplier": "Supplier",
+    "employee": "Employee",
+    "cashbox": "Cashbox",
+    "from": "From cashbox",
+    "to": "To cashbox",
+    "expenseItem": "Expense item",
+    "amount": "Amount",
+    "note": "Description (optional)",
+    "pick": "Choose...",
+    "record": "Record",
+    "done": "Recorded",
+    "phone": "Mobile",
+    "errAmount": "Enter a valid amount",
+    "errParty": "Choose who",
+    "errTo": "Choose a different cashbox",
+    "errCashbox": "Choose a cashbox",
+    "errReason": "Write the reason for the correction",
+    "kinds": {
+      "cashbox": "Cashbox",
+      "customer": "Customer statement",
+      "supplier": "Supplier statement",
+      "employee": "Employee account"
+    },
+    "balanceOf": {
+      "cashbox": "Current balance",
+      "customer": "Owes now",
+      "supplier": "Owed now",
+      "employee": "Due now"
+    },
+    "in": {
+      "cashbox": "In",
+      "customer": "Charged",
+      "supplier": "Paid",
+      "employee": "Advances"
+    },
+    "out": {
+      "cashbox": "Out",
+      "customer": "Paid",
+      "supplier": "Bought",
+      "employee": "Due and paid"
+    },
+    "dir": {
+      "all": "All",
+      "in": "In",
+      "out": "Out"
+    },
+    "direction": "Direction",
+    "search": "Search description, order number or employee",
+    "opening": "Opening balance",
+    "closingBalance": "Balance at period end",
+    "noMoves": "No movements in this period",
+    "system": "Automatic",
+    "cols": {
+      "no": "Entry no.",
+      "time": "Time",
+      "desc": "Description",
+      "source": "Source",
+      "by": "Employee",
+      "amount": "Amount",
+      "balance": "Balance after"
+    },
+    "src": {
+      "payment": "Customer payment",
+      "delivery": "Device delivered",
+      "purchase": "Purchase from supplier",
+      "supplier_payment": "Supplier payment",
+      "part_use": "Part installed",
+      "sale": "Sale",
+      "expense": "Expense",
+      "salary": "Salary due",
+      "salary_payment": "Salary paid",
+      "advance": "Advance",
+      "advance_settle": "Advance deducted",
+      "capital": "Capital",
+      "drawing": "Owner drawing",
+      "transfer": "Transfer",
+      "drawer_close": "Drawer closing",
+      "reversal": "Reversing entry (correction)"
+    },
+    "excel": "Excel",
+    "pdf": "PDF / Print",
+    "pdfHint": "Choose \"Save as PDF\" in the print window to get a PDF.",
+    "statement": "Statement",
+    "total": "Total",
+    "closeDrawer": "Close drawer",
+    "closeHint": "Count the cash actually in the drawer and enter it. The system compares it to the expected amount and records the difference under your name.",
+    "closeNow": "Close drawer",
+    "closed": "Drawer closed",
+    "expected": "Expected",
+    "counted": "Counted",
+    "shortage": "Shortage",
+    "overage": "Overage",
+    "diff": "Difference",
+    "reverse": "Correct with reversing entry",
+    "reverseHint": "The original entry is never deleted. A linked reversing entry restores the balances, and the reason is logged under your name.",
+    "reverseNow": "Record reversing entry",
+    "reason": "Reason",
+    "reversed": "Reversing entry recorded",
+    "balances": {
+      "customers": "Owed to me",
+      "suppliers": "Owed to suppliers",
+      "employees": "Employees"
+    },
+    "balancesSub": {
+      "customers": "Every customer who owes (negative = prepaid).",
+      "suppliers": "Every supplier you owe.",
+      "employees": "Advances and salaries due per employee."
+    },
+    "noBalances": "No balances",
+    "plSub": "Revenue and expenses per item for the period."
+  },
+  "ledger": {
+    "acc": {
+      "ar": "Customers",
+      "advances": "Employee advances",
+      "inventory": "Inventory",
+      "ap": "Suppliers",
+      "salaries_payable": "Salaries due",
+      "capital": "Capital",
+      "drawings": "Owner drawings",
+      "rev_repair": "Repair revenue",
+      "rev_parts": "Parts sales",
+      "rev_accessories": "Accessory sales",
+      "overage": "Drawer overage",
+      "cogs": "Cost of parts sold and installed",
+      "shortage": "Drawer shortage",
+      "exp_salaries": "Salaries",
+      "exp_rent": "Rent",
+      "exp_electricity": "Electricity",
+      "exp_internet": "Internet",
+      "exp_purchases": "Purchases",
+      "cash_cash": "Cash drawer",
+      "cash_wallet": "Vodafone Cash",
+      "cash_instapay": "InstaPay",
+      "cash_bank_transfer": "Bank account",
+      "cash_card": "Card (POS)",
+      "cash_installments": "Installments (valU)"
+    }
+  },
+  "inv": {
+    "title": "Inventory",
+    "sub": "Parts, accessories and quantities.",
+    "subOwner": "Inventory value (weighted average): {{v}}",
+    "tabs": {
+      "items": "Items",
+      "suppliers": "Suppliers"
+    },
+    "addItem": "New item",
+    "addSupplier": "New supplier",
+    "purchase": "Purchase",
+    "sale": "Sell",
+    "purchaseHint": "Stock goes up and cost uses the weighted average. No cashbox = on credit from the supplier.",
+    "saleHint": "Counter sale: cash goes into the cashbox and the item leaves stock at its cost.",
+    "cols": {
+      "name": "Item",
+      "kind": "Type",
+      "qty": "Qty",
+      "avg": "Average cost",
+      "value": "Value",
+      "price": "Sale price"
+    },
+    "kinds": {
+      "part": "Spare part",
+      "accessory": "Accessory"
+    },
+    "sku": "Code (optional)",
+    "empty": "No items yet",
+    "emptyText": "Add items first, then record purchases.",
+    "noSuppliers": "No suppliers yet",
+    "supplierName": "Supplier name",
+    "errName": "Enter the name",
+    "errLines": "Complete every line (item, quantity, price)",
+    "itemAdded": "Item added",
+    "supplierAdded": "Supplier added",
+    "purchased": "Purchase recorded",
+    "sold": "Sale recorded",
+    "payFrom": "Payment",
+    "onCredit": "On credit (supplier)",
+    "lines": "Items",
+    "addLine": "Add line",
+    "removeLine": "Remove line",
+    "unitCost": "Unit cost",
+    "unitPrice": "Sale price"
+  },
+  "ledgerSettings": {
+    "cashboxes": "Cashboxes",
+    "expenses": "Expense items",
+    "holder": "Holder",
+    "ownerOnly": "Owner only",
+    "disable": "Disable",
+    "enable": "Enable",
+    "type": "Add",
+    "newCashbox": "Cashbox",
+    "newExpense": "Expense item",
+    "method": "Payment method",
+    "add": "Add"
+  },
+  "money": {
+    "title": "Device money",
+    "final": "Final cost",
+    "paid": "Paid",
+    "due": "Remaining",
+    "partsCost": "Parts cost",
+    "deviceProfit": "Profit",
+    "recordPayment": "Record payment",
+    "deposit": "Deposit",
+    "deliverCredit": "Deliver on credit",
+    "creditDone": "Delivered on credit; the remainder is recorded as customer debt",
+    "mustPay": "The remaining {{v}} must be paid before delivery, or the owner delivers on credit.",
+    "calculator": "Pricing calculator",
+    "calcParts": "Parts",
+    "calcLabor": "Labor",
+    "calcMargin": "Margin on parts",
+    "suggested": "Suggested price",
+    "useAsFinal": "Use as final cost"
+  },
+  "parts": {
+    "title": "Installed parts",
+    "item": "Part",
+    "use": "Installed",
+    "used": "Part recorded and removed from stock"
   }
 }

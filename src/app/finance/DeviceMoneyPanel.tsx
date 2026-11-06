@@ -1,0 +1,248 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Calculator, HandCoins, PackageMinus, Truck } from 'lucide-react';
+import { useLoad } from '../useLoad';
+import { useMe } from '../auth';
+import { opId, rpc, type DeviceMoney, type StockRow } from '../ledgerApi';
+import { OpDialog } from './OpDialog';
+import { supabase } from '../../lib/supabase';
+import { parsePounds } from '../../lib/money';
+import { suggestPrice } from '../../lib/ledger';
+import { toLatinDigits } from '../../lib/digits';
+import { errorMessage } from '../../lib/errors';
+import type { DeviceStatus } from '../../lib/status';
+import { useFormat } from '../../i18n/format';
+import { Panel, PanelHeader } from '../../ui/Panel';
+import { Button } from '../../ui/Button';
+import { Field, Input, Select } from '../../ui/Field';
+import { Alert, Skeleton } from '../../ui/Feedback';
+import { useToast } from '../../ui/Toast';
+import { cn } from '../../ui/cn';
+
+/** فلوس الجهاز (صاحب المحل والاستقبال): التكلفة، والمدفوع، والباقي، والدفعات، والتسليم بالآجل */
+export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; onChanged: () => void }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const { profile, shop } = useMe();
+  const toast = useToast();
+  const owner = profile.role === 'owner';
+  const [pay, setPay] = useState(false);
+  const [calc, setCalc] = useState(false);
+  const { data, error, loading, reload } = useLoad(() => rpc<DeviceMoney>('device_money', { p_device: deviceId }), [deviceId, status]);
+  const cur = f.currency(shop.currency);
+  const done = () => {
+    reload();
+    onChanged();
+  };
+  async function credit() {
+    try {
+      await rpc('deliver_on_credit', { p_device: deviceId });
+      toast({ tone: 'ok', title: t('money.creditDone') });
+      done();
+    } catch (e) {
+      toast({ tone: 'danger', title: errorMessage(e) });
+    }
+  }
+  const canDeliver = status === 'ready' || status === 'unrepairable';
+
+  return (
+    <Panel>
+      <PanelHeader
+        title={t('money.title')}
+        actions={
+          owner && (
+            <Button size="sm" variant="ghost" icon={<Calculator className="size-4" />} onClick={() => setCalc((v) => !v)} aria-expanded={calc}>
+              {t('money.calculator')}
+            </Button>
+          )
+        }
+      />
+      {error ? (
+        <Alert tone="danger" className="m-4">
+          {error}
+        </Alert>
+      ) : loading || !data ? (
+        <div className="p-4">
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 p-4">
+          <div className="grid grid-cols-3 gap-2">
+            <Cell label={t('money.final')} value={data.final != null ? f.money(data.final) : t('common.none')} />
+            <Cell label={t('money.paid')} value={f.money(Number(data.paid))} tone="text-ok" />
+            <Cell label={t('money.due')} value={f.money(Number(data.due))} tone={Number(data.due) > 0 ? 'text-warn' : 'text-fg'} testid="device-due" />
+          </div>
+          {owner && data.parts_cost != null && Number(data.parts_cost) > 0 && (
+            <p className="text-xs text-fg-3">
+              {t('money.partsCost')}: <span className="num text-fg-2">{f.money(Number(data.parts_cost))}</span>
+              {data.final != null && (
+                <>
+                  {' · '}
+                  {t('money.deviceProfit')}: <span className="num text-fg-2">{f.money(data.final - Number(data.parts_cost))}</span>
+                </>
+              )}
+            </p>
+          )}
+          {calc && owner && <PricingCalculator deviceId={deviceId} partsCost={Number(data.parts_cost ?? 0)} locked={status === 'delivered'} onApplied={done} />}
+          {data.payments.length > 0 && (
+            <ul className="divide-y divide-glass-border rounded-md border border-glass-border text-sm">
+              {data.payments.map((p) => (
+                <li key={p.id} className={cn('flex items-center gap-3 px-3 py-1.5', p.reversed && 'text-fg-3 line-through')}>
+                  <span className="num text-fg">{f.money(Number(p.amount))}</span>
+                  <span className="text-2xs text-fg-3">{t(`payments.${p.method}`, { defaultValue: p.method })}</span>
+                  <span className="ms-auto text-2xs text-fg-3">
+                    {p.by} · {f.dateTime(p.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {customer && Number(data.due) > 0 && (
+              <Button size="sm" variant="primary" icon={<HandCoins className="size-4" />} onClick={() => setPay(true)}>
+                {t('money.recordPayment')}
+              </Button>
+            )}
+            {customer && Number(data.due) === 0 && status !== 'delivered' && (
+              <Button size="sm" icon={<HandCoins className="size-4" />} onClick={() => setPay(true)}>
+                {t('money.deposit')}
+              </Button>
+            )}
+            {owner && canDeliver && Number(data.due) > 0 && (
+              <Button size="sm" variant="ghost" icon={<Truck className="size-4" />} onClick={() => void credit()}>
+                {t('money.deliverCredit')}
+              </Button>
+            )}
+          </div>
+          {canDeliver && Number(data.due) > 0 && <p className="text-2xs text-fg-3">{t('money.mustPay', { v: `${f.money(Number(data.due))} ${cur}` })}</p>}
+        </div>
+      )}
+      {customer && <OpDialog op="payment" open={pay} onOpenChange={setPay} fixed={{ customer, device: { id: deviceId, label: orderNo }, amount: data && Number(data.due) > 0 ? Number(data.due) : undefined }} onDone={done} />}
+    </Panel>
+  );
+}
+
+/** حاسبة التسعير: القطع + المصنعية + نسبة ربح، وزرار يحط السعر كتكلفة نهائية */
+function PricingCalculator({ deviceId, partsCost, locked, onApplied }: { deviceId: string; partsCost: number; locked: boolean; onApplied: () => void }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const toast = useToast();
+  const [parts, setParts] = useState(partsCost ? String(partsCost / 100) : '');
+  const [labor, setLabor] = useState('');
+  const [margin, setMargin] = useState('20');
+  useEffect(() => {
+    if (partsCost) setParts(String(partsCost / 100));
+  }, [partsCost]);
+  const res = useMemo(() => {
+    const p = parts.trim() ? parsePounds(parts) : 0;
+    const l = labor.trim() ? parsePounds(labor) : 0;
+    const m = Number(toLatinDigits(margin.trim() || '0'));
+    if (p == null || l == null || !Number.isInteger(m) || m < 0 || m > 1000) return null;
+    return suggestPrice({ parts: p, labor: l, marginPct: m });
+  }, [parts, labor, margin]);
+  async function apply() {
+    if (!res) return;
+    const { data: row } = await supabase.from('device_costs').select('id').eq('device_id', deviceId).maybeSingle();
+    const r = row
+      ? await supabase.from('device_costs').update({ final_cost: res.price }).eq('id', row.id)
+      : await supabase.from('device_costs').insert({ id: crypto.randomUUID(), device_id: deviceId, final_cost: res.price });
+    if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
+    toast({ tone: 'ok', title: t('detail.costsSaved') });
+    onApplied();
+  }
+  return (
+    <div className="rounded-md border border-glass-border bg-sunken/40 p-3" data-testid="calculator">
+      <div className="grid grid-cols-3 gap-2">
+        <Field label={t('money.calcParts')}>
+          <Input dir="ltr" mono inputMode="decimal" value={parts} onChange={(e) => setParts(e.target.value)} className="text-start" />
+        </Field>
+        <Field label={t('money.calcLabor')}>
+          <Input dir="ltr" mono inputMode="decimal" value={labor} onChange={(e) => setLabor(e.target.value)} className="text-start" />
+        </Field>
+        <Field label={t('money.calcMargin')}>
+          <Input dir="ltr" mono inputMode="numeric" value={margin} onChange={(e) => setMargin(e.target.value)} suffix="%" className="text-start" />
+        </Field>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+        {res ? (
+          <>
+            <span className="text-fg-2">
+              {t('money.suggested')}: <span className="num font-semibold text-fg" data-testid="suggested-price">{f.money(res.price)}</span>
+            </span>
+            <span className="text-2xs text-fg-3">
+              {t('money.deviceProfit')}: <span className="num">{f.money(res.profit)}</span>
+            </span>
+            <Button size="sm" className="ms-auto" onClick={() => void apply()} disabled={locked}>
+              {t('money.useAsFinal')}
+            </Button>
+          </>
+        ) : (
+          <span className="text-xs text-danger">{t('fin.errAmount')}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** القطع اللي اتركبت في الجهاز (صاحب المحل والفني). الفني بيسجل من غير ما يشوف السعر */
+export function PartsPanel({ deviceId, status, onChanged }: { deviceId: string; status: DeviceStatus; onChanged: () => void }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const toast = useToast();
+  const [item, setItem] = useState('');
+  const [qty, setQty] = useState('1');
+  const [busy, setBusy] = useState(false);
+  const { data, reload } = useLoad(async () => (await rpc<StockRow[]>('items_stock')).filter((i) => i.kind === 'part').map((i) => ({ ...i, qty: Number(i.qty) })), []);
+  if (status === 'delivered') return null;
+  async function use() {
+    const n = Number(toLatinDigits(qty));
+    if (!item || !Number.isInteger(n) || n <= 0) return toast({ tone: 'danger', title: t('inv.errLines') });
+    setBusy(true);
+    try {
+      await rpc('use_part', { p_id: opId(), p_device: deviceId, p_item: item, p_qty: n });
+      toast({ tone: 'ok', title: t('parts.used') });
+      setItem('');
+      setQty('1');
+      reload();
+      onChanged();
+    } catch (e) {
+      toast({ tone: 'danger', title: errorMessage(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Panel>
+      <PanelHeader title={t('parts.title')} />
+      <div className="grid grid-cols-[minmax(0,1fr)_64px_auto] items-end gap-2 p-4">
+        <Field label={t('parts.item')}>
+          <Select value={item} onChange={(e) => setItem(e.target.value)}>
+            <option value="">{t('fin.pick')}</option>
+            {(data ?? []).map((i) => (
+              <option key={i.id} value={i.id} disabled={i.qty <= 0}>
+                {i.name} ({f.number(i.qty)})
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={t('inv.cols.qty')}>
+          <Input dir="ltr" mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} className="text-start" />
+        </Field>
+        <Button loading={busy} icon={<PackageMinus className="size-4" />} onClick={() => void use()}>
+          {t('parts.use')}
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
+function Cell({ label, value, tone = 'text-fg', testid }: { label: string; value: string; tone?: string; testid?: string }) {
+  return (
+    <div className="rounded-md border border-glass-border bg-sunken/40 px-3 py-2">
+      <div className="readout-label">{label}</div>
+      <div className={`num mt-0.5 truncate text-md ${tone}`} data-testid={testid}>
+        {value}
+      </div>
+    </div>
+  );
+}

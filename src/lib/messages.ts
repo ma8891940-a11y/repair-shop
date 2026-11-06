@@ -1,8 +1,8 @@
 import { normalizeEgyptPhone, toInternational } from './phone';
 
-export const TEMPLATE_KEYS = ['received', 'status', 'approval', 'ready', 'reminder', 'delivered'] as const;
+export const TEMPLATE_KEYS = ['received', 'status', 'approval', 'ready', 'reminder', 'delivered', 'debt'] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
-export const PLACEHOLDERS = ['name', 'order', 'device', 'status', 'cost', 'link', 'shop', 'tech', 'days', 'warranty'] as const;
+export const PLACEHOLDERS = ['name', 'order', 'device', 'status', 'cost', 'link', 'shop', 'tech', 'days', 'warranty', 'balance'] as const;
 export type Vars = Partial<Record<(typeof PLACEHOLDERS)[number], string>>;
 
 /** بيملا القالب: {name} و{order}... وأي متغير مش موجود بيتشال من غير ما يسيب أقواس */

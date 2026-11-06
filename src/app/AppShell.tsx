@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Users, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Users, type LucideIcon } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
@@ -72,6 +72,8 @@ export function AppShell() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'devices', filter }, emit)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'device_costs', filter }, emit)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'status_log', filter }, emit)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'journal_entries', filter }, emit)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments', filter }, emit)
       .subscribe((status) => setLive(status === 'SUBSCRIBED'));
     return () => {
       setLive(false);
@@ -86,6 +88,9 @@ export function AppShell() {
     { to: '/devices', key: 'devices', icon: ClipboardList, shortcut: 'F3', end: true, show: true },
     { to: '/intake', key: 'intake', icon: PackagePlus, shortcut: 'F2', show: front },
     { to: '/customers', key: 'customers', icon: Contact, shortcut: 'F4', show: front },
+    { to: '/finance', key: 'finance', icon: Landmark, shortcut: 'F5', show: owner },
+    { to: '/drawer', key: 'drawer', icon: Wallet, show: front && !owner },
+    { to: '/inventory', key: 'inventory', icon: Boxes, show: true },
     { to: '/users', key: 'team', icon: Users, show: owner },
     { to: '/audit', key: 'audit', icon: History, show: owner },
     { to: '/settings', key: 'settings', icon: Settings, show: true },
@@ -113,11 +118,12 @@ export function AppShell() {
       { combo: 'F2', handler: () => front && navigate('/intake') },
       { combo: 'F3', handler: () => setPalette(true) },
       { combo: 'F4', handler: () => front && navigate('/customers') },
+      { combo: 'F5', handler: () => owner && navigate('/finance') },
       { combo: 'Ctrl+K', handler: () => setPalette((v) => !v), allowInInputs: true },
       { combo: 'Ctrl+J', handler: () => toggleTheme(), allowInInputs: true },
       { combo: 'Ctrl+L', handler: () => toggleLang(), allowInInputs: true },
     ],
-    [navigate, front, toggleTheme, toggleLang],
+    [navigate, front, owner, toggleTheme, toggleLang],
   );
   useShortcuts(shortcuts);
 

@@ -204,6 +204,26 @@ d('المرحلة 3: الدفتر المحاسبي', () => {
     expect(m).toMatchObject({ final: 150000, paid: 150000, due: 0, parts_cost: 27000 });
   });
 
+  it('تفاصيل الأرقام: كل الأرصدة، والإيرادات والمصروفات لكل بند، وحركة الخزن يوم بيوم، لصاحب المحل بس', async () => {
+    const cust = (await as(A.owner, `select party_id, balance from party_balances('customers')`)).rows;
+    expect(cust).toEqual([{ party_id: c2, balance: '95000' }]);
+    const sup = (await as(A.owner, `select party_id, balance from party_balances('suppliers')`)).rows;
+    expect(sup).toEqual([{ party_id: s1, balance: '50000' }]);
+    const emp = (await as(A.owner, `select account, balance from party_balances('employees')`)).rows;
+    expect(emp).toEqual([{ account: 'salaries_payable', balance: '150000' }]);
+    const pl = (await as(A.owner, `select code, amount from pl_breakdown($1, $2)`, [FROM(), TO()])).rows;
+    const byCode = Object.fromEntries(pl.map((r) => [r.code, Number(r.amount)]));
+    expect(byCode).toMatchObject({ rev_repair: 230000, rev_parts: 45000, rev_accessories: 22500, cogs: 63000, exp_rent: 300000, exp_salaries: 400000, shortage: 500 });
+    const p = await pos(A.owner);
+    const daily = (await as(A.owner, `select cashbox, sum(net)::bigint as n from cashbox_daily($1, $2) group by cashbox`, [FROM(), TO()])).rows;
+    for (const cb of p.cashboxes) expect(Number(daily.find((r) => r.cashbox === cb.id)?.n ?? 0)).toBe(cb.balance);
+    for (const u of [rec, tech]) {
+      await expect(as(u, `select * from party_balances('customers')`)).rejects.toThrow(/E_FORBIDDEN/);
+      await expect(as(u, `select * from pl_breakdown($1, $2)`, [FROM(), TO()])).rejects.toThrow(/E_FORBIDDEN/);
+      await expect(as(u, `select * from cashbox_daily($1, $2)`, [FROM(), TO()])).rejects.toThrow(/E_FORBIDDEN/);
+    }
+  });
+
   it('قبول 1: كل قيد متوازن، والدفتر كله متوازن', async () => {
     const r = await admin(
       `select e.id, sum(l.debit) d, sum(l.credit) c, count(*) n from journal_entries e join journal_lines l on l.entry_id = e.id where e.shop_id = $1 group by e.id`,

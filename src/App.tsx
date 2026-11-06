@@ -23,6 +23,12 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { PrintScreen } from './screens/PrintScreen';
 import { TrackingScreen } from './screens/TrackingScreen';
 import { CustomersScreen, CustomerProfileScreen } from './screens/CustomersScreen';
+import { FinanceScreen } from './screens/finance/FinanceScreen';
+import { StatementScreen } from './screens/finance/StatementScreen';
+import { BalancesScreen, ProfitScreen } from './screens/finance/BalancesScreen';
+import { InventoryScreen } from './screens/finance/InventoryScreen';
+import { DrawerScreen } from './screens/finance/DrawerScreen';
+import { DayReportPrint, StatementPrint } from './screens/finance/FinancePrint';
 
 // الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
 const SPLASH_MS = 1500;
@@ -80,6 +86,8 @@ function AppRoutes({ front, owner }: { front: boolean; owner: boolean }) {
   return (
     <>
       <Routes location={bg ?? location}>
+        {owner && <Route path="print/statement/:kind/:id" element={<StatementPrint />} />}
+        {owner && <Route path="print/day/:day" element={<DayReportPrint />} />}
         {front && <Route path="print/:kind/:id" element={<PrintScreen />} />}
         <Route element={<AppShell />}>
           <Route index element={<DashboardScreen />} />
@@ -88,6 +96,12 @@ function AppRoutes({ front, owner }: { front: boolean; owner: boolean }) {
           <Route path="devices/:id" element={<DeviceDetailScreen />} />
           {front && <Route path="customers" element={<CustomersScreen />} />}
           {front && <Route path="customers/:id" element={<CustomerProfileScreen />} />}
+          {owner && <Route path="finance" element={<FinanceScreen />} />}
+          {owner && <Route path="finance/pl" element={<ProfitScreen />} />}
+          {owner && <Route path="finance/balances/:kind" element={<BalancesScreen />} />}
+          {owner && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
+          <Route path="inventory" element={<InventoryScreen />} />
+          {front && <Route path="drawer" element={<DrawerScreen />} />}
           {owner && <Route path="users" element={<TeamScreen />} />}
           {owner && <Route path="audit" element={<AuditScreen />} />}
           <Route path="settings" element={<SettingsScreen />} />

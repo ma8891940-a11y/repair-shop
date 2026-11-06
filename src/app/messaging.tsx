@@ -27,14 +27,17 @@ export function useTemplates() {
 }
 
 export interface MessageTarget {
-  deviceId: string;
+  /** فاضي لرسالة مش عن جهاز معيّن (زي تذكير بالدين) */
+  deviceId: string | null;
   customerId: string;
   customerName: string;
   phone: string;
   orderNo: string;
   device: string;
   status: DeviceStatus;
-  token: string;
+  token: string | null;
+  /** الرصيد المستحق على العميل (للتذكير بالدين) */
+  balance?: number | null;
   cost: number | null;
   readySince?: string | null;
   warrantyUntil?: string | null;
@@ -53,10 +56,11 @@ export function useMessageVars(target: MessageTarget | null) {
       device: target.device,
       status: t(`status.${target.status}`),
       cost: target.cost != null ? `${f.money(target.cost)} ${f.currency(shop.currency)}` : '',
-      link: trackingUrl(window.location.href, target.token),
+      link: target.token ? trackingUrl(window.location.href, target.token) : '',
       shop: shop.name,
       days: target.readySince ? String(daysSince(target.readySince, new Date())) : '',
       warranty: target.warrantyUntil ? f.date(target.warrantyUntil) : '',
+      balance: target.balance != null ? `${f.money(target.balance)} ${f.currency(shop.currency)}` : '',
     };
   }, [target, t, f, shop]);
 }

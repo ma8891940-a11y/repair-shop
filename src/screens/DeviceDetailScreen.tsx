@@ -24,6 +24,7 @@ import { Button } from '../ui/Button';
 import { Field, Input, Textarea } from '../ui/Field';
 import { Dialog } from '../ui/Dialog';
 import { useToast } from '../ui/Toast';
+import { DeviceMoneyPanel, PartsPanel } from '../app/finance/DeviceMoneyPanel';
 import { cn } from '../ui/cn';
 
 interface LogRow {
@@ -263,6 +264,8 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
               </Panel>
 
               {front && <CostPanel deviceId={id} shopId={profile.shop_id} cost={data.cost} currency={f.currency(shop.currency)} onSaved={reload} />}
+              {front && <DeviceMoneyPanel deviceId={id} customer={data.customer ? { id: data.customer.id, name: data.customer.name } : null} orderNo={d.order_no} status={d.status} onChanged={reload} />}
+              {profile.role !== 'reception' && <PartsPanel deviceId={id} status={d.status} onChanged={reload} />}
 
               <Panel>
                 <PanelHeader index={front ? '03' : '02'} title={t('device.info')} />
