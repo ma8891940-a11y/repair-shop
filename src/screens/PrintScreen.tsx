@@ -1,0 +1,184 @@
+import { useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { useMe } from '../app/auth';
+import { useLoad, must } from '../app/useLoad';
+import { supabase } from '../lib/supabase';
+import type { Customer, Device, DeviceCost } from '../lib/types';
+import { useFormat } from '../i18n/format';
+import { Skeleton } from '../ui/Feedback';
+
+/**
+ * الطباعة:
+ *  receipt = إيصال استلام على الطابعة الحرارية 80مم (فيه شروط الاستلام)
+ *  invoice = فاتورة على ورق A4
+ * ألوان الورق أبيض وأسود ثابت (مش من الوضع الداكن)، عشان الطباعة تطلع واضحة.
+ */
+export function PrintScreen() {
+  const { kind = 'receipt', id = '' } = useParams();
+  const { t } = useTranslation();
+  const f = useFormat();
+  const { shop } = useMe();
+  const navigate = useNavigate();
+  const isReceipt = kind !== 'invoice';
+
+  const { data, error } = useLoad(async () => {
+    const d = must(await supabase.from('devices').select('*').eq('id', id).maybeSingle()) as Device | null;
+    if (!d) throw new Error('E_NOT_FOUND');
+    const [c, k] = await Promise.all([
+      supabase.from('customers').select('id, name, phone, area').eq('id', d.customer_id).maybeSingle(),
+      supabase.from('device_costs').select('id, device_id, estimated_cost, final_cost').eq('device_id', id).maybeSingle(),
+    ]);
+    return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null };
+  }, [id]);
+
+  useEffect(() => {
+    if (!data) return;
+    const tm = setTimeout(() => window.print(), 350);
+    return () => clearTimeout(tm);
+  }, [data]);
+
+  const logo = shop.logo_path ? supabase.storage.from('shop-logos').getPublicUrl(shop.logo_path).data.publicUrl : null;
+  const cur = f.currency(shop.currency);
+  const terms = shop.receipt_terms
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="min-h-dvh bg-white text-black">
+      <style>{isReceipt ? '@page { size: 80mm auto; margin: 3mm; }' : '@page { size: A4; margin: 14mm; }'}</style>
+      <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden">
+        <button type="button" onClick={() => window.print()} className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-on-accent">
+          {t('print.print')}
+        </button>
+        <button type="button" onClick={() => navigate(-1)} className="h-9 rounded-md border border-neutral-300 px-4 text-sm">
+          {t('print.back')}
+        </button>
+        <span className="text-xs text-neutral-600">{isReceipt ? t('print.hintReceipt') : t('print.hintInvoice')}</span>
+      </div>
+
+      {error ? (
+        <p className="p-6 text-sm text-red-700">{error}</p>
+      ) : !data ? (
+        <div className="mx-auto w-[76mm] p-4">
+          <Skeleton className="h-40 w-full" />
+        </div>
+      ) : (
+        <article className={isReceipt ? 'mx-auto w-[76mm] p-[2mm] text-[12px] print:w-full print:p-0' : 'mx-auto max-w-[190mm] p-[10mm] text-[14px] print:max-w-none print:p-0'}>
+          <header className={isReceipt ? 'border-b border-dashed border-black pb-2 text-center' : 'flex items-center justify-between border-b-2 border-black pb-4'}>
+            <div className={isReceipt ? '' : 'flex items-center gap-4'}>
+              {logo && <img src={logo} alt="" className={isReceipt ? 'mx-auto mb-1 h-12 object-contain' : 'h-16 object-contain'} />}
+              <div>
+                <div className={isReceipt ? 'text-[16px] font-bold' : 'text-[22px] font-bold'}>{shop.name}</div>
+                {(shop.address || shop.phone) && (
+                  <div className="text-[11px]">
+                    {shop.address}{' '}
+                    {shop.phone && (
+                      <span dir="ltr" className="font-mono">
+                        {shop.phone}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className={isReceipt ? 'mt-1' : 'text-end'}>
+              <div className="font-semibold">{isReceipt ? t('print.receipt') : t('print.invoice')}</div>
+              <div className="font-mono text-[20px] font-bold tracking-wide" dir="ltr">
+                {data.d.order_no}
+              </div>
+            </div>
+          </header>
+
+          <table className={isReceipt ? 'mt-2 w-full' : 'mt-6 w-full'}>
+            <tbody className="[&_td]:border-b [&_td]:border-dotted [&_td]:border-neutral-400 [&_td]:px-1 [&_td]:py-1 [&_th]:border-b [&_th]:border-dotted [&_th]:border-neutral-400 [&_th]:px-1 [&_th]:py-1 [&_th]:text-start [&_th]:align-top [&_th]:font-semibold">
+              <tr>
+                <th className="w-[36%]">{t('print.date')}</th>
+                <td>{f.dateTime(isReceipt ? data.d.received_at : (data.d.delivered_at ?? new Date()))}</td>
+              </tr>
+              {data.c && (
+                <>
+                  <tr>
+                    <th>{t('print.customer')}</th>
+                    <td>
+                      <bdi>{data.c.name}</bdi>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>{t('print.phone')}</th>
+                    <td dir="ltr" className="text-start font-mono">
+                      {data.c.phone}
+                    </td>
+                  </tr>
+                </>
+              )}
+              <tr>
+                <th>{t('print.device')}</th>
+                <td>
+                  {data.d.brand} {data.d.model} {data.d.color && `· ${data.d.color}`}
+                </td>
+              </tr>
+              {data.d.imei && (
+                <tr>
+                  <th>IMEI</th>
+                  <td dir="ltr" className="text-start font-mono">
+                    {data.d.imei}
+                  </td>
+                </tr>
+              )}
+              <tr>
+                <th>{t('print.issue')}</th>
+                <td className="whitespace-pre-wrap">{data.d.issue}</td>
+              </tr>
+              {isReceipt ? (
+                <>
+                  <tr>
+                    <th>{t('print.accessories')}</th>
+                    <td>{data.d.accessories.length ? data.d.accessories.map((a) => t(`intake.acc.${a}`, { defaultValue: a })).join(t('common.sep')) : t('device.withoutAcc')}</td>
+                  </tr>
+                  <tr>
+                    <th>{t('print.condition')}</th>
+                    <td className="whitespace-pre-wrap">{data.d.cosmetic_condition || t('common.none')}</td>
+                  </tr>
+                  <tr>
+                    <th>{t('print.estimate')}</th>
+                    <td>{data.k?.estimated_cost != null ? `${f.money(data.k.estimated_cost)} ${cur}` : t('print.afterCheck')}</td>
+                  </tr>
+                </>
+              ) : (
+                <>
+                  <tr className="text-[18px] font-bold">
+                    <th className="!border-t-2 !border-solid !border-black">{t('print.total')}</th>
+                    <td className="!border-t-2 !border-solid !border-black font-mono">{data.k?.final_cost != null ? `${f.money(data.k.final_cost)} ${cur}` : t('common.none')}</td>
+                  </tr>
+                  <tr>
+                    <th>{t('print.warranty')}</th>
+                    <td>{shop.warranty_days > 0 ? t('print.warrantyDays', { n: shop.warranty_days }) : t('print.noWarranty')}</td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+
+          {isReceipt && terms.length > 0 && (
+            <section className="mt-2 border-t border-dashed border-black pt-1.5 text-[11px]">
+              <b>{t('print.terms')}</b>
+              <ol className="mt-1 list-decimal ps-4">
+                {terms.map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ol>
+            </section>
+          )}
+          <footer className={isReceipt ? 'mt-3 text-center' : 'mt-12 flex items-end justify-between'}>
+            <div className={isReceipt ? 'mb-2 text-start' : ''}>
+              {t('print.sign')}: ..............................
+            </div>
+            <div className="text-[11px] text-neutral-600">{t('print.thanks')}</div>
+          </footer>
+        </article>
+      )}
+    </div>
+  );
+}

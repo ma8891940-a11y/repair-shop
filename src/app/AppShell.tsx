@@ -87,7 +87,7 @@ export function AppShell() {
     { to: '/intake', key: 'intake', icon: PackagePlus, shortcut: 'F2', show: front },
     { to: '/users', key: 'team', icon: Users, show: owner },
     { to: '/audit', key: 'audit', icon: History, show: owner },
-    { to: '/settings', key: 'settings', icon: Settings, show: owner },
+    { to: '/settings', key: 'settings', icon: Settings, show: true },
   ].filter((n) => n.show);
 
   const toggleEffects = () => {

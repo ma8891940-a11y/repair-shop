@@ -16,7 +16,11 @@ import { JoinScreen } from './screens/auth/JoinScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { IntakeScreen } from './screens/IntakeScreen';
 import { DeviceDetailScreen } from './screens/DeviceDetailScreen';
-import { PendingScreen } from './screens/PendingScreen';
+import { DevicesScreen } from './screens/DevicesScreen';
+import { TeamScreen } from './screens/TeamScreen';
+import { AuditScreen } from './screens/AuditScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
+import { PrintScreen } from './screens/PrintScreen';
 
 // الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
 const SPLASH_MS = 1500;
@@ -53,24 +57,25 @@ function Gate() {
     );
   }
   if (!profile || profile.deleted_at || !shop) return <JoinScreen blocked={Boolean(profile?.deleted_at)} />;
-  return <AppRoutes front={profile.role !== 'technician'} />;
+  return <AppRoutes front={profile.role !== 'technician'} owner={profile.role === 'owner'} />;
 }
 
-function AppRoutes({ front }: { front: boolean }) {
+function AppRoutes({ front, owner }: { front: boolean; owner: boolean }) {
   const location = useLocation();
   // لو الجهاز اتفتح من كارت، الشاشة اللي ورا بتفضل ظاهرة والتفاصيل تطلع فوقها
   const bg = (location.state as { bg?: Location } | null)?.bg;
   return (
     <>
       <Routes location={bg ?? location}>
+        {front && <Route path="print/:kind/:id" element={<PrintScreen />} />}
         <Route element={<AppShell />}>
           <Route index element={<DashboardScreen />} />
           {front && <Route path="intake" element={<IntakeScreen />} />}
-          <Route path="devices" element={<PendingScreen titleKey="nav.devices" />} />
+          <Route path="devices" element={<DevicesScreen />} />
           <Route path="devices/:id" element={<DeviceDetailScreen />} />
-          <Route path="users" element={<PendingScreen titleKey="nav.team" />} />
-          <Route path="audit" element={<PendingScreen titleKey="nav.audit" />} />
-          <Route path="settings" element={<PendingScreen titleKey="nav.settings" />} />
+          {owner && <Route path="users" element={<TeamScreen />} />}
+          {owner && <Route path="audit" element={<AuditScreen />} />}
+          <Route path="settings" element={<SettingsScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
