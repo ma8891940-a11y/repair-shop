@@ -14,9 +14,10 @@ export interface Shop {
   theme: 'dark' | 'light';
   locale: 'ar' | 'en';
   setup_completed_at: string | null;
+  default_margin_pct?: number;
 }
 
-export const SHOP_COLUMNS = 'id, name, phone, address, receipt_terms, warranty_days, country, currency, payment_methods, logo_path, theme, locale, setup_completed_at';
+export const SHOP_COLUMNS = 'id, name, phone, address, receipt_terms, warranty_days, country, currency, payment_methods, logo_path, theme, locale, setup_completed_at, default_margin_pct';
 
 export interface Profile {
   id: string;
@@ -53,6 +54,7 @@ export interface Device {
   tracking_token: string;
   warranty_days: number | null;
   warranty_until: string | null;
+  intake_signature?: string | null;
 }
 
 /** صف من عرض devices_list (الأجهزة + اسم العميل + الأسعار لو مسموح) */

@@ -1,8 +1,12 @@
 import { Link, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { WhatsAppDialog, type MessageTarget } from '../../app/messaging';
+import { supabase } from '../../lib/supabase';
+import { daysSince } from '../../lib/dates';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
-import { useLoad } from '../../app/useLoad';
+import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
 import { rpc, useAccountName } from '../../app/ledgerApi';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
@@ -18,6 +22,7 @@ interface Row {
   name: string | null;
   account: string;
   balance: number;
+  oldest: string | null;
 }
 
 function Back() {
@@ -40,9 +45,15 @@ export function BalancesScreen() {
   const accName = useAccountName();
   const kinds: BalKind[] = ['customers', 'suppliers', 'employees'];
   const kind = (kinds.includes(k as BalKind) ? k : 'customers') as BalKind;
-  const { data, error, loading, reload } = useLoad(() => rpc<Row[]>('party_balances', { p_kind: kind }), [kind]);
+  const { data, error, loading, reload } = useLoad(async () => {
+    const rows = await rpc<Row[]>('party_balances', { p_kind: kind });
+    const ids = rows.filter((r) => r.party_type === 'customer').map((r) => r.party_id);
+    const phones = ids.length ? must(await supabase.from('customers').select('id, phone').in('id', ids)) as { id: string; phone: string }[] : [];
+    return { rows, phones: new Map(phones.map((p) => [p.id, p.phone])) };
+  }, [kind]);
+  const [wa, setWa] = useState<MessageTarget | null>(null);
   useLiveRefresh(reload);
-  const rows = (data ?? []).map((r) => ({ ...r, balance: Number(r.balance) }));
+  const rows = (data?.rows ?? []).map((r) => ({ ...r, balance: Number(r.balance) }));
   const total = rows.reduce((a, r) => a + r.balance, 0);
   return (
     <div className="max-w-4xl">
@@ -77,19 +88,35 @@ export function BalancesScreen() {
           />
           <ul className="divide-y divide-glass-border">
             {rows.map((r) => (
-              <li key={`${r.party_id}-${r.account}`}>
-                <Link to={`/finance/${r.party_type}/${r.party_id}`} className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-raised/50">
+              <li key={`${r.party_id}-${r.account}`} className="flex items-center">
+                <Link to={`/finance/${r.party_type}/${r.party_id}`} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-sm hover:bg-raised/50" data-testid="balance-row">
                   <span className="min-w-0 flex-1 truncate text-fg">
                     <bdi>{r.name}</bdi>
                   </span>
                   {kind === 'employees' && <span className="text-2xs text-fg-3">{accName({ code: r.account, name: null })}</span>}
-                  <span className={cn('num', r.balance < 0 ? 'text-warn' : 'text-fg')}>{f.money(r.balance)}</span>
+                  {r.oldest && r.balance > 0 && (
+                    <span className="hidden text-2xs text-fg-3 sm:inline" title={f.date(r.oldest)}>
+                      {t('fin.oldest', { d: f.days(daysSince(r.oldest, new Date())) })}
+                    </span>
+                  )}
+                  <span className={cn('num w-24 text-end', r.balance < 0 ? 'text-warn' : 'text-fg')}>{f.money(r.balance)}</span>
                 </Link>
+                {kind === 'customers' && r.balance > 0 && data?.phones.get(r.party_id) && (
+                  <button
+                    type="button"
+                    className="me-3 rounded-sm p-1.5 text-fg-3 hover:bg-raised hover:text-ok"
+                    aria-label={`${t('wa.keys.debt')} ${r.name ?? ''}`}
+                    onClick={() => setWa({ deviceId: null, customerId: r.party_id, customerName: r.name ?? '', phone: data.phones.get(r.party_id)!, orderNo: '', device: '', status: 'delivered', token: null, cost: null, balance: r.balance })}
+                  >
+                    <MessageCircle className="size-4" aria-hidden />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         </Panel>
       )}
+      <WhatsAppDialog open={!!wa} onOpenChange={(v) => !v && setWa(null)} target={wa} initial="debt" />
     </div>
   );
 }

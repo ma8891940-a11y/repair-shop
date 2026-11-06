@@ -28,8 +28,10 @@ interface Prefs {
   /** المؤثرات الكاملة (الخلفية الحية والتوهج والزجاج): مقفولة افتراضيًا، والاختيار محفوظ لكل جهاز لوحده */
   effects: boolean;
   setEffects: (v: boolean) => void;
-  /** true لو المفروض نوقف الحركة التقيلة (المؤثرات مقفولة أو "تقليل الحركة" في الجهاز) */
+  /** true لو الجهاز طالب "تقليل الحركة": كل الحركة بتقف (حتى الأساسية) */
   calm: boolean;
+  /** المؤثرات الكاملة شغالة فعلًا: التوهج اللي بيتبع الماوس، ونبض الأرقام، والزجاج والـ blur. الحركة الأساسية مش محتاجاها */
+  rich: boolean;
   lang: Lang;
   setLang: (l: Lang) => void;
   toggleLang: () => void;
@@ -66,7 +68,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const toggleLang = useCallback(() => setLangState((l) => (l === 'ar' ? 'en' : 'ar')), []);
 
   return (
-    <Ctx.Provider value={{ theme, setTheme, toggleTheme, effects, setEffects, calm: !effects || reduced, lang, setLang, toggleLang }}>
+    <Ctx.Provider value={{ theme, setTheme, toggleTheme, effects, setEffects, calm: reduced, rich: effects && !reduced, lang, setLang, toggleLang }}>
       {children}
     </Ctx.Provider>
   );

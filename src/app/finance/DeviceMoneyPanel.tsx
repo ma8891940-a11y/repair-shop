@@ -20,7 +20,7 @@ import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 
 /** فلوس الجهاز (صاحب المحل والاستقبال): التكلفة، والمدفوع، والباقي، والدفعات، والتسليم بالآجل */
-export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCost, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; finalCost: number | null | undefined; onChanged: () => void }) {
+export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCost, version = 0, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; finalCost: number | null | undefined; version?: number; onChanged: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile, shop } = useMe();
@@ -28,7 +28,13 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
   const owner = profile.role === 'owner';
   const [pay, setPay] = useState(false);
   const [calc, setCalc] = useState(false);
-  const { data, error, loading, reload } = useLoad(() => rpc<DeviceMoney>('device_money', { p_device: deviceId }), [deviceId, status, finalCost]);
+  const { data, error, loading, reload } = useLoad(async () => {
+    const [m, sug] = await Promise.all([
+      rpc<DeviceMoney>('device_money', { p_device: deviceId }),
+      rpc<{ price: number; labor: number; parts?: number; margin?: number }>('suggest_device_price', { p_device: deviceId }),
+    ]);
+    return { ...m, suggestion: sug };
+  }, [deviceId, status, finalCost, version]);
   const cur = f.currency(shop.currency);
   const done = () => {
     reload();
@@ -83,7 +89,19 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
               )}
             </p>
           )}
-          {calc && owner && <PricingCalculator deviceId={deviceId} partsCost={Number(data.parts_cost ?? 0)} locked={status === 'delivered'} onApplied={done} />}
+          {status !== 'delivered' && data.suggestion.price > 0 && data.final !== data.suggestion.price && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-glass-border bg-sunken/40 px-3 py-2 text-sm">
+              <span className="text-fg-2">
+                {t('money.suggested')}: <span className="num font-semibold text-fg" data-testid="auto-suggested">{f.money(data.suggestion.price)}</span> <span className="text-2xs text-fg-3">{cur}</span>
+              </span>
+              <Button size="sm" variant="ghost" className="ms-auto" onClick={() => void applyFinal(deviceId, data.suggestion.price, t('detail.costsSaved'), toast, done)}>
+                {t('money.useAsFinal')}
+              </Button>
+            </div>
+          )}
+          {calc && owner && (
+            <PricingCalculator deviceId={deviceId} partsCost={Number(data.parts_cost ?? 0)} labor={data.suggestion.labor} margin={data.suggestion.margin ?? shop.default_margin_pct ?? 20} locked={status === 'delivered'} onApplied={done} />
+          )}
           {data.payments.length > 0 && (
             <ul className="divide-y divide-glass-border rounded-md border border-glass-border text-sm">
               {data.payments.map((p) => (
@@ -123,13 +141,23 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
 }
 
 /** حاسبة التسعير: القطع + المصنعية + نسبة ربح، وزرار يحط السعر كتكلفة نهائية */
-function PricingCalculator({ deviceId, partsCost, locked, onApplied }: { deviceId: string; partsCost: number; locked: boolean; onApplied: () => void }) {
+async function applyFinal(deviceId: string, price: number, okTitle: string, toast: ReturnType<typeof useToast>, onApplied: () => void) {
+  const { data: row } = await supabase.from('device_costs').select('id').eq('device_id', deviceId).maybeSingle();
+  const r = row
+    ? await supabase.from('device_costs').update({ final_cost: price }).eq('id', row.id)
+    : await supabase.from('device_costs').insert({ id: crypto.randomUUID(), device_id: deviceId, final_cost: price });
+  if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
+  toast({ tone: 'ok', title: okTitle });
+  onApplied();
+}
+
+function PricingCalculator({ deviceId, partsCost, labor: laborDefault, margin: marginDefault, locked, onApplied }: { deviceId: string; partsCost: number; labor: number; margin: number; locked: boolean; onApplied: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
   const toast = useToast();
   const [parts, setParts] = useState(partsCost ? String(partsCost / 100) : '');
-  const [labor, setLabor] = useState('');
-  const [margin, setMargin] = useState('20');
+  const [labor, setLabor] = useState(laborDefault ? String(laborDefault / 100) : '');
+  const [margin, setMargin] = useState(String(marginDefault));
   useEffect(() => {
     if (partsCost) setParts(String(partsCost / 100));
   }, [partsCost]);
@@ -141,14 +169,7 @@ function PricingCalculator({ deviceId, partsCost, locked, onApplied }: { deviceI
     return suggestPrice({ parts: p, labor: l, marginPct: m });
   }, [parts, labor, margin]);
   async function apply() {
-    if (!res) return;
-    const { data: row } = await supabase.from('device_costs').select('id').eq('device_id', deviceId).maybeSingle();
-    const r = row
-      ? await supabase.from('device_costs').update({ final_cost: res.price }).eq('id', row.id)
-      : await supabase.from('device_costs').insert({ id: crypto.randomUUID(), device_id: deviceId, final_cost: res.price });
-    if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
-    toast({ tone: 'ok', title: t('detail.costsSaved') });
-    onApplied();
+    if (res) await applyFinal(deviceId, res.price, t('detail.costsSaved'), toast, onApplied);
   }
   return (
     <div className="rounded-md border border-glass-border bg-sunken/40 p-3" data-testid="calculator">

@@ -5,7 +5,7 @@ import { cn } from './cn';
 
 /** رقم بيعدّ لحد قيمته، ولما يتغير بعد كده بينبض نبضة خفيفة */
 export function CountUp({ value, format = (n) => String(n), className }: { value: number; format?: (n: number) => string; className?: string }) {
-  const { calm } = usePrefs();
+  const { calm, rich } = usePrefs();
   const mv = useMotionValue(calm ? value : 0);
   const text = useTransform(mv, (v) => format(Math.round(v)));
   const prev = useRef<number | null>(null);
@@ -26,7 +26,7 @@ export function CountUp({ value, format = (n) => String(n), className }: { value
   return (
     <span className={cn('relative inline-block', className)}>
       <motion.span aria-label={format(value)}>{text}</motion.span>
-      {pulse > 0 && !calm && (
+      {pulse > 0 && rich && (
         <motion.span
           key={pulse}
           className="pointer-events-none absolute -inset-x-2 -inset-y-1 rounded-md"

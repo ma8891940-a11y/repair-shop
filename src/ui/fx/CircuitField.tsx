@@ -100,7 +100,7 @@ function readColors() {
 }
 
 export function CircuitField({ className, glowFollow = false, density = 1, still = false }: { className?: string; glowFollow?: boolean; density?: number; /** ترسم مرة واحدة من غير حركة (جوه البرنامج) */ still?: boolean }) {
-  const { calm, theme } = usePrefs();
+  const { calm, rich, theme } = usePrefs();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
 
@@ -248,7 +248,7 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
 
   // توهج بيتبع الماوس (transform بس، بتنعيم)
   useEffect(() => {
-    if (!glowFollow || calm) return;
+    if (!glowFollow || !rich) return;
     const el = glowRef.current;
     if (!el) return;
     let tx = window.innerWidth / 2;
@@ -278,12 +278,12 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
       window.removeEventListener('pointermove', onMove);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [glowFollow, calm]);
+  }, [glowFollow, rich]);
 
   return (
     <div className={cn('pointer-events-none absolute inset-0 overflow-hidden', className)} aria-hidden>
       <canvas ref={canvasRef} className="absolute inset-0 size-full" />
-      {glowFollow && !calm && (
+      {glowFollow && rich && (
         <div
           ref={glowRef}
           className="absolute left-0 top-0 size-[600px] rounded-full will-change-transform"

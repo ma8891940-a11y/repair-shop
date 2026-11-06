@@ -14,6 +14,7 @@ import { useFormat } from '../i18n/format';
 import { Button } from '../ui/Button';
 import { Panel, PanelHeader } from '../ui/Panel';
 import { FollowUpPanel } from '../app/FollowUpPanel';
+import { OwnerAlerts } from '../app/OwnerAlerts';
 import { StatusBadge } from '../ui/StatusBadge';
 import { CountUp, Ring, Sparkline } from '../ui/viz';
 import { EmptyState, ErrorState, Skeleton } from '../ui/Feedback';
@@ -80,6 +81,7 @@ export function DashboardScreen() {
         </Panel>
       ) : (
         <>
+          {owner && <OwnerAlerts />}
           <div className={cn('grid gap-3', owner ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4')}>
             <Kpi i={0} label={t('dashboard.today')} caption={t('dashboard.todayCap')} icon={Inbox} value={stats?.today} series={series?.today} to="/devices?filter=today" loading={loading} />
             <Kpi i={1} label={t('dashboard.under')} caption={t('dashboard.underCap')} icon={Wrench} value={stats?.underRepair} series={series?.underRepair} to="/devices?filter=under_repair" loading={loading} />

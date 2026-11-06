@@ -56,3 +56,29 @@ describe('الترجمة', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('كل مفتاح نص مستخدم في الكود موجود في اللغتين', () => {
+  const has = (d: unknown, k: string): boolean => {
+    let cur = d as Record<string, unknown>;
+    for (const p of k.split('.')) {
+      if (!cur || typeof cur !== 'object') return false;
+      if (p in cur) {
+        cur = cur[p] as Record<string, unknown>;
+        continue;
+      }
+      return Object.keys(cur).some((x) => x.startsWith(`${p}_`)); // صيغ الجمع
+    }
+    return true;
+  };
+  it('مفيش مفتاح ناقص', () => {
+    const missing: string[] = [];
+    for (const f of walk(join(__dirname, '..'))) {
+      for (const m of readFileSync(f, 'utf8').matchAll(/\bt\(\s*'([a-zA-Z][\w.]+)'/g)) {
+        if (!m[1].includes('.')) continue;
+        if (!has(ar, m[1])) missing.push(`ar: ${m[1]}`);
+        if (!has(en, m[1])) missing.push(`en: ${m[1]}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+});

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { trackingUrl } from '../lib/messages';
+import { trackingUrl, waLink } from '../lib/messages';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../app/auth';
@@ -33,8 +33,9 @@ export function PrintScreen() {
       supabase.from('customers').select('id, name, phone, area').eq('id', d.customer_id).maybeSingle(),
       supabase.from('device_costs').select('id, device_id, estimated_cost, final_cost').eq('device_id', id).maybeSingle(),
     ]);
-    return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null };
-  }, [id]);
+    const parts = kind === 'invoice' ? ((await supabase.rpc('device_parts', { p_device: id })).data ?? []) as { item_id: string; name: string; qty: number }[] : [];
+    return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null, parts };
+  }, [id, kind]);
 
   // الـ QR بيفتح صفحة تتبع العميل بالرمز السري بتاع الجهاز
   useEffect(() => {
@@ -48,6 +49,23 @@ export function PrintScreen() {
     return () => clearTimeout(tm);
   }, [data, qr, isLabel, isReceipt]);
 
+  // الفاتورة كرسالة واتساب للعميل
+  const invoiceLink =
+    data && data.c
+      ? waLink(
+          data.c.phone,
+          [
+            `${shop.name} - ${t('print.invoice')} ${data.d.order_no}`,
+            `${t('print.device')}: ${data.d.brand} ${data.d.model}`,
+            `${t('print.issue')}: ${data.d.issue}`,
+            data.parts.length ? `${t('print.parts')}: ${data.parts.map((x) => `${x.name} × ${Number(x.qty)}`).join(t('common.sep'))}` : '',
+            data.k?.final_cost != null ? `${t('print.total')}: ${f.money(data.k.final_cost)} ${f.currency(shop.currency)}` : '',
+            shop.warranty_days > 0 ? t('print.warrantyDays', { n: shop.warranty_days }) : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        )
+      : null;
   const logo = shop.logo_path ? supabase.storage.from('shop-logos').getPublicUrl(shop.logo_path).data.publicUrl : null;
   const cur = f.currency(shop.currency);
   const terms = shop.receipt_terms
@@ -65,6 +83,11 @@ export function PrintScreen() {
         <button type="button" onClick={() => navigate(-1)} className="h-9 rounded-md border border-neutral-300 px-4 text-sm">
           {t('print.back')}
         </button>
+        {!isReceipt && !isLabel && invoiceLink && (
+          <a href={invoiceLink} target="_blank" rel="noopener noreferrer" className="h-9 rounded-md border border-neutral-300 px-4 text-sm leading-9" data-testid="invoice-wa">
+            {t('print.sendWa')}
+          </a>
+        )}
         <span className="text-xs text-neutral-600">{isReceipt || isLabel ? t('print.hintReceipt') : t('print.hintInvoice')}</span>
       </div>
 
@@ -173,6 +196,12 @@ export function PrintScreen() {
                 </>
               ) : (
                 <>
+                  {data.parts.length > 0 && (
+                    <tr>
+                      <th>{t('print.parts')}</th>
+                      <td>{data.parts.map((x) => `${x.name} × ${Number(x.qty)}`).join(t('common.sep'))}</td>
+                    </tr>
+                  )}
                   <tr className="text-[18px] font-bold">
                     <th className="!border-t-2 !border-solid !border-black">{t('print.total')}</th>
                     <td className="!border-t-2 !border-solid !border-black font-mono">{data.k?.final_cost != null ? `${f.money(data.k.final_cost)} ${cur}` : t('common.none')}</td>
@@ -195,6 +224,12 @@ export function PrintScreen() {
                 ))}
               </ol>
             </section>
+          )}
+          {isReceipt && data.d.intake_signature && (
+            <div className="mt-2 border-t border-dashed border-black pt-1.5 text-[11px]">
+              <b>{t('signature.title')}</b>
+              <img src={data.d.intake_signature} alt="" className="mt-1 h-[16mm] w-auto" />
+            </div>
           )}
           {isReceipt && qr && (
             <div className="mt-2 flex items-center justify-center gap-2 border-t border-dashed border-black pt-2">

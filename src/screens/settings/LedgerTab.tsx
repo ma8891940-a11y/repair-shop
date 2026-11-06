@@ -11,6 +11,7 @@ import { Button } from '../../ui/Button';
 import { Field, Input, Select } from '../../ui/Field';
 import { Alert, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
+import { PricingSettings } from './PricingSettings';
 
 /** الخزن وبنود المصروفات: صاحب المحل بيضيف خزن، ويحدد مسؤول الدرج، ويضيف بنود مصروفات */
 export function LedgerTab() {
@@ -47,6 +48,7 @@ export function LedgerTab() {
   const exp = data.accs.filter((a) => a.kind === 'expense');
   return (
     <div className="flex flex-col gap-4">
+      <PricingSettings />
       <Panel>
         <PanelHeader title={t('ledgerSettings.cashboxes')} />
         <ul className="divide-y divide-glass-border">

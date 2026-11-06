@@ -38,6 +38,9 @@ async function user(email: string) {
 const tag = randomUUID().slice(0, 8);
 // عنوان شبكة مختلف لكل تشغيلة، عشان محاولات التشغيلات اللي فاتت ما تأثرش
 const NET = `10.${Math.floor(Math.random() * 250) + 1}`;
+// رقم موبايل مختلف كل تشغيلة (القاعدة الحقيقية فيها محلات من تشغيلات قبل كده بنفس أرقام الطلبات)
+const PHONE = `0112${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`;
+const L4 = PHONE.slice(-4);
 let owner = '';
 let tech = '';
 let other = '';
@@ -59,7 +62,7 @@ d('المرحلة 2: العميل', () => {
     tech = await user(`t2-${tag}@t.test`);
     await as(tech, `select bootstrap_account('كريم حسن')`);
     customer = randomUUID();
-    await as(owner, `insert into customers(id, shop_id, name, phone) values ($1, gen_random_uuid(), 'منى سمير', '01123456789')`, [customer]);
+    await as(owner, `insert into customers(id, shop_id, name, phone) values ($1, gen_random_uuid(), 'منى سمير', $2)`, [customer, PHONE]);
     dev = randomUUID();
     const r = await as<{ order_no: string; tracking_token: string }>(
       owner,
@@ -83,8 +86,8 @@ d('المرحلة 2: العميل', () => {
     const keys = Object.keys(a.rows[0]);
     for (const k of ['name', 'phone', 'customer_name', 'customer_phone', 'imei', 'issue']) expect(keys).not.toContain(k);
     expect(JSON.stringify(a.rows[0])).not.toContain('منى');
-    expect(JSON.stringify(a.rows[0])).not.toContain('01123456789');
-    const b = await as(null, `select order_no from get_tracking($1, '6789')`, [order]);
+    expect(JSON.stringify(a.rows[0])).not.toContain(PHONE);
+    const b = await as(null, `select order_no from get_tracking($1, '${L4}')`, [order]);
     expect(b.rows[0].order_no).toBe(order);
   });
 
@@ -95,11 +98,28 @@ d('المرحلة 2: العميل', () => {
   });
 
   it('بيانات غلط = مفيش نتيجة، والزائر ما يقدرش يقرا الجداول مباشرة', async () => {
-    expect((await as(null, `select * from get_tracking($1, '0000')`, [order], `${NET}.9.1`)).rowCount).toBe(0);
+    // آخر 4 أرقام مش موجودة عند أي عميل (القاعدة ممكن يبقى فيها محلات تانية بنفس رقم الطلب)
+    const unused = (await admin(`select lpad(n::text, 4, '0') as v from generate_series(0, 9999) n where lpad(n::text, 4, '0') not in (select right(phone, 4) from customers) limit 1`)).rows[0].v;
+    expect((await as(null, `select * from get_tracking($1, $2)`, [order, unused], `${NET}.9.1`)).rowCount).toBe(0);
     expect((await as(null, `select * from get_tracking(p_token => 'ffffffffffffffffffffffff')`, [], `${NET}.9.1`)).rowCount).toBe(0);
     for (const tbl of ['devices', 'customers', 'device_costs', 'tracking_attempts', 'quote_decisions']) {
       await expect(as(null, `select * from ${tbl}`)).rejects.toThrow(/permission denied/);
     }
+  });
+
+  it('لو رقم الطلب وآخر 4 أرقام مطابقين لجهازين في محلين، ما بيظهرش أي واحد فيهم (والموافقة كمان)', async () => {
+    // المحل التاني: نفس رقم الطلب ونفس آخر 4 أرقام لعميل تاني
+    const c2 = randomUUID();
+    await as(other, `insert into customers(id, shop_id, name, phone) values ($1, gen_random_uuid(), 'عميل محل تاني', $2)`, [c2, `0100000${L4}`]);
+    let o2 = '';
+    for (let i = 0; i < 50 && o2 !== order; i++) {
+      o2 = (await as(other, `insert into devices(id, customer_id, brand, model, issue) values ($1, $2, 'x', 'y', 'z') returning order_no`, [randomUUID(), c2])).rows[0].order_no;
+    }
+    expect(o2).toBe(order);
+    await expect(as(null, `select * from get_tracking($1, '${L4}')`, [order], `${NET}.6.1`)).rejects.toThrow(/E_TRACK_AMBIGUOUS/);
+    await expect(as(null, `select decide_quote('approved', $1, '${L4}')`, [order], `${NET}.6.2`)).rejects.toThrow(/E_TRACK_AMBIGUOUS/);
+    // الـ QR لسه شغال
+    expect((await as(null, `select order_no from get_tracking(p_token => $1)`, [token], `${NET}.6.3`)).rows[0].order_no).toBe(order);
   });
 
   it('حد المحاولات: بعد 5 تخمينات مختلفة لنفس رقم الطلب بيقفل، حتى بالبيانات الصح', async () => {
@@ -109,12 +129,13 @@ d('المرحلة 2: العميل', () => {
     // رقم الطلب مش فريد بين المحلات، فممكن يكون عليه تخمينات من تشغيلات قبل كده: بنكمّل لحد 5 مختلفين
     const seen = new Set((await admin(`select distinct guess from tracking_attempts where order_no = $1 and not success and guess is not null and created_at > now() - interval '15 minutes'`, [o])).rows.map((x) => x.guess));
     for (let v = 1000; seen.size < 5; v++) {
+      if (String(v) === L4) continue;
       const h = (await admin(`select tracking_guess($1, $2) as h`, [o, String(v)])).rows[0].h;
       if (seen.has(h)) continue;
       expect((await as(null, `select * from get_tracking($1, $2)`, [o, String(v)], `${NET}.1.${v % 250}`)).rowCount).toBe(0);
       seen.add(h);
     }
-    await expect(as(null, `select * from get_tracking($1, '6789')`, [o], `${NET}.1.251`)).rejects.toThrow(/E_RATE_LIMIT/);
+    await expect(as(null, `select * from get_tracking($1, '${L4}')`, [o], `${NET}.1.251`)).rejects.toThrow(/E_RATE_LIMIT/);
     // التخمين نفسه ما بيتخزنش، بيتخزن hash بس
     const stored = await admin(`select guess from tracking_attempts where order_no = $1 and guess is not null limit 1`, [o]);
     expect(stored.rows[0].guess).toMatch(/^[0-9a-f]{64}$/);
@@ -126,7 +147,7 @@ d('المرحلة 2: العميل', () => {
     const o = r.rows[0].order_no;
     const wrong = '1234'; // ثابت عشان التشغيلات المتكررة تبقى نفس الغلطة
     for (let i = 0; i < 8; i++) await as(null, `select * from get_tracking($1, $2)`, [o, wrong], `${NET}.5.${i}`);
-    expect((await as(null, `select order_no from get_tracking($1, '6789')`, [o], `${NET}.5.99`)).rows[0].order_no).toBe(o);
+    expect((await as(null, `select order_no from get_tracking($1, '${L4}')`, [o], `${NET}.5.99`)).rows[0].order_no).toBe(o);
   });
 
   it('حد المحاولات: بعد 10 محاولات غلط من نفس الجهاز بيقفل', async () => {

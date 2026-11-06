@@ -72,6 +72,9 @@ export interface StockRow {
   qty: number;
   avg_cost: number | null;
   value: number | null;
+  min_qty?: number;
+  supplier_id?: string | null;
+  short?: boolean;
 }
 export interface DeviceMoney {
   final: number | null;

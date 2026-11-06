@@ -255,7 +255,9 @@
     "lateEmpty": "Nothing overdue. Everything is on time.",
     "readyList": "Ready and waiting",
     "readyEmpty": "No devices ready right now.",
-    "updated": "Updated just now"
+    "updated": "Updated just now",
+    "shortages": "Items at minimum stock (shortages)",
+    "debts": "Debts owed by {{n}} customers"
   },
   "intake": {
     "title": "Check in device",
@@ -412,7 +414,8 @@
       "E_SAME_CASHBOX": "Choose two different cashboxes",
       "E_INSUFFICIENT": "Not enough balance in the cashbox",
       "E_COST_LOCKED": "Revenue is already recorded. Correct with a reversing entry",
-      "E_CASHBOX_NOT_EMPTY": "Can't disable a cashbox that has money. Transfer it first"
+      "E_CASHBOX_NOT_EMPTY": "Can't disable a cashbox that has money. Transfer it first",
+      "E_TRACK_AMBIGUOUS": "This order number is shared. Scan the QR code on your receipt or label to open your exact device."
     }
   },
   "onboarding": {
@@ -515,7 +518,9 @@
     "print": "Print",
     "back": "Back",
     "hintReceipt": "Choose the thermal printer, 80mm paper and no margins",
-    "hintInvoice": "Choose a regular printer and A4 paper"
+    "hintInvoice": "Choose a regular printer and A4 paper",
+    "parts": "Parts replaced",
+    "sendWa": "Send on WhatsApp"
   },
   "team": {
     "title": "Team",
@@ -663,7 +668,10 @@
       "delivered": "Picked up"
     },
     "another": "Track another device",
-    "privacy": "This page never shows personal information."
+    "privacy": "This page never shows personal information.",
+    "due": "Remaining",
+    "paidFull": "Fully paid",
+    "ambiguous": "This order number is shared. Scan the QR code on your receipt or label to open your exact device."
   },
   "wa": {
     "send": "WhatsApp",
@@ -975,7 +983,8 @@
       "employees": "Advances and salaries due per employee."
     },
     "noBalances": "No balances",
-    "plSub": "Revenue and expenses per item for the period."
+    "plSub": "Revenue and expenses per item for the period.",
+    "oldest": "Oldest debt {{d}} ago"
   },
   "ledger": {
     "acc": {
@@ -1048,7 +1057,26 @@
     "addLine": "Add line",
     "removeLine": "Remove line",
     "unitCost": "Unit cost",
-    "unitPrice": "Sale price"
+    "unitPrice": "Sale price",
+    "shortages": "{{n}} items reached the minimum",
+    "onlyShort": "Shortages only",
+    "short": "Low",
+    "orderFrom": "Order from {{s}}",
+    "orderMsg": "Hi, {{shop}} needs:",
+    "noSupplierPhone": "{{s}}: no valid mobile number",
+    "minQty": "Minimum",
+    "minQtyHint": "When stock reaches it, the item is listed as a shortage",
+    "defaultSupplier": "Main supplier",
+    "errMin": "Minimum must be a whole number",
+    "barcode": "Barcode",
+    "barcodeHint": "Scan the barcode or type the code and press Enter",
+    "codeNotFound": "No item with code {{c}}",
+    "supplierPrices": "Supplier prices",
+    "noPurchases": "Never purchased",
+    "lastCost": "Last price",
+    "minCost": "Lowest",
+    "lastAt": "Last purchase",
+    "cheapest": "Cheapest"
   },
   "ledgerSettings": {
     "cashboxes": "Cashboxes",
@@ -1087,5 +1115,25 @@
     "item": "Part",
     "use": "Installed",
     "used": "Part recorded and removed from stock"
+  },
+  "pricing": {
+    "title": "Pricing",
+    "hint": "Suggested price = installed parts cost + labor for every issue mentioned in the device description + margin on parts, rounded up to the nearest 5. Staff can edit it, and every edit is logged.",
+    "margin": "Margin on parts",
+    "rates": "Labor per issue type",
+    "issue": "Issue (word in the description)",
+    "issuePh": "screen",
+    "labor": "Labor",
+    "noRates": "No labor rates yet",
+    "remove": "Remove",
+    "errMargin": "Margin must be a whole number from 0 to 1000",
+    "errRate": "Enter the issue and labor"
+  },
+  "signature": {
+    "title": "Customer signature",
+    "text": "The customer signs to accept the device condition and the receipt terms. It appears on the receipt.",
+    "area": "Signature area",
+    "hint": "Sign here with the mouse or your finger",
+    "clear": "Clear signature"
   }
 }

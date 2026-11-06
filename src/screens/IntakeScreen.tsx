@@ -23,6 +23,7 @@ import { Dialog } from '../ui/Dialog';
 import { Kbd } from '../ui/Kbd';
 import { LineIcon } from '../ui/fx/LineIcon';
 import { QuickCheck } from '../ui/QuickCheck';
+import { SignaturePad } from '../ui/SignaturePad';
 import type { CheckItems } from '../lib/checks';
 import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
@@ -67,6 +68,7 @@ export function IntakeScreen() {
   const [estimate, setEstimate] = useState('');
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [check, setCheck] = useState<CheckItems>({});
+  const [signature, setSignature] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -154,7 +156,7 @@ export function IntakeScreen() {
       const id = crypto.randomUUID();
       const d = await supabase
         .from('devices')
-        .insert({ id, shop_id: profile.shop_id, customer_id: customerId, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null })
+        .insert({ id, shop_id: profile.shop_id, customer_id: customerId, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature })
         .select('order_no')
         .single();
       if (d.error) throw d.error;
@@ -196,6 +198,7 @@ export function IntakeScreen() {
     setEstimate('');
     setPhotos([]);
     setCheck({});
+    setSignature(null);
     setErrors({});
     setSaved(null);
     setTimeout(() => document.getElementById('intake-phone')?.focus(), 50);
@@ -466,6 +469,15 @@ export function IntakeScreen() {
                   })
                 }
               />
+            </div>
+          </Panel>
+
+          {/* 06 توقيع العميل */}
+          <Panel>
+            <PanelHeader index="06" title={t('signature.title')} actions={<span className="text-2xs text-fg-3">{t('common.optional')}</span>} />
+            <div className="p-4">
+              <p className="mb-2 text-xs text-fg-3">{t('signature.text')}</p>
+              <SignaturePad value={signature} onChange={setSignature} />
             </div>
           </Panel>
         </div>

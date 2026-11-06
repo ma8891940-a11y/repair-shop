@@ -34,6 +34,8 @@ interface Tracking {
   warranty_until: string | null;
   can_decide: boolean;
   decision: 'approved' | 'rejected' | null;
+  /** المتبقي على العميل (بعد التكلفة النهائية بس) */
+  due: number | string | null;
 }
 
 /** المرحلة (من 4) اللي الجهاز فيها، لشريط التقدم */
@@ -66,7 +68,7 @@ export function TrackingScreen() {
       setErr(null);
       const { data: rows, error } = await supabase.rpc('get_tracking', c);
       setBusy(false);
-      if (error) return fail(/E_RATE_LIMIT/.test(error.message) ? t('track.rateLimit') : t('errors.network'));
+      if (error) return fail(/E_RATE_LIMIT/.test(error.message) ? t('track.rateLimit') : /E_TRACK_AMBIGUOUS/.test(error.message) ? t('track.ambiguous') : t('errors.network'));
       const row = Array.isArray(rows) ? (rows[0] as Tracking | undefined) : undefined;
       if (!row) {
         setData(null);
@@ -94,7 +96,7 @@ export function TrackingScreen() {
     setBusy(true);
     const { error } = await supabase.rpc('decide_quote', { p_decision: decision, ...creds });
     setBusy(false);
-    if (error) return fail(/E_RATE_LIMIT/.test(error.message) ? t('track.rateLimit') : t('errors.generic'));
+    if (error) return fail(/E_RATE_LIMIT/.test(error.message) ? t('track.rateLimit') : /E_TRACK_AMBIGUOUS/.test(error.message) ? t('track.ambiguous') : t('errors.generic'));
     setDone(decision === 'approved' ? t('track.approved') : t('track.rejected'));
     void load(creds);
   }
@@ -188,6 +190,8 @@ export function TrackingScreen() {
                   <Item label={t('track.updated')} value={f.dateTime(data.updated_at)} />
                   <Item label={t('track.received')} value={f.date(data.received_at)} />
                   {cost != null && <Item label={data.final_cost != null ? t('track.final') : t('track.estimated')} value={`${f.money(cost)} ${f.currency(data.currency)}`} mono />}
+                  {data.due != null && Number(data.due) > 0 && <Item label={t('track.due')} value={`${f.money(Number(data.due))} ${f.currency(data.currency)}`} mono />}
+                  {data.due != null && Number(data.due) === 0 && data.final_cost != null && <Item label={t('track.due')} value={t('track.paidFull')} />}
                   {data.technician && <Item label={t('track.tech')} value={data.technician} />}
                   {data.warranty_until && <Item label={t('track.warranty')} value={f.date(data.warranty_until)} />}
                 </dl>

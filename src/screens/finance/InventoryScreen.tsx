@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { PackagePlus, Plus, ShoppingCart, Trash2, Truck } from 'lucide-react';
+import { AlertTriangle, MessageCircle, PackagePlus, Plus, ScanBarcode, ShoppingCart, Trash2, Truck } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
@@ -9,6 +9,8 @@ import { loadCashboxes, opId, rpc, useAccountName, type Cashbox, type StockRow }
 import { supabase } from '../../lib/supabase';
 import { parsePounds } from '../../lib/money';
 import { toLatinDigits } from '../../lib/digits';
+import { waLink } from '../../lib/messages';
+import { shortageOrders } from '../../lib/inventory';
 import { errorMessage } from '../../lib/errors';
 import { useFormat } from '../../i18n/format';
 import { Panel } from '../../ui/Panel';
@@ -33,6 +35,8 @@ export function InventoryScreen() {
   const owner = profile.role === 'owner';
   const [tab, setTab] = useState<'items' | 'suppliers'>('items');
   const [dlg, setDlg] = useState<'item' | 'purchase' | 'sale' | 'supplier' | null>(null);
+  const [onlyShort, setOnlyShort] = useState(false);
+  const [detail, setDetail] = useState<StockRow | null>(null);
   const { data, error, loading, reload } = useLoad(async () => {
     const items = await rpc<StockRow[]>('items_stock');
     const suppliers = owner ? (must(await supabase.from('suppliers').select('id, name, phone').is('deleted_at', null).order('name')) as Supplier[]) : [];
@@ -42,6 +46,9 @@ export function InventoryScreen() {
   useLiveRefresh(reload);
   const cur = f.currency(shop.currency);
   const totalValue = (data?.items ?? []).reduce((a, i) => a + (i.value ?? 0), 0);
+  const shortCount = (data?.items ?? []).filter((i) => i.short).length;
+  const orders = useMemo(() => (data ? shortageOrders(data.items, data.suppliers) : []), [data]);
+  const shown = (data?.items ?? []).filter((i) => !onlyShort || i.short);
 
   return (
     <div className="max-w-6xl">
@@ -84,7 +91,31 @@ export function InventoryScreen() {
       ) : loading || !data ? (
         <Skeleton className="h-48 w-full" />
       ) : tab === 'items' ? (
-        data.items.length === 0 ? (
+        <>
+        {shortCount > 0 && (
+          <Panel className="mb-3 flex flex-wrap items-center gap-3 border-[color-mix(in_srgb,var(--warn)_40%,var(--glass-border))] p-3" data-testid="shortages">
+            <AlertTriangle className="size-4 text-warn" aria-hidden />
+            <span className="text-sm text-fg">{t('inv.shortages', { n: shortCount })}</span>
+            <button type="button" onClick={() => setOnlyShort((v) => !v)} aria-pressed={onlyShort} className={cn('h-7 rounded-sm px-2.5 text-xs', onlyShort ? 'bg-accent-soft text-fg' : 'text-fg-3 hover:text-fg')}>
+              {t('inv.onlyShort')}
+            </button>
+            {owner && (
+              <div className="ms-auto flex flex-wrap gap-2">
+                {orders.map((o) => {
+                  const link = o.phone ? waLink(o.phone, `${t('inv.orderMsg', { shop: shop.name })}\n${o.lines.map((l) => `- ${l.name}: ${l.qty}`).join('\n')}`) : null;
+                  return link ? (
+                    <a key={o.supplierId} href={link} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-xs text-fg-2 hover:border-accent hover:text-fg" data-testid="order-link">
+                      <MessageCircle className="size-3.5 text-ok" aria-hidden /> {t('inv.orderFrom', { s: o.name })}
+                    </a>
+                  ) : (
+                    <span key={o.supplierId} className="text-2xs text-fg-3">{t('inv.noSupplierPhone', { s: o.name })}</span>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+        )}
+        {data.items.length === 0 ? (
           <Panel>
             <EmptyState line="chip" title={t('inv.empty')}>
               {t('inv.emptyText')}
@@ -104,10 +135,17 @@ export function InventoryScreen() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-glass-border">
-                {data.items.map((i) => (
-                  <tr key={i.id} className="[&_td]:px-3 [&_td]:py-2" data-testid="item-row">
+                {shown.map((i) => (
+                  <tr key={i.id} className={cn('[&_td]:px-3 [&_td]:py-2', owner && 'cursor-pointer hover:bg-raised/50')} data-testid="item-row" onClick={() => owner && setDetail(i)}>
                     <td className="text-fg">
-                      {i.name}
+                      {owner ? (
+                        <button type="button" className="text-start hover:text-accent" onClick={() => setDetail(i)}>
+                          {i.name}
+                        </button>
+                      ) : (
+                        i.name
+                      )}
+                      {i.short && <span className="ms-2 rounded-full border border-[color-mix(in_srgb,var(--warn)_45%,transparent)] px-1.5 text-2xs text-warn">{t('inv.short')}</span>}
                       {i.sku && (
                         <span className="num ms-2 text-2xs text-fg-3" dir="ltr">
                           {i.sku}
@@ -124,7 +162,8 @@ export function InventoryScreen() {
               </tbody>
             </table>
           </Panel>
-        )
+        )}
+        </>
       ) : data.suppliers.length === 0 ? (
         <Panel>
           <EmptyState line="store" title={t('inv.noSuppliers')} />
@@ -150,7 +189,8 @@ export function InventoryScreen() {
           </ul>
         </Panel>
       )}
-      <ItemDialog open={dlg === 'item'} onOpenChange={(v) => !v && setDlg(null)} onDone={reload} />
+      <ItemDialog open={dlg === 'item'} onOpenChange={(v) => !v && setDlg(null)} onDone={reload} suppliers={data?.suppliers ?? []} />
+      <ItemDetailDialog item={detail} onOpenChange={(v) => !v && setDetail(null)} suppliers={data?.suppliers ?? []} onDone={reload} />
       <SupplierDialog open={dlg === 'supplier'} onOpenChange={(v) => !v && setDlg(null)} onDone={reload} />
       {data && <LinesDialog mode="purchase" open={dlg === 'purchase'} onOpenChange={(v) => !v && setDlg(null)} items={data.items} suppliers={data.suppliers} onDone={reload} />}
       {data && <LinesDialog mode="sale" open={dlg === 'sale'} onOpenChange={(v) => !v && setDlg(null)} items={data.items} suppliers={[]} onDone={reload} />}
@@ -158,7 +198,7 @@ export function InventoryScreen() {
   );
 }
 
-function ItemDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (v: boolean) => void; onDone: () => void }) {
+function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; onOpenChange: (v: boolean) => void; onDone: () => void; suppliers: Supplier[] }) {
   const { t } = useTranslation();
   const { shop } = useMe();
   const f = useFormat();
@@ -167,6 +207,8 @@ function ItemDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChang
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [price, setPrice] = useState('');
+  const [minQty, setMinQty] = useState('0');
+  const [supplier, setSupplier] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -174,6 +216,8 @@ function ItemDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChang
       setName('');
       setSku('');
       setPrice('');
+      setMinQty('0');
+      setSupplier('');
       setErr(null);
     }
   }, [open]);
@@ -181,8 +225,10 @@ function ItemDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChang
     if (!name.trim()) return setErr(t('inv.errName'));
     const p = price.trim() ? parsePounds(price) : null;
     if (price.trim() && p == null) return setErr(t('fin.errAmount'));
+    const mq = Number(toLatinDigits(minQty.trim() || '0'));
+    if (!Number.isInteger(mq) || mq < 0) return setErr(t('inv.errMin'));
     setBusy(true);
-    const { error } = await supabase.from('items').insert({ id: crypto.randomUUID(), shop_id: shop.id, kind, name: name.trim(), sku: sku.trim() || null, sale_price: p });
+    const { error } = await supabase.from('items').insert({ id: crypto.randomUUID(), shop_id: shop.id, kind, name: name.trim(), sku: toLatinDigits(sku.trim()) || null, sale_price: p, min_qty: mq, supplier_id: supplier || null });
     setBusy(false);
     if (error) return setErr(errorMessage(error));
     toast({ tone: 'ok', title: t('inv.itemAdded') });
@@ -221,6 +267,21 @@ function ItemDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChang
         <Field label={t('inv.cols.price')}>
           <Input dir="ltr" inputMode="decimal" mono value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" suffix={f.currency(shop.currency)} className="text-start" />
         </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t('inv.minQty')} hint={t('inv.minQtyHint')}>
+            <Input dir="ltr" inputMode="numeric" mono value={minQty} onChange={(e) => setMinQty(e.target.value)} className="text-start" />
+          </Field>
+          <Field label={t('inv.defaultSupplier')}>
+            <Select value={supplier} onChange={(e) => setSupplier(e.target.value)}>
+              <option value="">{t('common.none')}</option>
+              {suppliers.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
         {err && <Alert tone="danger">{err}</Alert>}
       </div>
     </Dialog>
@@ -321,6 +382,26 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone }: { m
   );
   const total = parsed.reduce((a, l) => a + (l.qty && l.price != null ? l.qty * l.price : 0), 0);
   const upd = (i: number, p: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...p } : l)));
+  const [scan, setScan] = useState('');
+  const scanRef = useRef<HTMLInputElement>(null);
+  // قارئ الباركود بيكتب الكود وبعده Enter: الصنف بيتضاف (أو كميته بتزيد)
+  function addByCode(code: string) {
+    const c = toLatinDigits(code.trim());
+    if (!c) return;
+    const it = items.find((x) => x.sku && x.sku === c);
+    setScan('');
+    if (!it) return setErr(t('inv.codeNotFound', { c }));
+    setErr(null);
+    setLines((ls) => {
+      const at = ls.findIndex((l) => l.item === it.id);
+      if (at >= 0) return ls.map((l, j) => (j === at ? { ...l, qty: String(Number(toLatinDigits(l.qty) || '0') + 1) } : l));
+      const price = it.sale_price != null ? String(it.sale_price / 100) : '';
+      const blank = ls.findIndex((l) => !l.item);
+      if (blank >= 0) return ls.map((l, j) => (j === blank ? { item: it.id, qty: '1', price } : l));
+      return [...ls, { item: it.id, qty: '1', price }];
+    });
+    scanRef.current?.focus();
+  }
 
   async function save() {
     setErr(null);
@@ -388,6 +469,23 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone }: { m
             ))}
           </Select>
         </Field>
+        {mode === 'sale' && (
+          <Field label={t('inv.barcode')} hint={t('inv.barcodeHint')}>
+            <Input
+              ref={scanRef}
+              dir="ltr"
+              mono
+              leading={<ScanBarcode className="size-4" aria-hidden />}
+              value={scan}
+              onChange={(e) => setScan(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                addByCode(scan);
+              }}
+            />
+          </Field>
+        )}
         <div className="flex flex-col gap-2" role="group" aria-label={t('inv.lines')}>
           {lines.map((l, i) => (
             <div key={i} className="grid grid-cols-[minmax(0,1fr)_64px_100px_auto] items-end gap-2" data-testid="line">
@@ -422,6 +520,113 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone }: { m
           <Button size="sm" variant="ghost" icon={<PackagePlus className="size-4" />} onClick={() => setLines((ls) => [...ls, { item: '', qty: '1', price: '' }])} className="self-start">
             {t('inv.addLine')}
           </Button>
+        </div>
+        {err && <Alert tone="danger">{err}</Alert>}
+      </div>
+    </Dialog>
+  );
+}
+
+/** تفاصيل الصنف (صاحب المحل): أسعار الموردين ومقارنتها، والحد الأدنى، والمورد الأساسي، وسعر البيع */
+function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: StockRow | null; onOpenChange: (v: boolean) => void; suppliers: Supplier[]; onDone: () => void }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const toast = useToast();
+  const [minQty, setMinQty] = useState('0');
+  const [supplier, setSupplier] = useState('');
+  const [price, setPrice] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const prices = useLoad(
+    async () => (item ? rpc<{ supplier_id: string; supplier: string; last_cost: number; min_cost: number; last_at: string; total_qty: number }[]>('item_suppliers', { p_item: item.id }) : []),
+    [item?.id],
+  );
+  useEffect(() => {
+    if (!item) return;
+    setMinQty(String(item.min_qty ?? 0));
+    setSupplier(item.supplier_id ?? '');
+    setPrice(item.sale_price != null ? String(item.sale_price / 100) : '');
+    setErr(null);
+  }, [item]);
+  async function save() {
+    if (!item) return;
+    const mq = Number(toLatinDigits(minQty.trim() || '0'));
+    if (!Number.isInteger(mq) || mq < 0) return setErr(t('inv.errMin'));
+    const p = price.trim() ? parsePounds(price) : null;
+    if (price.trim() && p == null) return setErr(t('fin.errAmount'));
+    const { error } = await supabase.from('items').update({ min_qty: mq, supplier_id: supplier || null, sale_price: p }).eq('id', item.id);
+    if (error) return setErr(errorMessage(error));
+    toast({ tone: 'ok', title: t('settings.saved') });
+    onOpenChange(false);
+    onDone();
+  }
+  const rows = (prices.data ?? []).map((r) => ({ ...r, last_cost: Number(r.last_cost), min_cost: Number(r.min_cost), total_qty: Number(r.total_qty) }));
+  const best = rows.length ? Math.min(...rows.map((r) => r.last_cost)) : null;
+  return (
+    <Dialog
+      open={!!item}
+      onOpenChange={onOpenChange}
+      title={item?.name ?? ''}
+      description={item ? `${t(`inv.kinds.${item.kind}`)} · ${t('inv.cols.qty')}: ${f.number(item.qty)}` : undefined}
+      className="w-[min(94vw,560px)]"
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="primary" onClick={() => void save()}>
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <div>
+          <div className="readout-label mb-1.5">{t('inv.supplierPrices')}</div>
+          {rows.length === 0 ? (
+            <p className="text-xs text-fg-3">{t('inv.noPurchases')}</p>
+          ) : (
+            <table className="w-full text-sm" data-testid="supplier-prices">
+              <thead className="text-2xs text-fg-3">
+                <tr className="[&_th]:py-1 [&_th]:text-start [&_th]:font-medium">
+                  <th>{t('fin.supplier')}</th>
+                  <th>{t('inv.lastCost')}</th>
+                  <th>{t('inv.minCost')}</th>
+                  <th>{t('inv.lastAt')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-glass-border">
+                {rows.map((r) => (
+                  <tr key={r.supplier_id} className="[&_td]:py-1.5">
+                    <td className="text-fg">
+                      {r.supplier}
+                      {r.last_cost === best && rows.length > 1 && <span className="ms-2 text-2xs text-ok">{t('inv.cheapest')}</span>}
+                    </td>
+                    <td className="num text-fg">{f.money(r.last_cost)}</td>
+                    <td className="num text-fg-2">{f.money(r.min_cost)}</td>
+                    <td className="text-xs text-fg-3">{f.date(r.last_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Field label={t('inv.minQty')}>
+            <Input dir="ltr" inputMode="numeric" mono value={minQty} onChange={(e) => setMinQty(e.target.value)} className="text-start" />
+          </Field>
+          <Field label={t('inv.defaultSupplier')}>
+            <Select value={supplier} onChange={(e) => setSupplier(e.target.value)}>
+              <option value="">{t('common.none')}</option>
+              {suppliers.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label={t('inv.cols.price')}>
+            <Input dir="ltr" inputMode="decimal" mono value={price} onChange={(e) => setPrice(e.target.value)} className="text-start" />
+          </Field>
         </div>
         {err && <Alert tone="danger">{err}</Alert>}
       </div>

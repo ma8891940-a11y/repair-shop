@@ -9,6 +9,33 @@ test.describe('المؤثرات الكاملة', () => {
     await expect(page.locator('html')).toHaveAttribute('data-lite', '');
   });
 
+  test('الحركة الأساسية شغالة افتراضيًا: الخلفية الحية بتتحرك في الدخول حتى والمؤثرات الكاملة مقفولة', async ({ page }, info) => {
+    await prefs(page, info);
+    await page.goto('/');
+    await afterSplash(page);
+    await expect(page.locator('html')).toHaveAttribute('data-lite', '');
+    const frame = () => page.evaluate(() => document.querySelector('canvas')?.toDataURL() ?? '');
+    const a = await frame();
+    await page.waitForTimeout(700);
+    const b = await frame();
+    expect(a.length).toBeGreaterThan(1000);
+    expect(b).not.toBe(a);
+  });
+
+  test('"تقليل الحركة" في الجهاز بيوقف الحركة كلها', async ({ browser }, info) => {
+    const ctx = await browser.newContext({ ...info.project.use, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await prefs(page, info);
+    await page.goto('/');
+    await afterSplash(page);
+    await page.waitForTimeout(400);
+    const frame = () => page.evaluate(() => document.querySelector('canvas')?.toDataURL() ?? '');
+    const a = await frame();
+    await page.waitForTimeout(700);
+    expect(await frame()).toBe(a);
+    await ctx.close();
+  });
+
   test('القفل التلقائي: بطء تحت 50 إطار لمدة 3 ثواني بيقفلها، والتنبيه فيه "رجّعها"', async ({ page, browserName }, info) => {
     test.skip(browserName !== 'chromium', 'إبطاء المعالج متاح في Chromium بس');
     await prefs(page, info, { effects: true });

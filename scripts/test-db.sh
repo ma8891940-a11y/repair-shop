@@ -16,4 +16,4 @@ URL="postgres://postgres@127.0.0.1:$PORT/postgres"
 psql -q -v ON_ERROR_STOP=1 "$URL" -f tests/db/supabase-stub.sql >/dev/null
 # بنطبّق ملف الإعداد الواحد (نفس اللي صاحب المشروع بيشغّله على Supabase)
 psql -q -v ON_ERROR_STOP=1 "$URL" -f supabase/setup_all.sql >/dev/null
-TEST_DATABASE_URL="$URL" npx vitest run tests/db
+TEST_DATABASE_URL="$URL" npx vitest run tests/db ${DB_TEST_FILTER:-}
