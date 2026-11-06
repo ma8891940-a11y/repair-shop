@@ -17,6 +17,7 @@ import { useToast } from '../ui/Toast';
 import { MessagesTab } from './settings/MessagesTab';
 import { LedgerTab } from './settings/LedgerTab';
 import { TechTab } from './settings/TechTab';
+import { BackupTab } from './settings/BackupTab';
 import { cn } from '../ui/cn';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
@@ -26,7 +27,7 @@ export function SettingsScreen() {
   const { profile } = useMe();
   const owner = profile.role === 'owner';
   const [tab, setTab] = useState(owner ? 'shop' : 'appearance');
-  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'messages', 'appearance'] : ['appearance']) as string[];
+  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'messages', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
@@ -47,6 +48,11 @@ export function SettingsScreen() {
         {owner && (
           <Tabs.Content value="payments">
             <PaymentsTab />
+          </Tabs.Content>
+        )}
+        {owner && (
+          <Tabs.Content value="backup">
+            <BackupTab />
           </Tabs.Content>
         )}
         {owner && (

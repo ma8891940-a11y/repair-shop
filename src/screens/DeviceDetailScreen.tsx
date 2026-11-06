@@ -26,6 +26,8 @@ import { Dialog } from '../ui/Dialog';
 import { useToast } from '../ui/Toast';
 import { DeviceMoneyPanel, PartsPanel } from '../app/finance/DeviceMoneyPanel';
 import { StepsPanel } from '../app/tech/StepsPanel';
+import { shouldQueue, useSync } from '../offline/sync';
+import { StaleNote } from '../ui/StaleNote';
 import { cn } from '../ui/cn';
 
 interface LogRow {
@@ -73,8 +75,10 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   const [confirmDeliver, setConfirmDeliver] = useState(false);
   const [wa, setWa] = useState(false);
   const [moneyVer, setMoneyVer] = useState(0);
+  const [localStatus, setLocalStatus] = useState<DeviceStatus | null>(null);
+  const sync = useSync();
 
-  const { data, error, loading, reload } = useLoad(async () => {
+  const { data, error, loading, reload, stale } = useLoad(async () => {
     const d = must(await supabase.from('devices').select('*').eq('id', id).is('deleted_at', null).maybeSingle()) as Device | null;
     if (!d) return null;
     const [c, k, l, n, p, lk, ck] = await Promise.all([
@@ -106,7 +110,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
       // الرسايل بتتبعت باسم الفني اللي شغال على الجهاز
       techName: front ? (((await supabase.rpc('device_tech_name', { p_device: id })).data as string | null) ?? null) : null,
     };
-  }, [id, front]);
+  }, [id, front], { cacheKey: `device:${id}:${profile.id}` });
   useLiveRefresh(reload);
 
   const close = () => (overlay ? navigate(-1) : navigate('/devices'));
@@ -138,16 +142,27 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   async function change(to: DeviceStatus) {
     if (to === 'delivered' && !confirmDeliver) return setConfirmDeliver(true);
     setConfirmDeliver(false);
+    // بدون نت: التغيير بيتسجل على الجهاز ويتبعت بعدين ("آخر تعديل بالوقت يكسب"). التسليم محتاج نت (الدفع)
+    const offline = async () => {
+      await sync.queue('status', crypto.randomUUID(), { device: id, status: to });
+      setLocalStatus(to);
+      toast({ tone: 'warn', title: t('sync.queued'), description: t(`status.${to}`) });
+    };
+    if (!navigator.onLine && to !== 'delivered') return void offline();
     await run(
       async () => {
         const r = await supabase.from('devices').update({ status: to }).eq('id', id);
-        if (r.error) throw r.error;
+        if (r.error) {
+          if (shouldQueue(r.error) && to !== 'delivered') return offline();
+          throw r.error;
+        }
+        setLocalStatus(null);
+        toast({ tone: 'ok', title: `${t('device.statusChanged')}: ${t(`status.${to}`)}` });
       },
-      `${t('device.statusChanged')}: ${t(`status.${to}`)}`,
     );
   }
 
-  const d = data?.device;
+  const d = data?.device ? { ...data.device, status: localStatus ?? data.device.status } : undefined;
   const readyLog = data?.log.filter((l) => l.new_status === 'ready').at(-1);
   const target: MessageTarget | null =
     d && data?.customer
@@ -180,6 +195,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
     : 'status';
   const body = (
     <div className={cn('mx-auto w-full max-w-6xl', overlay && 'px-4 py-6 md:px-6')}>
+      <StaleNote at={stale} />
       <div className="mb-3 flex items-center justify-between gap-2">
         <button type="button" onClick={close} className="inline-flex items-center gap-1.5 rounded-sm text-sm text-fg-3 hover:text-fg">
           <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />

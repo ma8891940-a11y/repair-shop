@@ -12,6 +12,7 @@ import { Dialog } from '../../ui/Dialog';
 import { Field, Input, Select, Textarea } from '../../ui/Field';
 import { Alert } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
+import { shouldQueue, useSync } from '../../offline/sync';
 
 /** العمليات اللي ليها فورم واحد بسيط (مبلغ + خزنة + طرف) */
 export const OPS = ['payment', 'expense', 'transfer', 'capital', 'drawing', 'supplier_payment', 'salary', 'salary_payment', 'advance', 'advance_settle'] as const;
@@ -57,6 +58,7 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [id, setId] = useState(opId);
+  const sync = useSync();
 
   const lists = useLoad(async () => {
     if (!open) return null;
@@ -100,7 +102,7 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
     const n = note.trim() || null;
     const base = { p_id: id, p_amount: amountMinor };
     const calls: Record<Op, () => Promise<unknown>> = {
-      payment: () => rpc('record_payment', { ...base, p_customer: partyId, p_cashbox: cashbox, p_device: fixed.device?.id ?? null, p_note: n }),
+      payment: () => rpc('record_payment', payArgs),
       expense: () => rpc('record_expense', { ...base, p_account: expense, p_cashbox: cashbox, p_note: n }),
       transfer: () => rpc('transfer_cash', { ...base, p_from: cashbox, p_to: to, p_note: n }),
       capital: () => rpc('owner_capital', { ...base, p_cashbox: cashbox, p_note: n }),
@@ -112,13 +114,27 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
       advance_settle: () => rpc('settle_advance', { ...base, p_employee: partyId, p_note: n }),
     };
     setBusy(true);
+    // الدفعة بس بتتسجل بدون نت (من المواصفات)، وبنفس رقم العملية فما تتكررش
+    const payArgs = { ...base, p_customer: partyId, p_cashbox: cashbox, p_device: fixed.device?.id ?? null, p_note: n };
+    const queueIt = async () => {
+      await sync.queue('payment', id, payArgs);
+      toast({ tone: 'warn', title: t('sync.queued'), description: `${f.money(amountMinor)} ${f.currency(shop.currency)}` });
+      onOpenChange(false);
+      onDone?.();
+    };
+    if (op === 'payment' && !navigator.onLine) {
+      await queueIt();
+      setBusy(false);
+      return;
+    }
     try {
       await calls[op]();
       toast({ tone: 'ok', title: t('fin.done'), description: `${f.money(amountMinor)} ${f.currency(shop.currency)}` });
       onOpenChange(false);
       onDone?.();
     } catch (e) {
-      setErr(errorMessage(e));
+      if (op === 'payment' && shouldQueue(e)) await queueIt();
+      else setErr(errorMessage(e));
     } finally {
       setBusy(false);
     }

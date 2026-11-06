@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { AlarmClock, ArrowRight, CheckCheck, Inbox, PackagePlus, Wallet, Wrench, type LucideIcon } from 'lucide-react';
 import { useMe } from '../app/auth';
+import { StaleNote } from '../ui/StaleNote';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { supabase } from '../lib/supabase';
@@ -30,7 +31,7 @@ export function DashboardScreen() {
   const owner = profile.role === 'owner';
   const front = profile.role !== 'technician';
 
-  const { data, error, loading, reload } = useLoad(
+  const { data, error, loading, reload, stale } = useLoad(
     async () => {
       const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
       const [rows, events] = await Promise.all([
@@ -46,7 +47,7 @@ export function DashboardScreen() {
       return { rows: must(rows) as Row[], events: must(events) as StatusEvent[] };
     },
     [],
-    { pollMs: 120_000 },
+    { pollMs: 120_000, cacheKey: `dashboard:${profile.id}` },
   );
 
   // تحديث لحظي: أي تغيير في الأجهزة أو الأسعار أو الحالات بيحدّث اللوحة
@@ -74,6 +75,7 @@ export function DashboardScreen() {
           )
         }
       />
+      <StaleNote at={stale} />
 
       {error ? (
         <Panel>

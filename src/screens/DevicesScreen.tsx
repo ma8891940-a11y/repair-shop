@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { PackagePlus, Search, X } from 'lucide-react';
 import { useMe } from '../app/auth';
+import { StaleNote } from '../ui/StaleNote';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { supabase } from '../lib/supabase';
@@ -42,13 +43,13 @@ export function DevicesScreen() {
     return () => clearTimeout(tm);
   }, [q]);
 
-  const { data, error, loading, reload } = useLoad(async () => {
+  const { data, error, loading, reload, stale } = useLoad(async () => {
     let query = supabase.from('devices_list').select('*').is('deleted_at', null).order('received_at', { ascending: false }).limit(500);
     const cols = front ? ['order_no', 'imei', 'customer_name', 'customer_phone', 'model', 'brand'] : ['order_no', 'imei', 'model', 'brand'];
     const sf = buildSearchFilter(debounced, cols);
     if (sf) query = query.or(sf);
     return must(await query) as DeviceListRow[];
-  }, [debounced, front]);
+  }, [debounced, front], { cacheKey: debounced ? undefined : `devices:${profile.id}` });
   useLiveRefresh(reload);
 
   const now = new Date();
@@ -106,6 +107,7 @@ export function DevicesScreen() {
           )
         }
       />
+      <StaleNote at={stale} />
 
       <Panel className="mb-3 p-3">
         <div className="flex flex-wrap items-center gap-2">

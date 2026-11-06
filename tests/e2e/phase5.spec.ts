@@ -17,7 +17,8 @@ test('المرحلة 5: النت فصل ← تغيير حالة واستلام �
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
   await expect(page.getByText('اتسجّل الجهاز')).toBeVisible();
   await page.getByRole('button', { name: 'فتح الجهاز' }).click();
-  await expect(page.getByText('A15').first()).toBeVisible();
+  // صفحة الجهاز نفسها اتحمّلت (واتحفظت نسخة منها على الجهاز)
+  await expect(page.getByRole('button', { name: 'جاري الفحص', exact: true })).toBeVisible();
   const deviceHash = page.url().replace(/^.*#/, '/#');
 
   // النت فصل

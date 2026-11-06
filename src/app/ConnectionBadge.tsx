@@ -30,14 +30,22 @@ export function ConnectionBadge({ live }: { live: boolean }) {
         }}
         className={cn(
           'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-2xs',
-          state === 'offline' ? 'border-[color-mix(in_srgb,var(--warn)_50%,transparent)] text-warn' : state === 'failed' ? 'border-[color-mix(in_srgb,var(--danger)_50%,transparent)] text-danger' : state === 'pending' ? 'border-accent text-accent' : 'border-glass-border text-fg-3',
+          state === 'offline' ? 'border-[color-mix(in_srgb,var(--warn)_50%,transparent)] text-warn' : state === 'failed' ? 'border-[color-mix(in_srgb,var(--danger)_50%,transparent)] text-danger' : state === 'pending' ? 'border-accent text-accent' : live ? 'border-[color-mix(in_srgb,var(--ok)_35%,transparent)] text-ok' : 'border-glass-border text-fg-3',
         )}
         data-testid="connection"
         data-state={state}
         aria-live="polite"
+        title={state === 'online' && !live ? t('common.offlineRealtime') : undefined}
       >
-        <Icon className={cn('size-3.5', syncing && 'animate-spin')} aria-hidden />
-        {label}
+        {state === 'online' ? (
+          <span className="relative flex size-1.5" aria-hidden>
+            {live && <span className="absolute inline-flex size-full animate-[ping-soft_1.8s_ease-out_infinite] rounded-full bg-ok" />}
+            <span className={cn('relative inline-flex size-1.5 rounded-full', live ? 'bg-ok' : 'bg-fg-3')} />
+          </span>
+        ) : (
+          <Icon className={cn('size-3.5', syncing && 'animate-spin')} aria-hidden />
+        )}
+        <span className={state === 'online' ? 'hidden sm:inline' : undefined}>{label}</span>
       </button>
       <Dialog
         open={open}
@@ -64,7 +72,7 @@ export function ConnectionBadge({ live }: { live: boolean }) {
               {items.map((i) => (
                 <li key={i.id} className="px-3 py-2">
                   <div className="text-fg">
-                    {t(`sync.kinds.${i.kind}`)} · <span className="text-2xs text-fg-3">{f.dateTime(i.createdAt)}</span>
+                    {t(`sync.kinds.${i.kind}`)} · <span className="text-2xs text-fg-3">{f.dateTime(new Date(i.createdAt))}</span>
                   </div>
                   <div className="text-2xs text-danger">{errorMessage(i.lastError ?? '')}</div>
                 </li>

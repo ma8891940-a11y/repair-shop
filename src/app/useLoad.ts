@@ -1,19 +1,25 @@
 import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react';
 import { errorMessage } from '../lib/errors';
+import { cacheGet, cacheSet, isNetworkError, localDb } from '../offline/outbox';
 
 export interface Loaded<T> {
   data: T | undefined;
   error: string | null;
   loading: boolean;
   reload: () => void;
+  /** وقت النسخة المحفوظة على الجهاز لو البيانات المعروضة منها (بدون نت) */
+  stale: number | null;
 }
 
 /**
  * تحميل بيانات بحالات واضحة: تحميل / خطأ / بيانات.
  * أي رد قديم (من طلب اتلغى) بيتجاهل، فما يحصلش لخبطة لو المستخدم كتب بسرعة.
  */
-export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { pollMs?: number } = {}): Loaded<T> {
+export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { pollMs?: number; cacheKey?: string } = {}): Loaded<T> {
   const [data, setData] = useState<T>();
+  const [stale, setStale] = useState<number | null>(null);
+  const keyRef = useRef(opts.cacheKey);
+  keyRef.current = opts.cacheKey;
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
@@ -30,9 +36,22 @@ export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { p
         if (my !== seq.current) return;
         setData(d);
         setError(null);
+        setStale(null);
+        // نسخة على الجهاز عشان تتفتح بدون نت
+        if (keyRef.current) void cacheSet(localDb(), keyRef.current, d).catch(() => undefined);
       })
-      .catch((e: unknown) => {
+      .catch(async (e: unknown) => {
         if (my !== seq.current) return;
+        if (keyRef.current && (isNetworkError(e) || (typeof navigator !== 'undefined' && !navigator.onLine))) {
+          const c = await cacheGet<T>(localDb(), keyRef.current).catch(() => null);
+          if (my !== seq.current) return;
+          if (c) {
+            setData(c.value);
+            setStale(c.updatedAt);
+            setError(null);
+            return;
+          }
+        }
         setError(errorMessage(e));
       })
       .finally(() => {
@@ -48,7 +67,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { p
   }, [opts.pollMs]);
 
   const reload = useCallback(() => setTick((x) => x + 1), []);
-  return { data, error, loading: loading && data === undefined, reload };
+  return { data, error, loading: loading && data === undefined, reload, stale };
 }
 
 /** يرمي الخطأ لو رد Supabase فيه خطأ، ويرجّع البيانات */

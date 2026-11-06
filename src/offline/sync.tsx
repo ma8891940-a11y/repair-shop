@@ -52,8 +52,17 @@ export async function runItem(item: OutboxItem): Promise<RunResult> {
       return { ok: true };
     }
     if (item.kind === 'intake') {
-      if (p.customer) await insertOnce('customers', p.customer as Record<string, unknown>);
-      await insertOnce('devices', p.device as Record<string, unknown>);
+      const device = { ...(p.device as Record<string, unknown>) };
+      if (p.customer) {
+        const c = p.customer as { id: string; phone: string };
+        const { error } = await supabase.from('customers').insert(c);
+        if (error && isDuplicate(error)) {
+          // الرقم متسجل قبل كده (اتضاف من جهاز تاني وانت بدون نت): الجهاز بيتربط بالعميل الموجود
+          const { data: ex } = await supabase.from('customers').select('id').eq('phone', c.phone).is('deleted_at', null).maybeSingle();
+          if (ex && ex.id !== c.id) device.customer_id = ex.id;
+        } else if (error) throw error;
+      }
+      await insertOnce('devices', device);
       await insertOnce('device_costs', p.cost as Record<string, unknown>);
       if (p.check) await insertOnce('device_checks', p.check as Record<string, unknown>);
       const dev = p.device as { id: string };

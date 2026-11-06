@@ -25,6 +25,8 @@ import { LineIcon } from '../ui/fx/LineIcon';
 import { QuickCheck } from '../ui/QuickCheck';
 import { SignaturePad } from '../ui/SignaturePad';
 import { RoutingFields, type Routing } from '../app/tech/RoutingFields';
+import { shouldQueue, useSync } from '../offline/sync';
+import { localDb } from '../offline/outbox';
 import type { CheckItems } from '../lib/checks';
 import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
@@ -75,7 +77,8 @@ export function IntakeScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [saved, setSaved] = useState<{ id: string; orderNo: string } | null>(null);
+  const [saved, setSaved] = useState<{ id: string; orderNo: string | null } | null>(null);
+  const sync = useSync();
 
   const normPhone = normalizeEgyptPhone(phone);
   const imeiClean = normalizeImei(imei);
@@ -90,9 +93,12 @@ export function IntakeScreen() {
     let live = true;
     setLookup({ state: 'loading' });
     void (async () => {
+      if (!navigator.onLine) return setLookup({ state: 'new' });
       const { data, error } = await supabase.from('customers').select('id, name, phone, area').eq('phone', normPhone).is('deleted_at', null).maybeSingle();
       if (!live) return;
       if (error) {
+        // بدون نت: بنكمّل كعميل جديد، والمزامنة بتربطه بالعميل الموجود لو الرقم متسجل قبل كده
+        if (shouldQueue(error)) return setLookup({ state: 'new' });
         setFormError(errorMessage(error));
         return setLookup({ state: 'idle' });
       }
@@ -148,21 +154,49 @@ export function IntakeScreen() {
     if (!validate()) return setAttempt((a) => a + 1);
     if (lookup.state === 'loading' || lookup.state === 'idle') return setFormError(t('intake.wait'));
     setBusy(true);
+    // كل اللي هيتسجل، مبني مرة واحدة بأرقام من التطبيق (عشان لو النت قطع في النص، المزامنة تكمّل من غير تكرار)
+    const id = crypto.randomUUID();
+    const newCustomer = lookup.state === 'found' ? null : { id: crypto.randomUUID(), shop_id: profile.shop_id, name: custName.trim(), phone: normPhone, area: custArea.trim() || null };
+    const customerIdPlanned = lookup.state === 'found' ? lookup.customer.id : newCustomer!.id;
+    const payload = {
+      customer: newCustomer,
+      device: { id, shop_id: profile.shop_id, customer_id: customerIdPlanned, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature, priority: routing.priority, est_minutes: routing.estMinutes },
+      cost: { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor },
+      check: Object.keys(check).length > 0 ? { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check } : null,
+      route: routing.routeId,
+      lock: lockType !== 'none' && lockValue.trim() ? { p_kind: lockType, p_value: lockValue.trim() } : null,
+    };
+    const saveOffline = async () => {
+      await sync.queue('intake', id, payload);
+      for (const p of photos) {
+        const pid = crypto.randomUUID();
+        await localDb().blobs.put({ id: pid, deviceId: id, shopId: profile.shop_id, blob: p.file, createdAt: Date.now() });
+        await sync.queue('photo', pid, { device: id });
+      }
+      setSaved({ id, orderNo: null });
+    };
+    if (!navigator.onLine) {
+      try {
+        await saveOffline();
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     try {
       let customerId = lookup.state === 'found' ? lookup.customer.id : null;
       if (!customerId) {
-        customerId = crypto.randomUUID();
-        const r = await supabase.from('customers').insert({ id: customerId, shop_id: profile.shop_id, name: custName.trim(), phone: normPhone, area: custArea.trim() || null });
+        customerId = newCustomer!.id;
+        const r = await supabase.from('customers').insert(newCustomer!);
         if (r.error) throw r.error;
       }
-      const id = crypto.randomUUID();
       const d = await supabase
         .from('devices')
-        .insert({ id, shop_id: profile.shop_id, customer_id: customerId, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature, priority: routing.priority, est_minutes: routing.estMinutes })
+        .insert({ ...payload.device, id, customer_id: customerId })
         .select('order_no')
         .single();
       if (d.error) throw d.error;
-      const c = await supabase.from('device_costs').insert({ id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor });
+      const c = await supabase.from('device_costs').insert(payload.cost);
       if (c.error) throw c.error;
       // المرحلة 4: المسار والتوزيع على الفنيين
       if (routing.routeId) {
@@ -174,12 +208,17 @@ export function IntakeScreen() {
         if (l.error) throw l.error;
       }
       if (Object.keys(check).length > 0) {
-        const ck = await supabase.from('device_checks').insert({ id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check });
+        const ck = await supabase.from('device_checks').insert(payload.check!);
         if (ck.error) throw ck.error;
       }
       for (const p of photos) await uploadDevicePhoto(profile.shop_id, id, p.file);
       setSaved({ id, orderNo: d.data.order_no as string });
     } catch (e) {
+      if (shouldQueue(e)) {
+        // النت قطع في النص: الباقي بيتسجل على الجهاز ويكمّل بعدين
+        await saveOffline();
+        return;
+      }
       setAttempt((a) => a + 1);
       setFormError(errorMessage(e));
       toast({ tone: 'danger', title: t('common.errorTitle'), description: errorMessage(e) });
@@ -560,9 +599,16 @@ export function IntakeScreen() {
           </motion.span>
           <div>
             <div className="readout-label">{t('intake.orderNo')}</div>
-            <div className="num text-glow text-2xl text-fg" dir="ltr">
-              {saved?.orderNo}
-            </div>
+            {saved?.orderNo ? (
+              <div className="num text-glow text-2xl text-fg" dir="ltr">
+                {saved.orderNo}
+              </div>
+            ) : (
+              <div>
+                <div className="text-lg font-semibold text-warn">{t('sync.tempOrder')}</div>
+                <div className="text-2xs text-fg-3">{t('sync.tempOrderHint')}</div>
+              </div>
+            )}
           </div>
         </div>
       </Dialog>

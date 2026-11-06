@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes, useLocation, type Location } from 
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './app/auth';
+import { SyncProvider } from './offline/sync';
 import { PrefsProvider, usePrefs } from './app/prefs';
 import { AppShell } from './app/AppShell';
 import { EffectsGuard } from './app/EffectsGuard';
@@ -155,7 +156,9 @@ export function App() {
             {isConfigured ? (
               <HashRouter>
                 <AuthProvider>
-                  <Boot />
+                  <SyncProvider>
+                    <Boot />
+                  </SyncProvider>
                 </AuthProvider>
               </HashRouter>
             ) : (

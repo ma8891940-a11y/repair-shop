@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { SHOP_COLUMNS, type Profile, type Shop } from '../lib/types';
+import { isNetworkError, localDb } from '../offline/outbox';
 
 interface AuthState {
   loading: boolean;
@@ -14,6 +15,23 @@ interface AuthState {
 }
 
 const Ctx = createContext<AuthState | null>(null);
+
+const ME_KEY = 'me';
+function readMe(uid: string): { profile: Profile; shop: Shop } | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(ME_KEY) ?? 'null') as { uid: string; profile: Profile; shop: Shop } | null;
+    return v && v.uid === uid ? { profile: v.profile, shop: v.shop } : null;
+  } catch {
+    return null;
+  }
+}
+function writeMe(uid: string, v: { profile: Profile; shop: Shop }) {
+  try {
+    localStorage.setItem(ME_KEY, JSON.stringify({ uid, ...v }));
+  } catch {
+    /* */
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -35,6 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('id, shop_id, full_name, email, role, deleted_at')
       .eq('id', s.user.id)
       .maybeSingle();
+    // بدون نت: البرنامج بيفتح بآخر بيانات محفوظة للمستخدم ده على الجهاز
+    if (pe && isNetworkError(pe)) {
+      const cached = readMe(s.user.id);
+      if (cached) {
+        setProfile(cached.profile);
+        setShop(cached.shop);
+        setLoading(false);
+        return;
+      }
+    }
     if (pe) setError(pe.message);
     let sh: Shop | null = null;
     if (p && !p.deleted_at) {
@@ -47,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setProfile((p as Profile) ?? null);
     setShop(sh);
+    if (p && sh) writeMe(s.user.id, { profile: p as Profile, shop: sh });
     setLoading(false);
   }, []);
 
@@ -76,6 +105,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const signOut = useCallback(async () => {
+    // الخروج بيمسح البيانات المحفوظة على الجهاز (عشان خصوصية العملاء لو الجهاز مشترك). العمليات اللي لسه ما اتبعتتش بتفضل
+    try {
+      localStorage.removeItem(ME_KEY);
+      await localDb().cache.clear();
+    } catch {
+      /* التخزين ممكن يكون مقفول */
+    }
     await supabase.auth.signOut();
   }, []);
 

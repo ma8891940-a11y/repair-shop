@@ -418,7 +418,8 @@
       "E_INSUFFICIENT": "Not enough balance in the cashbox",
       "E_COST_LOCKED": "Revenue is already recorded. Correct with a reversing entry",
       "E_CASHBOX_NOT_EMPTY": "Can't disable a cashbox that has money. Transfer it first",
-      "E_TRACK_AMBIGUOUS": "This order number is shared. Scan the QR code on your receipt or label to open your exact device."
+      "E_TRACK_AMBIGUOUS": "This order number is shared. Scan the QR code on your receipt or label to open your exact device.",
+      "E_WEAK_BACKUP_PASSWORD": "Backup password must be at least 8 characters"
     }
   },
   "onboarding": {
@@ -617,7 +618,8 @@
       "appearance": "Appearance",
       "messages": "Messages",
       "ledger": "Cashboxes & expenses",
-      "tech": "Technicians & routes"
+      "tech": "Technicians & routes",
+      "backup": "Backup"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -1255,5 +1257,51 @@
     "noShort": "No shortages",
     "noRoute": "No route",
     "debtsHint": "Debts and overdue:"
+  },
+  "sync": {
+    "online": "Online",
+    "offline": "Offline ({{n}})",
+    "pending": "Syncing ({{n}})",
+    "failed": "{{n}} rejected",
+    "title": "Sync",
+    "desc": {
+      "online": "Everything is on the server.",
+      "offline": "No internet. Work is saved on this device and sent in order when the connection returns.",
+      "pending": "Some operations saved on this device are being sent now.",
+      "failed": "The server rejected some operations. Check the reason, fix it, and send them again."
+    },
+    "pendingLine": "Waiting: {{n}}",
+    "now": "Sync now",
+    "retry": "Resend rejected",
+    "kinds": {
+      "intake": "Device intake",
+      "status": "Status change",
+      "payment": "Payment",
+      "photo": "Photo"
+    },
+    "queued": "Saved on this device; it will be sent when the connection returns",
+    "tempOrder": "Temporary no.",
+    "tempOrderHint": "The real order number is assigned after sync.",
+    "cached": "Saved data from {{t}} (offline)"
+  },
+  "backup": {
+    "export": "Export a backup to this device",
+    "exportHint": "A full copy of the shop's data in one file, encrypted with a password on your device before saving. Without the password it can't be opened, so keep it safe. Device lock secrets are never included.",
+    "password": "Backup password",
+    "password2": "Confirm password",
+    "exportNow": "Export backup",
+    "saved": "Backup saved",
+    "errShort": "At least 8 characters",
+    "errMatch": "Passwords don't match",
+    "daily": "Daily server backups",
+    "dailyHint": "An automatic copy every day at 3 AM; the last 7 days are kept. Downloads are encrypted with the password above.",
+    "noDaily": "No daily backups yet (needs pg_cron enabled in Supabase).",
+    "download": "Download",
+    "open": "Open a backup to verify it",
+    "openHint": "Open a backup file with its password to check it's intact and see what's inside.",
+    "pick": "Choose file",
+    "valid": "Backup is valid",
+    "errPassword": "Wrong password or the file was modified",
+    "errFormat": "This isn't a Warsha backup file"
   }
 }

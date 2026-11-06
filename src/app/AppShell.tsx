@@ -14,6 +14,7 @@ import { CommandPalette, type Command } from '../ui/CommandPalette';
 import { CircuitField } from '../ui/fx/CircuitField';
 import { useToast } from '../ui/Toast';
 import { Dialog } from '../ui/Dialog';
+import { ConnectionBadge } from './ConnectionBadge';
 import { supabase } from '../lib/supabase';
 import { cn } from '../ui/cn';
 
@@ -202,15 +203,7 @@ export function AppShell() {
               </span>
             </button>
             <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
-              <Tip label={live ? t('common.live') : t('common.offlineRealtime')}>
-                <span className={cn('flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-2xs font-medium', live ? 'border-[color-mix(in_srgb,var(--ok)_35%,transparent)] text-ok' : 'border-glass-border text-fg-3')}>
-                  <span className="relative flex size-1.5">
-                    {live && <span className="absolute inline-flex size-full animate-[ping-soft_1.8s_ease-out_infinite] rounded-full bg-ok" />}
-                    <span className={cn('relative inline-flex size-1.5 rounded-full', live ? 'bg-ok' : 'bg-fg-3')} />
-                  </span>
-                  <span className="hidden sm:inline">{t('common.live')}</span>
-                </span>
-              </Tip>
+              <ConnectionBadge live={live} />
               <div className="flex items-center md:hidden">
                 <LangToggle />
                 <ThemeToggle />

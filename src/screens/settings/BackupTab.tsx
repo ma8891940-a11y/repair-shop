@@ -110,7 +110,12 @@ export function BackupTab() {
             </Field>
             <label className="inline-flex h-9 cursor-pointer items-center gap-2 self-end rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent hover:text-fg">
               <FolderOpen className="size-4" aria-hidden /> {t('backup.pick')}
-              <input type="file" accept=".warsha,application/json" className="sr-only" onChange={(e) => e.target.files?.[0] && void openFile(e.target.files[0])} />
+              <input type="file" accept=".warsha,application/json" className="sr-only" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = ''; // عشان نفس الملف يتفتح تاني (مثلًا بكلمة سر مختلفة)
+                  if (file) void openFile(file);
+                }}
+              />
             </label>
           </div>
           {summary && (
