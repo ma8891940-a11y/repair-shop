@@ -47,7 +47,7 @@ d('المرحلة 5: بدون إنترنت والنسخ الاحتياطي', () 
     await as(rec, `insert into customers(id, shop_id, name, phone) values ($1, gen_random_uuid(), 'عميل', '01055550000')`, [c]);
     dev = randomUUID();
     await as(rec, `insert into devices(id, customer_id, brand, model, issue) values ($1, $2, 'a', 'b', 'c')`, [dev, c]);
-    await as(rec, `select set_device_passcode($1, 'pin', '4321')`, [dev]);
+    await as(rec, `select set_device_passcode($1, 'pin', 'pin-zq-8817-sekret')`, [dev]);
   });
   afterAll(async () => db?.end());
 
@@ -79,7 +79,7 @@ d('المرحلة 5: بدون إنترنت والنسخ الاحتياطي', () 
     for (const t of ['devices', 'customers', 'journal_entries', 'journal_lines', 'accounts', 'repair_steps', 'audit_log']) expect(Array.isArray(b[t])).toBe(true);
     expect(b.devices.map((x: { id: string }) => x.id)).toContain(dev);
     expect(b.device_passcodes).toEqual([{ device_id: dev, kind: 'pin', erased_at: null }]);
-    expect(JSON.stringify(b)).not.toContain('4321');
+    expect(JSON.stringify(b)).not.toContain('pin-zq-8817-sekret');
     expect(JSON.stringify(b)).not.toContain('secret_id');
     // ما فيهاش بيانات محل تاني
     expect(b.shops.map((s: { id: string }) => s.id)).toEqual([shop]);

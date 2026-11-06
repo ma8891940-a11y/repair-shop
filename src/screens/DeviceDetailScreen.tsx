@@ -29,6 +29,7 @@ import { StepsPanel } from '../app/tech/StepsPanel';
 import { shouldQueue, useSync } from '../offline/sync';
 import { StaleNote } from '../ui/StaleNote';
 import { cn } from '../ui/cn';
+import { AssistantPanel } from '../app/AssistantPanel';
 
 interface LogRow {
   id: string;
@@ -68,7 +69,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   const { profile, shop } = useMe();
   const navigate = useNavigate();
   const toast = useToast();
-  const front = profile.role !== 'technician';
+  const front = (profile.role === 'owner' || profile.role === 'reception');
   const canSeeLock = profile.role === 'owner' || profile.role === 'technician';
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ msg: string; n: number } | null>(null);
@@ -364,6 +365,10 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
               </Panel>
 
               <StepsPanel deviceId={id} routeId={d.route_id ?? null} priority={d.priority ?? 'normal'} estMinutes={d.est_minutes ?? null} onChanged={reload} />
+
+              {(profile.role === 'technician' || profile.role === 'owner') && (
+                <AssistantPanel brand={d.brand} model={d.model} issue={d.issue ?? ''} names={data.customer ? [data.customer.name] : []} />
+              )}
 
               <ChecksPanel deviceId={id} shopId={profile.shop_id} status={d.status} checks={data.checks} onSaved={reload} />
 

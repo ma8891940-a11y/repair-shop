@@ -53,12 +53,16 @@
     "inventory": "Inventory",
     "work": "My work",
     "reports": "Reports",
-    "more": "More"
+    "more": "More",
+    "videos": "Videos",
+    "community": "Community",
+    "admin": "Admin"
   },
   "roles": {
     "owner": "Owner",
     "reception": "Reception",
-    "technician": "Technician"
+    "technician": "Technician",
+    "marketing": "Marketing manager"
   },
   "status": {
     "received": "Received",
@@ -425,7 +429,13 @@
       "E_COST_LOCKED": "Revenue is already recorded. Correct with a reversing entry",
       "E_CASHBOX_NOT_EMPTY": "Can't disable a cashbox that has money. Transfer it first",
       "E_TRACK_AMBIGUOUS": "This order number is shared. Scan the QR code on your receipt or label to open your exact device.",
-      "E_WEAK_BACKUP_PASSWORD": "Backup password must be at least 8 characters"
+      "E_WEAK_BACKUP_PASSWORD": "Backup password must be at least 8 characters",
+      "E_PLAN_LIMIT": "You reached your plan limit. Contact support to upgrade",
+      "E_PRIVATE_DATA": "The text has a phone number or IMEI. Remove it first; the community has no customer data",
+      "E_ALREADY_RATED": "This device was already rated. Thank you",
+      "E_AI_DISABLED": "The AI assistant is not enabled",
+      "E_AI_LIMIT": "Daily AI assistant limit reached",
+      "E_SHOP_SUSPENDED": "This shop is suspended"
     }
   },
   "onboarding": {
@@ -1345,5 +1355,169 @@
     "errType": "File must be PNG, JPG or SVG",
     "errSize": "File is larger than 2 MB",
     "errRead": "Couldn't open the image"
+  },
+  "suspended": {
+    "title": "Shop suspended",
+    "body": "This shop account is suspended for now and all data is kept. Contact support to reactivate it.",
+    "signOut": "Sign out"
+  },
+  "videos": {
+    "title": "Repair videos",
+    "sub": {
+      "owner": "Technicians’ work videos. Approved ones add points",
+      "technician": "Upload a video of your work. Approved videos earn points",
+      "marketing": "Review technicians’ videos and approve the shareable ones"
+    },
+    "new": "New video",
+    "titleField": "Video title",
+    "pick": "Choose video file",
+    "desc": "Short description",
+    "privacy": "No customer name, number or personal data, and nothing personal visible on the device screen",
+    "upload": "Upload",
+    "uploaded": "Uploaded and waiting for review",
+    "errTitle": "Enter a title",
+    "errFile": "Choose a video file",
+    "errSize": "Maximum size is 100 MB",
+    "empty": "No videos yet",
+    "play": "Play video",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approved": "Approved, points added",
+    "rejected": "Rejected",
+    "status": {
+      "pending": "Pending review",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    }
+  },
+  "community": {
+    "title": "Technician community",
+    "sub": "Ask and share experience with technicians from other shops",
+    "postTitle": "Title (optional)",
+    "body": "Question or tip",
+    "privacy": "No customer data: long numbers (phone or IMEI) are rejected automatically",
+    "publish": "Publish",
+    "posted": "Published",
+    "errEmpty": "Write something first",
+    "empty": "No posts yet. Be the first",
+    "report": "Report post",
+    "reported": "Reported to the moderator, thanks",
+    "hidden": "Hidden by moderator",
+    "replies_one": "1 reply",
+    "replies_other": "{{n}} replies",
+    "replies_zero": "Reply",
+    "reply": "Reply",
+    "replyPh": "Write a reply"
+  },
+  "admin": {
+    "title": "Admin",
+    "sub": "Shops and their usage, without any customer data",
+    "shops": "Shops ({{n}})",
+    "shop": "Shop",
+    "plan": "Plan",
+    "staff": "Staff",
+    "devices": "Devices",
+    "month": "This month",
+    "last": "Last activity",
+    "suspend": "Suspend",
+    "unsuspend": "Reactivate",
+    "reports": "Community reports",
+    "noReports": "No reports",
+    "reportCount": "{{n}} reports",
+    "hide": "Hide",
+    "show": "Show",
+    "plans": {
+      "free": "Free",
+      "pro": "Pro"
+    }
+  },
+  "plan": {
+    "title": "Plan and usage",
+    "current": "Current plan",
+    "devices": "Devices this month",
+    "staff": "Staff",
+    "ai": "Assistant questions today",
+    "videos": "Videos",
+    "unlimited": "Unlimited",
+    "of": "{{used}} of {{max}}",
+    "near": "Close to the limit"
+  },
+  "assistant": {
+    "title": "Assistant",
+    "ask": "Ask the assistant",
+    "placeholder": "e.g. What should I check first?",
+    "defaultQ": "What are the likely causes and the inspection steps in order?",
+    "privacy": "Only the device type, fault and your question are sent, never customer data",
+    "offlineGuide": "The AI assistant is unavailable now. Here are tips from the built-in fault guide",
+    "limit": "Daily AI limit reached. Here are tips from the built-in fault guide",
+    "noMatch": "No matching fault in the guide. Try describing it differently",
+    "causes": "Likely causes",
+    "steps": "Inspection steps"
+  },
+  "rating": {
+    "title": "Rate the service",
+    "sub": "Your opinion matters",
+    "star": "{{n}} of 5",
+    "comment": "Comment (optional)",
+    "send": "Send rating",
+    "thanks": "Thanks for your rating",
+    "done": "You rated the service {{n}} of 5"
+  },
+  "guide": {
+    "no_charge": {
+      "title": "Not charging",
+      "causes": "Dirty or broken port, bad cable or charger, charging IC, battery.",
+      "steps": "1. Try a known-good charger and cable.\n2. Clean the port with a soft brush.\n3. Measure current with a USB meter.\n4. No draw: check the charging flex, then the charging IC.",
+      "warn": "Disconnect the battery before any soldering."
+    },
+    "no_power": {
+      "title": "No power",
+      "causes": "Fully drained battery, power button, board short, stuck software.",
+      "steps": "1. Charge for 30 minutes.\n2. Force restart.\n3. Power supply and watch the draw.\n4. If shorted: check capacitors around the PMIC.",
+      "warn": "Never exceed normal voltage."
+    },
+    "screen": {
+      "title": "Display issue",
+      "causes": "Broken screen, display flex, backlight IC, touch.",
+      "steps": "1. Check for sound or vibration (device is on).\n2. Try a known-good screen.\n3. Check the connector.\n4. Backlight only: check the backlight circuit."
+    },
+    "battery": {
+      "title": "Battery",
+      "causes": "Worn battery, draining apps, board leakage.",
+      "steps": "1. Check battery health in settings.\n2. Measure draw with the device off.\n3. Try a known-good battery.",
+      "warn": "Remove a swollen battery immediately and carefully."
+    },
+    "water": {
+      "title": "Water damage",
+      "causes": "Board corrosion, short.",
+      "steps": "1. Disconnect the battery at once.\n2. Open and clean with isopropyl alcohol and a brush.\n3. Dry fully before powering.\n4. Inspect corrosion under the microscope.",
+      "warn": "Do not charge until cleaned and dry."
+    },
+    "network": {
+      "title": "Network or Wi-Fi",
+      "causes": "Settings, antenna, network IC, software.",
+      "steps": "1. Reset network settings.\n2. Try another SIM.\n3. Check antenna cables.\n4. Check the baseband."
+    },
+    "audio": {
+      "title": "Audio or mic",
+      "causes": "Dirty speaker or mic, flex, audio IC.",
+      "steps": "1. Clean the mesh.\n2. Test call, speaker and recording.\n3. Try a known-good part."
+    },
+    "camera": {
+      "title": "Camera",
+      "causes": "Broken lens, camera module, connector, software.",
+      "steps": "1. Try both cameras.\n2. Clear camera app data.\n3. Try a known-good camera."
+    },
+    "software": {
+      "title": "Software",
+      "causes": "Incomplete update, broken app, full storage.",
+      "steps": "1. Safe mode.\n2. Free up storage.\n3. Update or reflash (after a backup with the customer’s approval).",
+      "warn": "Reflashing erases data."
+    },
+    "heat": {
+      "title": "Overheating",
+      "causes": "Heavy apps, battery, board short.",
+      "steps": "1. Check draining apps.\n2. Measure current.\n3. Locate the heat (thermal camera or rosin)."
+    }
   }
 }

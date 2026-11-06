@@ -57,7 +57,7 @@ export function InventoryScreen() {
         sub={owner ? t('inv.subOwner', { v: `${f.money(totalValue)} ${cur}` }) : t('inv.sub')}
         actions={
           <div className="flex flex-wrap gap-2">
-            {profile.role !== 'technician' && (
+            {(profile.role === 'owner' || profile.role === 'reception') && (
               <Button size="sm" icon={<ShoppingCart className="size-4" />} onClick={() => setDlg('sale')}>
                 {t('inv.sale')}
               </Button>
@@ -131,7 +131,7 @@ export function InventoryScreen() {
                   <th className="!text-end">{t('inv.cols.qty')}</th>
                   {owner && <th className="!text-end">{t('inv.cols.avg')}</th>}
                   {owner && <th className="!text-end">{t('inv.cols.value')}</th>}
-                  {profile.role !== 'technician' && <th className="!text-end">{t('inv.cols.price')}</th>}
+                  {(profile.role === 'owner' || profile.role === 'reception') && <th className="!text-end">{t('inv.cols.price')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-glass-border">
@@ -156,7 +156,7 @@ export function InventoryScreen() {
                     <td className={cn('num text-end', i.qty <= 0 ? 'text-danger' : 'text-fg')}>{f.number(i.qty)}</td>
                     {owner && <td className="num text-end text-fg-2">{i.avg_cost != null ? f.money(i.avg_cost) : t('common.none')}</td>}
                     {owner && <td className="num text-end text-fg">{f.money(i.value ?? 0)}</td>}
-                    {profile.role !== 'technician' && <td className="num text-end text-fg-2">{i.sale_price != null ? f.money(i.sale_price) : t('common.none')}</td>}
+                    {(profile.role === 'owner' || profile.role === 'reception') && <td className="num text-end text-fg-2">{i.sale_price != null ? f.money(i.sale_price) : t('common.none')}</td>}
                   </tr>
                 ))}
               </tbody>

@@ -30,7 +30,7 @@ export const TRANSITIONS: Record<DeviceStatus, readonly DeviceStatus[]> = {
   unrepairable: ['delivered'],
 };
 
-export type Role = 'owner' | 'reception' | 'technician';
+export type Role = 'owner' | 'reception' | 'technician' | 'marketing';
 
 export function isStatus(v: unknown): v is DeviceStatus {
   return typeof v === 'string' && (STATUSES as readonly string[]).includes(v);

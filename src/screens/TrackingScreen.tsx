@@ -15,6 +15,7 @@ import { Field, Input } from '../ui/Field';
 import { Alert, Skeleton } from '../ui/Feedback';
 import { StatusBadge } from '../ui/StatusBadge';
 import { cn } from '../ui/cn';
+import { RatingBox } from './RatingBox';
 
 interface Tracking {
   order_no: string;
@@ -220,6 +221,8 @@ export function TrackingScreen() {
               ) : (
                 data.decision && !done && <Alert tone="info">{t('track.decided', { d: t(`track.decisions.${data.decision}`) })}</Alert>
               )}
+
+              {token && data.status === 'delivered' && <RatingBox token={token} />}
 
               <div className="flex flex-wrap gap-2">
                 {data.shop_phone && (

@@ -22,7 +22,7 @@ interface Invite {
   id: string;
   email: string;
   full_name: string;
-  role: 'reception' | 'technician';
+  role: 'reception' | 'technician' | 'marketing';
   created_at: string;
 }
 
@@ -33,7 +33,7 @@ export function TeamScreen() {
   const toast = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'reception' | 'technician'>('reception');
+  const [role, setRole] = useState<'reception' | 'technician' | 'marketing'>('reception');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
@@ -93,9 +93,10 @@ export function TeamScreen() {
               <Input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} className="text-start" />
             </Field>
             <Field label={t('team.role')}>
-              <Select value={role} onChange={(e) => setRole(e.target.value as 'reception' | 'technician')}>
+              <Select value={role} onChange={(e) => setRole(e.target.value as 'reception' | 'technician' | 'marketing')}>
                 <option value="reception">{t('roles.reception')}</option>
                 <option value="technician">{t('roles.technician')}</option>
+                <option value="marketing">{t('roles.marketing')}</option>
               </Select>
             </Field>
             {err && <Alert tone="danger">{err}</Alert>}

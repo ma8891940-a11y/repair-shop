@@ -27,7 +27,7 @@ export function DevicesScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile } = useMe();
-  const front = profile.role !== 'technician';
+  const front = (profile.role === 'owner' || profile.role === 'reception');
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();

@@ -32,7 +32,7 @@ export function StepsPanel({ deviceId, routeId, priority, estMinutes, onChanged 
   const f = useFormat();
   const { profile } = useMe();
   const toast = useToast();
-  const front = profile.role !== 'technician';
+  const front = (profile.role === 'owner' || profile.role === 'reception');
   const specName = useSpecName();
   const routeName = useRouteName();
   const dur = useDuration();

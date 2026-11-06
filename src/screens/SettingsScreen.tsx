@@ -18,6 +18,7 @@ import { LedgerTab } from './settings/LedgerTab';
 import { TechTab } from './settings/TechTab';
 import { BackupTab } from './settings/BackupTab';
 import { IdentityTab } from './settings/IdentityTab';
+import { PlanUsage } from '../app/PlanUsage';
 import { cn } from '../ui/cn';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
@@ -41,7 +42,8 @@ export function SettingsScreen() {
           ))}
         </Tabs.List>
         {owner && (
-          <Tabs.Content value="shop">
+          <Tabs.Content value="shop" className="flex flex-col gap-4">
+            <PlanUsage />
             <IdentityTab />
           </Tabs.Content>
         )}

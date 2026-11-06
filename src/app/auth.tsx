@@ -10,8 +10,22 @@ interface AuthState {
   profile: Profile | null;
   shop: Shop | null;
   error: string | null;
+  /** مشرف المنصة (لوحة المشرف) */
+  isAdmin: boolean;
+  /** المحل موقوف من المشرف */
+  suspended: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
+}
+
+interface Account {
+  profile: Profile | null;
+  shop: { id: string; name: string; theme: 'dark' | 'light'; locale: 'ar' | 'en'; suspended: boolean } | null;
+  is_admin: boolean;
+}
+/** محل بأقل بيانات (لمدير التسويق أو المحل الموقوف): الاسم والمظهر بس */
+function minimalShop(a: NonNullable<Account['shop']>): Shop {
+  return { id: a.id, name: a.name, theme: a.theme, locale: a.locale, phone: null, address: null, receipt_terms: '', warranty_days: 0, country: 'EG', currency: 'EGP', payment_methods: [], logo_path: null, setup_completed_at: 'x' };
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -38,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [suspended, setSuspended] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (s: Session | null) => {
@@ -45,6 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!s) {
       setProfile(null);
       setShop(null);
+      setIsAdmin(false);
+      setSuspended(false);
       setLoading(false);
       return;
     }
@@ -73,7 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
       sh = (r.data as Shop) ?? null;
     }
-    setProfile((p as Profile) ?? null);
+    // حالة الحساب: مدير التسويق والمحل الموقوف ملهمش محل في الصلاحيات العادية، فبنعرف دورهم ومحلهم من my_account
+    let prof = (p as Profile | null) ?? null;
+    const acc = pe ? null : ((await supabase.rpc('my_account')).data as Account | null);
+    setIsAdmin(Boolean(acc?.is_admin));
+    setSuspended(Boolean(acc?.shop?.suspended));
+    // بس للتسويق أو المحل الموقوف (مش وقت التسجيل، عشان الحساب ممكن يكون لسه بيتعمل)
+    if (!prof && acc?.profile && acc.shop && (acc.profile.role === 'marketing' || acc.shop.suspended)) {
+      prof = acc.profile;
+      sh = minimalShop(acc.shop);
+    }
+    setProfile(prof);
     setShop(sh);
     if (p && sh) writeMe(s.user.id, { profile: p as Profile, shop: sh });
     setLoading(false);
@@ -115,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
-  return <Ctx.Provider value={{ loading, session, profile, shop, error, refresh, signOut }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ loading, session, profile, shop, error, isAdmin, suspended, refresh, signOut }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthState {

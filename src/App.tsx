@@ -32,6 +32,11 @@ import { DrawerScreen } from './screens/finance/DrawerScreen';
 import { WorkScreen } from './screens/WorkScreen';
 import { ReportsScreen } from './screens/ReportsScreen';
 import { DayReportPrint, StatementPrint } from './screens/finance/FinancePrint';
+import { VideosScreen } from './screens/VideosScreen';
+import { CommunityScreen } from './screens/CommunityScreen';
+import { AdminScreen } from './screens/AdminScreen';
+import { Button } from './ui/Button';
+import type { Role } from './lib/status';
 
 // الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
 const SPLASH_MS = 1500;
@@ -48,8 +53,25 @@ function NotConfigured() {
   );
 }
 
+/** المحل موقوف من المشرف: رسالة واضحة والبيانات محفوظة */
+function Suspended() {
+  const { t } = useTranslation();
+  const { signOut } = useAuth();
+  return (
+    <div className="grid min-h-dvh place-items-center px-4">
+      <div className="glass-strong max-w-md rounded-xl p-6" role="alert">
+        <h1 className="text-lg font-semibold">{t('suspended.title')}</h1>
+        <p className="mt-2 text-sm text-fg-2">{t('suspended.body')}</p>
+        <Button className="mt-4" onClick={() => void signOut()}>
+          {t('suspended.signOut')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function Gate() {
-  const { loading, session, profile, shop } = useAuth();
+  const { loading, session, profile, shop, suspended, isAdmin } = useAuth();
   const location = useLocation();
   // صفحة تتبع العميل: عامة، بتشتغل بتسجيل دخول أو من غيره
   if (location.pathname === '/t' || location.pathname.startsWith('/t/')) {
@@ -78,11 +100,28 @@ function Gate() {
       </Routes>
     );
   }
+  if (profile && !profile.deleted_at && shop && suspended && !isAdmin) return <Suspended />;
   if (!profile || profile.deleted_at || !shop) return <JoinScreen blocked={Boolean(profile?.deleted_at)} />;
-  return <AppRoutes front={profile.role !== 'technician'} owner={profile.role === 'owner'} />;
+  if (profile.role === 'marketing') return <MarketingRoutes />;
+  return <AppRoutes role={profile.role} admin={isAdmin} />;
 }
 
-function AppRoutes({ front, owner }: { front: boolean; owner: boolean }) {
+/** مدير التسويق: الفيديوهات والمظهر بس */
+function MarketingRoutes() {
+  return (
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route path="videos" element={<VideosScreen />} />
+        <Route path="settings" element={<SettingsScreen />} />
+        <Route path="*" element={<Navigate to="/videos" replace />} />
+      </Route>
+    </Routes>
+  );
+}
+
+function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
+  const owner = role === 'owner';
+  const front = role === 'owner' || role === 'reception';
   const location = useLocation();
   // لو الجهاز اتفتح من كارت، الشاشة اللي ورا بتفضل ظاهرة والتفاصيل تطلع فوقها
   const bg = (location.state as { bg?: Location } | null)?.bg;
@@ -110,6 +149,9 @@ function AppRoutes({ front, owner }: { front: boolean; owner: boolean }) {
           {owner && <Route path="users" element={<TeamScreen />} />}
           {owner && <Route path="audit" element={<AuditScreen />} />}
           <Route path="settings" element={<SettingsScreen />} />
+          {role !== 'reception' && <Route path="videos" element={<VideosScreen />} />}
+          <Route path="community" element={<CommunityScreen />} />
+          {admin && <Route path="admin" element={<AdminScreen />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

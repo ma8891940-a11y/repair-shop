@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Menu, Users, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Menu, Users, Film, MessagesSquare, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
@@ -53,7 +53,7 @@ export function useLiveRefresh(fn: () => void) {
 export function AppShell() {
   const { t } = useTranslation();
   const { profile, shop } = useMe();
-  const { signOut } = useAuth();
+  const { signOut, isAdmin } = useAuth();
   const { toggleTheme, toggleLang, effects, setEffects } = usePrefs();
   const toast = useToast();
   const navigate = useNavigate();
@@ -85,20 +85,25 @@ export function AppShell() {
     };
   }, [shop.id]);
   const owner = profile.role === 'owner';
-  const front = profile.role !== 'technician';
+  const front = profile.role === 'owner' || profile.role === 'reception';
+  const marketing = profile.role === 'marketing';
+  const staff = !marketing;
 
   const nav: NavItem[] = [
     { to: '/work', key: 'work', icon: Wrench, show: profile.role === 'technician' },
-    { to: '/', key: 'dashboard', icon: Gauge, shortcut: 'F1', end: true, show: true },
-    { to: '/devices', key: 'devices', icon: ClipboardList, shortcut: 'F3', end: true, show: true },
+    { to: '/', key: 'dashboard', icon: Gauge, shortcut: 'F1', end: true, show: staff },
+    { to: '/devices', key: 'devices', icon: ClipboardList, shortcut: 'F3', end: true, show: staff },
     { to: '/intake', key: 'intake', icon: PackagePlus, shortcut: 'F2', show: front },
     { to: '/customers', key: 'customers', icon: Contact, shortcut: 'F4', show: front },
     { to: '/finance', key: 'finance', icon: Landmark, shortcut: 'F5', show: owner },
     { to: '/drawer', key: 'drawer', icon: Wallet, show: front && !owner },
-    { to: '/inventory', key: 'inventory', icon: Boxes, show: true },
+    { to: '/inventory', key: 'inventory', icon: Boxes, show: staff },
+    { to: '/videos', key: 'videos', icon: Film, show: profile.role !== 'reception' },
     { to: '/reports', key: 'reports', icon: BarChart3, show: owner },
     { to: '/users', key: 'team', icon: Users, show: owner },
     { to: '/audit', key: 'audit', icon: History, show: owner },
+    { to: '/community', key: 'community', icon: MessagesSquare, show: staff },
+    { to: '/admin', key: 'admin', icon: ShieldCheck, show: isAdmin },
     { to: '/settings', key: 'settings', icon: Settings, show: true },
   ].filter((n) => n.show);
 

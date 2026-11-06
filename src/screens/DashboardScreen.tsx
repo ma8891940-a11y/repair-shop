@@ -29,7 +29,7 @@ export function DashboardScreen() {
   const { profile, shop } = useMe();
   const navigate = useNavigate();
   const owner = profile.role === 'owner';
-  const front = profile.role !== 'technician';
+  const front = (profile.role === 'owner' || profile.role === 'reception');
 
   const { data, error, loading, reload, stale } = useLoad(
     async () => {
