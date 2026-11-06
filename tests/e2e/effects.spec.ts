@@ -12,17 +12,18 @@ test.describe('المؤثرات الكاملة', () => {
   test('القفل التلقائي: بطء تحت 50 إطار لمدة 3 ثواني بيقفلها، والتنبيه فيه "رجّعها"', async ({ page, browserName }, info) => {
     test.skip(browserName !== 'chromium', 'إبطاء المعالج متاح في Chromium بس');
     await prefs(page, info, { effects: true });
+    // فترة السماح بتبدأ من فتح الشاشة، فبنقيس من قبل الفتح
+    const opened = Date.now();
     await page.goto('/');
     await afterSplash(page);
     await expect(page.locator('html')).not.toHaveAttribute('data-lite', '');
     // نبطّأ المعالج 20 مرة عشان الأداء ينزل
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
-    const started = Date.now();
     const notice = page.getByText('اتقفلت المؤثرات الكاملة عشان الجهاز يفضل سريع');
     await expect(notice).toBeVisible({ timeout: 25_000 });
-    // مش قبل فترة السماح (2 ثانية) + مدة البطء (3 ثواني)
-    expect(Date.now() - started).toBeGreaterThanOrEqual(4_500);
+    // مش قبل فترة السماح (2 ثانية) + مدة البطء (3 ثواني) من فتح الشاشة
+    expect(Date.now() - opened).toBeGreaterThanOrEqual(5_000);
     await expect(page.locator('html')).toHaveAttribute('data-lite', '');
     expect(await page.evaluate(() => localStorage.getItem('effects'))).toBe('0');
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
