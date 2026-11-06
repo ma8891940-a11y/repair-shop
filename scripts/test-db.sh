@@ -14,5 +14,6 @@ run "$PGBIN/initdb" -D "$DIR/data" -U postgres --auth=trust -E UTF8 >/dev/null
 run "$PGBIN/pg_ctl" -D "$DIR/data" -o "-p $PORT -k $DIR -c listen_addresses=127.0.0.1" -l "$DIR/log" start -w >/dev/null
 URL="postgres://postgres@127.0.0.1:$PORT/postgres"
 psql -q -v ON_ERROR_STOP=1 "$URL" -f tests/db/supabase-stub.sql >/dev/null
-for f in supabase/migrations/*.sql; do psql -q -v ON_ERROR_STOP=1 "$URL" -f "$f" >/dev/null; done
+# بنطبّق ملف الإعداد الواحد (نفس اللي صاحب المشروع بيشغّله على Supabase)
+psql -q -v ON_ERROR_STOP=1 "$URL" -f supabase/setup_all.sql >/dev/null
 TEST_DATABASE_URL="$URL" npx vitest run tests/db
