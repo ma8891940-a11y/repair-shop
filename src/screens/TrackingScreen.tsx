@@ -7,7 +7,6 @@ import { supabase } from '../lib/supabase';
 import { toLatinDigits } from '../lib/digits';
 import type { DeviceStatus } from '../lib/status';
 import { useFormat } from '../i18n/format';
-import { CircuitField } from '../ui/fx/CircuitField';
 import { LineIcon } from '../ui/fx/LineIcon';
 import { LangToggle, ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
@@ -108,7 +107,6 @@ export function TrackingScreen() {
 
   return (
     <div className="relative min-h-dvh overflow-hidden">
-      <CircuitField />
       <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-10">
         <header className="flex items-center justify-between py-4">
           <div className="flex items-center gap-2.5">

@@ -11,7 +11,7 @@ import { LangToggle, ThemeToggle } from '../ui/ThemeToggle';
 import { Tip } from '../ui/Tooltip';
 import { Kbd } from '../ui/Kbd';
 import { CommandPalette, type Command } from '../ui/CommandPalette';
-import { CircuitField } from '../ui/fx/CircuitField';
+import { useBackground } from './stage';
 import { useToast } from '../ui/Toast';
 import { Dialog } from '../ui/Dialog';
 import { ConnectionBadge } from './ConnectionBadge';
@@ -84,6 +84,8 @@ export function AppShell() {
       void supabase.removeChannel(ch);
     };
   }, [shop.id]);
+  // جوه البرنامج: نفس خطوط الخلفية، ثابتة وأهدى (الأداء)
+  useBackground('still');
   const owner = profile.role === 'owner';
   const front = profile.role === 'owner' || profile.role === 'reception';
   const marketing = profile.role === 'marketing';
@@ -141,12 +143,11 @@ export function AppShell() {
   return (
     <LiveCtx.Provider value={{ live, subscribe }}>
       <div className="relative flex min-h-dvh">
-        <CircuitField className="fixed opacity-60" density={0.35} still />
 
         {/* الشريط الجانبي (كمبيوتر) */}
         <aside className="glass sticky top-0 z-20 hidden h-dvh w-[236px] shrink-0 flex-col rounded-none border-y-0 border-s-0 md:flex">
           <div className="flex items-center gap-2.5 px-4 pb-3 pt-4">
-            <AppLogo height={34} />
+            <AppLogo height={34} shared />
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-fg">{shop.name}</div>
               <div className="readout-label">{t('app.tagline')}</div>
@@ -192,7 +193,7 @@ export function AppShell() {
         <div className="relative z-10 flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-glass-border bg-[color-mix(in_srgb,var(--bg)_72%,transparent)] px-4 backdrop-blur-xl md:px-6">
             <div className="flex shrink-0 items-center gap-2 md:hidden">
-              <AppLogo height={26} />
+              <AppLogo height={26} shared />
             </div>
             <button
               type="button"

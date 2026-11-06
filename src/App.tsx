@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, type Location } from 'react-router';
-import { AnimatePresence, MotionConfig } from 'motion/react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './app/auth';
 import { SyncProvider } from './offline/sync';
@@ -36,13 +36,16 @@ import { VideosScreen } from './screens/VideosScreen';
 import { CommunityScreen } from './screens/CommunityScreen';
 import { AdminScreen } from './screens/AdminScreen';
 import { Button } from './ui/Button';
+import { HANDOFF_S, StageProvider, type SplashPhase } from './app/stage';
 import type { Role } from './lib/status';
 
-// الافتتاحية بتتحسب من لحظة فتح الصفحة (مش من بعد تحميل الكود)، عشان البرنامج يبقى جاهز في أقل من ثانيتين
-const SPLASH_MS = 1500;
+// الافتتاحية: ظهور اللوجو والتجمّع والسكان في 0.85 ثانية، وبعدها اللوجو بيطير لمكانه (0.45 ثانية). المجموع أقل من ثانية ونص
+const SPLASH_MS = 850;
+const CALM_SPLASH_MS = 350;
 
 function NotConfigured() {
   const { t } = useTranslation();
+  useEffect(() => document.getElementById('boot')?.remove(), []);
   return (
     <div className="grid min-h-dvh place-items-center px-4">
       <div className="glass-strong max-w-md rounded-xl p-6">
@@ -169,10 +172,11 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
 function Boot() {
   const { calm } = usePrefs();
   const { loading } = useAuth();
-  const ms = calm ? 400 : SPLASH_MS;
+  const ms = calm ? CALM_SPLASH_MS : SPLASH_MS;
   const [minDone, setMinDone] = useState(false);
+  const mounted = useRef(performance.now());
   useEffect(() => {
-    const left = Math.max(0, ms - performance.now());
+    const left = Math.max(0, ms - (performance.now() - mounted.current));
     const tm = setTimeout(() => setMinDone(true), left);
     return () => clearTimeout(tm);
   }, [ms]);
@@ -180,12 +184,29 @@ function Boot() {
   // العميل اللي بيفتح صفحة التتبع ما يستناش الشاشة الافتتاحية
   const publicPage = location.pathname === '/t' || location.pathname.startsWith('/t/');
   const show = !publicPage && (!minDone || loading);
+  // بعد الافتتاحية: اللوجو بيطير لمكانه، وبعدين بيستقر هناك
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (show || settled) return;
+    const tm = setTimeout(() => setSettled(true), calm ? 0 : HANDOFF_S * 1000 + 30);
+    return () => clearTimeout(tm);
+  }, [show, settled, calm]);
+  const phase: SplashPhase = publicPage || settled ? 'done' : show ? 'splash' : calm ? 'done' : 'handoff';
+  // صفحة التتبع العامة ما فيهاش افتتاحية، فاللوجو الثابت بتاع index.html بيتشال على طول
+  useEffect(() => {
+    if (publicPage) document.getElementById('boot')?.remove();
+  }, [publicPage]);
   return (
-    <>
+    <StageProvider phase={phase}>
       <EffectsGuard />
-      {(!loading || publicPage) && <Gate />}
-      <AnimatePresence>{show && <SplashScreen key="splash" duration={Math.max(300, ms - performance.now())} />}</AnimatePresence>
-    </>
+      {(!loading || publicPage) && (
+        // الشاشة اللي تحت بتظهر بنعومة لما الافتتاحية تخلص، والخلفية نفسها ما بتتغيرش
+        <motion.div className="relative z-[1]" initial={false} animate={{ opacity: phase === 'splash' ? 0 : 1 }} transition={{ duration: 0.35 }} inert={phase === 'splash' ? true : undefined}>
+          <Gate />
+        </motion.div>
+      )}
+      <AnimatePresence>{show && <SplashScreen key="splash" />}</AnimatePresence>
+    </StageProvider>
   );
 }
 

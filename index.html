@@ -8,6 +8,35 @@
     <link rel="icon" href="./favicon-16.png" type="image/png" sizes="16x16" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>جوالك | Gawalak</title>
+    <style>
+      /* من أول لحظة قبل ما الكود يحمّل: نفس خلفية البرنامج (tokens.css)، واللوجو ثابت في النص.
+         الافتتاحية بتبدأ فوقه بالظبط (نفس المكان والمقاس والشفافية)، فمفيش قفزة ولا شاشة بيضا. */
+      html { background: #0b0f12; }
+      html[data-theme='light'] { background: #eef3f9; }
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 600px at 85% -10%, rgb(56 214 240 / 0.07), transparent 60%),
+          radial-gradient(900px 500px at 0% 110%, rgb(56 214 240 / 0.04), transparent 60%), linear-gradient(180deg, #0b0f12, #0f1418);
+        background-attachment: fixed;
+        min-height: 100dvh;
+      }
+      html[data-theme='light'] body {
+        background: radial-gradient(1100px 600px at 85% -10%, rgb(120 190 235 / 0.28), transparent 60%),
+          radial-gradient(900px 600px at 0% 110%, rgb(160 210 240 / 0.22), transparent 60%), linear-gradient(180deg, #f3f7fc, #e7eef7);
+        background-attachment: fixed;
+      }
+      #boot { position: fixed; inset: 0; z-index: 99; pointer-events: none; overflow: hidden; }
+      #boot .calm {
+        position: absolute; left: 50%; top: 50%; width: min(560px, 120vw); height: min(560px, 120vw);
+        transform: translate(-50%, -50%); border-radius: 50%;
+        background: radial-gradient(closest-side, #0b0f12 0%, rgb(11 15 18 / 0.72) 30%, rgb(11 15 18 / 0.3) 62%, transparent 100%);
+      }
+      html[data-theme='light'] #boot .calm {
+        background: radial-gradient(closest-side, #eef3f9 0%, rgb(238 243 249 / 0.72) 30%, rgb(238 243 249 / 0.3) 62%, transparent 100%);
+      }
+      #boot img { position: absolute; left: 50%; top: 50%; width: 168px; height: 150px; transform: translate(-50%, -50%) scale(0.92); opacity: 0.55; }
+      @media (prefers-reduced-motion: reduce) { #boot img { transform: translate(-50%, -50%); } }
+    </style>
     <script>
       // تطبيق الوضع المحفوظ قبل ما الصفحة تترسم، عشان ما يحصلش وميض
       try {
@@ -20,6 +49,7 @@
     </script>
   </head>
   <body>
+    <div id="boot" aria-hidden="true"><div class="calm"></div><img src="%BOOT_LOGO%" alt="" /></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

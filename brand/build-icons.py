@@ -42,6 +42,10 @@ assets.mkdir(exist_ok=True)
 # جوه التطبيق (الافتتاحية والدخول والشريط الجانبي والمعالج)
 width(480).save(assets / 'app-logo.png', optimize=True)
 width(160).save(assets / 'app-logo-sm.png', optimize=True)
+# اللوجو الثابت اللي بيظهر من أول لحظة قبل ما الكود يحمّل (بيتحط جوه index.html كـ data URI).
+# WebP بدون فقد (lossless) عشان الألوان تفضل زي الأصل بالظبط. ارتفاع 300 = ضعف ارتفاع الافتتاحية (150)
+h = 300
+logo.resize((round(logo.width * h / logo.height), h), Image.LANCZOS).save(assets / 'boot-logo.webp', lossless=True, method=6)
 
 # favicon (خلفية شفافة، اللوجو مالي المربع)
 fit(16, 1.0).save(pub / 'favicon-16.png', optimize=True)

@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { usePrefs } from '../../app/prefs';
-import { CircuitField } from '../../ui/fx/CircuitField';
 import { LineIcon, MorphIcon, type LineIconName } from '../../ui/fx/LineIcon';
 import { AppLogo } from '../../ui/Logo';
 import { LangToggle, ThemeToggle } from '../../ui/ThemeToggle';
@@ -31,11 +30,10 @@ export function AuthLayout({
   const { calm } = usePrefs();
   return (
     <div className="relative min-h-dvh overflow-hidden">
-      <CircuitField glowFollow />
       <div className="relative z-10 flex min-h-dvh flex-col">
         <header className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <AppLogo height={36} />
+            <AppLogo height={36} shared />
             <div>
               <div className="text-sm font-semibold text-fg">{t('app.name')}</div>
               <div className="readout-label">{t('app.tagline')}</div>

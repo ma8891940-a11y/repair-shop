@@ -2,6 +2,16 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { readFileSync } from 'node:fs';
+
+/** اللوجو الثابت اللي بيظهر من أول لحظة (قبل ما الكود يحمّل) بيتحط جوه index.html نفسه، من غير أي طلب للشبكة */
+const bootLogo = () => ({
+  name: 'boot-logo',
+  transformIndexHtml(html: string) {
+    const b64 = readFileSync(new URL('./src/assets/boot-logo.webp', import.meta.url)).toString('base64');
+    return html.replace('%BOOT_LOGO%', `data:image/webp;base64,${b64}`);
+  },
+});
 
 export default defineConfig({
   // مسارات نسبية عشان التطبيق يشتغل جوه Electron/Tauri/Capacitor كمان
@@ -9,6 +19,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    bootLogo(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon-16.png', 'favicon-32.png', 'apple-touch-icon.png'],

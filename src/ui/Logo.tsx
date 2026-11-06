@@ -1,23 +1,30 @@
-import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { usePrefs } from '../app/prefs';
+import { useStage } from '../app/stage';
 import logo from '../assets/app-logo.png';
 import logoSm from '../assets/app-logo-sm.png';
+
+/** نسبة اللوجو (العرض ÷ الارتفاع) بعد شيل الهامش الشفاف، زي ما طلع من brand/build-icons.py */
+export const LOGO_RATIO = 1268 / 1130;
 
 /**
  * لوجو التطبيق (بتاع صاحب المشروع، brand/app-logo.png) كما هو من غير أي تعديل في الشكل أو الألوان أو النسب.
  * مكانه جوه التطبيق بس: الافتتاحية، والدخول، والشريط الجانبي، ومعالج التسجيل. ممنوع على أي حاجة مطبوعة أو بتوصل للعميل.
- * height بالبكسل، والعرض بيتحسب من نسبة اللوجو. intro = ظهور الافتتاحية (أقل من 1.2 ثانية، وبيتلغي مع تقليل الحركة).
+ * shared = المكان اللي اللوجو بيستقر فيه بعد الافتتاحية: وقت الافتتاحية والانتقال بيحجز مكانه (مخفي)،
+ * واللوجو بيطير له من نص الشاشة (stage.tsx)، وبعدها بيظهر هنا.
  */
-export function AppLogo({ height = 28, intro = false }: { height?: number; intro?: boolean }) {
+export function AppLogo({ height = 28, shared = false }: { height?: number; shared?: boolean }) {
   const { t } = useTranslation();
-  const { calm } = usePrefs();
-  const src = height > 64 ? logo : logoSm;
-  const img = <img src={src} alt={t('app.name')} height={height} style={{ height, width: 'auto' }} className="block select-none" draggable={false} data-testid="app-mark" />;
-  if (!intro || calm) return img;
+  const { phase, target } = useStage();
+  const hidden = shared && phase !== 'done';
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.92, filter: 'blur(6px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
-      {img}
-    </motion.div>
+    <img
+      ref={shared ? target : undefined}
+      src={height > 64 ? logo : logoSm}
+      alt={t('app.name')}
+      draggable={false}
+      data-testid="app-mark"
+      className="block select-none"
+      style={{ height, width: Math.round(height * LOGO_RATIO), visibility: hidden ? 'hidden' : undefined }}
+    />
   );
 }

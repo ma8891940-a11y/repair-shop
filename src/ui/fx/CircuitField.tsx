@@ -19,6 +19,20 @@ interface Pulse {
   pos: number;
   speed: number;
   tail: number;
+  /** اتجاه الحركة على الخط (1 أو -1) */
+  dir?: number;
+  /** إشارة متجمّعة: بتقف وتنطفي عند النقطة دي على الخط (الأقرب للوجو) */
+  stop?: number;
+  /** وقت ما بدأت تنطفي (بعد ما وصلت) */
+  fadeAt?: number;
+}
+
+/**
+ * بيخلي الإشارات تتجمع بنعومة ناحية نقطة على الشاشة (لحظة ظهور اللوجو في الافتتاحية).
+ * الإشارات بتمشي على خطوط الدوائر نفسها لحد أقرب نقطة للوجو، وبعدين بتنطفي.
+ */
+export function convergeSignals(x: number, y: number, radius = 90) {
+  window.dispatchEvent(new CustomEvent('circuit:converge', { detail: { x, y, radius } }));
 }
 
 const CELL = 26;
@@ -120,6 +134,7 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
     const bctx = base.getContext('2d')!;
     let last = performance.now();
     let scan = 0;
+    let clock = 0;
 
     const setup = () => {
       const rect = canvas.getBoundingClientRect();
@@ -163,7 +178,42 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
       return { trace, pos: randomStart ? Math.random() * (tr?.len ?? 0) : -20, speed: 40 + Math.random() * 70, tail: 26 + Math.random() * 30 };
     };
 
+    // التجمّع: خطوط بتعدّي قريب من النقطة، وإشارة على كل خط ماشية ناحية أقرب نقطة فيه
+    const converge = (cx: number, cy: number, radius: number) => {
+      if (calm || still || !traces.length) return;
+      const near: { trace: number; at: number; d: number }[] = [];
+      traces.forEach((tr, i) => {
+        let best = Infinity;
+        let at = 0;
+        for (let k = 0; k <= tr.len; k += 6) {
+          const [px, py] = pointAt(tr, k);
+          const d = Math.hypot(px - cx, py - cy);
+          if (d < best) {
+            best = d;
+            at = k;
+          }
+        }
+        if (best > radius * 0.55 && best < radius * 3.2) near.push({ trace: i, at, d: best });
+      });
+      near.sort((a, b) => a.d - b.d);
+      for (const n of near.slice(0, 14)) {
+        const tr = traces[n.trace];
+        // البداية من الطرف الأبعد عن النقطة، على مسافة كفاية إنها تبان وهي جاية
+        const dir = n.at > tr.len / 2 ? 1 : -1;
+        const travel = Math.min(220, dir === 1 ? n.at : tr.len - n.at);
+        if (travel < 40) continue;
+        pulses.push({ trace: n.trace, pos: n.at - dir * travel, speed: travel / 0.6 + Math.random() * 40, tail: 34, dir, stop: n.at });
+      }
+    };
+    const onConverge = (e: Event) => {
+      const { x, y, radius } = (e as CustomEvent<{ x: number; y: number; radius: number }>).detail;
+      const rect = canvas.getBoundingClientRect();
+      converge(x - rect.left, y - rect.top, radius);
+    };
+    window.addEventListener('circuit:converge', onConverge);
+
     const draw = (dt: number) => {
+      clock += dt;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(base, 0, 0);
@@ -185,28 +235,47 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
         const p = pulses[i];
         const tr = traces[p.trace];
         if (!tr) continue;
-        p.pos += (p.speed * dt) / 1000;
-        if (p.pos - p.tail > tr.len) {
-          pulses[i] = newPulse(false);
-          continue;
+        const dir = p.dir ?? 1;
+        let fade = 1;
+        if (p.stop != null) {
+          // إشارة متجمّعة: بتبطّأ وهي بتقرب، وتقف عند النقطة وتنطفي في ربع ثانية
+          if (p.fadeAt == null) {
+            const left = (p.stop - p.pos) * dir;
+            p.pos += dir * Math.min(left, (p.speed * dt) / 1000 * Math.max(0.35, Math.min(1, left / 60)));
+            if (left <= 0.5) p.fadeAt = clock;
+          } else {
+            fade = 1 - (clock - p.fadeAt) / 260;
+            if (fade <= 0) {
+              pulses.splice(i, 1);
+              i--;
+              continue;
+            }
+          }
+        } else {
+          p.pos += (p.speed * dt) / 1000;
+          if (p.pos - p.tail > tr.len) {
+            pulses[i] = newPulse(false);
+            continue;
+          }
         }
         const [hx, hy] = pointAt(tr, p.pos);
         const steps = 6;
         for (let s = 0; s < steps; s++) {
-          const a = pointAt(tr, p.pos - (p.tail * s) / steps);
-          const b = pointAt(tr, p.pos - (p.tail * (s + 1)) / steps);
-          ctx.strokeStyle = `rgb(${colors.rgb} / ${0.55 * (1 - s / steps)})`;
-          ctx.lineWidth = 1.4;
+          const a = pointAt(tr, p.pos - (dir * p.tail * s) / steps);
+          const b = pointAt(tr, p.pos - (dir * p.tail * (s + 1)) / steps);
+          ctx.strokeStyle = `rgb(${colors.rgb} / ${(p.stop != null ? 0.9 : 0.55) * (1 - s / steps) * fade})`;
+          ctx.lineWidth = p.stop != null ? 2 : 1.4;
           ctx.beginPath();
           ctx.moveTo(a[0] + 0.5, a[1] + 0.5);
           ctx.lineTo(b[0] + 0.5, b[1] + 0.5);
           ctx.stroke();
         }
-        const rg = ctx.createRadialGradient(hx, hy, 0, hx, hy, 7);
-        rg.addColorStop(0, `rgb(${colors.rgb} / 0.85)`);
+        const hr = p.stop != null ? 10 : 7;
+        const rg = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+        rg.addColorStop(0, `rgb(${colors.rgb} / ${(p.stop != null ? 1 : 0.85) * fade})`);
         rg.addColorStop(1, `rgb(${colors.rgb} / 0)`);
         ctx.fillStyle = rg;
-        ctx.fillRect(hx - 7, hy - 7, 14, 14);
+        ctx.fillRect(hx - hr, hy - hr, hr * 2, hr * 2);
       }
     };
 
@@ -243,6 +312,7 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
       clearTimeout(resizeT);
       ro.disconnect();
       document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('circuit:converge', onConverge);
     };
   }, [calm, theme, density, still]);
 

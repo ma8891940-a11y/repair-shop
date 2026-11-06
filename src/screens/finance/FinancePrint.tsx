@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { useBackground } from '../../app/stage';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
 import { useLoad, must } from '../../app/useLoad';
@@ -12,6 +13,7 @@ import { Skeleton } from '../../ui/Feedback';
 import { ColorHeader, useBranding } from '../../app/brand/branding';
 
 function PrintFrame({ ready, children }: { ready: boolean; children: React.ReactNode }) {
+  useBackground('off');
   const { t } = useTranslation();
   const navigate = useNavigate();
   useEffect(() => {

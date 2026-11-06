@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { useBackground } from '../app/stage';
 import { trackingUrl, waLink } from '../lib/messages';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ import { ColorHeader, PoweredBy, ThermalHeader, useBranding } from '../app/brand
  */
 export function PrintScreen() {
   const { kind = 'receipt', id = '' } = useParams();
+  useBackground('off');
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
