@@ -8,6 +8,7 @@ import { Button } from '../../ui/Button';
 import { Field, Input } from '../../ui/Field';
 import { Alert, Skeleton } from '../../ui/Feedback';
 import { AuthLayout } from './AuthLayout';
+import { RegisterWizard } from './RegisterWizard';
 
 interface Invite {
   shop_name: string;
@@ -17,7 +18,7 @@ interface Invite {
 /** موظف معاه دعوة: بيكتب اسمه وينضم للمحل. ولو مفيش دعوة، بنقوله يعمل إيه. */
 export function JoinScreen({ blocked }: { blocked: boolean }) {
   const { t } = useTranslation();
-  const { refresh, signOut, session } = useAuth();
+  const { refresh, signOut } = useAuth();
   const [invite, setInvite] = useState<Invite | null | undefined>(undefined);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -42,6 +43,9 @@ export function JoinScreen({ blocked }: { blocked: boolean }) {
     await refresh();
   }
 
+  // داخل ومالوش محل ولا دعوة (التسجيل اتقطع في النص): يكمّل تسجيل محله على طول، من غير حساب تاني
+  if (!blocked && invite === null && !error) return <RegisterWizard mode="shop" resume />;
+
   return (
     <AuthLayout asideIcon="shield" asideTitle={t('onboarding.sideTitle')} asideText={t('onboarding.sideText')}>
       <div className="glass edge-glow relative shadow-3 rounded-2xl p-7">
@@ -56,16 +60,7 @@ export function JoinScreen({ blocked }: { blocked: boolean }) {
             <Skeleton className="h-7 w-40" />
             <Skeleton className="h-11 w-full" />
           </div>
-        ) : !invite ? (
-          <div className="flex flex-col gap-3">
-            <h1 className="text-xl font-semibold">{t('onboarding.noInvite')}</h1>
-            <p className="num text-xs text-fg-3" dir="ltr">
-              {session?.user.email}
-            </p>
-            <p className="text-sm text-fg-2">{t('onboarding.noInviteText')}</p>
-            <Button onClick={() => void signOut()}>{t('common.signOut')}</Button>
-          </div>
-        ) : (
+        ) : !invite ? null : (
           <form onSubmit={submit} className="flex flex-col gap-4">
             <h1 className="text-xl font-semibold">{t('onboarding.joinTitle')}</h1>
             <Alert tone="info">{t('onboarding.inviteFrom', { shop: invite.shop_name, role: t(`roles.${invite.role}`) })}</Alert>

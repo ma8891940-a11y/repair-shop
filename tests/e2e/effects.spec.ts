@@ -40,7 +40,7 @@ test.describe('المؤثرات الكاملة', () => {
   test('القفل التلقائي: بطء تحت 50 إطار لمدة 3 ثواني بيقفلها، والتنبيه فيه "رجّعها"', async ({ page }, info) => {
     await prefs(page, info, { effects: true });
     // بنختبر حارس المؤثرات لوحده: الخلفية ثابتة من الأول، عشان حارس الخلفية (2 ثانية) ما يسبقوش ويخفّف الحمل
-    await page.addInitScript(() => localStorage.setItem('bg-still', '1'));
+    await page.addInitScript(() => localStorage.setItem('bg-still-v2', '1'));
     // فترة السماح بتبدأ من فتح الشاشة، فبنقيس من قبل الفتح
     const opened = Date.now();
     await page.goto('/');
@@ -61,7 +61,10 @@ test.describe('المؤثرات الكاملة', () => {
       requestAnimationFrame(spin);
     });
     const notice = page.getByText('اتقفلت المؤثرات الكاملة عشان الجهاز يفضل سريع');
-    await expect(notice).toBeVisible({ timeout: 25_000 });
+    await expect(notice).toBeVisible({ timeout: 25_000 }).catch(async (e) => {
+      console.log('EG-DEBUG', JSON.stringify(await page.evaluate(() => (window as unknown as { __eg: unknown }).__eg)), await page.evaluate(() => document.documentElement.hasAttribute('data-lite')), page.url());
+      throw e;
+    });
     // مش قبل فترة السماح (2 ثانية) + مدة البطء (3 ثواني) من فتح الشاشة
     expect(Date.now() - opened).toBeGreaterThanOrEqual(5_000);
     await expect(page.locator('html')).toHaveAttribute('data-lite', '');

@@ -84,9 +84,9 @@ function confirmRedirect(): string {
 }
 
 /** تسجيل محل جديد على 6 خطوات. لو المستخدم رجع بعد التأكيد، بيكمّل من آخر خطوة. */
-export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
+export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: WizardMode; /** داخل بحساب ومالوش محل ولا دعوة: يكمّل تسجيل المحل من غير حساب جديد */ resume?: boolean } = {}) {
   const { t } = useTranslation();
-  const { session, profile, shop, refresh } = useAuth();
+  const { session, profile, shop, refresh, signOut } = useAuth();
   const { setTheme, theme } = usePrefs();
   const toast = useToast();
   const draft = loadDraft();
@@ -97,7 +97,13 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   // داخل بحساب متأكد ومن غير محل لسه (رجع من رابط التأكيد، أو دخل بعد ما أكد): بنكمّل من خطوة التأكيد، وهي بتعدّي لوحدها
   const confirmedNoProfile = Boolean(session) && !profile;
   const resumeAt =
-    profile && shop && !shop.setup_completed_at ? Math.max(3, draft?.step ?? 3) : confirmedNoProfile ? Math.max(2, draft?.step ?? 2) : Math.max(first, draft?.step ?? first);
+    profile && shop && !shop.setup_completed_at
+      ? Math.max(3, draft?.step ?? 3)
+      : resume
+        ? 0
+        : confirmedNoProfile
+          ? Math.max(2, draft?.step ?? 2)
+          : Math.max(first, draft?.step ?? first);
   const [step, setStep] = useState(resumeAt);
   const [dir, setDir] = useState(1);
 
@@ -190,7 +196,11 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
       if (key === 'shop') {
         setTouched((x) => ({ ...x, ownerName: true }));
         if (!ownerName.trim()) return fail(t('common.required'));
-        go(1);
+        // الحساب موجود ومتأكد خلاص (تسجيل اتقطع في النص): نعمل المحل على طول من غير حساب تاني
+        if (session && !profile) {
+          autoRan.current = true;
+          await bootstrapAndContinue();
+        } else go(1);
       } else if (key === 'account') {
         setTouched((x) => ({ ...x, email: true, password: true, password2: true }));
         if (!isEmail(email)) return fail(t('register.emailInvalid'));
@@ -357,10 +367,10 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   }
 
   const canBack = step > first && step !== 3 && step !== 2;
-  const visible = invite ? (['account', 'verify'] as StepKey[]) : [...STEPS];
+  const visible = invite ? (['account', 'verify'] as StepKey[]) : resume ? STEPS.filter((k) => k !== 'account' && k !== 'verify') : [...STEPS];
   const vIndex = Math.max(0, visible.indexOf(key));
-  const title = invite && key === 'account' ? t('register.invite.title') : t(`register.steps.${key}.title`);
-  const desc = invite && key === 'account' ? t('register.invite.desc') : t(`register.steps.${key}.desc`);
+  const title = invite && key === 'account' ? t('register.invite.title') : resume && key === 'shop' ? t('register.resume.title') : t(`register.steps.${key}.title`);
+  const desc = invite && key === 'account' ? t('register.invite.desc') : resume && key === 'shop' ? t('register.resume.desc') : t(`register.steps.${key}.desc`);
 
   return (
     <AuthLayout asideIcon={STEP_ICON[key]} asideKey={key} asideTitle={title} asideText={desc}>
@@ -402,6 +412,19 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
               >
                 {key === 'shop' && (
                   <>
+                    {resume && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-glass-border bg-sunken/40 px-3 py-2 text-xs text-fg-2" data-testid="resume-account">
+                        <span>
+                          {t('register.resume.account')}{' '}
+                          <b className="num text-fg" dir="ltr">
+                            {session?.user.email}
+                          </b>
+                        </span>
+                        <button type="button" onClick={() => void signOut()} className="text-fg-3 hover:text-fg">
+                          {t('register.resume.other')}
+                        </button>
+                      </div>
+                    )}
                     <Field label={t('register.shopName')} hint={t('register.shopNameHint')}>
                       <Input autoFocus value={shopName} onChange={(e) => setShopName(e.target.value)} maxLength={120} placeholder={t('register.shopNamePh')} />
                     </Field>

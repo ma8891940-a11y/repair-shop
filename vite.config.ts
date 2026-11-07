@@ -43,6 +43,8 @@ export default defineConfig({
       },
     }),
   ],
+  // النسخة النهائية (npm run preview) على نفس عنوان npm run dev، عشان رابط تأكيد الإيميل (Site URL) يشتغل في الاتنين
+  preview: { port: 5173, strictPort: true },
   test: {
     include: ['src/**/*.test.ts', 'tests/db/**/*.test.ts'],
   },

@@ -51,7 +51,11 @@ test('رابط التأكيد على جهاز تاني: الجهاز التان�
   await afterSplash(other);
   await expect(other.getByRole('heading', { name: 'البلد والعملة' })).toBeVisible();
   // الجهاز الأول: قبل التأكيد كان بيقول "لسه"، ودلوقتي "أكدت" بيدخّله
-  await page.getByRole('button', { name: 'أكدت من الرابط، كمّل' }).click();
+  // الزرار، أو البرنامج بيلاحظ لوحده (كل 15 ثانية ولما يرجعله) وبيكمّل: الاتنين صح
+  await page
+    .getByRole('button', { name: 'أكدت من الرابط، كمّل' })
+    .click({ timeout: 5_000 })
+    .catch(() => undefined);
   await expect(page.getByRole('heading', { name: 'البلد والعملة' })).toBeVisible({ timeout: 20_000 });
   await finishWizard(page);
   expect(await shopsOf(email)).toEqual([{ shop, owner: 'محمود حسن' }]);
@@ -86,4 +90,39 @@ test('الدخول قبل التأكيد: رسالة واضحة وإعادة إ�
   await afterSplash(confirm);
   await login.getByRole('button', { name: 'دخول' }).click();
   await expect(login.getByRole('heading', { name: 'البلد والعملة' })).toBeVisible();
+});
+
+test('تسجيل اتقطع في النص: حساب متأكد ومالوش محل ولا دعوة ← "كمّل تسجيل محلك" على طول، من غير حساب تاني', async ({ page }, info) => {
+  test.setTimeout(150_000);
+  await prefs(page, info);
+  const email = uniq('halfway');
+  // حساب اتعمل في Auth بس (زي ما حصل عند صاحب المشروع): متأكد، ومن غير بيانات تسجيل محفوظة، ومن غير محل
+  const db = new pg.Client({ connectionString: DB });
+  await db.connect();
+  try {
+    await db.query(
+      `insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, email_change, email_change_token_new, recovery_token)
+       values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', $1, crypt($2, gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', '')`,
+      [email, PASS],
+    );
+    await db.query(`insert into auth.identities (id, user_id, provider_id, identity_data, provider, created_at, updated_at) select gen_random_uuid(), id, id::text, jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true), 'email', now(), now() from auth.users where email = $1`, [email]);
+  } finally {
+    await db.end();
+  }
+  await page.goto('/');
+  await afterSplash(page);
+  await page.locator('input[type=email]').fill(email);
+  await page.locator('input[type=password]').fill(PASS);
+  await page.getByRole('button', { name: 'دخول' }).click();
+  // بدل "مفيش دعوة": كمّل تسجيل محلك، والحساب ظاهر
+  await expect(page.getByRole('heading', { name: 'كمّل تسجيل محلك' })).toBeVisible();
+  await expect(page.getByText('مفيش دعوة للإيميل ده')).toHaveCount(0);
+  await expect(page.getByTestId('resume-account')).toContainText(email);
+  const inputs = page.locator('form input');
+  await inputs.nth(0).fill('محل اتكمّل');
+  await inputs.nth(1).fill('صاحب المحل');
+  await page.getByRole('button', { name: 'التالي' }).click();
+  // من غير خطوة حساب ولا تأكيد
+  await finishWizard(page);
+  expect(await shopsOf(email)).toEqual([{ shop: 'محل اتكمّل', owner: 'صاحب المحل' }]);
 });

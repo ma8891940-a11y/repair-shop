@@ -20,9 +20,16 @@ export function EffectsGuard() {
     if (!effects) return;
     const guard = new FpsGuard();
     guard.start(performance.now());
+    // تشخيص في وضع التطوير بس (للاختبار المتقلب): عدد مرات بداية القياس وآخر قراءة. مش موجود في النسخة النهائية
+    const dbg: Record<string, unknown> = import.meta.env.DEV ? ((window as unknown as { __eg: Record<string, unknown> }).__eg ??= { starts: 0 }) : {};
+    dbg.starts = ((dbg.starts as number) ?? 0) + 1;
+    dbg.key = location.key;
     let raf = 0;
     const tick = (now: number) => {
-      if (guard.frame(now)) {
+      const tripped = guard.frame(now);
+      dbg.fps = guard.lastFps;
+      dbg.frames = ((dbg.frames as number) ?? 0) + 1;
+      if (tripped) {
         setEffects(false);
         toast({
           tone: 'warn',

@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { usePrefs } from './prefs';
 import { CircuitField } from '../ui/fx/CircuitField';
 import { BG_GUARD, FpsGuard } from '../lib/fpsGuard';
+import { BG_STILL_KEY, guardAllowed } from './motionStatus';
 import logoSrc from '../assets/app-logo.png';
 
 /**
@@ -31,10 +32,12 @@ export const HANDOFF_S = 0.45;
 /**
  * شرط أمان: لو الأداء في الافتتاحية أو الدخول (الخلفية الحية) نزل تحت 50 إطار لمدة 2 ثانية متواصلة،
  * الخلفية بتثبت لوحدها بنعومة (الخطوط بتفضل، والإشارات والسكان بينطفوا)، وده بيتحفظ للجهاز ده بس.
- * أول 0.8 ثانية بعد فتح الصفحة ما بتتحسبش (تحميل الكود نفسه).
+ * ما بيشتغلش:
+ * - في npm run dev (التجميع الأول والتحديث وانت شغال بيبطّأ من غير ما يكون الجهاز بطيء).
+ * - وقت تحميل الصفحة: بيبدأ بعد ما الصفحة تخلص تحميل بثانية، وبعدها 0.8 ثانية سماح.
+ * - والتبويب في الخلفية: بيقف، ولما يرجع بيبدأ من الأول.
  * مستقل عن "المؤثرات الكاملة": دي للزجاج والتأثيرات التقيلة بس.
  */
-export const BG_STILL_KEY = 'bg-still';
 function readBgStill() {
   try {
     return localStorage.getItem(BG_STILL_KEY) === '1';
@@ -68,19 +71,45 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
   const autoStill = useBgStillSaved();
   // حارس الأداء للخلفية الحية (الافتتاحية والدخول والتسجيل)
   useEffect(() => {
-    if (mode !== 'live' || calm || autoStill) return;
+    if (mode !== 'live' || calm || autoStill || !guardAllowed()) return;
     const guard = new FpsGuard(BG_GUARD);
-    guard.start(performance.now());
     let raf = 0;
+    let wait = 0;
+    let stopped = false;
     const tick = (now: number) => {
+      if (stopped) return;
       if (guard.frame(now)) {
         setBgStillSaved(true);
         return;
       }
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    // بيبدأ بعد ما الصفحة تخلص تحميل بثانية، والتبويب ظاهر
+    const begin = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(wait);
+      if (document.hidden) return;
+      wait = window.setTimeout(() => {
+        guard.start(performance.now());
+        raf = requestAnimationFrame(tick);
+      }, 1000);
+    };
+    const onLoad = () => begin();
+    const onVis = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(wait);
+      if (!document.hidden) begin();
+    };
+    if (document.readyState === 'complete') begin();
+    else window.addEventListener('load', onLoad, { once: true });
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      clearTimeout(wait);
+      window.removeEventListener('load', onLoad);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [mode, calm, autoStill]);
   const heroEl = useRef<HTMLElement | null>(null);
   const targets = useRef(new Set<HTMLElement>());

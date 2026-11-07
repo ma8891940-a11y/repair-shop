@@ -108,6 +108,8 @@ test('شرط الأمان: الأداء تحت 50 إطار لمدة 2 ثانية
   test.skip(browserName !== 'chromium', 'إبطاء المعالج متاح في Chromium بس');
   test.setTimeout(150_000);
   await prefs(page, info);
+  // الحارس مقفول في npm run dev، فبنشغّله للاختبار ده بس
+  await page.addInitScript(() => localStorage.setItem('bg-guard-dev', '1'));
   await page.goto('/');
   await afterSplash(page);
   const stage = page.getByTestId('stage-bg');
@@ -116,7 +118,7 @@ test('شرط الأمان: الأداء تحت 50 إطار لمدة 2 ثانية
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
   await expect(stage).toHaveAttribute('data-auto-still', '', { timeout: 25_000 });
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  expect(await page.evaluate(() => localStorage.getItem('bg-still'))).toBe('1');
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBe('1');
   // ما اختفتش: نفس الخلفية والخطوط لسه مرسومة، وبعد ما الحركة تنطفي بتثبت
   const shot = () => page.evaluate(() => document.querySelector<HTMLCanvasElement>('[data-testid="stage-bg"] canvas')!.toDataURL());
   await page.waitForTimeout(800);
@@ -135,7 +137,68 @@ test('شرط الأمان: الأداء تحت 50 إطار لمدة 2 ثانية
   await registerShop(page, uniq('bgstill'));
   await page.goto('/#/settings');
   await page.getByRole('tab', { name: 'المظهر' }).click();
+  // السبب ظاهر بوضوح، ومعاه الحل
+  await expect(page.getByTestId('motion-state')).toHaveAttribute('data-state', 'still');
+  await expect(page.getByTestId('motion-reason-auto')).toContainText('اتثبتت تلقائيًا عشان البطء');
   await page.getByRole('button', { name: 'رجّع الحركة' }).click();
-  expect(await page.evaluate(() => localStorage.getItem('bg-still'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();
   await expect(page.getByRole('button', { name: 'رجّع الحركة' })).toHaveCount(0);
+  await expect(page.getByTestId('motion-state')).toHaveAttribute('data-state', 'live');
+});
+
+test('شرط الأمان ما بيشتغلش في npm run dev، ولا وقت التحميل، ولا والتبويب في الخلفية، والقيمة القديمة بتتمسح', async ({ page, browserName }, info) => {
+  test.skip(browserName !== 'chromium', 'إبطاء المعالج متاح في Chromium بس');
+  test.setTimeout(90_000);
+  await prefs(page, info);
+  // قيمة قديمة اتسجلت غلط قبل كده (وقت dev): بتتمسح، والحركة ترجع
+  await page.addInitScript(() => localStorage.setItem('bg-still', '1'));
+  await page.goto('/');
+  await afterSplash(page);
+  expect(await page.evaluate(() => localStorage.getItem('bg-still'))).toBeNull();
+  const stage = page.getByTestId('stage-bg');
+  await expect(stage).not.toHaveAttribute('data-auto-still', '');
+  // بطء شديد في npm run dev (من غير مفتاح الاختبار): الحركة ما بتثبتش
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+  await page.waitForTimeout(7_000);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await expect(stage).not.toHaveAttribute('data-auto-still', '');
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();
+  // مع الحارس شغال: بطء وقت التحميل بس (أول ثانية بعد ما الصفحة تخلص) ما بيتحسبش
+  await page.evaluate(() => localStorage.setItem('bg-guard-dev', '1'));
+  await page.reload();
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+  await page.waitForTimeout(1_200);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await page.waitForTimeout(5_000);
+  await expect(stage).not.toHaveAttribute('data-auto-still', '');
+  // والتبويب في الخلفية: الحارس بيقف. (في وضع الاختبار من غير شاشة، فتح تبويب تاني ما بيخفيش الصفحة، فبنبعت نفس الحدث بتاع المتصفح)
+  const setHidden = (h: boolean) =>
+    page.evaluate((hidden) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }, h);
+  await setHidden(true);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+  await page.waitForTimeout(4_000);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  await setHidden(false);
+  await page.waitForTimeout(3_000);
+  await expect(stage).not.toHaveAttribute('data-auto-still', '');
+});
+
+test('"تقليل الحركة" من الجهاز: الإعدادات ← المظهر بتقول السبب والحل', async ({ browser }, info) => {
+  test.setTimeout(120_000);
+  const ctx = await browser.newContext({ ...info.project.use, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  await prefs(page, info);
+  await registerShop(page, uniq('reduced'));
+  await page.goto('/#/settings');
+  await page.getByRole('tab', { name: 'المظهر' }).click();
+  await expect(page.getByTestId('motion-state')).toHaveAttribute('data-state', 'still');
+  await expect(page.getByTestId('motion-reason-reduced')).toContainText('"تقليل الحركة" شغال في الجهاز');
+  await expect(page.getByTestId('motion-reason-reduced')).toContainText('تأثيرات الحركة');
+  await expect(page.getByTestId('motion-reason-auto')).toHaveCount(0);
+  await ctx.close();
 });

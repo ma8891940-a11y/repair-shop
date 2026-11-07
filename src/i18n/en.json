@@ -236,7 +236,13 @@
     "linkDone": "I confirmed from the link, continue",
     "linkNotYet": "The email isn’t confirmed yet. Tap the link in the email first.",
     "linkLogin": "Go to sign in",
-    "orCode": "Or, if the email has a 6-digit code, type it here:"
+    "orCode": "Or, if the email has a 6-digit code, type it here:",
+    "resume": {
+      "title": "Finish registering your shop",
+      "desc": "Your account is ready. Just the shop name and your name, then the remaining steps.",
+      "account": "Signed in as",
+      "other": "Another account? Sign out"
+    }
   },
   "countries": {
     "EG": "Egypt",
@@ -1572,6 +1578,40 @@
       "ready": "Ready and waiting",
       "profit": "Profit",
       "collected": "Collected"
+    }
+  },
+  "motion": {
+    "title": "Animated background",
+    "running": "Motion is on for this device",
+    "stopped": "Motion is paused on this device",
+    "reload": "Changed it? Reload the page",
+    "reduced": {
+      "title": "\"Reduce motion\" is on in your system",
+      "why": "Windows (or your system) asks apps to reduce motion, so the app respects it and keeps the background still.",
+      "steps": [
+        "Windows 11: Settings → Accessibility → Visual effects → turn on \"Animation effects\".",
+        "Windows 10: Settings → Ease of Access → Display → turn on \"Show animations in Windows\".",
+        "Mac: System Settings → Accessibility → Display → turn off \"Reduce motion\".",
+        "Then reload the page."
+      ]
+    },
+    "auto": {
+      "title": "Paused automatically due to slowness",
+      "why": "Motion ran under 50 fps for 2 seconds on the splash or sign-in screen, so the app paused it on this device to stay fast.",
+      "steps": [
+        "Press \"Bring motion back\".",
+        "If you are testing with npm run dev, try the production build (see README); it is much faster.",
+        "If it pauses again, check \"graphics acceleration\" below."
+      ]
+    },
+    "software": {
+      "title": "Graphics acceleration is off in the browser",
+      "why": "The browser draws with the CPU only, without the graphics card, which slows motion down.",
+      "steps": [
+        "Chrome: open chrome://settings/system, turn on \"Use graphics acceleration when available\", then Relaunch.",
+        "Edge: open edge://settings/system, turn on \"Use graphics acceleration when available\", then Restart.",
+        "Then open the app again."
+      ]
     }
   }
 }
