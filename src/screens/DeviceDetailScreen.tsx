@@ -158,7 +158,12 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
           throw r.error;
         }
         setLocalStatus(null);
-        toast({ tone: 'ok', title: `${t('device.statusChanged')}: ${t(`status.${to}`)}` });
+        // كل تغيير حالة بيبعت رسالة للعميل (واتساب برابط جاهز): التنبيه فيه زرار يفتح الرسالة المناسبة للحالة
+        toast({
+          tone: 'ok',
+          title: `${t('device.statusChanged')}: ${t(`status.${to}`)}`,
+          ...(target ? { duration: 8000, action: { label: t('device.notifyCustomer'), onClick: () => setWa(true) } } : {}),
+        });
       },
     );
   }

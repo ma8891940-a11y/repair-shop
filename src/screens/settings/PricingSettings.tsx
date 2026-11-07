@@ -27,11 +27,22 @@ export function PricingSettings() {
   const { shop, refresh } = useMe();
   const toast = useToast();
   const [margin, setMargin] = useState(String(shop.default_margin_pct ?? 20));
+  const [maxDisc, setMaxDisc] = useState(String(shop.max_discount_pct ?? 20));
   const [issue, setIssue] = useState('');
   const [amount, setAmount] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const { data, reload } = useLoad(async () => must(await supabase.from('labor_rates').select('id, issue, amount').is('deleted_at', null).order('issue')) as Rate[], []);
   useEffect(() => setMargin(String(shop.default_margin_pct ?? 20)), [shop.default_margin_pct]);
+  useEffect(() => setMaxDisc(String(shop.max_discount_pct ?? 20)), [shop.max_discount_pct]);
+  async function saveMaxDisc() {
+    const m = Number(toLatinDigits(maxDisc.trim()));
+    if (!Number.isInteger(m) || m < 0 || m > 100) return setErr(t('pricing.errDiscount'));
+    const { error } = await supabase.from('shops').update({ max_discount_pct: m }).eq('id', shop.id);
+    if (error) return setErr(errorMessage(error));
+    setErr(null);
+    toast({ tone: 'ok', title: t('settings.saved') });
+    await refresh();
+  }
 
   async function saveMargin() {
     const m = Number(toLatinDigits(margin.trim()));
@@ -67,6 +78,12 @@ export function PricingSettings() {
             <Input dir="ltr" mono inputMode="numeric" value={margin} onChange={(e) => setMargin(e.target.value)} suffix="%" className="text-start" />
           </Field>
           <Button onClick={() => void saveMargin()}>{t('common.save')}</Button>
+        </div>
+        <div className="flex items-end gap-2">
+          <Field label={t('pricing.maxDiscount')} hint={t('pricing.maxDiscountHint')} className="w-64">
+            <Input dir="ltr" mono inputMode="numeric" value={maxDisc} onChange={(e) => setMaxDisc(e.target.value)} suffix="%" className="text-start" />
+          </Field>
+          <Button onClick={() => void saveMaxDisc()}>{t('common.save')}</Button>
         </div>
         <div>
           <div className="readout-label mb-1.5">{t('pricing.rates')}</div>

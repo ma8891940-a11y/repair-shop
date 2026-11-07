@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
 import { useRouteName, useSpecName } from '../../app/tech/names';
+import { toLatinDigits } from '../../lib/digits';
 import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
 import { Panel, PanelHeader } from '../../ui/Panel';
@@ -26,6 +27,7 @@ interface Route {
   steps: string[];
   diagnose: boolean;
   sort: number;
+  warranty_days: number | null;
 }
 
 type Thenable = PromiseLike<{ error: unknown }>;
@@ -43,7 +45,7 @@ export function TechTab() {
       supabase.from('specialties').select('id, code, name').is('deleted_at', null).order('created_at'),
       supabase.from('profiles').select('id, full_name').eq('role', 'technician').is('deleted_at', null).order('full_name'),
       supabase.from('staff_specialties').select('id, profile_id, specialty_id').is('deleted_at', null),
-      supabase.from('routes').select('id, code, name, keywords, steps, diagnose, sort').is('deleted_at', null).order('sort'),
+      supabase.from('routes').select('id, code, name, keywords, steps, diagnose, sort, warranty_days').is('deleted_at', null).order('sort'),
     ]);
     return { spec: must(sp) as Spec[], techs: must(techs) as { id: string; full_name: string }[], ss: must(ss) as { id: string; profile_id: string; specialty_id: string }[], routes: must(rt) as Route[] };
   }, []);
@@ -138,11 +140,13 @@ function RouteEditor({ route, specs, onSaved }: { route: Route | null; specs: Sp
   const routeName = useRouteName();
   const [name, setName] = useState('');
   const [keywords, setKeywords] = useState('');
+  const [warranty, setWarranty] = useState('');
   const [steps, setSteps] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     setName(route ? routeName(route) : '');
     setKeywords(route ? route.keywords.join(t('common.sep')) : '');
+    setWarranty(route?.warranty_days != null ? String(route.warranty_days) : '');
     setSteps(route ? route.steps : specs[0] ? [specs[0].id] : []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route?.id, specs.length]);
@@ -156,7 +160,11 @@ function RouteEditor({ route, specs, onSaved }: { route: Route | null; specs: Sp
   async function save() {
     if (!name.trim() || steps.length === 0) return setErr(t('techSettings.errRoute'));
     const kw = keywords.split(/[,\u060C\n]/).map((x) => x.trim()).filter(Boolean);
-    const body = { name: route?.code && name.trim() === routeName({ code: route.code, name: null }) ? null : name.trim(), keywords: kw, steps };
+    // مدة ضمان نوع العطل (فاضية = مدة ضمان المحل)
+    const wTxt = toLatinDigits(warranty.trim());
+    const warranty_days = wTxt === '' ? null : Number(wTxt);
+    if (warranty_days !== null && (!Number.isInteger(warranty_days) || warranty_days < 0 || warranty_days > 3650)) return setErr(t('techSettings.errWarranty'));
+    const body = { name: route?.code && name.trim() === routeName({ code: route.code, name: null }) ? null : name.trim(), keywords: kw, steps, warranty_days };
     const { error } = route
       ? await supabase.from('routes').update(body).eq('id', route.id)
       : await supabase.from('routes').insert({ id: crypto.randomUUID(), shop_id: shop.id, ...body, name: name.trim(), sort: 500 });
@@ -177,6 +185,9 @@ function RouteEditor({ route, specs, onSaved }: { route: Route | null; specs: Sp
         </Field>
         <Field label={t('techSettings.keywords')} hint={route?.diagnose ? t('techSettings.diagnoseHint') : t('techSettings.keywordsHint')}>
           <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} disabled={route?.diagnose} />
+        </Field>
+        <Field label={t('techSettings.warranty')} hint={t('techSettings.warrantyHint', { n: shop.warranty_days })}>
+          <Input dir="ltr" mono inputMode="numeric" value={warranty} onChange={(e) => setWarranty(e.target.value)} placeholder={String(shop.warranty_days)} suffix={t('techSettings.days')} className="w-28 text-start" />
         </Field>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label={t('techSettings.steps')}>

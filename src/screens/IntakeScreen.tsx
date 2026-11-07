@@ -46,6 +46,7 @@ interface Prev {
   received_at: string;
   status: string;
   warranty_until: string | null;
+  route_id: string | null;
 }
 
 export function IntakeScreen() {
@@ -129,7 +130,7 @@ export function IntakeScreen() {
     if (imeiClean.length < 14) return setPrev([]);
     let live = true;
     const tm = setTimeout(async () => {
-      const { data } = await supabase.from('devices').select('id, order_no, received_at, status, warranty_until').eq('imei', imeiClean).is('deleted_at', null).order('received_at', { ascending: false }).limit(5);
+      const { data } = await supabase.from('devices').select('id, order_no, received_at, status, warranty_until, route_id').eq('imei', imeiClean).is('deleted_at', null).order('received_at', { ascending: false }).limit(5);
       if (live) setPrev((data ?? []) as Prev[]);
     }, 250);
     return () => {
@@ -448,6 +449,12 @@ export function IntakeScreen() {
                   }
                 >
                   {t('warranty.inText', { order: warrantyHit.order_no, until: f.date(warrantyHit.warranty_until!) })}
+                  {/* نفس نوع العطل اللي اتصلح قبل كده = غالبًا مرتجع ضمان حقيقي */}
+                  {warrantyHit.route_id && warrantyHit.route_id === routing.routeId && (
+                    <span className="mt-1 block font-semibold text-warn" data-testid="warranty-same-fault">
+                      {t('warranty.sameFault')}
+                    </span>
+                  )}
                 </Alert>
               )}
               <AnimatePresence>

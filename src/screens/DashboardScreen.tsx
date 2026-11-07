@@ -1,13 +1,15 @@
 import { Link, useLocation, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { AlarmClock, ArrowRight, CheckCheck, Inbox, PackagePlus, Wallet, Wrench, type LucideIcon } from 'lucide-react';
+import { AlarmClock, ArrowRight, CheckCheck, Inbox, PackagePlus, TrendingUp, Wallet, Wrench, type LucideIcon } from 'lucide-react';
 import { useMe } from '../app/auth';
 import { StaleNote } from '../ui/StaleNote';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { DaySummaryButton } from '../app/DaySummaryButton';
 import { supabase } from '../lib/supabase';
+import { rpc, type Position } from '../app/ledgerApi';
+import { cairoDay, cairoDayEnd, cairoDayStart } from '../lib/dates';
 import { computeDashboard, computeSeries, isLate, type StatusEvent } from '../lib/dashboard';
 import { daysSince } from '../lib/dates';
 import { STATUSES, type DeviceStatus } from '../lib/status';
@@ -16,6 +18,7 @@ import { useFormat } from '../i18n/format';
 import { Button } from '../ui/Button';
 import { Panel, PanelHeader } from '../ui/Panel';
 import { FollowUpPanel } from '../app/FollowUpPanel';
+import { MarketingPanel } from '../app/MarketingPanel';
 import { OwnerAlerts } from '../app/OwnerAlerts';
 import { StatusBadge } from '../ui/StatusBadge';
 import { CountUp, Ring, Sparkline } from '../ui/viz';
@@ -32,6 +35,12 @@ export function DashboardScreen() {
   const owner = profile.role === 'owner';
   const front = (profile.role === 'owner' || profile.role === 'reception');
 
+  // ربح اليوم (صاحب المحل بس): من الدفتر نفسه = إيرادات اليوم − مصروفاته (ومنها تكلفة القطع)
+  const profit = useLoad(async () => {
+    if (profile.role !== 'owner') return null;
+    const day = cairoDay(new Date());
+    return rpc<Position>('financial_position', { p_from: cairoDayStart(day).toISOString(), p_to: cairoDayEnd(day).toISOString() });
+  }, [profile.role]);
   const { data, error, loading, reload, stale } = useLoad(
     async () => {
       const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
@@ -53,6 +62,7 @@ export function DashboardScreen() {
 
   // تحديث لحظي: أي تغيير في الأجهزة أو الأسعار أو الحالات بيحدّث اللوحة
   useLiveRefresh(reload);
+  useLiveRefresh(profit.reload);
 
   const now = new Date();
   const rows = data?.rows ?? [];
@@ -88,7 +98,7 @@ export function DashboardScreen() {
       ) : (
         <>
           {owner && <OwnerAlerts />}
-          <div className={cn('grid gap-3', owner ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-2 lg:grid-cols-4')}>
+          <div className={cn('grid gap-3', owner ? 'grid-cols-2 lg:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4')}>
             <Kpi i={0} label={t('dashboard.today')} caption={t('dashboard.todayCap')} icon={Inbox} value={stats?.today} series={series?.today} to="/devices?filter=today" loading={loading} />
             <Kpi i={1} label={t('dashboard.under')} caption={t('dashboard.underCap')} icon={Wrench} value={stats?.underRepair} series={series?.underRepair} to="/devices?filter=under_repair" loading={loading} />
             <Kpi i={2} label={t('dashboard.ready')} caption={t('dashboard.readyCap')} icon={CheckCheck} value={stats?.ready} series={series?.ready} to="/devices?status=ready" loading={loading} tone="ok" />
@@ -105,7 +115,20 @@ export function DashboardScreen() {
                 tone="accent"
                 format={(n) => f.money(n)}
                 unit={f.currency(shop.currency)}
-                className="col-span-2 lg:col-span-1"
+              />
+            )}
+            {owner && (
+              <Kpi
+                i={5}
+                label={t('dashboard.profit')}
+                caption={t('dashboard.profitCap')}
+                icon={TrendingUp}
+                value={profit.data?.profit}
+                loading={profit.loading}
+                tone={profit.data && profit.data.profit < 0 ? 'danger' : 'ok'}
+                format={(n) => f.money(n)}
+                unit={f.currency(shop.currency)}
+                to="/finance"
               />
             )}
           </div>
@@ -161,6 +184,7 @@ export function DashboardScreen() {
           <div className={front ? 'mt-4 grid gap-4 lg:grid-cols-2' : 'mt-4'}>
             <DeviceList index="03" title={t('dashboard.readyList')} rows={ready} loading={loading} showCustomer={front} empty={t('dashboard.readyEmpty')} moreTo="/devices?status=ready" />
             {front && <FollowUpPanel />}
+            {front && <MarketingPanel />}
           </div>
         </>
       )}

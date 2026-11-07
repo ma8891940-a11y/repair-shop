@@ -1,6 +1,6 @@
 import { normalizeEgyptPhone, toInternational } from './phone';
 
-export const TEMPLATE_KEYS = ['received', 'status', 'approval', 'ready', 'reminder', 'delivered', 'debt'] as const;
+export const TEMPLATE_KEYS = ['received', 'status', 'approval', 'ready', 'reminder', 'delivered', 'debt', 'marketing'] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 export const PLACEHOLDERS = ['name', 'order', 'device', 'status', 'cost', 'link', 'shop', 'tech', 'days', 'warranty', 'balance', 'eta'] as const;
 export type Vars = Partial<Record<(typeof PLACEHOLDERS)[number], string>>;

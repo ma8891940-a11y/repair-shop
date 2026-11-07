@@ -291,7 +291,9 @@
     "readyEmpty": "No devices ready right now.",
     "updated": "Updated just now",
     "shortages": "Items at minimum stock (shortages)",
-    "debts": "Debts owed by {{n}} customers"
+    "debts": "Debts owed by {{n}} customers",
+    "profit": "Today’s profit",
+    "profitCap": "Revenue minus expenses from the ledger"
   },
   "intake": {
     "title": "Check in device",
@@ -396,7 +398,8 @@
     "confirmDeliver": "Confirm handing the device to the customer?",
     "notFound": "Device not found.",
     "statusChanged": "Status updated",
-    "withoutAcc": "None"
+    "withoutAcc": "None",
+    "notifyCustomer": "Message customer"
   },
   "errors": {
     "generic": "Something unexpected happened",
@@ -456,7 +459,8 @@
       "E_ALREADY_RATED": "This device was already rated. Thank you",
       "E_AI_DISABLED": "The AI assistant is not enabled",
       "E_AI_LIMIT": "Daily AI assistant limit reached",
-      "E_SHOP_SUSPENDED": "This shop is suspended"
+      "E_SHOP_SUSPENDED": "This shop is suspended",
+      "E_OWNER_APPROVAL": "This needs the shop owner (deleting, or a big discount below the estimate)"
     }
   },
   "onboarding": {
@@ -732,7 +736,8 @@
       "ready": "Device ready",
       "reminder": "Pickup reminder",
       "delivered": "Thanks after pickup",
-      "debt": "Payment reminder"
+      "debt": "Payment reminder",
+      "marketing": "Marketing reminder"
     },
     "defaults": {
       "received": "Hi {name}, we received your {device}, order {order}. Expected time: {eta}. Track it here: {link}\n{shop}",
@@ -741,7 +746,8 @@
       "ready": "Hi {name}, your {device} is ready for pickup. Order {order}.\n{shop}",
       "reminder": "Hi {name}, your {device} has been ready for {days} days. Order {order}.\n{shop}",
       "delivered": "Thank you {name}! Your {device} has been picked up and is under warranty until {warranty}.\n{shop}",
-      "debt": "Hi {name}, a friendly reminder that you owe {balance} to {shop}. Thank you."
+      "debt": "Hi {name}, a friendly reminder that you owe {balance} to {shop}. Thank you.",
+      "marketing": "Hi {name}, it has been about 6 months since we serviced your {device}. If you need a check-up or any service, we are here.\n{shop}"
     },
     "placeholders": "Available placeholders",
     "team": "the repair team"
@@ -780,7 +786,8 @@
     "asReturn": "Register as warranty return",
     "until": "Warranty until {{d}}",
     "expired": "Warranty expired",
-    "returned": "Registered as warranty return"
+    "returned": "Registered as warranty return",
+    "sameFault": "Same fault as the previous repair."
   },
   "customers": {
     "title": "Customers",
@@ -1172,7 +1179,10 @@
     "noRates": "No labor rates yet",
     "remove": "Remove",
     "errMargin": "Margin must be a whole number from 0 to 1000",
-    "errRate": "Enter the issue and labor"
+    "errRate": "Enter the issue and labor",
+    "maxDiscount": "Max reception discount",
+    "maxDiscountHint": "Going below the estimate by more than this needs the shop owner",
+    "errDiscount": "Must be 0 to 100"
   },
   "signature": {
     "title": "Customer signature",
@@ -1272,7 +1282,11 @@
     "down": "Later",
     "removeStep": "Remove step",
     "addStep": "Step",
-    "errRoute": "Enter a name and at least one step"
+    "errRoute": "Enter a name and at least one step",
+    "warranty": "Warranty",
+    "warrantyHint": "Empty = shop warranty ({{n}} days)",
+    "days": "days",
+    "errWarranty": "Warranty must be 0 to 3650 days"
   },
   "reports": {
     "title": "Reports",
@@ -1613,5 +1627,11 @@
         "Then open the app again."
       ]
     }
+  },
+  "marketingDue": {
+    "title": "Reminders (with consent)",
+    "empty": "No customers due for a reminder",
+    "sub": "Customers who agreed to reminders, last serviced 6+ months ago",
+    "send": "Send reminder"
   }
 }
