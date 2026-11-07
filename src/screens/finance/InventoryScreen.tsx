@@ -372,6 +372,11 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone }: { m
     // بيتصفّر لما الفورم يتفتح بس (مش مع كل تحديث للصفحة، وإلا السطور بتضيع وانت بتكتب)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
+  // قايمة الموردين ممكن توصل بعد ما الفورم يتفتح (زي بعد إضافة مورد على طول): أول مورد يتختار،
+  // عشان اللي ظاهر في الخانة هو نفسه اللي هيتسجل
+  useEffect(() => {
+    if (open && !supplier && suppliers.length) setSupplier(suppliers[0].id);
+  }, [open, supplier, suppliers]);
 
   const parsed = useMemo(
     () =>

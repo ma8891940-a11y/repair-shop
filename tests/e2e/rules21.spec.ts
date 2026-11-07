@@ -30,6 +30,8 @@ test('المواصفات: "ابعت للعميل" بعد تغيير الحالة
   await editor.getByLabel('مدة الضمان').fill('٩٠');
   await editor.getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتحفظ').first()).toBeVisible();
+  // التنبيه اللي فات يختفي الأول، عشان "اتحفظ" الجاي يبقى بتاع الخصم
+  await expect(page.getByText('اتحفظ')).toHaveCount(0, { timeout: 15_000 });
   await page.getByRole('tab', { name: 'الخزن والمصروفات' }).click();
   await page.getByLabel('أقصى خصم للاستقبال').fill('15');
   await page.getByLabel('أقصى خصم للاستقبال').locator('xpath=ancestor::div[contains(@class,"items-end")][1]').getByRole('button', { name: 'حفظ' }).click();
