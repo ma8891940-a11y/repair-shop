@@ -76,6 +76,19 @@ describe('حارس أداء المؤثرات الكاملة', () => {
     expect(g.last_).toMatchObject({ capped: true, slow: false });
   });
 
+  it('توفير الطاقة مع ضغط لحظي (إطار طويل كل شوية): لسه مش بطء', () => {
+    const g = new FpsGuard();
+    g.start(0);
+    let t = 0;
+    let tripped = false;
+    // 30 إطار تقريبًا، وكل عاشر إطار متأخر (زي جهاز عليه شغل تاني لحظة)
+    for (let i = 0; i < 1_200 && !tripped; i++) {
+      t += i % 10 === 9 ? 75 : 30 + (i % 3);
+      tripped = g.frame(t, 2);
+    }
+    expect(tripped).toBe(false);
+  });
+
   it('إطارات مش منتظمة (تقطيع) حتى لو كل إطار خفيف: ده بطء، بيقفل', () => {
     const g = new FpsGuard();
     g.start(0);

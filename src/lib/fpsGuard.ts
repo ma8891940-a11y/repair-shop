@@ -19,7 +19,10 @@ export interface FpsGuardOptions {
    * المتصفح أو الشاشة ممكن يكونوا مقفولين على 30 أو 48 إطار عشان توفير الطاقة والجهاز فاضي.
    */
   busyMs?: number;
-  /** تذبذب المسافة بين الإطارات (الانحراف ÷ المتوسط) اللي فوقه يبقى فيه تقطيع حقيقي */
+  /**
+   * نسبة الإطارات الطويلة (أطول من 1.7 مرة من الإطار العادي) اللي فوقها يبقى فيه تقطيع حقيقي.
+   * (إطار طويل هنا وهناك من ضغط لحظي مش تقطيع)
+   */
   jitter?: number;
 }
 
@@ -28,7 +31,7 @@ export interface GuardReading {
   fps: number;
   /** متوسط تكلفة الإطار بالمللي ثانية */
   work: number;
-  /** تذبذب المسافة بين الإطارات */
+  /** نسبة الإطارات الطويلة */
   jitter: number;
   /** الإطارات قليلة بس الجهاز فاضي والإطارات منتظمة = المتصفح أو الشاشة مقفولين على عدد أقل (مش بطء) */
   capped: boolean;
@@ -43,8 +46,7 @@ export class FpsGuard {
   readonly pauseGapMs: number;
   readonly busyMs: number;
   readonly jitter: number;
-  private gaps = 0;
-  private gapSq = 0;
+  private gaps: number[] = [];
   private work = 0;
   /** آخر قراءة كاملة */
   last_: GuardReading | null = null;
@@ -64,7 +66,7 @@ export class FpsGuard {
     this.windowMs = o.windowMs ?? 500;
     this.pauseGapMs = o.pauseGapMs ?? 1000;
     this.busyMs = o.busyMs ?? 10;
-    this.jitter = o.jitter ?? 0.3;
+    this.jitter = o.jitter ?? 0.25;
   }
 
   /** بداية جديدة: فتح شاشة، أو تشغيل المؤثرات */
@@ -76,8 +78,7 @@ export class FpsGuard {
     this.last = null;
     this.tripped = false;
     this.lastFps = null;
-    this.gaps = 0;
-    this.gapSq = 0;
+    this.gaps = [];
     this.work = 0;
   }
 
@@ -97,23 +98,20 @@ export class FpsGuard {
     if (this.windowStart === null) {
       this.windowStart = now;
       this.frames = 0;
-      this.gaps = 0;
-      this.gapSq = 0;
+      this.gaps = [];
       this.work = 0;
       return false;
     }
     this.frames++;
-    if (prev !== null) {
-      const g = now - prev;
-      this.gaps += g;
-      this.gapSq += g * g;
-    }
+    if (prev !== null) this.gaps.push(now - prev);
     this.work += workMs;
     const span = now - this.windowStart;
     if (span < this.windowMs) return false;
     const fps = (this.frames * 1000) / span;
-    const mean = this.gaps / this.frames;
-    const jitter = mean > 0 ? Math.sqrt(Math.max(0, this.gapSq / this.frames - mean * mean)) / mean : 0;
+    // الإطار العادي = الربع الأقل من المسافات (ثابت حتى لو فيه إطارات طويلة)، والطويل أكتر منه بـ 1.7 مرة
+    const sorted = [...this.gaps].sort((a, b) => a - b);
+    const base = sorted.length ? sorted[Math.floor((sorted.length - 1) / 4)] : 0;
+    const jitter = sorted.length && base > 0 ? sorted.filter((g) => g > base * 1.7).length / sorted.length : 0;
     const work = this.work / this.frames;
     const low = fps < this.threshold;
     // إطارات قليلة لوحدها مش بطء: لازم يكون فيه تقطيع (إطارات مش منتظمة) أو شغل تقيل في كل إطار
@@ -123,8 +121,7 @@ export class FpsGuard {
     const windowBegan = this.windowStart;
     this.windowStart = now;
     this.frames = 0;
-    this.gaps = 0;
-    this.gapSq = 0;
+    this.gaps = [];
     this.work = 0;
     if (slow) {
       if (this.lowSince === null) this.lowSince = windowBegan;

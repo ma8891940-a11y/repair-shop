@@ -16,7 +16,9 @@ export interface MotionDiag {
   work: number | null;
   capped: boolean;
 }
-export const motionDiag: MotionDiag = { moving: false, mode: 'live', reduced: false, autoStill: false, hidden: false, guard: 'waiting', fps: null, work: null, capped: false };
+export const motionDiag: MotionDiag & { log: { fps: number; work: number; jitter: number; slow: boolean }[] } = { moving: false, mode: 'live', reduced: false, autoStill: false, hidden: false, guard: 'waiting', fps: null, work: null, capped: false, log: [] };
+// نفس معلومات شاشة التشخيص، للاختبار (مفيش فيها أي بيانات)
+if (typeof window !== 'undefined') (window as unknown as { __motionDiag: typeof motionDiag }).__motionDiag = motionDiag;
 
 export type StopReason = 'reduced' | 'auto' | 'inside' | 'hidden' | 'print' | null;
 /** ليه الخلفية واقفة (أو null لو شغالة) */

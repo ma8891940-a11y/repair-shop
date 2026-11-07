@@ -45,7 +45,9 @@ test('توفير الطاقة (المتصفح مقفول على 30 إطار) و�
   await page.goto('/');
   await afterSplash(page);
   await page.waitForTimeout(9_000);
-  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();
+  const still = await page.evaluate(() => localStorage.getItem('bg-still-v2'));
+  if (still) console.log('GUARD-LOG', JSON.stringify(await page.evaluate(() => (window as unknown as { __motionDiag: { log: unknown[] } }).__motionDiag.log)));
+  expect(still).toBeNull();
   await expect(page.getByTestId('stage-bg')).not.toHaveAttribute('data-auto-still', '');
 });
 

@@ -103,6 +103,10 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
         motionDiag.fps = guard.last_.fps;
         motionDiag.work = guard.last_.work;
         motionDiag.capped = guard.last_.capped;
+        if (motionDiag.log.at(-1) !== guard.last_) {
+          motionDiag.log.push(guard.last_);
+          if (motionDiag.log.length > 40) motionDiag.log.shift();
+        }
       }
       if (tripped) {
         setBgStillSaved(true);
