@@ -941,7 +941,6 @@
     "errTo": "Choose a different cashbox",
     "errCashbox": "Choose a cashbox",
     "errExpense": "Choose an expense type",
-    "errCashbox": "Choose a cashbox",
     "errReason": "Write the reason for the correction",
     "kinds": {
       "cashbox": "Cashbox",
@@ -1484,15 +1483,15 @@
   },
   "assistant": {
     "title": "Assistant",
-    "ask": "Ask the assistant",
-    "placeholder": "e.g. What should I check first?",
-    "defaultQ": "What are the likely causes and the inspection steps in order?",
-    "privacy": "Only the device type, fault and your question are sent, never customer data",
+    "ask": "Suggest causes and checks",
+    "privacy": "Only the model and the fault description are sent, never customer data",
     "offlineGuide": "The AI assistant is unavailable now. Here are tips from the built-in fault guide",
     "limit": "Daily AI limit reached. Here are tips from the built-in fault guide",
     "noMatch": "No matching fault in the guide. Try describing it differently",
     "causes": "Likely causes",
-    "steps": "Inspection steps"
+    "steps": "Inspection steps",
+    "disabled": "The AI assistant is off: it needs a free Gemini key on the server (steps in README). Until then, use the built-in fault guide.",
+    "guide": "Built-in fault guide"
   },
   "rating": {
     "title": "Rate the service",

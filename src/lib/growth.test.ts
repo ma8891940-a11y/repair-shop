@@ -15,13 +15,20 @@ describe('المساعد الذكي: من غير بيانات العميل', () 
     expect(s).toContain('[name]');
     expect(scrub('010 1234 5678')).toBe('[number]');
   });
+  it('اسم العميل بيتشال كامل أو أي جزء منه (زي الاسم الأول بس)', () => {
+    const s = scrub('سامح قال إن الجهاز وقع، وأخوه عبد الله جابه', ['سامح عبد الله']);
+    expect(s).not.toContain('سامح');
+    expect(s).not.toContain('عبد الله');
+    expect(s).toContain('الجهاز وقع');
+  });
   it('بيسيب الكلام الفني زي ما هو (موديلات وأرقام قصيرة)', () => {
     expect(scrub('Samsung A54 الشاشة فيها خطوط بعد وقعة من 2 متر، والبطارية 85%')).toBe('Samsung A54 الشاشة فيها خطوط بعد وقعة من 2 متر، والبطارية 85%');
   });
-  it('الطلب فيه الجهاز والعطل والسؤال بس، ومتنضّفين', () => {
-    const p = assistantPayload({ brand: 'iPhone', model: '13', issue: 'مش بيشحن، رقم العميل 01099998888', question: 'أبدأ منين؟', names: ['منى'] });
-    expect(Object.keys(p).sort()).toEqual(['device', 'issue', 'question']);
+  it('الطلب فيه الموديل ووصف العطل بس، ومتنضّفين', () => {
+    const p = assistantPayload({ brand: 'iPhone', model: '13', issue: 'مش بيشحن، رقم العميل 01099998888 والعميلة منى', names: ['منى'] });
+    expect(Object.keys(p).sort()).toEqual(['device', 'issue']);
     expect(p.issue).not.toContain('01099998888');
+    expect(p.issue).not.toContain('منى');
   });
   it('نفس كود التنضيف في الواجهة وفي الـ Edge Function', () => {
     const root = join(__dirname, '..', '..');

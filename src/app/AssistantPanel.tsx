@@ -1,43 +1,55 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, Send } from 'lucide-react';
+import { BookOpen, Bot, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { assistantPayload } from '../lib/aiScrub';
 import { matchFaults, type FaultKey } from '../lib/faultGuide';
 import { Panel, PanelHeader } from '../ui/Panel';
 import { Button } from '../ui/Button';
-import { Textarea } from '../ui/Field';
 import { Alert } from '../ui/Feedback';
 
 /**
- * المساعد الذكي في صفحة الجهاز: بيبعت نوع الجهاز والعطل والسؤال بس (متنضّفين من أي بيانات عميل).
- * لو المساعد مش مفعّل أو مفيش نت أو الحد اليومي خلص: دليل الأعطال المدمج (مجاني).
+ * المساعد الذكي في صفحة الجهاز (Gemini المجاني من السيرفر): بيبعت الموديل ووصف العطل بس، متنضّفين من أي بيانات عميل.
+ * لو مفيش مفتاح على السيرفر: مقفول برسالة واضحة. ودليل الأعطال المدمج (مجاني ومن غير نت) متاح دايمًا.
  */
 export function AssistantPanel({ brand, model, issue, names }: { brand: string; model: string; issue: string; names: string[] }) {
   const { t } = useTranslation();
-  const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [guide, setGuide] = useState<FaultKey[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // المساعد متفعّل على السيرفر؟ (null = لسه بنسأل)
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    supabase.functions
+      .invoke('assistant', { body: { status: true } })
+      .then(({ data, error }) => live && setEnabled(!error && data?.enabled === true))
+      .catch(() => live && setEnabled(false));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  function showGuide() {
+    const keys = matchFaults(issue);
+    setGuide(keys.length ? keys.slice(0, 2) : []);
+  }
 
   async function ask() {
-    const question = q.trim() || t('assistant.defaultQ');
     setBusy(true);
     setAnswer(null);
     setGuide(null);
     setNote(null);
-    const payload = assistantPayload({ brand, model, issue, question, names });
     try {
-      const { data, error } = await supabase.functions.invoke('assistant', { body: payload });
-      if (error || !data?.answer) throw error ?? new Error('E_AI_DISABLED');
+      const { data, error } = await supabase.functions.invoke('assistant', { body: assistantPayload({ brand, model, issue, names }) });
+      if (error || !data?.answer) throw error ?? new Error('E_AI_UNAVAILABLE');
       setAnswer(String(data.answer));
     } catch (e) {
-      // الدليل المدمج
       const ctx = (e as { context?: { status?: number } })?.context;
-      setNote(ctx?.status === 403 ? t('assistant.limit') : t('assistant.offlineGuide'));
-      const keys = matchFaults(`${issue} ${question}`);
-      setGuide(keys.length ? keys.slice(0, 2) : []);
+      setNote(ctx?.status === 403 ? t('assistant.limit') : ctx?.status === 503 ? t('assistant.disabled') : t('assistant.offlineGuide'));
+      showGuide();
     } finally {
       setBusy(false);
     }
@@ -48,10 +60,21 @@ export function AssistantPanel({ brand, model, issue, names }: { brand: string; 
       <PanelHeader title={t('assistant.title')} />
       <div className="flex flex-col gap-3 p-4">
         <p className="text-2xs text-fg-3">{t('assistant.privacy')}</p>
-        <Textarea rows={2} value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('assistant.placeholder')} aria-label={t('assistant.ask')} maxLength={800} />
-        <Button size="sm" loading={busy} icon={busy ? undefined : <Send className="size-4" />} onClick={() => void ask()} className="self-start">
-          {t('assistant.ask')}
-        </Button>
+        {enabled === false && (
+          <div data-testid="assistant-disabled">
+            <Alert tone="info">{t('assistant.disabled')}</Alert>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {enabled && (
+            <Button size="sm" variant="primary" loading={busy} icon={busy ? undefined : <Send className="size-4" />} onClick={() => void ask()} disabled={!issue.trim()}>
+              {t('assistant.ask')}
+            </Button>
+          )}
+          <Button size="sm" icon={<BookOpen className="size-4" />} onClick={showGuide}>
+            {t('assistant.guide')}
+          </Button>
+        </div>
         {answer && (
           <div className="whitespace-pre-wrap rounded-md border border-glass-border bg-sunken/40 p-3 text-sm text-fg" data-testid="assistant-answer">
             <Bot className="mb-1 size-4 text-accent" aria-hidden />

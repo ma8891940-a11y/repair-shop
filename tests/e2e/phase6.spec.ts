@@ -59,12 +59,12 @@ test('المرحلة 6: فيديو من الفني ← مراجعة التسوي
   await expect(T.page.getByTestId('community-post').first()).toContainText('أبدأ بإيه');
   await noHorizontalScroll(T.page);
 
-  // 4) المساعد: من غير مفتاح ولا Edge Function، بيرجع للدليل المدمج
+  // 4) المساعد: من غير مفتاح Gemini على السيرفر بيبقى مقفول برسالة واضحة، والدليل المدمج متاح
   const devicePath = await quickIntake(page, '01088889999', 'عميل التقييم');
-  await page.getByLabel('اسأل المساعد').fill('أفحص إيه الأول؟');
-  await page.getByRole('button', { name: 'اسأل المساعد' }).click();
+  await expect(page.getByTestId('assistant-disabled')).toContainText('محتاج مفتاح Gemini المجاني');
+  await expect(page.getByRole('button', { name: 'اقترح الأسباب وخطوات الفحص' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'دليل الأعطال المدمج' }).click();
   await expect(page.getByTestId('assistant-guide')).toContainText('مشكلة في الشاشة');
-  await expect(page.getByText('دليل الأعطال المدمج')).toBeVisible();
 
   // 5) تقييم العميل بعد التسليم (التسليم نفسه متجرّب في المراحل اللي فاتت، هنا بنجهّزه مباشرة في قاعدة الاختبار)
   const db = new pg.Client({ connectionString: DB });

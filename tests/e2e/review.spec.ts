@@ -184,3 +184,34 @@ test('الدفعة: "سجّل" على طول بعد فتح الفورم ما ب�
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
   await expect(page.getByTestId('device-due')).toHaveText('0');
 });
+
+test('المساعد متفعّل (رد السيرفر متمثّل): الإجابة بتظهر، واللي بيخرج من المتصفح الموديل ووصف العطل بس من غير بيانات العميل', async ({ page }, info) => {
+  test.setTimeout(180_000);
+  await prefs(page, info);
+  const sent: unknown[] = [];
+  await page.route('**/functions/v1/assistant', async (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } });
+    const body = route.request().postDataJSON();
+    sent.push(body);
+    const json = body?.status ? { enabled: true } : { answer: '1) سوكت الشحن\n2) IC الشحن', left: 9 };
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(json) });
+  });
+  await registerShop(page, uniq('ai'));
+  await page.goto('/#/intake');
+  await page.locator('#intake-phone').fill('01038383838');
+  await page.getByLabel('اسم العميل').fill('سامح عبد الله');
+  await page.getByRole('button', { name: 'Samsung', exact: true }).click();
+  await page.getByLabel('الموديل').fill('A54');
+  await page.getByLabel('العطل زي ما العميل وصفه').fill('مش بيشحن، سامح قال كلموني على 01038383838');
+  await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
+  await page.getByRole('button', { name: 'فتح الجهاز' }).click();
+  await expect(page.getByTestId('assistant-disabled')).toHaveCount(0);
+  await page.getByRole('button', { name: 'اقترح الأسباب وخطوات الفحص' }).click();
+  await expect(page.getByTestId('assistant-answer')).toContainText('IC الشحن');
+  const ask = sent.find((b) => !(b as { status?: boolean }).status) as Record<string, string>;
+  expect(Object.keys(ask).sort()).toEqual(['device', 'issue']);
+  expect(ask.device).toContain('A54');
+  expect(ask.issue).toContain('مش بيشحن');
+  expect(JSON.stringify(ask)).not.toContain('01038383838');
+  expect(JSON.stringify(ask)).not.toContain('سامح');
+});

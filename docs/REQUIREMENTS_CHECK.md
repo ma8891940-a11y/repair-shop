@@ -141,7 +141,7 @@
 ## ح) النمو (المرحلة 6)
 | # | المتطلب | المصدر | الحالة | الكود | الاختبار |
 |---|---|---|---|---|---|
-| 89 | المساعد عبر Edge Function من غير بيانات عميل، ودليل مجاني لو مش مفعّل | CLAUDE | 🟡 | `supabase/functions/assistant`، `aiScrub.ts` | `unit/growth`، `e2e/phase6`. الـ Edge Function الحقيقية محتاجة مفتاح |
+| 89 | المساعد عبر Edge Function بـ **Gemini المجاني** (المفتاح في أسرار Supabase)، والخدمة إعداد `AI_PROVIDER`، ومن غير مفتاح مقفول برسالة واضحة، وبيتبعت الموديل ووصف العطل بس **(اتعدّل بقرار صاحب المشروع)** | CLAUDE، رسايل | ✅ | `supabase/functions/assistant`، `_shared/ai.ts`، `aiScrub.ts`، `AssistantPanel.tsx` | `unit/aiProvider`، `unit/growth`، `e2e/phase6` (مقفول)، `e2e/review` (متفعّل برد متمثّل، واللي بيخرج من غير بيانات عميل). النداء الحقيقي لـ Google محتاج مفتاحك |
 | 90 | تقييم العميل بعد التسليم، ومرة واحدة | spec | ✅ | `0017` | `db/growth`، `e2e/phase6` |
 | 91 | الفيديوهات بالنقاط | spec | ✅ | `0017`، `VideosScreen.tsx` | `db/growth`، `e2e/phase6` |
 | 92 | مجتمع الفنيين من غير بيانات عملاء | spec | ✅ | `0017`، `CommunityScreen.tsx` | `db/growth`، `e2e/phase6` |
