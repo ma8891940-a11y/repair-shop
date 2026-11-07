@@ -29,7 +29,6 @@ async function as(uid: string | null, sql: string, params: unknown[] = [], ip = 
   }
 }
 const tag = randomUUID().slice(0, 8);
-const PHONE = `0109${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`;
 const id = () => randomUUID();
 async function user(email: string) {
   const u = randomUUID();
