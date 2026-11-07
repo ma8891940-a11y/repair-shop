@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, FileLock2, FolderOpen } from 'lucide-react';
+import { Download, FileLock2, FolderOpen, History } from 'lucide-react';
 import { useLoad } from '../../app/useLoad';
 import { rpc } from '../../app/ledgerApi';
 import { backupSummary, decryptBackup, encryptBackup, type EncryptedBackup } from '../../offline/backupCrypto';
@@ -10,6 +10,7 @@ import { Panel, PanelHeader } from '../../ui/Panel';
 import { Button } from '../../ui/Button';
 import { Field, Input } from '../../ui/Field';
 import { Alert } from '../../ui/Feedback';
+import { Dialog } from '../../ui/Dialog';
 import { useToast } from '../../ui/Toast';
 
 function save(name: string, text: string) {
@@ -31,6 +32,11 @@ export function BackupTab() {
   const [err, setErr] = useState<string | null>(null);
   const [openPw, setOpenPw] = useState('');
   const [summary, setSummary] = useState<Record<string, number> | null>(null);
+  // النسخة اللي اتفتحت (بعد فك التشفير على الجهاز)، عشان الاسترجاع
+  const [opened, setOpened] = useState<Record<string, unknown> | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restored, setRestored] = useState(false);
   const list = useLoad(() => rpc<{ id: string; created_at: string; size_kb: number }[]>('list_backups'), []);
 
   async function exportNow(data?: unknown, label = 'manual') {
@@ -52,11 +58,34 @@ export function BackupTab() {
   async function openFile(file: File) {
     setErr(null);
     setSummary(null);
+    setOpened(null);
+    setRestored(false);
     try {
       const data = await decryptBackup<Record<string, unknown>>(JSON.parse(await file.text()) as EncryptedBackup, openPw);
       setSummary(backupSummary(data));
+      setOpened(data);
     } catch (e) {
       setErr(t(`backup.${(e as Error).message === 'E_BACKUP_PASSWORD' ? 'errPassword' : 'errFormat'}`));
+    }
+  }
+
+  /** استرجاع لمحل جديد فاضي بس. قاعدة البيانات بتتأكد إن المحل فاضي، وإن الدفتر متوازن ورصيد كل حساب مطابق للنسخة، وإلا مفيش أي تغيير */
+  async function restoreNow() {
+    if (!opened) return;
+    setRestoring(true);
+    setErr(null);
+    try {
+      await rpc('restore_backup', { p_data: opened });
+      setConfirm(false);
+      setRestored(true);
+      toast({ tone: 'ok', title: t('backup.restored') });
+      // البيانات كلها اتغيّرت: البرنامج بيفتح من الأول عشان يقرأها
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      setConfirm(false);
+      setErr(errorMessage(e));
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -123,9 +152,37 @@ export function BackupTab() {
               <span data-testid="backup-summary">{Object.entries(summary).map(([k, v]) => `${k}: ${v}`).join(' · ')}</span>
             </Alert>
           )}
+          {opened && !restored && (
+            <div className="flex flex-col gap-2 rounded-md border border-glass-border p-3" data-testid="restore-box">
+              <div className="text-sm font-semibold text-fg">{t('backup.restore')}</div>
+              <p className="text-xs text-fg-3">{t('backup.restoreHint')}</p>
+              <Button className="self-start" icon={<History className="size-4" />} onClick={() => setConfirm(true)}>
+                {t('backup.restoreNow')}
+              </Button>
+            </div>
+          )}
+          {restored && <Alert tone="ok">{t('backup.restored')}</Alert>}
         </div>
       </Panel>
       {err && <Alert tone="danger">{err}</Alert>}
+      <Dialog
+        open={confirm}
+        onOpenChange={(v) => !restoring && setConfirm(v)}
+        title={t('backup.restoreConfirmTitle')}
+        description={t('backup.restoreConfirm')}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(false)} disabled={restoring}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" loading={restoring} onClick={() => void restoreNow()}>
+              {t('backup.restoreYes')}
+            </Button>
+          </>
+        }
+      >
+        {summary && <p className="text-xs text-fg-3">{Object.entries(summary).map(([k, v]) => `${k}: ${v}`).join(' · ')}</p>}
+      </Dialog>
     </div>
   );
 }

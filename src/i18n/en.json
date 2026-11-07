@@ -458,7 +458,11 @@
       "E_AI_DISABLED": "The AI assistant is not enabled",
       "E_AI_LIMIT": "Daily AI assistant limit reached",
       "E_SHOP_SUSPENDED": "This shop is suspended",
-      "E_OWNER_APPROVAL": "This needs the shop owner (deleting, or a big discount below the estimate)"
+      "E_OWNER_APPROVAL": "This needs the shop owner (deleting, or a big discount below the estimate)",
+      "E_RESTORE_NOT_EMPTY": "This shop already has data. Restore only works into a new empty shop: register a new shop and restore there",
+      "E_RESTORE_MISMATCH": "The backup's numbers didn't match after restoring, so the restore was cancelled and nothing changed. The file may have been modified",
+      "E_RESTORE_UNBALANCED": "The backup has an unbalanced entry, so the restore was cancelled and nothing changed",
+      "E_BACKUP_FORMAT": "This isn't a Gawalak backup file, or it's a backup of this same shop"
     }
   },
   "onboarding": {
@@ -1353,7 +1357,14 @@
     "pick": "Choose file",
     "valid": "Backup is valid",
     "errPassword": "Wrong password or the file was modified",
-    "errFormat": "This isn't a Gawalak backup file"
+    "errFormat": "This isn't a Gawalak backup file",
+    "restore": "Restore this backup into this shop",
+    "restoreHint": "Only for a new, empty shop (just registered, with no devices, customers or money). All data and numbers come back exactly, and the ledger is checked to be balanced and to match the backup. Former staff come back as \"former staff\" and need a new invite; photos are not included in the backup.",
+    "restoreNow": "Restore backup",
+    "restoreConfirmTitle": "Confirm restore",
+    "restoreConfirm": "All the backup's data will be added to this shop. This cannot be undone. Are you sure?",
+    "restoreYes": "Yes, restore",
+    "restored": "Data restored. The app will reload now."
   },
   "identity": {
     "names": "Name",
