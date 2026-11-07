@@ -5,6 +5,7 @@ import { CircuitField } from '../ui/fx/CircuitField';
 import { BG_GUARD, FpsGuard } from '../lib/fpsGuard';
 import { BG_STILL_KEY, guardAllowed } from './motionStatus';
 import logoSrc from '../assets/app-logo.png';
+import { getHandoffMs } from '../lib/splashTiming';
 
 /**
  * "المسرح": خلفية واحدة للبرنامج كله، ما بتتشالش وترجع بين الشاشات، والانتقال المشترك للوجو بعد الافتتاحية.
@@ -27,7 +28,7 @@ interface Stage {
 const Ctx = createContext<Stage | null>(null);
 
 /** مدة الانتقال المشترك بالثواني */
-export const HANDOFF_S = 0.45;
+// مدة طيران اللوجو في src/lib/splashTiming.ts (getHandoffMs)
 
 /**
  * شرط أمان: لو الأداء في الافتتاحية أو الدخول (الخلفية الحية) نزل تحت 50 إطار لمدة 2 ثانية متواصلة،
@@ -162,7 +163,7 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
           style={{ left: fly.from.left, top: fly.from.top, width: fly.from.width, height: fly.from.height, transformOrigin: '0 0' }}
           initial={{ x: 0, y: 0, scale: 1 }}
           animate={{ x: fly.to.left - fly.from.left, y: fly.to.top - fly.from.top, scale: fly.to.height / fly.from.height }}
-          transition={{ duration: HANDOFF_S, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: getHandoffMs() / 1000, ease: [0.4, 0, 0.2, 1] }}
           data-testid="logo-flight"
         />
       )}

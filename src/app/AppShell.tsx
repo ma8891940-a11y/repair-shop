@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
 import { AppLogo } from '../ui/Logo';
+import { Skeleton } from '../ui/Feedback';
 import { LangToggle, ThemeToggle } from '../ui/ThemeToggle';
 import { Tip } from '../ui/Tooltip';
 import { Kbd } from '../ui/Kbd';
@@ -48,6 +49,23 @@ export function useLiveRefresh(fn: () => void) {
       off();
     };
   }, [subscribe]);
+}
+
+/** لحظة تحميل شاشة لسه ما اتحمّلتش (شكل الشاشة نفسها من غير بيانات) */
+function ScreenLoading() {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col gap-4" role="status" aria-label={t('app.loading')} data-testid="screen-loading">
+      <Skeleton className="h-7 w-48" />
+      <Skeleton className="h-4 w-72" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <Skeleton className="h-64" />
+    </div>
+  );
 }
 
 export function AppShell() {
@@ -220,7 +238,8 @@ export function AppShell() {
           <main className="flex-1 px-4 pb-24 pt-5 md:px-6 md:pb-8">
             {/* دخول الشاشة بحركة خفيفة. من غير انتظار خروج الشاشة القديمة (mode="wait" كان ممكن يعلّق الصفحة فاضية لو التنقل كان سريع) */}
             <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}>
-              {outlet}
+              {/* الشاشة لو لسه بتتحمّل (نادر: الأساسية بتتحمّل في الخلفية بعد الدخول) */}
+              <Suspense fallback={<ScreenLoading />}>{outlet}</Suspense>
             </motion.div>
           </main>
         </div>

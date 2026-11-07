@@ -215,3 +215,43 @@ test('المساعد متفعّل (رد السيرفر متمثّل): الإجا
   expect(JSON.stringify(ask)).not.toContain('01038383838');
   expect(JSON.stringify(ask)).not.toContain('سامح');
 });
+
+test('تقسيم البرنامج: الشاشات الأساسية بتتحمّل في الخلفية بعد الافتتاحية، فبتفتح من غير أي لحظة تحميل', async ({ page }, info) => {
+  test.setTimeout(180_000);
+  await prefs(page, info);
+  // بيسجّل لو "لحظة التحميل" ظهرت في أي وقت
+  await page.addInitScript(() => {
+    const w = window as unknown as { __loadingSeen: string[] };
+    w.__loadingSeen = [];
+    new MutationObserver(() => {
+      if (document.querySelector('[data-testid="screen-loading"]')) w.__loadingSeen.push(location.hash);
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await registerShop(page, uniq('split'));
+  await quickIntake(page, '01039393939', 'عميل التقسيم');
+  // فتح البرنامج من الأول (زي ما المستخدم بيفتحه كل يوم)، وبعد الافتتاحية بلحظة
+  await page.goto('/#/');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
+  await page.waitForFunction(() => !document.querySelector('[data-testid="splash"]'));
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => ((window as unknown as { __loadingSeen: string[] }).__loadingSeen = []));
+  const nav = page.getByRole('navigation', { name: 'القائمة الرئيسية' }).filter({ visible: true });
+  const go = async (name: string, heading: string) => {
+    const link = nav.getByRole('link', { name, exact: true });
+    if (await link.count()) await link.first().click();
+    else await page.goto({ 'الأجهزة': '/#/devices', 'استلام جهاز': '/#/intake', 'الوضع المالي': '/#/finance', 'الدرج': '/#/drawer', 'لوحة التحكم': '/#/' }[name]!);
+    await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible();
+  };
+  await go('الأجهزة', 'الأجهزة');
+  await page.getByText('عميل التقسيم').filter({ visible: true }).first().click();
+  await expect(page.getByRole('button', { name: 'جاري الفحص', exact: true })).toBeVisible();
+  // الجهاز بيفتح فوق القايمة: نقفله الأول
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await go('استلام جهاز', 'استلام جهاز');
+  await go('الوضع المالي', 'الوضع المالي');
+  await go('الدرج', 'الدرج');
+  await go('لوحة التحكم', 'لوحة التحكم');
+  expect(await page.evaluate(() => (window as unknown as { __loadingSeen: string[] }).__loadingSeen)).toEqual([]);
+});

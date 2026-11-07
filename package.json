@@ -12,7 +12,8 @@
     "test:db": "bash scripts/test-db.sh",
     "lint": "eslint .",
     "test:e2e": "playwright test",
-    "db:setup-file": "node scripts/build-setup.mjs"
+    "db:setup-file": "node scripts/build-setup.mjs",
+    "perf:splash": "node scripts/perf-splash.cjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",

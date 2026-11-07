@@ -13,11 +13,26 @@ const bootLogo = () => ({
   },
 });
 
+/**
+ * الخط العربي الأساسي (عادي ومتوسط) بيتطلب من أول لحظة مع الكود، بدل ما المتصفح يكتشفه وهو بيرسم الكلام.
+ * كده الكلام ما بيترسمش مرتين وسط الافتتاحية (فرق واضح على الأجهزة الضعيفة). في نسخة الإنتاج بس.
+ */
+const preloadFonts = () => ({
+  name: 'preload-fonts',
+  transformIndexHtml(_html: string, ctx: { bundle?: Record<string, unknown> }) {
+    if (!ctx.bundle) return [];
+    return Object.keys(ctx.bundle)
+      .filter((f) => /ibm-plex-sans-arabic-arabic-(400|500)-normal-[\w-]+\.woff2$/.test(f))
+      .map((f) => ({ tag: 'link', attrs: { rel: 'preload', as: 'font', type: 'font/woff2', href: `./${f}`, crossorigin: '' }, injectTo: 'head' as const }));
+  },
+});
+
 export default defineConfig({
   // مسارات نسبية عشان التطبيق يشتغل جوه Electron/Tauri/Capacitor كمان
   base: './',
   plugins: [
     react(),
+    preloadFonts(),
     tailwindcss(),
     bootLogo(),
     VitePWA({

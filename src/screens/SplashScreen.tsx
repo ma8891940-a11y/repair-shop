@@ -6,6 +6,7 @@ import { useStage } from '../app/stage';
 import { convergeSignals } from '../ui/fx/CircuitField';
 import { LOGO_RATIO } from '../ui/Logo';
 import logo from '../assets/app-logo.png';
+import { getSplashSpeed } from '../lib/splashTiming';
 
 /** ارتفاع اللوجو في الافتتاحية (نفس اللي في index.html، عشان ما يحصلش أي قفزة) */
 export const SPLASH_LOGO_H = 150;
@@ -42,8 +43,10 @@ export function SplashScreen() {
   }, [calm, h]);
 
   const leaving = phase !== 'splash';
+  // على جهاز ضعيف نفس التسلسل بيمشي أسرع (src/lib/splashTiming.ts)
+  const k = getSplashSpeed();
   return (
-    <motion.div className="fixed inset-0 z-[100] overflow-hidden" initial={false} exit={{ opacity: 0, transition: { duration: 0.3 } }} role="status" aria-label={t('app.loading')} data-testid="splash">
+    <motion.div className="fixed inset-0 z-[100] overflow-hidden" initial={false} exit={{ opacity: 0, transition: { duration: 0.3 * k } }} role="status" aria-label={t('app.loading')} data-testid="splash">
       {/* تعتيم دايري ناعم حوالين اللوجو: نفس لون الخلفية، فالمنطقة دي أهدى من الباقي */}
       <div
         className="absolute left-1/2 top-1/2 size-[min(560px,120vw)] -translate-x-1/2 -translate-y-1/2 rounded-full"
@@ -57,7 +60,7 @@ export function SplashScreen() {
           style={{ background: 'radial-gradient(closest-side, rgb(var(--accent-rgb) / 0.32), rgb(var(--accent-rgb) / 0.08) 55%, transparent)' }}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: [0, 1, 0], scale: [0.8, 1, 1.08] }}
-          transition={{ duration: 0.9, times: [0, 0.4, 1], ease: 'easeInOut' }}
+          transition={{ duration: 0.9 * k, times: [0, 0.4, 1], ease: 'easeInOut' }}
           data-testid="splash-glow"
         />
       )}
@@ -71,7 +74,7 @@ export function SplashScreen() {
           className="block size-full select-none"
           initial={calm ? { opacity: 0.55 } : { opacity: 0.55, scale: 0.92 }}
           animate={{ opacity: leaving ? 0 : 1, scale: 1 }}
-          transition={leaving ? { duration: 0 } : { duration: calm ? 0.25 : 0.5, ease: EASE }}
+          transition={leaving ? { duration: 0 } : { duration: calm ? 0.25 : 0.5 * k, ease: EASE }}
           data-testid="app-mark"
         />
         {/* خط السكان بيعدّي على شكل اللوجو نفسه مرة واحدة (متقصوص على حدود اللوجو) */}
@@ -82,7 +85,7 @@ export function SplashScreen() {
               style={{ background: 'linear-gradient(180deg, transparent, rgb(255 255 255 / 0.10) 45%, rgb(255 255 255 / 0.55) 50%, rgb(255 255 255 / 0.10) 55%, transparent)' }}
               initial={{ top: '-40%' }}
               animate={{ top: '105%' }}
-              transition={{ delay: 0.35, duration: 0.45, ease: 'easeInOut' }}
+              transition={{ delay: 0.35 * k, duration: 0.45 * k, ease: 'easeInOut' }}
               data-testid="splash-scan"
             />
           </div>
@@ -93,7 +96,7 @@ export function SplashScreen() {
             className="absolute left-1/2 top-full mt-5 -translate-x-1/2 whitespace-nowrap text-xl font-medium tracking-[0.22em] text-fg"
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: leaving ? 0 : 1, y: 0 }}
-            transition={{ delay: leaving ? 0 : 0.1, duration: leaving ? 0.15 : 0.4, ease: EASE }}
+            transition={{ delay: leaving ? 0 : 0.1 * k, duration: leaving ? 0.15 : 0.4 * k, ease: EASE }}
           >
             {t('app.name')}
           </motion.div>

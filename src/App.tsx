@@ -1,47 +1,74 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes, useLocation, type Location } from 'react-router';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './app/auth';
 import { SyncProvider } from './offline/sync';
 import { PrefsProvider, usePrefs } from './app/prefs';
-import { AppShell } from './app/AppShell';
 import { EffectsGuard } from './app/EffectsGuard';
 import { isConfigured } from './lib/supabase';
 import { TooltipProvider } from './ui/Tooltip';
 import { ToastProvider } from './ui/Toast';
 import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/auth/LoginScreen';
-import { RegisterWizard, draftMode, hasRegisterDraft, regMeta } from './screens/auth/RegisterWizard';
-import { JoinScreen } from './screens/auth/JoinScreen';
-import { DashboardScreen } from './screens/DashboardScreen';
-import { IntakeScreen } from './screens/IntakeScreen';
-import { DeviceDetailScreen } from './screens/DeviceDetailScreen';
-import { DevicesScreen } from './screens/DevicesScreen';
-import { TeamScreen } from './screens/TeamScreen';
-import { AuditScreen } from './screens/AuditScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { PrintScreen } from './screens/PrintScreen';
-import { TrackingScreen } from './screens/TrackingScreen';
-import { CustomersScreen, CustomerProfileScreen } from './screens/CustomersScreen';
-import { FinanceScreen } from './screens/finance/FinanceScreen';
-import { StatementScreen } from './screens/finance/StatementScreen';
-import { BalancesScreen, ProfitScreen } from './screens/finance/BalancesScreen';
-import { InventoryScreen } from './screens/finance/InventoryScreen';
-import { DrawerScreen } from './screens/finance/DrawerScreen';
-import { WorkScreen } from './screens/WorkScreen';
-import { ReportsScreen } from './screens/ReportsScreen';
-import { DayReportPrint, StatementPrint } from './screens/finance/FinancePrint';
-import { VideosScreen } from './screens/VideosScreen';
-import { CommunityScreen } from './screens/CommunityScreen';
-import { AdminScreen } from './screens/AdminScreen';
+import { draftMode, hasRegisterDraft, regMeta } from './screens/auth/registerDraft';
+import { lazyScreen, whenIdle } from './app/lazyScreen';
+import { getHandoffMs, initSplashSpeed, SPLASH_ANIM_MS } from './lib/splashTiming';
+
+// كل شاشة في ملف لوحدها، عشان الافتتاحية والدخول يحمّلوا الأساس بس.
+// الشاشات الأساسية بتتحمّل في الخلفية بعد الافتتاحية على طول، والباقي لما الجهاز يفضى (preloadAll تحت)
+const AppShell = lazyScreen(() => import('./app/AppShell').then((m) => m.AppShell));
+const RegisterWizard = lazyScreen(() => import('./screens/auth/RegisterWizard').then((m) => m.RegisterWizard));
+const JoinScreen = lazyScreen(() => import('./screens/auth/JoinScreen').then((m) => m.JoinScreen));
+const TrackingScreen = lazyScreen(() => import('./screens/TrackingScreen').then((m) => m.TrackingScreen));
+const DashboardScreen = lazyScreen(() => import('./screens/DashboardScreen').then((m) => m.DashboardScreen));
+const IntakeScreen = lazyScreen(() => import('./screens/IntakeScreen').then((m) => m.IntakeScreen));
+const DeviceDetailScreen = lazyScreen(() => import('./screens/DeviceDetailScreen').then((m) => m.DeviceDetailScreen));
+const DevicesScreen = lazyScreen(() => import('./screens/DevicesScreen').then((m) => m.DevicesScreen));
+const FinanceScreen = lazyScreen(() => import('./screens/finance/FinanceScreen').then((m) => m.FinanceScreen));
+const DrawerScreen = lazyScreen(() => import('./screens/finance/DrawerScreen').then((m) => m.DrawerScreen));
+const TeamScreen = lazyScreen(() => import('./screens/TeamScreen').then((m) => m.TeamScreen));
+const AuditScreen = lazyScreen(() => import('./screens/AuditScreen').then((m) => m.AuditScreen));
+const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen').then((m) => m.SettingsScreen));
+const PrintScreen = lazyScreen(() => import('./screens/PrintScreen').then((m) => m.PrintScreen));
+const CustomersScreen = lazyScreen(() => import('./screens/CustomersScreen').then((m) => m.CustomersScreen));
+const CustomerProfileScreen = lazyScreen(() => import('./screens/CustomersScreen').then((m) => m.CustomerProfileScreen));
+const StatementScreen = lazyScreen(() => import('./screens/finance/StatementScreen').then((m) => m.StatementScreen));
+const BalancesScreen = lazyScreen(() => import('./screens/finance/BalancesScreen').then((m) => m.BalancesScreen));
+const ProfitScreen = lazyScreen(() => import('./screens/finance/BalancesScreen').then((m) => m.ProfitScreen));
+const InventoryScreen = lazyScreen(() => import('./screens/finance/InventoryScreen').then((m) => m.InventoryScreen));
+const WorkScreen = lazyScreen(() => import('./screens/WorkScreen').then((m) => m.WorkScreen));
+const ReportsScreen = lazyScreen(() => import('./screens/ReportsScreen').then((m) => m.ReportsScreen));
+const DayReportPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.DayReportPrint));
+const StatementPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.StatementPrint));
+const VideosScreen = lazyScreen(() => import('./screens/VideosScreen').then((m) => m.VideosScreen));
+const CommunityScreen = lazyScreen(() => import('./screens/CommunityScreen').then((m) => m.CommunityScreen));
+const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) => m.AdminScreen));
+
+/** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
+const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, BalancesScreen, ProfitScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VideosScreen, CommunityScreen, AdminScreen];
+let preloaded = false;
+/** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
+function preloadAll() {
+  if (preloaded) return;
+  preloaded = true;
+  performance.mark('preload-start');
+  void Promise.allSettled(CORE.map((c) => c.preload())).then(() => {
+    const next = (i: number) => {
+      if (i >= REST.length) return;
+      whenIdle(() => void REST[i].preload().catch(() => undefined).finally(() => next(i + 1)));
+    };
+    next(0);
+  });
+}
 import { Button } from './ui/Button';
-import { HANDOFF_S, StageProvider, type SplashPhase } from './app/stage';
+import { StageProvider, useStage, type SplashPhase } from './app/stage';
 import type { Role } from './lib/status';
 
 // الافتتاحية: ظهور اللوجو والتجمّع والسكان في 0.8 ثانية، وبعدها اللوجو بيطير لمكانه (0.45 ثانية).
 // المجموع حوالي 1.3 ثانية، وده سايب هامش لحد الثانية ونص حتى لو الجهاز مشغول
-const SPLASH_MS = 800;
+const SPLASH_MS = SPLASH_ANIM_MS;
 const CALM_SPLASH_MS = 350;
 
 function NotConfigured() {
@@ -111,6 +138,18 @@ function Gate() {
   return <AppRoutes role={profile.role} admin={isAdmin} />;
 }
 
+/**
+ * التحميل في الخلفية بيبدأ بعد الافتتاحية على طول (مش أثناءها، عشان حركتها ما تتأثرش على الأجهزة الضعيفة).
+ * لو المستخدم لسه في شاشة الدخول، الشاشات بتكون جاهزة على ما يكتب الإيميل وكلمة السر.
+ */
+function PreloadAfterSplash({ enabled }: { enabled: boolean }) {
+  const { phase } = useStage();
+  useEffect(() => {
+    if (enabled && phase === 'done') preloadAll();
+  }, [enabled, phase]);
+  return null;
+}
+
 /** مدير التسويق: الفيديوهات والمظهر بس */
 function MarketingRoutes() {
   return (
@@ -174,23 +213,31 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
 function Boot() {
   const { calm } = usePrefs();
   const { loading } = useAuth();
-  const ms = calm ? CALM_SPLASH_MS : SPLASH_MS;
+  // الميزانية محسوبة من لحظة فتح البرنامج: على جهاز ضعيف نفس الحركة بتمشي أسرع (src/lib/splashTiming.ts)
+  const [speed] = useState(() => initSplashSpeed(performance.now()));
+  const ms = calm ? CALM_SPLASH_MS : SPLASH_MS * speed;
   const [minDone, setMinDone] = useState(false);
   const mounted = useRef(performance.now());
   useEffect(() => {
     const left = Math.max(0, ms - (performance.now() - mounted.current));
-    const tm = setTimeout(() => setMinDone(true), left);
+    const tm = setTimeout(() => {
+      performance.mark('splash-min');
+      setMinDone(true);
+    }, left);
     return () => clearTimeout(tm);
   }, [ms]);
   const location = useLocation();
   // العميل اللي بيفتح صفحة التتبع ما يستناش الشاشة الافتتاحية
   const publicPage = location.pathname === '/t' || location.pathname.startsWith('/t/');
   const show = !publicPage && (!minDone || loading);
+  useEffect(() => {
+    if (!loading) performance.mark('auth-ready');
+  }, [loading]);
   // بعد الافتتاحية: اللوجو بيطير لمكانه، وبعدين بيستقر هناك
   const [settled, setSettled] = useState(false);
   useEffect(() => {
     if (show || settled) return;
-    const tm = setTimeout(() => setSettled(true), calm ? 0 : HANDOFF_S * 1000 + 30);
+    const tm = setTimeout(() => setSettled(true), calm ? 0 : getHandoffMs() + 30);
     return () => clearTimeout(tm);
   }, [show, settled, calm]);
   const phase: SplashPhase = publicPage || settled ? 'done' : show ? 'splash' : calm ? 'done' : 'handoff';
@@ -200,11 +247,15 @@ function Boot() {
   }, [publicPage]);
   return (
     <StageProvider phase={phase}>
+      {/* صفحة تتبع العميل: بتحمّل نفسها بس (العميل غالبًا على باقة موبايل) */}
+      <PreloadAfterSplash enabled={!publicPage} />
       <EffectsGuard />
       {(!loading || publicPage) && (
         // الشاشة اللي تحت بتظهر بنعومة لما الافتتاحية تخلص، والخلفية نفسها ما بتتغيرش
         <motion.div className="relative z-[1]" initial={false} animate={{ opacity: phase === 'splash' ? 0 : 1 }} transition={{ duration: 0.35 }} inert={phase === 'splash' ? true : undefined}>
-          <Gate />
+          <Suspense fallback={null}>
+            <Gate />
+          </Suspense>
         </motion.div>
       )}
       <AnimatePresence>{show && <SplashScreen key="splash" />}</AnimatePresence>

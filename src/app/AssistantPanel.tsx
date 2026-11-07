@@ -8,6 +8,21 @@ import { Panel, PanelHeader } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { Alert } from '../ui/Feedback';
 
+// المساعد متفعّل على السيرفر؟ بنسأل مرة واحدة بس في كل فتحة للبرنامج (مش مع كل جهاز)
+let enabledOnce: Promise<boolean> | null = null;
+function assistantEnabled(): Promise<boolean> {
+  enabledOnce ??= supabase.functions
+    .invoke('assistant', { body: { status: true } })
+    .then(({ data, error }) => !error && data?.enabled === true)
+    .catch(() => false)
+    .then((v) => {
+      // لو ما ردّش (مثلًا من غير نت) نسأل تاني المرة الجاية
+      if (!v) enabledOnce = null;
+      return v;
+    });
+  return enabledOnce;
+}
+
 /**
  * المساعد الذكي في صفحة الجهاز (Gemini المجاني من السيرفر): بيبعت الموديل ووصف العطل بس، متنضّفين من أي بيانات عميل.
  * لو مفيش مفتاح على السيرفر: مقفول برسالة واضحة. ودليل الأعطال المدمج (مجاني ومن غير نت) متاح دايمًا.
@@ -23,10 +38,7 @@ export function AssistantPanel({ brand, model, issue, names }: { brand: string; 
 
   useEffect(() => {
     let live = true;
-    supabase.functions
-      .invoke('assistant', { body: { status: true } })
-      .then(({ data, error }) => live && setEnabled(!error && data?.enabled === true))
-      .catch(() => live && setEnabled(false));
+    void assistantEnabled().then((v) => live && setEnabled(v));
     return () => {
       live = false;
     };

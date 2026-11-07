@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { SHOP_COLUMNS, type Profile, type Shop } from '../lib/types';
 import { isNetworkError, localDb } from '../offline/outbox';
+import { mayHaveSessionNow } from '../lib/authFast';
 
 interface AuthState {
   loading: boolean;
@@ -51,7 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
-  const [loading, setLoading] = useState(true);
+  // من غير جلسة محفوظة ولا رابط تأكيد: مش داخل أكيد، فشاشة الدخول بتظهر على طول (src/lib/authFast.ts)
+  const [loading, setLoading] = useState(mayHaveSessionNow);
   const [isAdmin, setIsAdmin] = useState(false);
   const [suspended, setSuspended] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     void supabase.auth.getSession().then(({ data }) => {
+      performance.mark('auth-session');
       if (!active) return;
       setSession(data.session);
       void load(data.session);
