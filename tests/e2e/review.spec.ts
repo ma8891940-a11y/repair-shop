@@ -18,6 +18,13 @@ function consoleErrors(page: Page) {
 async function visibleText(page: Page, userData: string[]) {
   // اسم كل لغة بيتكتب بلغتها (زي "العربية" في اختيار اللغة): ده مقصود
   let txt = (await page.locator('body').innerText()).split('العربية').join(' ');
+  // منشورات المجتمع والفيديوهات كلام كتبه المستخدمين (من محلات تانية كمان)، فما بتتترجمش
+  // (أزرار المنشور نفسها بتفضل متراجعة)
+  const ugc = page.locator('[data-testid="community-post"], [data-testid="video-item"]');
+  const buttons = new Set((await ugc.locator('button, a').allInnerTexts()).map((b) => b.trim()));
+  for (const c of await ugc.allInnerTexts()) {
+    for (const line of c.split('\n').map((l) => l.trim()).filter((l) => l.length > 1 && !buttons.has(l))) txt = txt.split(line).join(' ');
+  }
   for (const u of userData) txt = txt.split(u).join(' ');
   // الإيميلات بيانات مستخدم كمان (زي x@test.local)
   txt = txt.replace(/[\w.+-]+@[\w.-]+/g, ' ');
@@ -113,4 +120,67 @@ test('الحالات الغلط: حقول فاضية، ومبالغ كبيرة،
     }
     await u.ctx.close();
   }
+});
+
+// الـ service worker موجود في نسخة الإنتاج بس (npm run build)، فالاختبار ده بيشتغل مع E2E_PROD=1
+test('فتح التطبيق من الأول والنت فاصل (نسخة الإنتاج): بيفتح من الجهاز ولوحة التحكم ظاهرة والمؤشر "بدون نت"', async ({ page, context }, info) => {
+  test.skip(!process.env.E2E_PROD, 'الـ service worker في نسخة الإنتاج بس: شغّل E2E_PROD=1 npm run test:e2e');
+  test.setTimeout(180_000);
+  await prefs(page, info);
+  await registerShop(page, uniq('cold'));
+  await quickIntake(page, '01036363636', 'عميل من غير نت');
+  // الـ service worker اتسجل وبقى متحكم في الصفحة
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  await page.goto('/#/');
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 30_000 }).toBe(true);
+  await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
+  // قائمة الأجهزة اتفتحت مرة والنت شغال (فاتحفظت منها نسخة على الجهاز)
+  await page.goto('/#/devices');
+  await expect(page.getByText('عميل من غير نت').filter({ visible: true }).first()).toBeVisible();
+
+  // النت فصل، والتطبيق اتقفل واتفتح من الأول (صفحة جديدة)
+  await context.setOffline(true);
+  await page.close();
+  const p2 = await context.newPage();
+  await p2.goto('/#/devices');
+  await expect(p2.getByTestId('connection')).toHaveAttribute('data-state', 'offline', { timeout: 30_000 });
+  await expect(p2.getByText('عميل من غير نت').filter({ visible: true }).first()).toBeVisible({ timeout: 30_000 });
+  await p2.goto('/#/');
+  await expect(p2.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('الدفعة: "سجّل" على طول بعد فتح الفورم ما بيبعتش طلب ناقص، والدفعة والنت فاصل بتتسجل بخزنة صح وتتبعت لما النت يرجع', async ({ page, context }, info) => {
+  test.setTimeout(180_000);
+  await prefs(page, info);
+  await registerShop(page, uniq('pay'));
+  await quickIntake(page, '01037373737', 'عميل الدفعة');
+  await page.getByLabel('التكلفة النهائية').fill('1000');
+  await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
+  await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
+  await expect(page.getByTestId('device-due')).toHaveText('1,000');
+
+  // النت فصل قبل ما فورم الدفعة يتفتح خالص على الجهاز ده
+  await context.setOffline(true);
+  await expect(page.getByTestId('connection')).toHaveAttribute('data-state', 'offline');
+  await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByLabel('المبلغ').fill('400');
+  await dlg.getByRole('button', { name: 'سجّل' }).click();
+  await expect(page.getByText('اتسجل على الجهاز، وهيتبعت أول ما النت يرجع').first()).toBeVisible();
+  await expect(dlg).toHaveCount(0);
+
+  // النت رجع: الدفعة اتبعتت من غير خطأ، والمتبقي 600
+  await context.setOffline(false);
+  await expect(page.getByTestId('connection')).toHaveAttribute('data-state', 'online', { timeout: 30_000 });
+  await page.reload();
+  await expect(page.getByTestId('device-due')).toHaveText('600', { timeout: 15_000 });
+  await expect(page.getByTestId('connection')).not.toContainText(/تعارض|conflict/i);
+
+  // "سجّل" على طول بعد ما الفورم يتفتح: بيستنى الخزن ويتسجل صح
+  await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
+  await expect(page.getByText('اتسجلت العملية')).toBeVisible();
+  await expect(page.getByTestId('device-due')).toHaveText('0');
 });

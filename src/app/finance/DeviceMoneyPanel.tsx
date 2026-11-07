@@ -4,7 +4,7 @@ import { Calculator, HandCoins, PackageMinus, Truck } from 'lucide-react';
 import { useLoad } from '../useLoad';
 import { useMe } from '../auth';
 import { opId, rpc, type DeviceMoney, type StockRow } from '../ledgerApi';
-import { OpDialog } from './OpDialog';
+import { OpDialog, warmOpLists } from './OpDialog';
 import { supabase } from '../../lib/supabase';
 import { parsePounds } from '../../lib/money';
 import { suggestPrice } from '../../lib/ledger';
@@ -28,6 +28,10 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
   const owner = profile.role === 'owner';
   const [pay, setPay] = useState(false);
   const [calc, setCalc] = useState(false);
+  // الخزن تتحفظ على الجهاز من دلوقتي، عشان الدفعة تتسجل صح لو النت فصل قبل ما الفورم يتفتح
+  useEffect(() => {
+    if (profile.role === 'owner' || profile.role === 'reception') void warmOpLists('payment', profile.id).catch(() => undefined);
+  }, [profile.id, profile.role]);
   const { data, error, loading, reload } = useLoad(async () => {
     const [m, sug] = await Promise.all([
       rpc<DeviceMoney>('device_money', { p_device: deviceId }),

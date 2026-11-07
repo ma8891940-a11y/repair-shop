@@ -944,6 +944,8 @@
     "errParty": "اختار الطرف",
     "errTo": "اختار خزنة تانية",
     "errCashbox": "اختار الخزنة",
+    "errExpense": "اختار نوع المصروف",
+    "errCashbox": "اختار الخزنة",
     "errReason": "اكتب سبب التصحيح",
     "kinds": {
       "cashbox": "خزنة",

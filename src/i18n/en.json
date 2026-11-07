@@ -940,6 +940,8 @@
     "errParty": "Choose who",
     "errTo": "Choose a different cashbox",
     "errCashbox": "Choose a cashbox",
+    "errExpense": "Choose an expense type",
+    "errCashbox": "Choose a cashbox",
     "errReason": "Write the reason for the correction",
     "kinds": {
       "cashbox": "Cashbox",

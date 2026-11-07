@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { cacheSet, localDb } from '../../offline/outbox';
 import { parsePounds } from '../../lib/money';
 import { errorMessage } from '../../lib/errors';
 import { useFormat } from '../../i18n/format';
@@ -41,6 +42,25 @@ export interface OpFixed {
   amount?: number;
 }
 
+/** القوايم اللي الفورم محتاجها (الخزن، وأنواع المصروفات، والموردين، والموظفين) */
+async function loadOpLists(op: Op, fixed: OpFixed) {
+  const needs = NEEDS[op];
+  const [cbs, exp, sup, emp] = await Promise.all([
+    needs.includes('cashbox') || needs.includes('to') ? loadCashboxes() : Promise.resolve([] as Cashbox[]),
+    needs.includes('expense') ? supabase.from('accounts').select('id, code, name, type, kind, method, holder_id, active').eq('kind', 'expense').eq('active', true).order('created_at') : Promise.resolve({ data: [] }),
+    needs.includes('supplier') && !fixed.supplier ? supabase.from('suppliers').select('id, name').is('deleted_at', null).order('name') : Promise.resolve({ data: [] }),
+    needs.includes('employee') && !fixed.employee ? supabase.from('profiles').select('id, full_name').is('deleted_at', null).order('full_name') : Promise.resolve({ data: [] }),
+  ]);
+  return { cbs, exp: (exp.data ?? []) as Account[], sup: (sup.data ?? []) as { id: string; name: string }[], emp: (emp.data ?? []) as { id: string; full_name: string }[] };
+}
+const opListsKey = (op: Op, userId: string) => `op-lists:${op}:${userId}`;
+
+/** بيحفظ قوايم الفورم على الجهاز والنت شغال، عشان الدفعة تتسجل بخزنة صح لو النت فصل بعدين */
+export async function warmOpLists(op: Op, userId: string) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  await cacheSet(localDb(), opListsKey(op, userId), await loadOpLists(op, {}));
+}
+
 /** فورم عملية فلوس واحدة. كل عملية بتتسجل بدالة في قاعدة البيانات (قيد متوازن جوه transaction) */
 export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: Op; open: boolean; onOpenChange: (v: boolean) => void; fixed?: OpFixed; onDone?: () => void }) {
   const { t } = useTranslation();
@@ -60,16 +80,8 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
   const [id, setId] = useState(opId);
   const sync = useSync();
 
-  const lists = useLoad(async () => {
-    if (!open) return null;
-    const [cbs, exp, sup, emp] = await Promise.all([
-      needs.includes('cashbox') || needs.includes('to') ? loadCashboxes() : Promise.resolve([] as Cashbox[]),
-      needs.includes('expense') ? supabase.from('accounts').select('id, code, name, type, kind, method, holder_id, active').eq('kind', 'expense').eq('active', true).order('created_at') : Promise.resolve({ data: [] }),
-      needs.includes('supplier') && !fixed.supplier ? supabase.from('suppliers').select('id, name').is('deleted_at', null).order('name') : Promise.resolve({ data: [] }),
-      needs.includes('employee') && !fixed.employee ? supabase.from('profiles').select('id, full_name').is('deleted_at', null).order('full_name') : Promise.resolve({ data: [] }),
-    ]);
-    return { cbs, exp: (exp.data ?? []) as Account[], sup: (sup.data ?? []) as { id: string; name: string }[], emp: (emp.data ?? []) as { id: string; full_name: string }[] };
-  }, [open, op]);
+  // نسخة على الجهاز (وهو مفتوح بس) عشان الدفعة تتسجل بخزنة صح والنت فاصل
+  const lists = useLoad(async () => (open ? loadOpLists(op, fixed) : null), [open, op], { cacheKey: open ? opListsKey(op, profile.id) : undefined });
 
   // كل مرة الفورم يتفتح: عملية جديدة برقم جديد
   useEffect(() => {
@@ -96,7 +108,11 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
 
   async function submit() {
     setErr(null);
+    // القوايم لسه بتتحمّل: ما نبعتش طلب ناقص
+    if (!lists.data) return;
     if (!amountMinor || amountMinor <= 0) return setErr(t('fin.errAmount'));
+    if ((needs.includes('cashbox') || needs.includes('to')) && !cashbox) return setErr(t('fin.errCashbox'));
+    if (needs.includes('expense') && !expense) return setErr(t('fin.errExpense'));
     if ((needs.includes('supplier') || needs.includes('employee') || needs.includes('customer')) && !partyId) return setErr(t('fin.errParty'));
     if (needs.includes('to') && (!to || to === cashbox)) return setErr(t('fin.errTo'));
     const n = note.trim() || null;
@@ -167,7 +183,7 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void submit()} disabled={!(profile.role === 'owner' || profile.role === 'reception')}>
+          <Button variant="primary" loading={busy || (!lists.data && !lists.error)} onClick={() => void submit()} disabled={!(profile.role === 'owner' || profile.role === 'reception')}>
             {t('fin.record')}
           </Button>
         </>
@@ -227,6 +243,7 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
         <Field label={t('fin.note')}>
           <Textarea rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
+        {lists.error && <Alert tone="danger">{lists.error}</Alert>}
         {err && <Alert tone="danger">{err}</Alert>}
         <button type="submit" hidden />
       </form>

@@ -80,9 +80,9 @@ export async function linkFor(email: string): Promise<string> {
 export async function startRegister(page: Page, email: string, shopName = 'مركز الاختبار', ownerName = 'محمود حسن') {
   await page.goto('/#/register');
   await afterSplash(page);
-  const inputs = page.locator('form input');
-  await inputs.nth(0).fill(shopName);
-  await inputs.nth(1).fill(ownerName);
+  // (أول فتح على npm run dev ممكن الشاشة تترسم تاني وتمسح اللي اتكتب في أول جزء من الثانية)
+  await fillSure(page, 'form input', 0, shopName);
+  await fillSure(page, 'form input', 1, ownerName);
   await page.getByRole('button', { name: 'التالي' }).click();
   await page.locator('input[type=email]').fill(email);
   await fillSure(page, 'input[type=password]', 0, PASS);
