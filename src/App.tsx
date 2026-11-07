@@ -12,7 +12,7 @@ import { TooltipProvider } from './ui/Tooltip';
 import { ToastProvider } from './ui/Toast';
 import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/auth/LoginScreen';
-import { RegisterWizard, draftMode, hasRegisterDraft } from './screens/auth/RegisterWizard';
+import { RegisterWizard, draftMode, hasRegisterDraft, regMeta } from './screens/auth/RegisterWizard';
 import { JoinScreen } from './screens/auth/JoinScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { IntakeScreen } from './screens/IntakeScreen';
@@ -39,8 +39,9 @@ import { Button } from './ui/Button';
 import { HANDOFF_S, StageProvider, type SplashPhase } from './app/stage';
 import type { Role } from './lib/status';
 
-// الافتتاحية: ظهور اللوجو والتجمّع والسكان في 0.85 ثانية، وبعدها اللوجو بيطير لمكانه (0.45 ثانية). المجموع أقل من ثانية ونص
-const SPLASH_MS = 850;
+// الافتتاحية: ظهور اللوجو والتجمّع والسكان في 0.8 ثانية، وبعدها اللوجو بيطير لمكانه (0.45 ثانية).
+// المجموع حوالي 1.3 ثانية، وده سايب هامش لحد الثانية ونص حتى لو الجهاز مشغول
+const SPLASH_MS = 800;
 const CALM_SPLASH_MS = 350;
 
 function NotConfigured() {
@@ -92,9 +93,10 @@ function Gate() {
   const wizard =
     joinPath ||
     (!session && location.pathname === '/register') ||
-    (session && !profile && hasRegisterDraft()) ||
+    // رجع من رابط التأكيد (حتى في تبويب أو جهاز تاني): بيانات التسجيل محفوظة مع الحساب
+    (session && !profile && (hasRegisterDraft() || regMeta(session) !== null)) ||
     (session && profile?.role === 'owner' && shop && !shop.setup_completed_at);
-  if (wizard) return <RegisterWizard mode={joinPath ? 'invite' : session ? draftMode() : 'shop'} />;
+  if (wizard) return <RegisterWizard mode={joinPath ? 'invite' : session ? draftMode(session) : 'shop'} />;
 
   if (!session) {
     return (

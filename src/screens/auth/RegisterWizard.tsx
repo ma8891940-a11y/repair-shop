@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { Link } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -57,8 +58,29 @@ function saveDraft(d: Draft | null) {
 export function hasRegisterDraft(): boolean {
   return loadDraft() !== null;
 }
-export function draftMode(): WizardMode {
-  return loadDraft()?.mode ?? 'shop';
+
+/**
+ * بيانات التسجيل اللي بتتحفظ مع الحساب نفسه (user_metadata) وقت signUp.
+ * عشان لو رابط التأكيد اتفتح في تبويب تاني أو على جهاز تاني، التسجيل يكمّل من غير ما يسأل تاني.
+ * دي بيانات لملء الخانات بس، والصلاحيات بتتحدد في قاعدة البيانات.
+ */
+export interface RegMeta {
+  reg_mode?: WizardMode;
+  shop_name?: string;
+  owner_name?: string;
+  shop_phone?: string;
+  area?: string;
+}
+export function regMeta(session: Session | null): RegMeta | null {
+  const m = session?.user.user_metadata as RegMeta | undefined;
+  return m?.reg_mode === 'shop' || m?.reg_mode === 'invite' ? m : null;
+}
+export function draftMode(session: Session | null = null): WizardMode {
+  return loadDraft()?.mode ?? regMeta(session)?.reg_mode ?? 'shop';
+}
+/** الرابط اللي إيميل التأكيد بيرجّع عليه (نفس عنوان البرنامج) */
+function confirmRedirect(): string {
+  return `${window.location.origin}${window.location.pathname}`;
 }
 
 /** تسجيل محل جديد على 6 خطوات. لو المستخدم رجع بعد التأكيد، بيكمّل من آخر خطوة. */
@@ -68,17 +90,21 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   const { setTheme, theme } = usePrefs();
   const toast = useToast();
   const draft = loadDraft();
-  const mode: WizardMode = modeProp ?? draft?.mode ?? 'shop';
+  const meta = regMeta(session);
+  const mode: WizardMode = modeProp ?? draft?.mode ?? meta?.reg_mode ?? 'shop';
   const invite = mode === 'invite';
   const first = invite ? 1 : 0;
-  const resumeAt = profile && shop && !shop.setup_completed_at ? Math.max(3, draft?.step ?? 3) : Math.max(first, draft?.step ?? first);
+  // داخل بحساب متأكد ومن غير محل لسه (رجع من رابط التأكيد، أو دخل بعد ما أكد): بنكمّل من خطوة التأكيد، وهي بتعدّي لوحدها
+  const confirmedNoProfile = Boolean(session) && !profile;
+  const resumeAt =
+    profile && shop && !shop.setup_completed_at ? Math.max(3, draft?.step ?? 3) : confirmedNoProfile ? Math.max(2, draft?.step ?? 2) : Math.max(first, draft?.step ?? first);
   const [step, setStep] = useState(resumeAt);
   const [dir, setDir] = useState(1);
 
-  const [shopName, setShopName] = useState(draft?.shopName ?? '');
-  const [ownerName, setOwnerName] = useState(draft?.ownerName ?? '');
-  const [shopPhone, setShopPhone] = useState(draft?.shopPhone ?? '');
-  const [area, setArea] = useState(draft?.area ?? '');
+  const [shopName, setShopName] = useState(draft?.shopName ?? meta?.shop_name ?? '');
+  const [ownerName, setOwnerName] = useState(draft?.ownerName ?? meta?.owner_name ?? '');
+  const [shopPhone, setShopPhone] = useState(draft?.shopPhone ?? meta?.shop_phone ?? '');
+  const [area, setArea] = useState(draft?.area ?? meta?.area ?? '');
   const [email, setEmail] = useState(draft?.email ?? session?.user.email ?? '');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
@@ -128,7 +154,8 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   async function bootstrapAndContinue() {
     if (invite) return joinInvite();
     const { error: be } = await supabase.rpc('bootstrap_account', { p_full_name: ownerName.trim(), p_shop_name: shopName.trim() || null });
-    if (be) throw be;
+    // لو التأكيد اتفتح في تبويبين في نفس الوقت، التاني بيفشل لأن الحساب اتعمل خلاص (من غير ما يتعمل محل تاني): نكمّل عادي
+    if (be && !(await hasProfile())) throw be;
     const { data: me } = await supabase.from('profiles').select('shop_id').single();
     if (me) {
       shopIdRef.current = me.shop_id;
@@ -138,6 +165,11 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
     go(3);
   }
 
+  async function hasProfile() {
+    const { data } = await supabase.from('profiles').select('id').maybeSingle();
+    return Boolean(data);
+  }
+
   // موظف معاه دعوة: بينضم للمحل اللي عزمه، بالاسم اللي صاحب المحل كتبه
   async function joinInvite() {
     const { data: inv, error: ie } = await supabase.rpc('my_pending_invite');
@@ -145,7 +177,7 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
     const row = Array.isArray(inv) ? (inv[0] as { shop_name: string; full_name: string } | undefined) : undefined;
     if (!row) throw new Error(t('onboarding.noInvite'));
     const { error: be } = await supabase.rpc('bootstrap_account', { p_full_name: row.full_name, p_shop_name: null });
-    if (be) throw be;
+    if (be && !(await hasProfile())) throw be;
     saveDraft(null);
     toast({ tone: 'ok', title: t('onboarding.joinTitle'), description: row.shop_name });
     await refresh();
@@ -164,10 +196,19 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
         if (!isEmail(email)) return fail(t('register.emailInvalid'));
         if (!pw.rules.len) return fail(t('errors.weakPassword'));
         if (password !== password2) return fail(t('register.mismatch'));
-        const { data, error: se } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
+        const regData: RegMeta = invite
+          ? { reg_mode: 'invite' }
+          : { reg_mode: 'shop', shop_name: shopName.trim(), owner_name: ownerName.trim(), shop_phone: shopPhone.trim(), area: area.trim() };
+        const { data, error: se } = await supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
+          password,
+          // الإيميل ممكن يكون فيه رابط تأكيد (قالب Supabase الافتراضي) أو كود من 6 أرقام (القالب المتعدّل)، والاتنين شغالين
+          options: { emailRedirectTo: confirmRedirect(), data: regData },
+        });
         if (se) return fail(se);
         if (data.session) {
-          // التأكيد مقفول في المشروع: نكمّل على طول
+          // "Confirm email" مقفول في المشروع: نكمّل على طول
+          autoRan.current = true;
           await bootstrapAndContinue();
         } else {
           setCooldown(60);
@@ -246,11 +287,54 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
     }
   }, [step]);
 
+  // الحساب اتأكد (رجعنا بجلسة): التسجيل بيكمّل لوحده مرة واحدة
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (key !== 'verify' || !session || profile || autoRan.current) return;
+    autoRan.current = true;
+    setBusy(true);
+    bootstrapAndContinue()
+      .catch((e) => {
+        autoRan.current = false;
+        fail(e);
+      })
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, session, profile]);
+
+  // اتأكد من الرابط (في تبويب تاني أو على جهاز تاني)؟ بنجرّب ندخل بنفس الإيميل وكلمة السر:
+  // لما يرجع للبرنامج (focus)، وكل 15 ثانية، وبالزرار. لحد ما الإيميل يتأكد، الدخول بيترفض وبنكمّل استنى
+  const [checking, setChecking] = useState(false);
+  const [notYet, setNotYet] = useState(false);
+  async function checkConfirmed(manual: boolean) {
+    if (session || !password || checking) return;
+    setChecking(true);
+    const { error: le } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+    setChecking(false);
+    if (le && manual) setNotYet(true);
+  }
+  useEffect(() => {
+    if (key !== 'verify' || session || !password) return;
+    const onFocus = () => void checkConfirmed(false);
+    const onVis = () => document.visibilityState === 'visible' && onFocus();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
+    const iv = window.setInterval(onFocus, 15_000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
+      clearInterval(iv);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, session, password]);
+
   async function verify(token: string) {
     if (token.length !== 6) return;
+    autoRan.current = true;
     setBusy(true);
     const { error: ve } = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token, type: 'signup' });
     if (ve) {
+      autoRan.current = false;
       setBusy(false);
       setCodeBad((c) => c + 1);
       setCode('');
@@ -266,7 +350,7 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
   }
 
   async function resend() {
-    const { error: re } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase() });
+    const { error: re } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase(), options: { emailRedirectTo: confirmRedirect() } });
     if (re) return fail(re);
     setCooldown(60);
     toast({ tone: 'info', title: t('register.resent') });
@@ -366,6 +450,22 @@ export function RegisterWizard({ mode: modeProp }: { mode?: WizardMode } = {}) {
                         {email}
                       </b>
                     </p>
+                    {/* الإيميل الافتراضي فيه رابط، والقالب المتعدّل فيه كود: الاتنين بيدخّلوا */}
+                    <div className="w-full rounded-lg border border-glass-border bg-sunken/40 p-3 text-start text-sm text-fg-2" data-testid="verify-link-hint">
+                      <div className="font-medium text-fg">{t('register.linkTitle')}</div>
+                      <p className="mt-1 text-xs">{password ? t('register.linkText') : t('register.linkTextNoPw')}</p>
+                      {password ? (
+                        <Button size="sm" variant="secondary" className="mt-2" loading={checking} onClick={() => void checkConfirmed(true)}>
+                          {t('register.linkDone')}
+                        </Button>
+                      ) : (
+                        <a href="#/" className="mt-2 inline-block text-xs font-medium text-accent hover:underline">
+                          {t('register.linkLogin')}
+                        </a>
+                      )}
+                      {notYet && <p className="mt-2 text-xs text-warn" role="status">{t('register.linkNotYet')}</p>}
+                    </div>
+                    <div className="text-xs text-fg-3">{t('register.orCode')}</div>
                     <OtpInput
                       label={t('register.codeLabel')}
                       value={code}

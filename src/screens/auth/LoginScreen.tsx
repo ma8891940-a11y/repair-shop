@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
@@ -18,6 +18,26 @@ export function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // الإيميل لسه ما اتأكدش: بنعرض إعادة إرسال رسالة التأكيد
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const [resent, setResent] = useState(false);
+  // رابط تأكيد قديم أو اتستخدم قبل كده: Supabase بيرجّع الخطأ في العنوان (#error_code=otp_expired...)
+  const [linkError, setLinkError] = useState<string | null>(null);
+  useEffect(() => {
+    const h = window.location.hash;
+    if (!/error_code=|error_description=/.test(h)) return;
+    const q = new URLSearchParams(h.replace(/^#\/?/, ''));
+    const code = q.get('error_code') ?? '';
+    setLinkError(/expired|otp/i.test(code) ? t('login.linkExpired') : t('login.linkFailed'));
+    // نشيل الخطأ من العنوان عشان التنقل يرجع طبيعي
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}#/`);
+  }, [t]);
+
+  async function resendConfirm() {
+    const { error: re } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase(), options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` } });
+    if (re) return setError(errorMessage(re));
+    setResent(true);
+  }
 
   const onKey = (e: KeyboardEvent) => setCaps(e.getModifierState?.('CapsLock') ?? false);
 
@@ -29,11 +49,14 @@ export function LoginScreen() {
       return setError(t('login.missing'));
     }
     setBusy(true);
+    setUnconfirmed(false);
+    setResent(false);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     setBusy(false);
     if (error) {
       setAttempt((a) => a + 1);
       setError(errorMessage(error));
+      setUnconfirmed(/Email not confirmed|email_not_confirmed/i.test(`${error.message} ${(error as { code?: string }).code ?? ''}`));
     }
   }
 
@@ -60,9 +83,20 @@ export function LoginScreen() {
           >
             <Input type={show ? 'text' : 'password'} dir="ltr" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyUp={onKey} className="h-11 text-start" />
           </Field>
+          {linkError && !error && <Alert tone="warn">{linkError}</Alert>}
           {error && (
             <div key={attempt}>
               <Alert tone="danger">{error}</Alert>
+            </div>
+          )}
+          {unconfirmed && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-fg-2" data-testid="unconfirmed">
+              <span>{resent ? t('login.resent') : t('login.unconfirmedHint')}</span>
+              {!resent && (
+                <button type="button" onClick={() => void resendConfirm()} className="font-medium text-accent hover:underline">
+                  {t('login.resendConfirm')}
+                </button>
+              )}
             </div>
           )}
           <Button type="submit" variant="primary" size="lg" loading={busy} className="mt-1 w-full justify-center">

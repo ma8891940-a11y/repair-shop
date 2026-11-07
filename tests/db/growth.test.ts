@@ -50,13 +50,14 @@ let plat = '';
 let cust = '';
 let dev = '';
 let token = '';
+const SHOP = `محل النمو ${tag}`;
 
 d('المرحلة 6: النمو', () => {
   beforeAll(async () => {
     db = new pg.Client({ connectionString: url });
     await db.connect();
     owner = await user(`g6o-${tag}@g6.test`);
-    shop = (await as(owner, `select (bootstrap_account('صاحب', 'محل النمو')).shop_id as s`)).rows[0].s;
+    shop = (await as(owner, `select (bootstrap_account('صاحب', $1)).shop_id as s`, [SHOP])).rows[0].s;
     tech = await staff(owner, 'فني', 'technician');
     mkt = await staff(owner, 'تسويق', 'marketing');
     other = await user(`g6x-${tag}@g6.test`);
@@ -122,7 +123,7 @@ d('المرحلة 6: النمو', () => {
     await expect(as(tech, `select community_post($1, 'IMEI 490154203237518')`, [id()])).rejects.toThrow(/E_PRIVATE_DATA/);
     // محل تاني بيشوفه ويرد
     const feed = (await as(other, `select id, author, shop from community_feed()`)).rows.find((r) => r.id === p);
-    expect(feed).toEqual({ id: p, author: 'فني', shop: 'محل النمو' });
+    expect(feed).toEqual({ id: p, author: 'فني', shop: SHOP });
     await as(other, `select community_post($1, 'جرّب تقيس الجهد', null, $2)`, [id(), p]);
     expect((await as(tech, `select replies from community_feed() where id = $1`, [p])).rows[0].replies).toBe(1);
     // بلاغ ومراجعة
@@ -157,8 +158,18 @@ d('المرحلة 6: النمو', () => {
 
   it('لوحة المشرف: المحلات واستخدامها من غير بيانات عملاء، والإيقاف بيقفل المحل كله', async () => {
     await expect(as(owner, `select * from admin_shops()`)).rejects.toThrow(/E_FORBIDDEN/);
-    const rows = (await as(plat, `select * from admin_shops() where id = $1`, [shop])).rows;
-    expect(rows[0]).toMatchObject({ name: 'محل النمو', plan: 'pro', suspended: false, staff: 3 });
+    // بحث بالاسم، وصفحات (أقصى 200 في الصفحة)، والعدد الكلي للنتايج
+    const rows = (await as(plat, `select * from admin_shops($1)`, [tag])).rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: shop, name: SHOP, plan: 'pro', suspended: false, staff: 3, total: 1 });
+    const all = (await as(plat, `select id, total from admin_shops(null, 2, 0)`)).rows;
+    expect(all).toHaveLength(2);
+    expect(all[0].total).toBeGreaterThanOrEqual(3);
+    const next = (await as(plat, `select id from admin_shops(null, 2, 2)`)).rows;
+    expect(next.map((r) => r.id)).not.toContain(all[0].id);
+    expect((await as(plat, `select count(*)::int n from admin_shops(null, 100000, 0)`)).rows[0].n).toBeLessThanOrEqual(200);
+    // علامات البحث (% و _) بتتعامل كحروف عادية، مش كأي حاجة
+    expect((await as(plat, `select * from admin_shops('%%%')`)).rowCount).toBe(0);
     const cols = Object.keys(rows[0]);
     for (const c of ['phone', 'customer', 'customers', 'email']) expect(cols).not.toContain(c);
     // المشرف نفسه ما يشوفش بيانات المحلات
@@ -168,7 +179,7 @@ d('المرحلة 6: النمو', () => {
     await expect(as(owner, `insert into devices(id, customer_id, brand, model, issue) values ($1, $2, 'a', 'b', 'c')`, [id(), cust])).rejects.toThrow();
     // الواجهة بتعرف إن المحل موقوف (عشان تعرض رسالة واضحة بدل شاشة الانضمام)
     const acc = (await as(owner, `select my_account() as a`)).rows[0].a;
-    expect(acc).toMatchObject({ shop: { name: 'محل النمو', suspended: true }, profile: { role: 'owner' }, is_admin: false });
+    expect(acc).toMatchObject({ shop: { name: SHOP, suspended: true }, profile: { role: 'owner' }, is_admin: false });
     await as(plat, `select admin_suspend($1, false)`, [shop]);
     expect((await as(owner, `select * from devices`)).rowCount).toBeGreaterThan(0);
     const log = (await admin(`select action from audit_log where shop_id = $1 and action like 'admin_%' order by created_at`, [shop])).rows.map((r) => r.action);

@@ -98,6 +98,9 @@ test('المرحلة 6: فيديو من الفني ← مراجعة التسوي
     await page.reload();
     await afterSplash(page);
     await page.goto('/#/admin');
+    // المشرف بيدوّر باسم المحل (المحلات على صفحات، 50 في المرة)
+    await page.getByLabel('دوّر باسم المحل').fill(shopName);
+    await expect(page.getByTestId('admin-shop')).toHaveCount(1);
     const row = page.getByTestId('admin-shop').filter({ hasText: shopName });
     await expect(row).toBeVisible();
     await row.getByRole('button', { name: 'إيقاف' }).click();

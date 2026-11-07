@@ -62,12 +62,27 @@ export async function fillSure(page: Page, selector: string, index: number, valu
   await expect(page.locator(selector).nth(index)).toHaveValue(value);
 }
 
-export async function registerShop(page: Page, email: string, shopName = 'مركز الاختبار') {
+/** رابط التأكيد من الإيميل (Mailpit المحلي) */
+export async function linkFor(email: string): Promise<string> {
+  for (let i = 0; i < 40; i++) {
+    const r = await (await fetch(`http://127.0.0.1:54324/api/v1/search?query=${encodeURIComponent('to:' + email)}`)).json();
+    if (r.messages?.length) {
+      const m = await (await fetch(`http://127.0.0.1:54324/api/v1/message/${r.messages[0].ID}`)).json();
+      const href = (/href="(http[^"]*verify[^"]*)"/.exec(m.HTML ?? '') || [])[1];
+      if (href) return href.replace(/&amp;/g, '&');
+    }
+    await new Promise((ok) => setTimeout(ok, 250));
+  }
+  throw new Error('no link for ' + email);
+}
+
+/** التسجيل لحد خطوة تأكيد الإيميل */
+export async function startRegister(page: Page, email: string, shopName = 'مركز الاختبار', ownerName = 'محمود حسن') {
   await page.goto('/#/register');
   await afterSplash(page);
   const inputs = page.locator('form input');
   await inputs.nth(0).fill(shopName);
-  await inputs.nth(1).fill('محمود حسن');
+  await inputs.nth(1).fill(ownerName);
   await page.getByRole('button', { name: 'التالي' }).click();
   await page.locator('input[type=email]').fill(email);
   await fillSure(page, 'input[type=password]', 0, PASS);
@@ -75,6 +90,23 @@ export async function registerShop(page: Page, email: string, shopName = 'مرك
   await expect(page.locator('input[type=password]').nth(0)).toHaveValue(PASS);
   await page.getByRole('button', { name: 'التالي' }).click();
   await page.locator('input[autocomplete=one-time-code]').waitFor();
+}
+
+/** باقي خطوات المعالج (البلد، والدفع، والهوية، والمظهر) لحد لوحة التحكم */
+export async function finishWizard(page: Page) {
+  await expect(page.getByRole('heading', { name: 'البلد والعملة' })).toBeVisible();
+  await page.getByRole('button', { name: 'التالي' }).click();
+  await expect(page.getByRole('heading', { name: 'طرق الدفع' })).toBeVisible();
+  await page.getByRole('button', { name: 'التالي' }).click();
+  await expect(page.getByRole('heading', { name: 'هوية المحل' })).toBeVisible();
+  await page.getByRole('button', { name: 'تخطّي' }).click();
+  await expect(page.getByRole('heading', { name: 'المظهر' })).toBeVisible();
+  await page.getByRole('button', { name: 'ابدأ الشغل' }).click();
+  await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
+}
+
+export async function registerShop(page: Page, email: string, shopName = 'مركز الاختبار') {
+  await startRegister(page, email, shopName);
   await page.locator('input[autocomplete=one-time-code]').click();
   await page.keyboard.type(await otpFor(email));
   await expect(page.getByRole('heading', { name: 'البلد والعملة' })).toBeVisible();

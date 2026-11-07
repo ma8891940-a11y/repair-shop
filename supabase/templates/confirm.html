@@ -1,8 +1,14 @@
-<!-- قالب إيميل التأكيد: فيه كود من 6 أرقام. انسخه في Supabase > Authentication > Email Templates > Confirm signup -->
+<!--
+  قالب إيميل التأكيد (اختياري). بيتحط بعد ما تعمل SMTP خاص (الخطوات في README).
+  فيه كود من 6 أرقام وزرار تأكيد، والبرنامج بيقبل الاتنين.
+  انسخه في Supabase > Authentication > Emails > Confirm signup.
+-->
 <div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#13181c">
-  <h2 style="margin:0 0 12px">كود تأكيد الحساب</h2>
-  <p style="margin:0 0 16px">اكتب الكود ده في البرنامج عشان تكمّل تسجيل المحل:</p>
+  <h2 style="margin:0 0 12px">تأكيد الحساب</h2>
+  <p style="margin:0 0 16px">اكتب الكود ده في البرنامج عشان تكمّل التسجيل:</p>
   <div style="font-family:Consolas,monospace;font-size:32px;letter-spacing:8px;font-weight:bold;background:#eef1f3;border-radius:10px;padding:14px;text-align:center" dir="ltr">{{ .Token }}</div>
-  <p style="margin:16px 0 0;color:#5f6b74;font-size:13px">لو ما طلبتش الكود ده، تجاهل الرسالة.</p>
-  <p style="margin:8px 0 0;color:#5f6b74;font-size:13px" dir="ltr">Your verification code: {{ .Token }}</p>
+  <p style="margin:20px 0 10px">أو اضغط على الزرار ده:</p>
+  <p style="margin:0"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#00a8c6;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:8px">تأكيد الحساب</a></p>
+  <p style="margin:16px 0 0;color:#5f6b74;font-size:13px">لو ما طلبتش الرسالة دي، تجاهلها.</p>
+  <p style="margin:8px 0 0;color:#5f6b74;font-size:13px" dir="ltr">Your verification code: {{ .Token }} · <a href="{{ .ConfirmationURL }}">Confirm account</a></p>
 </div>

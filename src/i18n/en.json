@@ -128,7 +128,12 @@
     "noAccount": "New shop?",
     "missing": "Enter your email and password",
     "sideTitle": "Every device, accounted for",
-    "sideText": "From check-in to pickup: status, cost, technician and customer on one screen."
+    "sideText": "From check-in to pickup: status, cost, technician and customer on one screen.",
+    "linkExpired": "The confirmation link expired or was already used. Sign in with your email and password; if it’s still unconfirmed you can send a new email.",
+    "linkFailed": "The confirmation link didn’t work. Sign in with your email and password; if it’s still unconfirmed you can send a new email.",
+    "unconfirmedHint": "You need to tap the confirmation link sent to your email first.",
+    "resendConfirm": "Resend confirmation email",
+    "resent": "A new confirmation email was sent. Open your inbox and tap the link."
   },
   "register": {
     "step": "Step {{n}} of {{total}}",
@@ -145,8 +150,8 @@
         "desc": "The email and password you will sign in with."
       },
       "verify": {
-        "title": "Verify email",
-        "desc": "We sent a 6-digit code to your email."
+        "title": "Confirm your email",
+        "desc": "We sent you an email with a link or a code."
       },
       "region": {
         "title": "Country & currency",
@@ -191,12 +196,12 @@
       "case": "Upper and lower case",
       "sym": "A symbol like ! or @"
     },
-    "codeSent": "Code sent to",
+    "codeSent": "We sent a confirmation email to",
     "codeLabel": "Verification code",
     "paste": "You can paste the whole code at once",
     "resendIn": "Resend in {{s}}s",
-    "resend": "Resend code",
-    "resent": "A new code was sent",
+    "resend": "Resend email",
+    "resent": "A new email was sent",
     "verifying": "Verifying",
     "codeWrong": "The code is wrong or has expired",
     "changeEmail": "Change email",
@@ -224,7 +229,14 @@
       "linkCta": "Activate your account"
     },
     "skip": "Skip",
-    "identityLater": "You can change all of this later in Settings → Shop identity."
+    "identityLater": "You can change all of this later in Settings → Shop identity.",
+    "linkTitle": "Is there a link in the email?",
+    "linkText": "Tap it (on your phone or computer) and come back here: the app continues on its own. Or press the button below.",
+    "linkTextNoPw": "Tap it and it signs you in. If you confirmed on another device, sign in with your email and password.",
+    "linkDone": "I confirmed from the link, continue",
+    "linkNotYet": "The email isn’t confirmed yet. Tap the link in the email first.",
+    "linkLogin": "Go to sign in",
+    "orCode": "Or, if the email has a 6-digit code, type it here:"
   },
   "countries": {
     "EG": "Egypt",
@@ -1433,7 +1445,11 @@
     "plans": {
       "free": "Free",
       "pro": "Pro"
-    }
+    },
+    "search": "Search shop name",
+    "noShops": "No shops match",
+    "showing": "Showing {{n}} of {{total}}",
+    "more": "Show more"
   },
   "plan": {
     "title": "Plan and usage",

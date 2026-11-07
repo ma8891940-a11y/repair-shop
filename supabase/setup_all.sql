@@ -1,7 +1,7 @@
 -- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.
 -- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).
 -- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql
 
 -- ============================== 0001_phase1.sql ==============================
 -- =====================================================================
@@ -4402,3 +4402,34 @@ begin
   return res || jsonb_build_object('device_passcodes', rows);
 end $$;
 revoke execute on function public.backup_snapshot(uuid) from public, anon, authenticated;
+
+-- ============================== 0020_admin_paging.sql ==============================
+-- لوحة المشرف: المحلات على صفحات (50 في المرة) وبحث بالاسم، بدل ما كلهم يتجابوا مرة واحدة.
+-- ليه: Supabase بيرجّع أقصى 1000 صف في الطلب، وحساب الأجهزة والموظفين لكل المحلات مرة واحدة كان تقيل.
+-- الحسابات دلوقتي بتتعمل للمحلات اللي في الصفحة بس. ومفيش أي بيانات عملاء زي الأول.
+drop function if exists public.admin_shops();
+
+create or replace function public.admin_shops(p_search text default null, p_limit integer default 50, p_offset integer default 0)
+returns table(id uuid, name text, created_at timestamptz, plan text, suspended boolean, staff integer, devices integer, devices_month integer, last_activity timestamptz, total integer)
+language plpgsql stable security definer set search_path = public as $$
+#variable_conflict use_column
+declare q text := nullif(trim(coalesce(p_search, '')), '');
+begin
+  if not public.is_platform_admin() then raise exception 'E_FORBIDDEN'; end if;
+  return query
+  with matched as (
+    select s.* from public.shops s
+    where q is null or s.name ilike '%' || replace(replace(replace(q, '\', '\\'), '%', '\%'), '_', '\_') || '%'
+  ), page as (
+    select * from matched order by created_at desc, id limit greatest(1, least(coalesce(p_limit, 50), 200)) offset greatest(0, coalesce(p_offset, 0))
+  )
+  select s.id, s.name, s.created_at, s.plan_code, s.suspended_at is not null,
+         (select count(*)::int from public.profiles p where p.shop_id = s.id and p.deleted_at is null),
+         (select count(*)::int from public.devices d where d.shop_id = s.id and d.deleted_at is null),
+         (select count(*)::int from public.devices d where d.shop_id = s.id and d.received_at >= date_trunc('month', now())),
+         (select max(a.created_at) from public.audit_log a where a.shop_id = s.id),
+         (select count(*)::int from matched)
+  from page s order by s.created_at desc, s.id;
+end $$;
+revoke execute on function public.admin_shops(text, integer, integer) from public, anon;
+grant execute on function public.admin_shops(text, integer, integer) to authenticated;
