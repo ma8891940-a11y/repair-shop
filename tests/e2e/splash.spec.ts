@@ -61,7 +61,8 @@ test('الافتتاحية: اللوجو ثابت من أول لحظة ← في 
 
   // اللوجو في نص الشاشة بالظبط
   const heroes = fs.filter((f) => f.splash && f.hero);
-  expect(heroes.length).toBeGreaterThan(5);
+  // لازم فريمات كفاية نتأكد منها (بنتأكد من آخر 3). لو التحميل بطيء الافتتاحية بتبقى أقصر بالتصميم (src/lib/splashTiming.ts)
+  expect(heroes.length).toBeGreaterThanOrEqual(3);
   for (const f of heroes.slice(-3)) {
     expect(Math.abs(f.hero!.cx - vp.width / 2)).toBeLessThan(1.5);
     expect(Math.abs(f.hero!.cy - vp.height / 2)).toBeLessThan(1.5);

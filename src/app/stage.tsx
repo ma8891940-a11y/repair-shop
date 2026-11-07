@@ -6,6 +6,7 @@ import { BG_GUARD, FpsGuard } from '../lib/fpsGuard';
 import { BG_STILL_KEY, guardAllowed } from './motionStatus';
 import logoSrc from '../assets/app-logo.png';
 import { getHandoffMs } from '../lib/splashTiming';
+import { backgroundLoaded } from './lazyScreen';
 
 /**
  * "المسرح": خلفية واحدة للبرنامج كله، ما بتتشالش وترجع بين الشاشات، والانتقال المشترك للوجو بعد الافتتاحية.
@@ -85,30 +86,32 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
       }
       raf = requestAnimationFrame(tick);
     };
-    // بيبدأ بعد ما الصفحة تخلص تحميل بثانية، والتبويب ظاهر
+    // بيبدأ بعد ما الصفحة تخلص تحميل، والشاشات اللي بتتحمّل في الخلفية تخلص، بثانية، والتبويب ظاهر
+    let loaded = false;
     const begin = () => {
       cancelAnimationFrame(raf);
       clearTimeout(wait);
-      if (document.hidden) return;
+      if (document.hidden || !loaded) return;
       wait = window.setTimeout(() => {
         guard.start(performance.now());
         raf = requestAnimationFrame(tick);
       }, 1000);
     };
-    const onLoad = () => begin();
+    const pageLoaded = new Promise<void>((ok) => (document.readyState === 'complete' ? ok() : window.addEventListener('load', () => ok(), { once: true })));
+    void Promise.all([pageLoaded, backgroundLoaded]).then(() => {
+      loaded = true;
+      if (!stopped) begin();
+    });
     const onVis = () => {
       cancelAnimationFrame(raf);
       clearTimeout(wait);
       if (!document.hidden) begin();
     };
-    if (document.readyState === 'complete') begin();
-    else window.addEventListener('load', onLoad, { once: true });
     document.addEventListener('visibilitychange', onVis);
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
       clearTimeout(wait);
-      window.removeEventListener('load', onLoad);
       document.removeEventListener('visibilitychange', onVis);
     };
   }, [mode, calm, autoStill]);

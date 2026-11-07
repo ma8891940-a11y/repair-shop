@@ -38,3 +38,16 @@ export function whenIdle(fn: () => void, timeout = 1500) {
   if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout });
   else setTimeout(fn, 200);
 }
+
+/**
+ * "التحميل في الخلفية خلص" (الشاشات اللي بتتحمّل بعد الافتتاحية).
+ * حارس الخلفية بيستنى ده قبل ما يبدأ يقيس، لأن التحميل ده جزء من فتح البرنامج ومؤقت
+ * (زي ما الحارس ما بيقيسش وقت تحميل الصفحة نفسها).
+ */
+let doneLoading: () => void = () => undefined;
+export const backgroundLoaded = new Promise<void>((ok) => {
+  doneLoading = ok;
+  // حد أقصى: الحارس ما يستناش للأبد
+  setTimeout(ok, 15_000);
+});
+export const markBackgroundLoaded = () => doneLoading();

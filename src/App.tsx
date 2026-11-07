@@ -12,7 +12,7 @@ import { ToastProvider } from './ui/Toast';
 import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/auth/LoginScreen';
 import { draftMode, hasRegisterDraft, regMeta } from './screens/auth/registerDraft';
-import { lazyScreen, whenIdle } from './app/lazyScreen';
+import { lazyScreen, markBackgroundLoaded, whenIdle } from './app/lazyScreen';
 import { getHandoffMs, initSplashSpeed, SPLASH_ANIM_MS } from './lib/splashTiming';
 
 // كل شاشة في ملف لوحدها، عشان الافتتاحية والدخول يحمّلوا الأساس بس.
@@ -56,7 +56,7 @@ function preloadAll() {
   performance.mark('preload-start');
   void Promise.allSettled(CORE.map((c) => c.preload())).then(() => {
     const next = (i: number) => {
-      if (i >= REST.length) return;
+      if (i >= REST.length) return markBackgroundLoaded();
       whenIdle(() => void REST[i].preload().catch(() => undefined).finally(() => next(i + 1)));
     };
     next(0);
@@ -146,6 +146,8 @@ function PreloadAfterSplash({ enabled }: { enabled: boolean }) {
   const { phase } = useStage();
   useEffect(() => {
     if (enabled && phase === 'done') preloadAll();
+    // من غير تحميل في الخلفية (صفحة التتبع): مفيش حاجة نستناها
+    if (!enabled) markBackgroundLoaded();
   }, [enabled, phase]);
   return null;
 }
