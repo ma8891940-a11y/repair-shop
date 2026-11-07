@@ -40,7 +40,8 @@ test('الافتتاحية: اللوجو ثابت من أول لحظة ← في 
   // قبل ما الكود يحمّل: نأخّر الكود ونتأكد إن الخلفية واللوجو الثابت ظاهرين (مفيش شاشة بيضا)
   let release: () => void = () => undefined;
   const gate = new Promise<void>((ok) => (release = ok));
-  await page.route(/\/src\/main\.tsx/, async (route) => {
+  // (في npm run dev الكود هو src/main.tsx، وفي نسخة الإنتاج assets/index-xxxx.js)
+  await page.route(/\/src\/main\.tsx|\/assets\/index-[\w-]+\.js/, async (route) => {
     await gate;
     await route.continue();
   });
