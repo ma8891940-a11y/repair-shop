@@ -40,6 +40,10 @@ test('الإضافات: عطل جاهز بيملا العطل والتكلفة �
   await expect(page.getByLabel('التكلفة التقديرية')).toHaveValue('1,500.50');
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
   await expect(page).toHaveURL(/#\/print\/receipt\//);
+  // التنبيهات ("اتسجّل الجهاز"...) ما بتتطبعش على الإيصال
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('[aria-live="polite"]').first()).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
   await expect(page.getByText('محل الإضافات').first()).toBeVisible();
 
   // 3) ملخص اليوم: أرقام بس، والاسم ورقم العميل مش في الرسالة

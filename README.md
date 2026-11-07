@@ -29,6 +29,10 @@ npm install
 2. استنى المشروع يجهز (دقيقة أو اتنين).
 3. من الشريط الجانبي: **SQL Editor** ← **New query**.
 4. افتح الملف `supabase\setup_all.sql` (بالـ Notepad)، انسخ كل اللي فيه، والصقه، ودوس **Run**. لازم يظهر `Success`.
+   - لو ظهرت رسايل فيها `skipping` أو `already exists` أو `does not exist, skipping`، دي طبيعية ومش أخطاء.
+   - **اتأكد إن النسخة اليومية التلقائية اتجدولت:** من الشريط الجانبي **Integrations ← Cron**، لازم تلاقي `warsha-daily-backup`.
+     - لو مش موجودة: من نفس الصفحة فعّل **Cron** (pg_cron).
+     - وبعدين في **SQL Editor** شغّل محتوى `supabase\enable_daily_backup.sql`.
 5. (للتجربة على طول) اعمل **New query** تاني، والصق محتوى `supabase\seed_demo.sql`، ودوس **Run**.
 6. **Authentication ← URL Configuration**:
    - في **Site URL** اكتب `http://localhost:5173`، ودوس **Save**.
@@ -43,7 +47,14 @@ npm install
 > تعديل القالب محتاج SMTP خاص، وخطواته تحت في **"إيميل خاص بيك (SMTP مجاني)"**.
 
 ### 3) اكتب مفاتيح المشروع (بنفسك)
-من **Project Settings ← API** هتلاقي **Project URL** و**anon public key**. في PowerShell:
+محتاج حاجتين من مشروعك:
+- **رابط المشروع (Project URL):** شكله `https://xxxx.supabase.co`. هتلاقيه لما تدوس زرار **Connect** اللي فوق في لوحة Supabase.
+- **المفتاح العام:** من **Project Settings ← API Keys**. واحد من الاتنين، والاتنين شغالين:
+  - **Publishable key**: بيبدأ بـ `sb_publishable_`. لو مش ظاهر، دوس **Create new API Keys**.
+  - أو **anon public**: من تبويب **Legacy API Keys**، وبيبدأ بـ `eyJ`. (Supabase بيقول إن المفاتيح القديمة دي هتتلغي آخر 2026، فالأحسن الـ Publishable.)
+- **ممنوع** تاخد أي مفتاح اسمه **secret** أو **service_role**.
+
+في PowerShell:
 ```bash
 copy .env.example .env.local
 ```
@@ -53,8 +64,9 @@ notepad .env.local
 اكتب القيمتين بعد علامة `=` واحفظ:
 ```
 VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ```
+(اسم الخانة `VITE_SUPABASE_ANON_KEY` بيفضل زي ما هو حتى لو حطيت فيه الـ Publishable key.)
 > **ممنوع** تكتب مفتاح `service_role` هنا أو في أي مكان في التطبيق.
 
 ### 4) شغّل

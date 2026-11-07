@@ -25,10 +25,13 @@ export default defineConfig({
     { name: 'mobile-light', use: { ...devices['Pixel 7'], colorScheme: 'light' }, metadata: { theme: 'light' } },
   ],
   webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
+    // E2E_PROD=1: نفس الاختبارات على النسخة النهائية (build ثم preview) بدل سيرفر التطوير
+    command: process.env.E2E_PROD
+      ? `npx vite build --outDir dist-e2e --emptyOutDir && npx vite preview --outDir dist-e2e --port ${PORT} --strictPort`
+      : `npx vite --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: true,
     env: { VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: anon },
-    timeout: 60_000,
+    timeout: process.env.E2E_PROD ? 180_000 : 60_000,
   },
 });

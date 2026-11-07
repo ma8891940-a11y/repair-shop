@@ -112,9 +112,7 @@
   },
   "shell": {
     "searchPlaceholder": "رقم الطلب، الموبايل، الاسم، IMEI",
-    "searchPlaceholderTech": "رقم الطلب، IMEI، الموديل",
-    "pending": "الشاشة دي لسه بتتبني",
-    "pendingHint": "هتكون جاهزة بعد موافقتك على التصميم."
+    "searchPlaceholderTech": "رقم الطلب، IMEI، الموديل"
   },
   "splash": {
     "booting": "جاري التجهيز"

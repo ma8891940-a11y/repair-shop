@@ -108,9 +108,7 @@
   },
   "shell": {
     "searchPlaceholder": "Order no., phone, name, IMEI",
-    "searchPlaceholderTech": "Order no., IMEI, model",
-    "pending": "This screen is being built",
-    "pendingHint": "It will be ready after you approve the design."
+    "searchPlaceholderTech": "Order no., IMEI, model"
   },
   "splash": {
     "booting": "Getting ready"

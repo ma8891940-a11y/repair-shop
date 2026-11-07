@@ -36,7 +36,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={push}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3 sm:items-end sm:pe-5" aria-live="polite">
+      {/* print:hidden: التنبيهات ما تطلعش على الإيصال أو الفاتورة (الطباعة التلقائية بتفتح والتنبيه لسه ظاهر) */}
+      <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex flex-col items-center gap-2 px-3 print:hidden sm:items-end sm:pe-5" aria-live="polite">
         <AnimatePresence initial={false}>
           {items.map((x) => (
             <motion.div

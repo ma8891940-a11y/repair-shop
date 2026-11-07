@@ -13,7 +13,7 @@ export const MAX_PIASTERS = 2_000_000_000; // حد أمان (20 مليون جن�
  */
 export function parsePounds(input: string): Piasters | null {
   const s = toLatinDigits(input.trim())
-    .replace(/[\u066B,\u060C]/g, (ch) => (ch === '\u066B' ? '.' : '')) // ٫ فاصلة عشرية عربية، والفواصل الألفية تتشال
+    .replace(/[\u066B\u066C,\u060C]/g, (ch) => (ch === '\u066B' ? '.' : '')) // ٫ فاصلة عشرية عربية، والفواصل الألفية (٬ و, و،) تتشال
     .replace(/\s+/g, '');
   if (s === '') return null;
   const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(s);

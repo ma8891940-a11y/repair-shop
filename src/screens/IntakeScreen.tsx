@@ -169,6 +169,13 @@ export function IntakeScreen() {
     if (!validate()) return setAttempt((a) => a + 1);
     if (lookup.state === 'loading' || lookup.state === 'idle') return setFormError(t('intake.wait'));
     setBusy(true);
+    // المسار من الوصف النهائي (لو الموظف ما اختاروش بإيده): الاقتراح بيتحدّث بعد ربع ثانية من آخر كتابة،
+    // فلو حفظ على طول بعد ما كتب الوصف، كان ممكن يتسجل المسار القديم
+    let routeId = routing.routeId;
+    if (!routing.manual && issue.trim() && navigator.onLine) {
+      const { data: detected } = await supabase.rpc('detect_route', { p_issue: issue.trim() });
+      if (detected) routeId = detected as string;
+    }
     // كل اللي هيتسجل، مبني مرة واحدة بأرقام من التطبيق (عشان لو النت قطع في النص، المزامنة تكمّل من غير تكرار)
     const id = crypto.randomUUID();
     const newCustomer = lookup.state === 'found' ? null : { id: crypto.randomUUID(), shop_id: profile.shop_id, name: custName.trim(), phone: normPhone, area: custArea.trim() || null };
@@ -178,7 +185,7 @@ export function IntakeScreen() {
       device: { id, shop_id: profile.shop_id, customer_id: customerIdPlanned, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature, priority: routing.priority, est_minutes: routing.estMinutes },
       cost: { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor },
       check: Object.keys(check).length > 0 ? { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check } : null,
-      route: routing.routeId,
+      route: routeId,
       lock: lockType !== 'none' && lockValue.trim() ? { p_kind: lockType, p_value: lockValue.trim() } : null,
     };
     const saveOffline = async () => {
@@ -214,8 +221,8 @@ export function IntakeScreen() {
       const c = await supabase.from('device_costs').insert(payload.cost);
       if (c.error) throw c.error;
       // المرحلة 4: المسار والتوزيع على الفنيين
-      if (routing.routeId) {
-        const rt = await supabase.rpc('set_route', { p_device: id, p_route: routing.routeId });
+      if (routeId) {
+        const rt = await supabase.rpc('set_route', { p_device: id, p_route: routeId });
         if (rt.error) throw rt.error;
       }
       if (lockType !== 'none' && lockValue.trim()) {

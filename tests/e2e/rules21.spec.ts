@@ -15,7 +15,8 @@ test('المواصفات: "ابعت للعميل" بعد تغيير الحالة
   await expect(page.getByTestId('marketing-due')).toContainText('مفيش عملاء عليهم تذكير دلوقتي');
 
   // تغيير الحالة: التنبيه فيه "ابعت للعميل" بيفتح رسالة واتساب
-  await quickIntake(page, '01033332222', 'عميل الرسالة');
+  // (quickIntake بيكتب الوصف "شاشة مكسورة" ويحفظ على طول: المسار لازم يتحسب من الوصف النهائي، مش "عطل غير معروف")
+  const devPath = await quickIntake(page, '01033332222', 'عميل الرسالة');
   await page.getByRole('button', { name: 'جاري الفحص', exact: true }).click();
   await page.getByRole('button', { name: 'ابعت للعميل' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -38,6 +39,8 @@ test('المواصفات: "ابعت للعميل" بعد تغيير الحالة
   try {
     const r = (await db.query(`select s.max_discount_pct, (select max(warranty_days) from routes r where r.shop_id = s.id) w from shops s join profiles p on p.shop_id = s.id where p.email = $1`, [email])).rows[0];
     expect(r).toEqual({ max_discount_pct: 15, w: 90 });
+    const route = (await db.query(`select r.code from devices d join routes r on r.id = d.route_id where d.id = $1`, [devPath.split('/').pop()])).rows[0]?.code;
+    expect(route).toBe('screen_battery');
   } finally {
     await db.end();
   }

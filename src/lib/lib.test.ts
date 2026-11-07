@@ -21,6 +21,9 @@ describe('الفلوس بالقروش', () => {
     expect(parsePounds(' 75 ')).toBe(7500);
   });
   it('يقبل الأرقام العربية والفاصلة العربية', () => {
+    // الفاصل الألفي العربي (٬) زي اللي بيطلع من كيبورد عربي
+    expect(parsePounds('١٩٬٩٩٩٬٩٩٩٫٩٩')).toBe(1999999999);
+    expect(parsePounds('١٬٢٥٠')).toBe(125000);
     expect(parsePounds('١٥٠')).toBe(15000);
     expect(parsePounds('١٥٠٫٧٥')).toBe(15075);
   });

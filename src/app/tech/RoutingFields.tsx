@@ -12,6 +12,8 @@ export interface Routing {
   routeId: string | null;
   priority: 'urgent' | 'normal';
   estMinutes: number | null;
+  /** الموظف اختار المسار بإيده (ساعتها ما بيتحسبش تاني من الوصف وقت الحفظ) */
+  manual?: boolean;
 }
 export interface RouteRow {
   id: string;
@@ -41,7 +43,8 @@ export function RoutingFields({ issue, brand, value, onChange }: { issue: string
 
   // المسار من الوصف
   useEffect(() => {
-    if (manual) return;
+    // الوصف لسه فاضي: ما نختارش "عطل غير معروف" بدري (المسار بيتحسب تاني من الوصف النهائي وقت الحفظ)
+    if (manual || !issue.trim()) return;
     const tm = setTimeout(async () => {
       const { data } = await supabase.rpc('detect_route', { p_issue: issue });
       if (data && data !== value.routeId) onChange({ ...value, routeId: data as string });
@@ -102,7 +105,7 @@ export function RoutingFields({ issue, brand, value, onChange }: { issue: string
           value={value.routeId ?? ''}
           onChange={(e) => {
             setManual(true);
-            onChange({ ...value, routeId: e.target.value || null });
+            onChange({ ...value, routeId: e.target.value || null, manual: true });
           }}
         >
           {(routes.data ?? []).map((r) => (

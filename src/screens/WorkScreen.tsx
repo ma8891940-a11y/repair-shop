@@ -81,6 +81,13 @@ export function WorkScreen() {
       setBusy(null);
     }
   }
+  // "خلّصت": لو دي خطوة التشخيص (عطل غير معروف) بنسأل عن المسار، ولو آخر خطوة بنفتح الفحص النهائي على طول،
+  // من غير ما نستنى رفض من السيرفر (اللي كان بيسيب خطأ في الـ console). الرفض لسه متعامل معاه تحت كاحتياط
+  function done(r: QueueRow) {
+    if (r.diagnose && r.step_no >= r.steps_total) return setRouteFor(r);
+    if (!r.diagnose && r.step_no >= r.steps_total) return setFinalFor(r);
+    void finish(r);
+  }
   async function finish(r: QueueRow, check?: CheckItems, route?: string) {
     setBusy(r.step_id);
     try {
@@ -159,7 +166,7 @@ export function WorkScreen() {
                     {t('work.start')}
                   </Button>
                 ) : (
-                  <Button size="sm" variant="primary" icon={<CheckCheck className="size-4" />} loading={busy === r.step_id} disabled={r.status === 'awaiting_approval'} onClick={() => void finish(r)}>
+                  <Button size="sm" variant="primary" icon={<CheckCheck className="size-4" />} loading={busy === r.step_id} disabled={r.status === 'awaiting_approval'} onClick={() => void done(r)}>
                     {t('work.finish')}
                   </Button>
                 )}
