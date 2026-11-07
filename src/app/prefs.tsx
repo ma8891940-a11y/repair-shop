@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { useReducedMotion } from 'motion/react';
 import i18n, { type Lang } from '../i18n';
 
 export type Theme = 'dark' | 'light';
@@ -39,11 +38,39 @@ interface Prefs {
 
 const Ctx = createContext<Prefs | null>(null);
 
+const REDUCE = '(prefers-reduced-motion: reduce)';
+/**
+ * "تقليل الحركة" من الجهاز، وبيتحدّث على طول لو اتغيّر والبرنامج مفتوح (من غير ما تحدّث الصفحة).
+ * (useReducedMotion بتاعة motion بتقرا مرة واحدة بس.)
+ */
+function useReducedMotionLive(): boolean {
+  const [v, setV] = useState(() => {
+    try {
+      return window.matchMedia(REDUCE).matches;
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    let mq: MediaQueryList;
+    try {
+      mq = window.matchMedia(REDUCE);
+    } catch {
+      return;
+    }
+    const on = () => setV(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return v;
+}
+
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => read('theme', ['dark', 'light'] as const, 'dark'));
   const [effects, setEffectsState] = useState<boolean>(() => read('effects', ['1', '0'] as const, '0') === '1');
   const [lang, setLangState] = useState<Lang>(() => (i18n.language === 'en' ? 'en' : 'ar'));
-  const reduced = useReducedMotion() ?? false;
+  const reduced = useReducedMotionLive();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

@@ -13,7 +13,7 @@ import { COUNTRIES, PAYMENT_METHODS, REGIONS, type Country, type PaymentMethod }
 import type { LineIconName } from '../../ui/fx/LineIcon';
 import { Button } from '../../ui/Button';
 import { Field, Input } from '../../ui/Field';
-import { checkLogoFile, loadImage, renderColor, renderThermal, trimCanvas } from '../../lib/brandImage';
+import { checkLogoFile, loadImage, logoUploadError, prepareLogoUpload, renderColor, renderThermal, trimCanvas } from '../../lib/brandImage';
 import { toLatinDigits } from '../../lib/digits';
 import { Alert } from '../../ui/Feedback';
 import { OtpInput } from '../../ui/OtpInput';
@@ -191,31 +191,40 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
         // هوية المحل (اختيارية): اللوجو الأصلي في Storage تحت المحل، ونسخة ملونة ونسخة حرارية جاهزين للطباعة
         const id = shopId();
         if (logo || idNameEn.trim() || idTagline.trim() || idWhatsapp.trim()) {
-          let logo_path: string | null = null;
           let logo_color: string | null = null;
           let logo_thermal: string | null = null;
+          let img: HTMLImageElement | null = null;
           if (logo) {
-            if (checkLogoFile(logo.file) !== 'ok') return fail(t('identity.errType'));
-            const ext = logo.file.type === 'image/png' ? 'png' : logo.file.type === 'image/svg+xml' ? 'svg' : logo.file.type === 'image/webp' ? 'webp' : 'jpg';
-            logo_path = `${id}/logo-${crypto.randomUUID()}.${ext}`;
-            const up = await supabase.storage.from('shop-logos').upload(logo_path, logo.file, { contentType: logo.file.type, upsert: false });
-            if (up.error) return fail(up.error);
-            const img = await loadImage(logo.file);
+            const c = checkLogoFile(logo.file);
+            if (c !== 'ok') return fail(t(c === 'type' ? 'identity.errType' : 'identity.errSize'));
+            img = await loadImage(logo.file);
             const color = trimCanvas(renderColor(img, 1, 0, 0));
             logo_color = color.toDataURL('image/png');
             logo_thermal = trimCanvas(renderThermal(color, 50)).toDataURL('image/png');
           }
+          // اللوجو اللي بيتطبع بيتحفظ مع الهوية نفسها، فبيظهر على طول حتى لو رفع الأصل على Storage فشل
+          const brandId = crypto.randomUUID();
           const { error: be } = await supabase.from('shop_branding').insert({
-            id: crypto.randomUUID(),
+            id: brandId,
             shop_id: id,
             name_en: idNameEn.trim() || null,
             tagline: idTagline.trim() || null,
             whatsapp: toLatinDigits(idWhatsapp.trim()) || null,
-            logo_path,
             logo_color,
             logo_thermal,
           });
           if (be && !/duplicate key/i.test(be.message)) return fail(be);
+          if (logo && img && !be) {
+            try {
+              const up0 = await prepareLogoUpload(logo.file, img);
+              const path = `${id}/logo-${crypto.randomUUID()}.${up0.ext}`;
+              const up = await supabase.storage.from('shop-logos').upload(path, up0.blob, { contentType: up0.type, upsert: false });
+              if (up.error) throw up.error;
+              await supabase.from('shop_branding').update({ logo_path: path }).eq('id', brandId);
+            } catch (e) {
+              toast({ tone: 'warn', title: t('identity.logo'), description: t('identity.savedNoOriginal', { why: t(logoUploadError(e)) }), duration: 10_000 });
+            }
+          }
         }
         go(6);
       } else if (key === 'brand') {

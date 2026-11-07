@@ -47,11 +47,6 @@ export function MotionStatus() {
                   {t('prefs.bgRestore')}
                 </Button>
               )}
-              {r === 'reduced' && (
-                <Button size="sm" variant="ghost" className="mt-2" onClick={() => window.location.reload()}>
-                  {t('motion.reload')}
-                </Button>
-              )}
             </div>
           );
         })}

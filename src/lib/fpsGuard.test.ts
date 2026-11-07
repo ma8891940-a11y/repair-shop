@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { BG_GUARD, FpsGuard } from './fpsGuard';
 
+/** تكلفة الإطار: جهاز بطيء فعلًا (كل إطار تقيل) لما الإطارات تحت 50، وجهاز عادي غير كده */
+const cost = (fps: number) => (fps < 50 ? 25 : 3);
+
 /** بيشغّل الحارس بمعدل إطارات ثابت لمدة معيّنة، ويرجّع وقت القفل (لو حصل) */
-function run(g: FpsGuard, segments: Array<[fps: number, ms: number]>, start = 0): number | null {
+function run(g: FpsGuard, segments: Array<[fps: number, ms: number, work?: number]>, start = 0): number | null {
   let t = start;
   g.start(t);
-  for (const [fps, ms] of segments) {
+  for (const [fps, ms, work] of segments) {
     const step = 1000 / fps;
     const end = t + ms;
     while (t < end) {
       t += step;
-      if (g.frame(t)) return t;
+      if (g.frame(t, work ?? cost(fps))) return t;
     }
   }
   return null;
@@ -61,16 +64,38 @@ describe('حارس أداء المؤثرات الكاملة', () => {
     const g = new FpsGuard();
     g.start(0);
     let trips = 0;
-    for (let t = 0; t < 15_000; t += 1000 / 20) if (g.frame(t)) trips++;
+    for (let t = 0; t < 15_000; t += 1000 / 20) if (g.frame(t, 30)) trips++;
     expect(trips).toBe(1);
+  });
+
+  it('المتصفح أو الشاشة مقفولين على 30 أو 48 إطار (توفير الطاقة) والجهاز فاضي: ده مش بطء، ما بيقفلش', () => {
+    expect(run(new FpsGuard(), [[30, 20_000, 2]])).toBeNull();
+    expect(run(new FpsGuard(), [[48, 20_000, 3]])).toBeNull();
+    const g = new FpsGuard();
+    run(g, [[30, 4_000, 2]]);
+    expect(g.last_).toMatchObject({ capped: true, slow: false });
+  });
+
+  it('إطارات مش منتظمة (تقطيع) حتى لو كل إطار خفيف: ده بطء، بيقفل', () => {
+    const g = new FpsGuard();
+    g.start(0);
+    let t = 0;
+    let at: number | null = null;
+    // إطار بعد 16 مللي وإطار بعد 70: حوالي 23 إطار في الثانية ومتقطع
+    for (let i = 0; i < 2_000 && at === null; i++) {
+      t += i % 2 ? 70 : 16;
+      if (g.frame(t, 2)) at = t;
+    }
+    expect(at).not.toBeNull();
+    expect(g.last_?.slow).toBe(true);
   });
 });
 
 describe('حارس الخلفية الحية (الافتتاحية والدخول)', () => {
   /** بيشغّل الحارس بمعدل إطارات معيّن لفترة، وبيرجّع وقت ما وقف الحركة (أو null) */
-  const run = (g: FpsGuard, from: number, to: number, fps: number) => {
+  const run = (g: FpsGuard, from: number, to: number, fps: number, work = cost(fps)) => {
     const step = 1000 / fps;
-    for (let t = from; t <= to; t += step) if (g.frame(t)) return t;
+    for (let t = from; t <= to; t += step) if (g.frame(t, work)) return t;
     return null;
   };
   it('تحت 50 إطار لمدة 2 ثانية متواصلة (بعد 0.8 ثانية من الفتح) بيثبّت الخلفية، ومش قبل كده', () => {
@@ -87,6 +112,12 @@ describe('حارس الخلفية الحية (الافتتاحية والدخو�
     // 1.6 ثانية بطء بعد فترة السماح (القياس على نوافذ نص ثانية، فبنسيب هامش نافذة)
     expect(run(g, 0, 2400, 30)).toBeNull();
     expect(run(g, 2400, 8000, 60)).toBeNull();
+  });
+  it('توفير الطاقة (المتصفح مقفول على 30 إطار) والجهاز فاضي: الخلفية بتفضل شغالة', () => {
+    const g = new FpsGuard(BG_GUARD);
+    g.start(0);
+    expect(run(g, 0, 20_000, 30, 2)).toBeNull();
+    expect(run(g, 20_000, 40_000, 48, 3)).toBeNull();
   });
   it('بطء أول 0.8 ثانية بس (تحميل الكود) ما بيتحسبش', () => {
     const g = new FpsGuard(BG_GUARD);

@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import { motion } from 'motion/react';
 import { usePrefs } from './prefs';
 import { CircuitField } from '../ui/fx/CircuitField';
-import { BG_GUARD, FpsGuard } from '../lib/fpsGuard';
+import { BG_GUARD, FpsGuard, createFrameCost } from '../lib/fpsGuard';
+import { motionDiag } from './motionDiag';
 import { BG_STILL_KEY, guardAllowed } from './motionStatus';
 import logoSrc from '../assets/app-logo.png';
 import { getHandoffMs } from '../lib/splashTiming';
@@ -37,7 +38,8 @@ const Ctx = createContext<Stage | null>(null);
  * ما بيشتغلش:
  * - في npm run dev (التجميع الأول والتحديث وانت شغال بيبطّأ من غير ما يكون الجهاز بطيء).
  * - وقت تحميل الصفحة: بيبدأ بعد ما الصفحة تخلص تحميل بثانية، وبعدها 0.8 ثانية سماح.
- * - والتبويب في الخلفية: بيقف، ولما يرجع بيبدأ من الأول.
+ * - والتبويب في الخلفية: بيقف، ولما يرجع بيبدأ من الأول. ونفس الكلام بعد التنقل بين الشاشات.
+ * - لو الإطارات قليلة بس الجهاز فاضي (توفير الطاقة في المتصفح أو شاشة 30/48 هرتز): ده مش بطء (src/lib/fpsGuard.ts).
  * مستقل عن "المؤثرات الكاملة": دي للزجاج والتأثيرات التقيلة بس.
  */
 function readBgStill() {
@@ -73,14 +75,36 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
   const autoStill = useBgStillSaved();
   // حارس الأداء للخلفية الحية (الافتتاحية والدخول والتسجيل)
   useEffect(() => {
-    if (mode !== 'live' || calm || autoStill || !guardAllowed()) return;
+    motionDiag.mode = mode;
+    motionDiag.reduced = calm;
+    motionDiag.autoStill = autoStill;
+  }, [mode, calm, autoStill]);
+  useEffect(() => {
+    if (mode !== 'live' || calm || autoStill) {
+      motionDiag.guard = 'off';
+      return;
+    }
+    if (!guardAllowed()) {
+      motionDiag.guard = 'off-dev';
+      return;
+    }
+    motionDiag.guard = 'waiting';
     const guard = new FpsGuard(BG_GUARD);
+    // تكلفة كل إطار: عشان الإطارات القليلة بسبب توفير الطاقة (والجهاز فاضي) ما تتحسبش بطء
+    const cost = createFrameCost();
     let raf = 0;
     let wait = 0;
     let stopped = false;
     const tick = (now: number) => {
       if (stopped) return;
-      if (guard.frame(now)) {
+      cost.mark(now);
+      const tripped = guard.frame(now, cost.last);
+      if (guard.last_) {
+        motionDiag.fps = guard.last_.fps;
+        motionDiag.work = guard.last_.work;
+        motionDiag.capped = guard.last_.capped;
+      }
+      if (tripped) {
         setBgStillSaved(true);
         return;
       }
@@ -92,8 +116,10 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
       cancelAnimationFrame(raf);
       clearTimeout(wait);
       if (document.hidden || !loaded) return;
+      motionDiag.guard = 'waiting';
       wait = window.setTimeout(() => {
         guard.start(performance.now());
+        motionDiag.guard = 'measuring';
         raf = requestAnimationFrame(tick);
       }, 1000);
     };
@@ -107,12 +133,17 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
       clearTimeout(wait);
       if (!document.hidden) begin();
     };
+    // التنقل بين الشاشات (الدخول والتسجيل...): تحميل الشاشة الجديدة مؤقت، فالقياس بيبدأ من الأول بعده
+    const onNav = () => begin();
     document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('hashchange', onNav);
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
       clearTimeout(wait);
+      cost.close();
       document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('hashchange', onNav);
     };
   }, [mode, calm, autoStill]);
   const heroEl = useRef<HTMLElement | null>(null);

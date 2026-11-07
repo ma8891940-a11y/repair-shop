@@ -143,10 +143,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* التخزين ممكن يكون مقفول */
     }
-    await supabase.auth.signOut();
+    await endSession();
   }, []);
 
   return <Ctx.Provider value={{ loading, session, profile, shop, error, isAdmin, suspended, refresh, signOut }}>{children}</Ctx.Provider>;
+}
+
+/** مفاتيح جلسة Supabase المحفوظة على الجهاز */
+const sessionKeys = () => {
+  try {
+    return Object.keys(localStorage).filter((k) => /^sb-.+-auth-token/.test(k));
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * الخروج من غير أخطاء حتى لو الجلسة منتهية أو المستخدم اتحذف:
+ * 1) لو الجلسة لسه صالحة: بنلغيها على السيرفر بدالة end_my_session (بترجع نجاح دايمًا، فمفيش 403 في الـ console).
+ * 2) بنمسح الجلسة من الجهاز بس، من غير ما Supabase يكلّم السيرفر تاني (هو اللي كان بيطلّع 403).
+ */
+async function endSession() {
+  let token: { access_token?: string; expires_at?: number } | null = null;
+  for (const k of sessionKeys()) {
+    try {
+      const v = JSON.parse(localStorage.getItem(k) ?? 'null') as { access_token?: string; expires_at?: number } | null;
+      if (v?.access_token) token = v;
+    } catch {
+      /* مش جلسة */
+    }
+  }
+  const valid = token?.access_token && (token.expires_at ?? 0) * 1000 > Date.now() + 5_000;
+  if (valid && (typeof navigator === 'undefined' || navigator.onLine)) {
+    await supabase.rpc('end_my_session').then(
+      () => undefined,
+      () => undefined,
+    );
+  }
+  for (const k of sessionKeys()) {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* التخزين ممكن يكون مقفول */
+    }
+  }
+  // الجلسة مش متخزنة خلاص: Supabase بيمسحها من الذاكرة ويبلّغ إن المستخدم خرج، من غير أي طلب للسيرفر
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
 }
 
 export function useAuth(): AuthState {

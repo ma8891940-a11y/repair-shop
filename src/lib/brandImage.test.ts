@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alphaBounds, checkLogoFile, placeImage, thermalThreshold, toThermal } from './brandImage';
+import { alphaBounds, checkLogoFile, logoUploadError, placeImage, thermalThreshold, toThermal, uploadSize } from './brandImage';
 
 describe('مكان اللوجو جوه الإطار (قص وتكبير)', () => {
   it('من غير تكبير: الصورة كلها جوه الإطار ومتوسّطة', () => {
@@ -51,6 +51,26 @@ describe('ملف اللوجو', () => {
     expect(checkLogoFile({ type: 'image/png', size: 1000 })).toBe('ok');
     expect(checkLogoFile({ type: 'image/svg+xml', size: 2 * 1024 * 1024 })).toBe('ok');
     expect(checkLogoFile({ type: 'image/gif', size: 10 })).toBe('type');
-    expect(checkLogoFile({ type: 'image/jpeg', size: 2 * 1024 * 1024 + 1 })).toBe('size');
+    // صورة موبايل عادية (3 ميجا) بتتقبل، وبتتصغّر قبل الرفع. الحد 15 ميجا للصور، و2 ميجا لملف SVG
+    expect(checkLogoFile({ type: 'image/jpeg', size: 3 * 1024 * 1024 })).toBe('ok');
+    expect(checkLogoFile({ type: 'image/jpeg', size: 15 * 1024 * 1024 + 1 })).toBe('size');
+    expect(checkLogoFile({ type: 'image/svg+xml', size: 2 * 1024 * 1024 + 1 })).toBe('size');
+    expect(checkLogoFile({ type: '', size: 10 })).toBe('type');
+  });
+});
+
+describe('رفع اللوجو', () => {
+  it('النسخة اللي بتترفع: أطول ضلع 1024 بنفس النسبة، ومن غير تكبير للصغيرة', () => {
+    expect(uploadSize(4000, 3000)).toEqual({ w: 1024, h: 768 });
+    expect(uploadSize(1000, 3000)).toEqual({ w: 341, h: 1024 });
+    expect(uploadSize(500, 200)).toEqual({ w: 500, h: 200 });
+  });
+  it('سبب فشل الرفع بالعربي (مفتاح ترجمة) حسب رد Supabase', () => {
+    expect(logoUploadError({ message: 'Bucket not found', statusCode: '404' })).toBe('identity.errBucket');
+    expect(logoUploadError({ message: 'The object exceeded the maximum allowed size', statusCode: '413' })).toBe('identity.errSize');
+    expect(logoUploadError({ message: 'mime type image/gif is not supported', statusCode: '415' })).toBe('identity.errType');
+    expect(logoUploadError({ message: 'new row violates row-level security policy', statusCode: '403' })).toBe('identity.errPerm');
+    expect(logoUploadError({ message: 'Failed to fetch' })).toBe('identity.errNet');
+    expect(logoUploadError({ message: 'something else' })).toBe('identity.errUpload');
   });
 });

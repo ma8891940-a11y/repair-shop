@@ -1,7 +1,7 @@
 -- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.
 -- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).
 -- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql
 
 -- ============================== 0001_phase1.sql ==============================
 -- =====================================================================
@@ -4890,3 +4890,31 @@ revoke execute on function public.restore_remap(jsonb) from public, anon, authen
 revoke execute on function public.restoring() from public, anon;
 -- (قراءة بس: صح أو غلط. التريجرات بتستخدمها، ومحدش يقدر يفعّل العلامة من بره restore_backup)
 grant execute on function public.restoring() to authenticated;
+
+-- ============================== 0024_signout.sql ==============================
+-- 0024: الخروج من غير أخطاء لما الجلسة تكون منتهية أو المستخدم اتحذف
+--
+-- الواجهة كانت بتنادي /auth/v1/logout، وده بيرجع 403 لو المستخدم اتحذف أو الجلسة اتلغت من السيرفر،
+-- والمتصفح بيكتب الخطأ في الـ console. دلوقتي الواجهة بتنادي الدالة دي (بترجع نجاح دايمًا)، وبعدها بتمسح
+-- الجلسة من الجهاز بس.
+--
+-- end_my_session: بتلغي الجلسة الحالية بس (والـ refresh tokens بتاعتها) لو لسه موجودة. لو مش موجودة: مفيش حاجة.
+create or replace function public.end_my_session() returns void
+language plpgsql security definer set search_path = public as $$
+declare sid uuid;
+begin
+  begin
+    sid := nullif(auth.jwt() ->> 'session_id', '')::uuid;
+  exception when others then
+    sid := null;
+  end;
+  if sid is null or auth.uid() is null then return; end if;
+  begin
+    delete from auth.sessions where id = sid and user_id = auth.uid();
+  exception when insufficient_privilege or undefined_table then
+    -- لو صلاحيات المشروع ما بتسمحش: الجلسة بتتمسح من الجهاز بس (زي "الخروج من الجهاز ده")
+    null;
+  end;
+end $$;
+revoke execute on function public.end_my_session() from public, anon;
+grant execute on function public.end_my_session() to authenticated;

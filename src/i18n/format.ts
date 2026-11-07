@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { assertPiasters } from '../lib/money';
-import { SHOP_TZ } from '../lib/dates';
+import { formatDate } from '../lib/datetime';
 import type { Lang } from './index';
 
 /** صيغة الأرقام والتواريخ حسب اللغة. العربي بأرقام لاتيني (المعتاد في المحلات في مصر) */
@@ -27,10 +27,9 @@ export function useFormat() {
   const lang = (i18n.language === 'en' ? 'en' : 'ar') as Lang;
   return useMemo(() => {
     const tag = localeTag(lang);
-    const date = new Intl.DateTimeFormat(tag, { timeZone: SHOP_TZ, day: 'numeric', month: 'short', year: 'numeric' });
-    const dateLong = new Intl.DateTimeFormat(tag, { timeZone: SHOP_TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const dateTime = new Intl.DateTimeFormat(tag, { timeZone: SHOP_TZ, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     const num = new Intl.NumberFormat(tag);
+    type D = Date | string;
+    type O = { plain?: boolean };
     return {
       lang,
       tag,
@@ -38,9 +37,12 @@ export function useFormat() {
       money: (minor: number) => formatMinor(minor, lang),
       /** رمز العملة حسب اللغة: ج.م / EGP */
       currency: (code = 'EGP') => t(`currency.${code}`, { defaultValue: code }),
-      date: (d: Date | string) => date.format(new Date(d)),
-      dateLong: (d: Date | string) => dateLong.format(new Date(d)),
-      dateTime: (d: Date | string) => dateTime.format(new Date(d)),
+      // التواريخ كلها من دالة واحدة (src/lib/datetime.ts): يوم/شهر/سنة، ومعزولة عشان ما تتقلبش. plain = للتصدير
+      date: (d: D, o?: O) => formatDate(d, lang, 'date', o),
+      dateLong: (d: D, o?: O) => formatDate(d, lang, 'dateLong', o),
+      dateNum: (d: D, o?: O) => formatDate(d, lang, 'numeric', o),
+      dateTime: (d: D, o?: O) => formatDate(d, lang, 'dateTime', o),
+      time: (d: D, o?: O) => formatDate(d, lang, 'time', o),
       days: (n: number) => t('units.days', { count: n, n: num.format(n) }),
     };
   }, [lang, t]);

@@ -99,7 +99,7 @@ export function DailyChart({ data, height = 200 }: { data: DayPoint[]; height?: 
         <tbody>
           {data.map((d) => (
             <tr key={d.day}>
-              <td>{d.day}</td>
+              <td>{f.date(d.day)}</td>
               <td>{f.money(d.revenue)}</td>
               <td>{f.money(d.expenses)}</td>
               <td>{f.money(d.profit)}</td>

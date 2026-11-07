@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { motionDiag } from '../../app/motionDiag';
 import { usePrefs } from '../../app/prefs';
 import { cn } from '../cn';
 
@@ -293,14 +294,21 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
       last = now;
       draw(dt);
       // ثابتة خلاص (بعد ما الحركة انطفت): الرسم بيقف لحد ما تتشغل تاني
-      if (k === 0 && (calm || stillRef.current)) return;
+      if (k === 0 && (calm || stillRef.current)) {
+        motionDiag.moving = false;
+        return;
+      }
+      motionDiag.moving = k > 0;
       raf = requestAnimationFrame(loop);
     };
 
     const start = () => {
       cancelAnimationFrame(raf);
       if (document.hidden) return;
-      if ((calm || stillRef.current) && k === 0) return;
+      if ((calm || stillRef.current) && k === 0) {
+        motionDiag.moving = false;
+        return;
+      }
       last = performance.now();
       raf = requestAnimationFrame(loop);
     };
@@ -318,10 +326,17 @@ export function CircuitField({ className, glowFollow = false, density = 1, still
       }, 150);
     });
     ro.observe(canvas);
-    const onVis = () => (document.hidden ? cancelAnimationFrame(raf) : start());
+    const onVis = () => {
+      motionDiag.hidden = document.hidden;
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        motionDiag.moving = false;
+      } else start();
+    };
     document.addEventListener('visibilitychange', onVis);
     return () => {
       cancelAnimationFrame(raf);
+      motionDiag.moving = false;
       clearTimeout(resizeT);
       ro.disconnect();
       document.removeEventListener('visibilitychange', onVis);

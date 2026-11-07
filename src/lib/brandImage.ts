@@ -5,7 +5,12 @@
  */
 export const LOGO_W = 640;
 export const LOGO_H = 320;
+/** حد ملف SVG (كلام، ما بيتصغّرش) وحد التخزين في Supabase */
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+/** الصور (PNG وJPG وWebP) لحد 15 ميجا بتتقبل، وبتتصغّر لوحدها قبل الرفع (صور الموبايل غالبًا أكبر من 2 ميجا) */
+export const MAX_PICK_BYTES = 15 * 1024 * 1024;
+/** أكبر طول أو عرض للنسخة الأصلية اللي بتترفع */
+export const UPLOAD_MAX_SIDE = 1024;
 export const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'] as const;
 
 export interface Placement {
@@ -68,7 +73,7 @@ export function toThermal(rgba: Uint8ClampedArray, contrast: number): Uint8Clamp
 /** التحقق من الملف قبل المعالجة */
 export function checkLogoFile(f: { type: string; size: number }): 'ok' | 'type' | 'size' {
   if (!(LOGO_TYPES as readonly string[]).includes(f.type)) return 'type';
-  if (f.size > MAX_LOGO_BYTES) return 'size';
+  if (f.size > (f.type === 'image/svg+xml' ? MAX_LOGO_BYTES : MAX_PICK_BYTES)) return 'size';
   return 'ok';
 }
 
@@ -144,4 +149,48 @@ export function alphaBounds(data: Uint8ClampedArray, width: number, height: numb
     }
   }
   return maxX < 0 ? null : { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+/** مقاس النسخة اللي هتترفع: بنفس النسبة، وأطول ضلع UPLOAD_MAX_SIDE بالكتير (من غير تكبير) */
+export function uploadSize(w: number, h: number, max = UPLOAD_MAX_SIDE): { w: number; h: number } {
+  if (w <= 0 || h <= 0) return { w: 0, h: 0 };
+  const k = Math.min(1, max / Math.max(w, h));
+  return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+}
+
+/**
+ * النسخة الأصلية اللي بتترفع على Storage: SVG زي ما هو، والصور بتتصغّر لـ 1024 بكسل (أقل من 2 ميجا).
+ */
+export async function prepareLogoUpload(file: File, img: HTMLImageElement): Promise<{ blob: Blob; type: string; ext: string }> {
+  if (file.type === 'image/svg+xml') return { blob: file, type: file.type, ext: 'svg' };
+  const W = img.naturalWidth || img.width;
+  const H = img.naturalHeight || img.height;
+  const ext = (t: string) => (t === 'image/png' ? 'png' : t === 'image/webp' ? 'webp' : 'jpg');
+  if (file.size <= MAX_LOGO_BYTES && Math.max(W, H) <= UPLOAD_MAX_SIDE) return { blob: file, type: file.type, ext: ext(file.type) };
+  // الصور (JPG) بتفضل JPG، واللي ممكن يكون فيها خلفية شفافة (PNG وWebP) بتبقى WebP عشان الشفافية تفضل
+  const want = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp';
+  for (const side of [UPLOAD_MAX_SIDE, 768, 512, 384]) {
+    const { w, h } = uploadSize(W, H, side);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    c.getContext('2d')!.drawImage(img, 0, 0, w, h);
+    const blob = await new Promise<Blob>((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error('E_LOGO_READ'))), want, 0.9));
+    // لو لسه أكبر من حد التخزين: نصغّر تاني
+    if (blob.size <= MAX_LOGO_BYTES) return { blob, type: blob.type || want, ext: ext(blob.type || want) };
+  }
+  throw Object.assign(new Error('The object exceeded the maximum allowed size'), { statusCode: '413' });
+}
+
+/** سبب فشل رفع اللوجو على Storage (مفتاح ترجمة) */
+export function logoUploadError(e: unknown): 'identity.errSize' | 'identity.errType' | 'identity.errPerm' | 'identity.errBucket' | 'identity.errNet' | 'identity.errUpload' {
+  const o = (e ?? {}) as { message?: string; statusCode?: string | number; status?: number; error?: string };
+  const msg = `${o.message ?? ''} ${o.error ?? ''}`;
+  const code = String(o.statusCode ?? o.status ?? '');
+  if (/bucket not found/i.test(msg) || code === '404') return 'identity.errBucket';
+  if (/exceeded|too large|maximum allowed size|payload/i.test(msg) || code === '413') return 'identity.errSize';
+  if (/mime|content type|not supported|invalid_mime/i.test(msg) || code === '415') return 'identity.errType';
+  if (/row-level security|unauthori[sz]ed|permission|not allowed|forbidden/i.test(msg) || code === '403' || code === '401') return 'identity.errPerm';
+  if (/fetch|network|failed to load|timeout/i.test(msg) || (typeof navigator !== 'undefined' && navigator.onLine === false)) return 'identity.errNet';
+  return 'identity.errUpload';
 }

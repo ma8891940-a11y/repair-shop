@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ImagePlus, Trash2, Upload } from 'lucide-react';
 import { useMe } from '../../app/auth';
-import { BRANDING_COLUMNS, ColorHeader, PoweredBy, ThermalHeader, useBranding, type Branding } from '../../app/brand/branding';
+import { BRANDING_COLUMNS, brandingChanged, ColorHeader, PoweredBy, ThermalHeader, useBranding, type Branding } from '../../app/brand/branding';
 import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
-import { checkLogoFile, loadImage, renderColor, renderThermal, trimCanvas } from '../../lib/brandImage';
+import { checkLogoFile, logoUploadError, prepareLogoUpload, loadImage, renderColor, renderThermal, trimCanvas } from '../../lib/brandImage';
 import { toLatinDigits } from '../../lib/digits';
 import { Panel, PanelHeader } from '../../ui/Panel';
 import { Button } from '../../ui/Button';
@@ -46,6 +46,10 @@ export function IdentityTab() {
   const [removeLogo, setRemoveLogo] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // مشكلة اللوجو نفسه (بتظهر جنب زرار الرفع، مش في آخر الصفحة)
+  const [logoErr, setLogoErr] = useState<string | null>(null);
+  // الصورة لسه بتتقري (الصور الكبيرة بتاخد وقت): الحفظ بيستنى، عشان ما يتحفظش اللوجو القديم
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     if (!b0) return;
@@ -95,9 +99,10 @@ export function IdentityTab() {
   const draftShop = { ...shop, name: name.trim() || shop.name, phone: toLatinDigits(phone.trim()) || null, address: address.trim() || null };
 
   async function pickLogo(f: File) {
-    setErr(null);
+    setLogoErr(null);
     const c = checkLogoFile(f);
-    if (c !== 'ok') return setErr(t(c === 'type' ? 'identity.errType' : 'identity.errSize'));
+    if (c !== 'ok') return setLogoErr(t(c === 'type' ? 'identity.errType' : 'identity.errSize'));
+    setPicking(true);
     try {
       setImg(await loadImage(f));
       setFile(f);
@@ -107,39 +112,56 @@ export function IdentityTab() {
       setCustomThermal(null);
       setRemoveLogo(false);
     } catch {
-      setErr(t('identity.errRead'));
+      setLogoErr(t('identity.errRead'));
+    } finally {
+      setPicking(false);
     }
   }
   async function pickThermal(f: File) {
+    setLogoErr(null);
     const c = checkLogoFile(f);
-    if (c !== 'ok') return setErr(t(c === 'type' ? 'identity.errType' : 'identity.errSize'));
+    if (c !== 'ok') return setLogoErr(t(c === 'type' ? 'identity.errType' : 'identity.errSize'));
     // النسخة الحرارية الخاصة كمان بتتحول أبيض وأسود صريح عشان الطابعة
     const im = await loadImage(f);
     setCustomThermal(trimCanvas(renderThermal(im, contrast)).toDataURL('image/png'));
   }
 
   async function save() {
+    if (picking) return;
     setErr(null);
     if (!name.trim()) return setErr(t('common.required'));
     const days = Number(toLatinDigits(warranty));
     if (!Number.isInteger(days) || days < 0 || days > 3650) return setErr(t('settings.warrantyBad'));
     setBusy(true);
     try {
-      let logo_path = draft.logo_path;
-      if (file) {
-        // الأصل في Storage تحت shop_id بتاع المحل (خاص بيه)
-        const ext = file.type === 'image/png' ? 'png' : file.type === 'image/svg+xml' ? 'svg' : file.type === 'image/webp' ? 'webp' : 'jpg';
-        logo_path = `${shop.id}/logo-${crypto.randomUUID()}.${ext}`;
-        const up = await supabase.storage.from('shop-logos').upload(logo_path, file, { contentType: file.type });
-        if (up.error) throw up.error;
-      }
-      if (removeLogo) logo_path = null;
+      const logo_path = removeLogo ? null : draft.logo_path;
       const s = await supabase.from('shops').update({ name: draftShop.name, phone: draftShop.phone, address: draftShop.address, receipt_terms: terms, warranty_days: days }).eq('id', shop.id);
       if (s.error) throw s.error;
-      const row = { ...draft, logo_path, id: b0?.id || crypto.randomUUID() };
+      // اللوجو اللي بيظهر في الإيصال والفاتورة وصفحة التتبع (ملون وحراري) بيتحفظ مع الهوية نفسها، فبيظهر على طول
+      // حتى لو رفع النسخة الأصلية على Storage فشل
+      const id = b0?.id || crypto.randomUUID();
+      const row = { ...draft, logo_path, id };
       const r = b0 ? await supabase.from('shop_branding').update(row).eq('id', b0.id) : await supabase.from('shop_branding').insert(row);
       if (r.error) throw r.error;
-      toast({ tone: 'ok', title: t('settings.saved') });
+      let warn: string | null = null;
+      if (file && img) {
+        // الأصل في Storage تحت shop_id بتاع المحل (خاص بيه)، متصغّر لو كبير
+        try {
+          const up0 = await prepareLogoUpload(file, img);
+          const path = `${shop.id}/logo-${crypto.randomUUID()}.${up0.ext}`;
+          const up = await supabase.storage.from('shop-logos').upload(path, up0.blob, { contentType: up0.type });
+          if (up.error) throw up.error;
+          const u2 = await supabase.from('shop_branding').update({ logo_path: path }).eq('id', id);
+          if (u2.error) throw u2.error;
+        } catch (e) {
+          warn = t('identity.savedNoOriginal', { why: t(logoUploadError(e)) });
+        }
+      }
+      if (warn) {
+        setLogoErr(warn);
+        toast({ tone: 'warn', title: t('settings.saved'), description: warn, duration: 10_000 });
+      } else toast({ tone: 'ok', title: t('settings.saved') });
+      brandingChanged();
       setImg(null);
       setFile(null);
       setCustomThermal(null);
@@ -189,6 +211,11 @@ export function IdentityTab() {
                 </Button>
               )}
             </div>
+            {logoErr && (
+              <div data-testid="logo-error">
+                <Alert tone="danger">{logoErr}</Alert>
+              </div>
+            )}
             {img && (
               <div className="grid gap-2 sm:grid-cols-3" data-testid="logo-crop">
                 <Range label={t('identity.zoom')} min={1} max={4} step={0.05} value={zoom} onChange={setZoom} />
@@ -248,7 +275,7 @@ export function IdentityTab() {
           </div>
         </Panel>
         {err && <Alert tone="danger">{err}</Alert>}
-        <Button variant="primary" loading={busy} onClick={() => void save()} className="self-start">
+        <Button variant="primary" loading={busy || picking} onClick={() => void save()} className="self-start">
           {t('common.save')}
         </Button>
       </div>

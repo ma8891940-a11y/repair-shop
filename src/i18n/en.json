@@ -1373,7 +1373,7 @@
     "tagline": "Short tagline",
     "taglineHint": "e.g. All phone repairs, with warranty",
     "logo": "Shop logo",
-    "logoHint": "PNG, JPG or SVG up to 2 MB. Shown on receipts, invoices, labels, statements and the tracking page. Without a logo, the shop name is printed large.",
+    "logoHint": "PNG, JPG or WebP up to 15 MB (large images are resized automatically), or SVG up to 2 MB. Shown on the receipt, invoice, label, statement and tracking page. Without a logo, the shop name is printed large.",
     "logoPick": "Upload logo",
     "logoChange": "Change logo",
     "logoRemove": "Remove logo",
@@ -1398,9 +1398,14 @@
     "poweredBy": "Powered by {{app}}",
     "previewReceipt": "Receipt preview (80mm)",
     "previewInvoice": "Invoice preview (A4)",
-    "errType": "File must be PNG, JPG or SVG",
-    "errSize": "File is larger than 2 MB",
-    "errRead": "Couldn't open the image"
+    "errType": "File type not supported: upload PNG, JPG, WebP or SVG",
+    "errSize": "The image is too large: up to 15 MB for images and 2 MB for SVG",
+    "errRead": "Couldn't open the image",
+    "errPerm": "Upload not allowed: only the shop owner can upload the logo, or the Supabase storage permissions are missing (run setup_all.sql on an empty project, or the latest migrations)",
+    "errBucket": "The logo storage (shop-logos) doesn't exist in the Supabase project: run setup_all.sql on an empty project, or the latest migrations",
+    "errNet": "No internet connection right now",
+    "errUpload": "The upload failed, try again",
+    "savedNoOriginal": "The logo was saved and shows on the receipt, invoice and tracking page, but the original wasn't uploaded to storage: {{why}}"
   },
   "suspended": {
     "title": "Shop suspended",
@@ -1608,7 +1613,6 @@
     "title": "Animated background",
     "running": "Motion is on for this device",
     "stopped": "Motion is paused on this device",
-    "reload": "Changed it? Reload the page",
     "reduced": {
       "title": "\"Reduce motion\" is on in your system",
       "why": "Windows (or your system) asks apps to reduce motion, so the app respects it and keeps the background still.",
@@ -1616,16 +1620,18 @@
         "Windows 11: Settings → Accessibility → Visual effects → turn on \"Animation effects\".",
         "Windows 10: Settings → Ease of Access → Display → turn on \"Show animations in Windows\".",
         "Mac: System Settings → Accessibility → Display → turn off \"Reduce motion\".",
-        "Then reload the page."
+        "The background starts moving again by itself as soon as you change it, without reloading."
       ]
     },
     "auto": {
       "title": "Paused automatically due to slowness",
       "why": "Motion ran under 50 fps for 2 seconds on the splash or sign-in screen, so the app paused it on this device to stay fast.",
       "steps": [
-        "Press \"Bring motion back\".",
-        "If you are testing with npm run dev, try the production build (see README); it is much faster.",
-        "If it pauses again, check \"graphics acceleration\" below."
+        "Click \"Restore motion\".",
+        "On a laptop running on battery: Chrome → Settings → Performance → turn off \"Energy saver\", or Edge: Settings → System and performance → turn off \"Efficiency mode\". (The app now tells this apart from real slowness, but a really busy device can still freeze it.)",
+        "Windows 10 and 11: set the power mode to \"Best performance\" (Settings → System → Power & battery on 11, or Power & sleep on 10).",
+        "If you're testing with npm run dev, try the production build (steps in README); it's much faster.",
+        "If it freezes again, check \"Graphics acceleration\" below, or open diagnostics with Ctrl+Shift+D."
       ]
     },
     "software": {
@@ -1643,5 +1649,30 @@
     "empty": "No customers due for a reminder",
     "sub": "Customers who agreed to reminders, last serviced 6+ months ago",
     "send": "Send reminder"
+  },
+  "diag": {
+    "title": "Motion diagnostics",
+    "fps": "Frames per second now",
+    "cost": "Frame cost",
+    "state": "Background",
+    "moving": "Moving",
+    "stopped": "Still",
+    "reason": "Reason",
+    "guard": "Performance guard",
+    "guardFps": "Guard's last reading",
+    "capped": "Browser or screen capped to fewer frames (not slowness)",
+    "reasons": {
+      "reduced": "Windows asks to reduce motion",
+      "auto": "Frozen because of slowness",
+      "inside": "Inside the app (still by design)",
+      "hidden": "Tab hidden",
+      "print": "Print page"
+    },
+    "guards": {
+      "waiting": "Waiting for loading to finish",
+      "measuring": "Measuring",
+      "off-dev": "Off in npm run dev",
+      "off": "Not running (background isn't animating)"
+    }
   }
 }

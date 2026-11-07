@@ -90,10 +90,10 @@ export function StatementScreen() {
   function exportCsv() {
     if (!data) return;
     const rows: (string | number | null)[][] = [
-      [data.head.title, `${range.days[0]} → ${range.days.at(-1)}`],
+      [data.head.title, `${f.dateNum(range.days[0], { plain: true })} → ${f.dateNum(range.days.at(-1)!, { plain: true })}`],
       [t('fin.opening'), plainPounds(data.st.opening)],
       [t('fin.cols.no'), t('fin.cols.time'), t('fin.cols.desc'), t('fin.cols.source'), t('fin.cols.by'), t('fin.cols.amount'), t('fin.cols.balance')],
-      ...moves.map((m) => [m.entry_no, f.dateTime(m.at), [label(m), m.memo].filter(Boolean).join(' - '), m.order_no ?? '', m.by ?? '', plainPounds(m.amount), plainPounds(m.balance)]),
+      ...moves.map((m) => [m.entry_no, f.dateTime(m.at, { plain: true }), [label(m), m.memo].filter(Boolean).join(' - '), m.order_no ?? '', m.by ?? '', plainPounds(m.amount), plainPounds(m.balance)]),
     ];
     const blob = new Blob([toCsv(rows)], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');

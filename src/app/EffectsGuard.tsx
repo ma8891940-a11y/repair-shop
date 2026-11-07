@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { FpsGuard } from '../lib/fpsGuard';
+import { FpsGuard, createFrameCost } from '../lib/fpsGuard';
 import { usePrefs } from './prefs';
 import { backgroundLoaded } from './lazyScreen';
 import { useToast } from '../ui/Toast';
@@ -20,6 +20,7 @@ export function EffectsGuard() {
   useEffect(() => {
     if (!effects) return;
     const guard = new FpsGuard();
+    const cost = createFrameCost();
     let raf = 0;
     let stopped = false;
     // تشخيص في وضع التطوير بس (للاختبار المتقلب): عدد مرات بداية القياس وآخر قراءة. مش موجود في النسخة النهائية
@@ -27,7 +28,8 @@ export function EffectsGuard() {
     dbg.starts = ((dbg.starts as number) ?? 0) + 1;
     dbg.key = location.key;
     const tick = (now: number) => {
-      const tripped = guard.frame(now);
+      cost.mark(now);
+      const tripped = guard.frame(now, cost.last);
       dbg.fps = guard.lastFps;
       dbg.frames = ((dbg.frames as number) ?? 0) + 1;
       if (tripped) {
@@ -51,6 +53,7 @@ export function EffectsGuard() {
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);
+      cost.close();
     };
     // أي شاشة جديدة (location.key) = بداية قياس جديدة بفترة سماح ثانيتين
   }, [effects, location.key, setEffects, t, toast]);

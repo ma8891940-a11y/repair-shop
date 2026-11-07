@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { useLoad } from '../useLoad';
@@ -22,9 +23,24 @@ export interface Branding {
 export const BRANDING_COLUMNS = 'id, shop_id, name_en, tagline, phones, whatsapp, socials, logo_path, logo_color, logo_thermal, thermal_contrast, thermal_custom, show_powered_by';
 
 /** هوية المحل (محفوظة على الجهاز كمان، عشان الطباعة تشتغل بدون نت) */
+/**
+ * الهوية اتغيّرت (لوجو جديد مثلًا): كل الشاشات المفتوحة بتقرأها من جديد على طول، حتى في تبويب تاني.
+ */
+const BRANDING_EVENT = 'branding-changed';
+let channel: BroadcastChannel | null = null;
+try {
+  channel = new BroadcastChannel('gawalak-branding');
+} catch {
+  channel = null;
+}
+export function brandingChanged() {
+  window.dispatchEvent(new Event(BRANDING_EVENT));
+  channel?.postMessage(1);
+}
+
 export function useBranding() {
   const { shop } = useMe();
-  return useLoad(
+  const loaded = useLoad(
     async () => {
       const { data, error } = await supabase.from('shop_branding').select(BRANDING_COLUMNS).eq('shop_id', shop.id).maybeSingle();
       if (error) throw error;
@@ -33,6 +49,17 @@ export function useBranding() {
     [shop.id],
     { cacheKey: `branding:${shop.id}` },
   );
+  const { reload } = loaded;
+  useEffect(() => {
+    const on = () => reload();
+    window.addEventListener(BRANDING_EVENT, on);
+    channel?.addEventListener('message', on);
+    return () => {
+      window.removeEventListener(BRANDING_EVENT, on);
+      channel?.removeEventListener('message', on);
+    };
+  }, [reload]);
+  return loaded;
 }
 
 /** التليفونات اللي هتتطبع: تليفون المحل الأساسي وبعده الإضافية من غير تكرار */

@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './app/auth';
 import { SyncProvider } from './offline/sync';
 import { PrefsProvider, usePrefs } from './app/prefs';
 import { EffectsGuard } from './app/EffectsGuard';
+import { MotionDiagPanel } from './app/MotionDiagPanel';
 import { isConfigured } from './lib/supabase';
 import { TooltipProvider } from './ui/Tooltip';
 import { ToastProvider } from './ui/Toast';
@@ -252,6 +253,7 @@ function Boot() {
       {/* صفحة تتبع العميل: بتحمّل نفسها بس (العميل غالبًا على باقة موبايل) */}
       <PreloadAfterSplash enabled={!publicPage} />
       <EffectsGuard />
+      <MotionDiagPanel />
       {(!loading || publicPage) && (
         // الشاشة اللي تحت بتظهر بنعومة لما الافتتاحية تخلص، والخلفية نفسها ما بتتغيرش
         <motion.div className="relative z-[1]" initial={false} animate={{ opacity: phase === 'splash' ? 0 : 1 }} transition={{ duration: 0.35 }} inert={phase === 'splash' ? true : undefined}>
