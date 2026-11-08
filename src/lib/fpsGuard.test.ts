@@ -64,7 +64,7 @@ describe('حارس أداء المؤثرات الكاملة', () => {
     const g = new FpsGuard();
     g.start(0);
     let trips = 0;
-    for (let t = 0; t < 15_000; t += 1000 / 20) if (g.frame(t, 30)) trips++;
+    for (let t = 0; t < 15_000; t += 1000 / 20) if (g.frame(t, 45)) trips++;
     expect(trips).toBe(1);
   });
 
@@ -74,6 +74,13 @@ describe('حارس أداء المؤثرات الكاملة', () => {
     const g = new FpsGuard();
     run(g, [[30, 4_000, 2]]);
     expect(g.last_).toMatchObject({ capped: true, slow: false });
+  });
+
+  it('توفير الطاقة على جهاز رسمه أبطأ (كل إطار 10 لـ 20 مللي من 33): عنده وقت فاضي، فمش بطء', () => {
+    expect(run(new FpsGuard(), [[30, 20_000, 12]])).toBeNull();
+    expect(run(new FpsGuard(), [[27, 20_000, 18]])).toBeNull();
+    // ولو الشغل مالي أغلب الإطار (25 من 33): ده بطء
+    expect(run(new FpsGuard(), [[30, 20_000, 25]])).not.toBeNull();
   });
 
   it('توفير الطاقة مع ضغط لحظي (إطار طويل كل شوية): لسه مش بطء', () => {

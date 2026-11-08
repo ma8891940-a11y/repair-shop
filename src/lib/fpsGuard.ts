@@ -15,10 +15,11 @@ export interface FpsGuardOptions {
   /** فجوة أكبر من كده بين إطارين = توقف (مش بطء) */
   pauseGapMs?: number;
   /**
-   * تكلفة الإطار (مللي ثانية) اللي فوقها يبقى الجهاز مشغول فعلًا. الإطارات القليلة لوحدها مش دليل:
-   * المتصفح أو الشاشة ممكن يكونوا مقفولين على 30 أو 48 إطار عشان توفير الطاقة والجهاز فاضي.
+   * نسبة الشغل من وقت الإطار اللي فوقها يبقى الجهاز مشغول فعلًا (مش قادر يرسم أسرع).
+   * الإطارات القليلة لوحدها مش دليل: المتصفح أو الشاشة ممكن يكونوا مقفولين على 30 أو 48 إطار
+   * عشان توفير الطاقة، والجهاز عنده وقت فاضي كتير بين الإطارات.
    */
-  busyMs?: number;
+  busyShare?: number;
   /**
    * نسبة الإطارات الطويلة (أطول من 1.7 مرة من الإطار العادي) اللي فوقها يبقى فيه تقطيع حقيقي.
    * (إطار طويل هنا وهناك من ضغط لحظي مش تقطيع)
@@ -44,7 +45,7 @@ export class FpsGuard {
   readonly graceMs: number;
   readonly windowMs: number;
   readonly pauseGapMs: number;
-  readonly busyMs: number;
+  readonly busyShare: number;
   readonly jitter: number;
   private gaps: number[] = [];
   private work = 0;
@@ -65,7 +66,7 @@ export class FpsGuard {
     this.graceMs = o.graceMs ?? 2000;
     this.windowMs = o.windowMs ?? 500;
     this.pauseGapMs = o.pauseGapMs ?? 1000;
-    this.busyMs = o.busyMs ?? 10;
+    this.busyShare = o.busyShare ?? 0.6;
     this.jitter = o.jitter ?? 0.25;
   }
 
@@ -114,8 +115,9 @@ export class FpsGuard {
     const jitter = sorted.length && base > 0 ? sorted.filter((g) => g > base * 1.7).length / sorted.length : 0;
     const work = this.work / this.frames;
     const low = fps < this.threshold;
-    // إطارات قليلة لوحدها مش بطء: لازم يكون فيه تقطيع (إطارات مش منتظمة) أو شغل تقيل في كل إطار
-    const slow = low && (jitter > this.jitter || work > this.busyMs);
+    // إطارات قليلة لوحدها مش بطء: لازم يكون فيه تقطيع (إطارات طويلة كتير)، أو الشغل مالي أغلب وقت الإطار
+    const interval = span / this.frames;
+    const slow = low && (jitter > this.jitter || work > interval * this.busyShare);
     this.lastFps = fps;
     this.last_ = { fps, work, jitter, capped: low && !slow, slow };
     const windowBegan = this.windowStart;
