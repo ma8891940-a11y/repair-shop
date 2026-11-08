@@ -65,7 +65,7 @@ export function ExtrasTab() {
       <Panel>
         <PanelHeader title={t('extras.title')} />
         <div className="flex flex-col gap-4 p-4">
-          {(['quick_issues', 'auto_print', 'day_summary'] as const).map((k) => (
+          {(['quick_issues', 'auto_print', 'day_summary', 'link_inventory'] as const).map((k) => (
             <div key={k}>
               <Checkbox checked={extras[k]} onChange={(v) => void toggle(k, v)} label={t(`extras.${k}.name`)} />
               <p className="ms-7 mt-0.5 text-2xs text-fg-3">{t(`extras.${k}.hint`)}</p>

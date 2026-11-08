@@ -21,7 +21,8 @@
     "live": "Live",
     "offlineRealtime": "Live updates paused",
     "sep": ", ",
-    "all": "All"
+    "all": "All",
+    "loading": "Loading"
   },
   "prefs": {
     "lightMode": "Light mode",
@@ -1017,7 +1018,10 @@
       "transfer": "Transfer",
       "drawer_close": "Drawer closing",
       "reversal": "Reversing entry (correction)",
-      "cost_adjust": "Stock cost difference"
+      "cost_adjust": "Stock cost difference",
+      "write_off": "Write-off",
+      "supplier_return": "Return to supplier",
+      "sale_return": "Customer return"
     },
     "excel": "Excel",
     "pdf": "PDF / Print",
@@ -1080,7 +1084,8 @@
       "cash_instapay": "InstaPay",
       "cash_bank_transfer": "Bank account",
       "cash_card": "Card (POS)",
-      "cash_installments": "Installments (valU)"
+      "cash_installments": "Installments (valU)",
+      "wastage": "Wastage"
     }
   },
   "inv": {
@@ -1089,7 +1094,8 @@
     "subOwner": "Inventory value (weighted average): {{v}}",
     "tabs": {
       "items": "Items",
-      "suppliers": "Suppliers"
+      "suppliers": "Suppliers",
+      "summary": "Accounts"
     },
     "addItem": "New item",
     "addSupplier": "New supplier",
@@ -1146,7 +1152,13 @@
     "minCost": "Lowest",
     "lastAt": "Last purchase",
     "cheapest": "Cheapest",
-    "name": "Item name"
+    "name": "Item name",
+    "search": "Search by name, barcode or category",
+    "allCats": "All categories",
+    "category": "Category",
+    "image": "Photo",
+    "buyShort": "Buy shortages from {{s}}",
+    "errCustomer": "No customer with this phone"
   },
   "ledgerSettings": {
     "cashboxes": "Cashboxes",
@@ -1184,7 +1196,14 @@
     "title": "Installed parts",
     "item": "Part",
     "use": "Installed",
-    "used": "Part recorded and removed from stock"
+    "used": "Part recorded and removed from stock",
+    "manualTech": "Inventory isn’t linked to repairs: reception or the owner records parts with their cost. Write the part you used in the notes.",
+    "manualHint": "Inventory isn’t linked to repairs: enter the part and its cost; stock is not affected.",
+    "manualName": "Part",
+    "manualCost": "Cost",
+    "paidFrom": "Paid from",
+    "manualAdd": "Add part",
+    "manualDone": "Part added to the device"
   },
   "pricing": {
     "title": "Pricing",
@@ -1622,6 +1641,10 @@
       "ready": "Ready and waiting",
       "profit": "Profit",
       "collected": "Collected"
+    },
+    "link_inventory": {
+      "name": "Link inventory to repairs",
+      "hint": "On: parts used come out of stock at cost. Off: the part and its cost are entered manually on the device without touching stock. Profit is right either way."
     }
   },
   "motion": {
@@ -1764,5 +1787,104 @@
     "queued": "Deleting “{{name}}”",
     "done": "“{{name}}” deleted",
     "delete": "Delete"
+  },
+  "invop": {
+    "title": {
+      "write_off": "Write-off",
+      "supplier_return": "Return to supplier",
+      "sale_return": "Customer return"
+    },
+    "hint": {
+      "write_off": "The item leaves stock at cost and is recorded as a \"Wastage\" expense with the reason.",
+      "supplier_return": "The item leaves stock at cost; the supplier credits your account or refunds cash. Any difference goes to cost of goods.",
+      "sale_return": "Revenue is reduced by the refund; an undamaged item goes back to stock at cost."
+    },
+    "done": {
+      "write_off": "Write-off recorded",
+      "supplier_return": "Supplier return recorded",
+      "sale_return": "Customer return recorded"
+    },
+    "refundSupplier": "Supplier refunds or credits",
+    "refundCustomer": "Refund to customer",
+    "costHint": "Your cost is {{c}}",
+    "how": "How",
+    "restock": "Item is fine and goes back to stock (otherwise recorded as wastage)",
+    "way": {
+      "supplier_return": {
+        "account": "Credit my account",
+        "cash": "Cash refund"
+      },
+      "sale_return": {
+        "account": "Customer credit",
+        "cash": "Cash from cashbox"
+      }
+    }
+  },
+  "bulk": {
+    "title": "Edit {{n}} item(s)",
+    "hint": "Empty fields stay unchanged.",
+    "nothing": "Fill at least one field",
+    "done": "{{n}} item(s) updated",
+    "select": "Select"
+  },
+  "import": {
+    "title": "Import from Excel",
+    "hint": "Save the sheet from Excel as \"CSV UTF-8\". First row headers: name, kind (part or accessory), category, barcode, price, min qty.",
+    "file": "Items file",
+    "ok": "{{n}} item(s) ready to import",
+    "err": "Line {{line}}: {{why}}",
+    "save": "Import {{n}} item(s)",
+    "done": "{{n}} item(s) imported",
+    "why": {
+      "name": "Missing item name",
+      "kind": "Kind must be part or accessory",
+      "price": "Price is not a number",
+      "min": "Min qty is not a whole number",
+      "barcode": "Barcode has invalid characters",
+      "dup": "Duplicate barcode"
+    }
+  },
+  "scan": {
+    "title": "Scan barcode",
+    "hint": "Point the camera at the barcode.",
+    "unsupported": "This device can’t scan with the camera. Use a barcode scanner: it types the code into the search box.",
+    "denied": "Camera access is blocked. Allow it in browser settings, or use a barcode scanner."
+  },
+  "moves": {
+    "title": "Item movement",
+    "empty": "No movement for this item yet",
+    "after": "Balance after"
+  },
+  "barcode": {
+    "code": "Barcode",
+    "hint": "Scan it, or generate a new one and print a label.",
+    "generate": "Generate",
+    "print": "Print label",
+    "printHint": "50×30 mm label. Choose copies in the print dialog.",
+    "none": "This item has no printable barcode. Generate one first.",
+    "bad": "Barcode has invalid characters",
+    "dup": "This barcode is used by another item"
+  },
+  "invsum": {
+    "sales": "Item sales",
+    "sales_cost": "Cost of sales",
+    "wastage": "Wastage",
+    "return_diff": "Supplier return difference",
+    "profit": "Inventory profit",
+    "stock_value": "Stock value now",
+    "purchases": "Purchases",
+    "parts_used": "Parts used in repairs",
+    "top": "Top-selling items",
+    "formula": "Inventory profit = sales − their cost − wastage − supplier return difference. Parts used in repairs count toward repair profit.",
+    "cap": {
+      "sales": "after returns",
+      "sales_cost": "weighted average",
+      "wastage": "at cost",
+      "return_diff": "cost − refund",
+      "profit": "for the period",
+      "stock_value": "all items",
+      "purchases": "for the period",
+      "parts_used": "at cost"
+    }
   }
 }

@@ -11,14 +11,16 @@ export interface Extras {
   day_summary: boolean;
   /** طباعة الإيصال تلقائيًا بعد حفظ الاستلام */
   auto_print: boolean;
+  /** ربط المخزون بالصيانة: القطع بتتصرف من المخزون. لو مقفول، القطعة بتتكتب على الجهاز يدوي بتكلفتها */
+  link_inventory: boolean;
 }
-export const DEFAULT_EXTRAS: Extras = { quick_issues: true, day_summary: true, auto_print: false };
+export const DEFAULT_EXTRAS: Extras = { quick_issues: true, day_summary: true, auto_print: false, link_inventory: true };
 
 /** بيقرا المفاتيح من المحل، وأي قيمة ناقصة أو غلط بترجع للافتراضي */
 export function readExtras(v: unknown): Extras {
   const o = v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
   const pick = (k: keyof Extras) => (typeof o[k] === 'boolean' ? (o[k] as boolean) : DEFAULT_EXTRAS[k]);
-  return { quick_issues: pick('quick_issues'), day_summary: pick('day_summary'), auto_print: pick('auto_print') };
+  return { quick_issues: pick('quick_issues'), day_summary: pick('day_summary'), auto_print: pick('auto_print'), link_inventory: pick('link_inventory') };
 }
 
 export interface DayNumbers {

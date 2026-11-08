@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Eye, ImagePlus, KeyRound, Printer, QrCode, Receipt, ShieldCheck, Trash2, X } from 'lucide-react';
 import { DeleteDialog } from '../app/DeleteDialog';
+import { readExtras } from '../lib/extras';
 import { useCanCorrect } from '../app/correct';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
@@ -335,7 +336,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                   onChanged={reload}
                 />
               )}
-              {profile.role !== 'reception' && (
+              {(profile.role !== 'reception' || !readExtras(shop.extras).link_inventory) && (
                 <PartsPanel
                   deviceId={id}
                   status={d.status}

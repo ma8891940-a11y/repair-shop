@@ -6,7 +6,8 @@ import { ReverseDialog } from './ReverseDialog';
 import { EditEntryDialog } from './EditEntryDialog';
 import { useLoad } from '../useLoad';
 import { useMe } from '../auth';
-import { opId, rpc, type DeviceMoney, type StockRow } from '../ledgerApi';
+import { loadCashboxes, opId, rpc, useAccountName, type DeviceMoney, type StockRow } from '../ledgerApi';
+import { readExtras } from '../../lib/extras';
 import { OpDialog, warmOpLists } from './OpDialog';
 import { supabase } from '../../lib/supabase';
 import { parsePounds } from '../../lib/money';
@@ -233,6 +234,86 @@ function PricingCalculator({ deviceId, partsCost, labor: laborDefault, margin: m
 
 /** القطع اللي اتركبت في الجهاز (صاحب المحل والفني). الفني بيسجل من غير ما يشوف السعر */
 export function PartsPanel({ deviceId, status, onChanged }: { deviceId: string; status: DeviceStatus; onChanged: () => void }) {
+  const { shop } = useMe();
+  if (!readExtras(shop.extras).link_inventory) return <ManualPartPanel deviceId={deviceId} status={status} onChanged={onChanged} />;
+  return <StockPartPanel deviceId={deviceId} status={status} onChanged={onChanged} />;
+}
+
+/**
+ * "ربط المخزون بالصيانة" مقفول: القطعة بتتكتب على الجهاز يدوي (الاسم والتكلفة واتدفعت منين)، من غير ما المخزون يتأثر.
+ * التكلفة بتدخل في تكلفة قطع الجهاز، فالربح بيطلع صح. الفني ما بيشوفش فلوس، فالاستقبال أو صاحب المحل بيسجلوها.
+ */
+function ManualPartPanel({ deviceId, status, onChanged }: { deviceId: string; status: DeviceStatus; onChanged: () => void }) {
+  const { t } = useTranslation();
+  const accName = useAccountName();
+  const f = useFormat();
+  const { profile } = useMe();
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [cost, setCost] = useState('');
+  const [cashbox, setCashbox] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [id, setId] = useState(opId);
+  const cbs = useLoad(async () => (profile.role === 'technician' ? [] : loadCashboxes()), [profile.role]);
+  useEffect(() => {
+    if (!cashbox && cbs.data?.length) setCashbox(cbs.data[0].id);
+  }, [cbs.data, cashbox]);
+  if (status === 'delivered') return null;
+  if (profile.role === 'technician') {
+    return (
+      <Panel>
+        <PanelHeader title={t('parts.title')} />
+        <p className="p-4 text-sm text-fg-3">{t('parts.manualTech')}</p>
+      </Panel>
+    );
+  }
+  async function add() {
+    const c = parsePounds(cost);
+    if (!name.trim()) return toast({ tone: 'danger', title: t('common.required') });
+    if (!c || c <= 0) return toast({ tone: 'danger', title: t('fin.errAmount') });
+    setBusy(true);
+    try {
+      await rpc('device_manual_part', { p_id: id, p_device: deviceId, p_name: name.trim(), p_cost: c, p_cashbox: cashbox });
+      toast({ tone: 'ok', title: t('parts.manualDone') });
+      setName('');
+      setCost('');
+      setId(opId());
+      onChanged();
+    } catch (e) {
+      toast({ tone: 'danger', title: errorMessage(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Panel>
+      <PanelHeader title={t('parts.title')} />
+      <p className="px-4 pt-3 text-2xs text-fg-3">{t('parts.manualHint')}</p>
+      <div className="grid grid-cols-2 items-end gap-2 p-4 sm:grid-cols-[minmax(0,1fr)_110px_minmax(0,1fr)_auto]">
+        <Field label={t('parts.manualName')}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-testid="manual-part-name" />
+        </Field>
+        <Field label={t('parts.manualCost')}>
+          <Input mono inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} suffix={f.currency()} data-testid="manual-part-cost" />
+        </Field>
+        <Field label={t('parts.paidFrom')}>
+          <Select value={cashbox} onChange={(e) => setCashbox(e.target.value)}>
+            {(cbs.data ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {accName(c)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Button loading={busy} icon={<PackageMinus className="size-4" />} onClick={() => void add()} data-testid="manual-part-add">
+          {t('parts.manualAdd')}
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
+function StockPartPanel({ deviceId, status, onChanged }: { deviceId: string; status: DeviceStatus; onChanged: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
   const toast = useToast();

@@ -112,7 +112,7 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
     const counts: Record<string, number> = {};
     // أخطاء متوقعة (رفض صح من قاعدة البيانات)، مش أخطاء في الحسابات
     // (E_UNBALANCED مش هنا عن قصد: لو حصل يبقى غلط)
-    const ok = /E_STOCK|E_ALREADY_REVERSED|E_INSUFFICIENT|E_COST_LOCKED|E_DELIVERED_LOCKED/;
+    const ok = /E_STOCK|E_ALREADY_REVERSED|E_INSUFFICIENT|E_COST_LOCKED|E_DELIVERED_LOCKED|E_BAD_AMOUNT/;
     type Op = [string, () => Promise<unknown>];
     const ops: Op[] = [
       ['رأس مال', () => as(O, `select owner_capital($1, $2, $3)`, [randomUUID(), cash(), amt(2_000_000)])],
@@ -134,6 +134,10 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
         const bal = Number((await admin(`select coalesce(sum(debit - credit), 0) b from journal_lines where account_id = $1`, [cb])).rows[0].b);
         return as(O, `select close_drawer($1, $2, $3)`, [randomUUID(), cb, Math.max(0, bal + Math.floor((r() - 0.5) * 2000))]);
       }],
+      ['هالك', () => as(O, `select write_off($1, $2, $3, 'هالك')`, [randomUUID(), pick(items), 1 + Math.floor(r() * 2)])],
+      ['مرتجع للمورد', () => as(O, `select supplier_return($1, $2, $3, 1, $4, $5, 'مرتجع')`, [randomUUID(), pick(sups), pick(items), Math.floor(r() * 30_000), r() < 0.5 ? null : cash()])],
+      ['مرتجع من عميل', () => as(R, `select sale_return($1, $2, 1, $3, $4, $5, $6, 'مرتجع')`, [randomUUID(), pick(items), Math.floor(r() * 40_000), r() < 0.5 ? cash() : null, pick(custs), r() < 0.7])],
+      ['قطعة يدوية', () => as(R, `select device_manual_part($1, $2, 'قطعة', $3, $4)`, [randomUUID(), pick(devs).id, amt(20_000), cash()])],
       ['إلغاء عملية (قيد عكسي)', async () => {
         const e = (await admin(`select e.id from journal_entries e where e.shop_id = $1 and e.source_type <> 'reversal' and e.source_type <> 'cost_adjust'
                                  and not exists (select 1 from journal_entries x where x.reverses_id = e.id) order by random() limit 1`, [S])).rows[0]?.id;

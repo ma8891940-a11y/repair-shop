@@ -6,8 +6,9 @@ const L = { title: 'Day', received: 'In', delivered: 'Out', ready: 'Ready', reve
 describe('الميزات الإضافية', () => {
   it('المفاتيح: الناقص أو الغلط بيرجع للافتراضي', () => {
     expect(readExtras(null)).toEqual(DEFAULT_EXTRAS);
-    expect(readExtras({ auto_print: true, quick_issues: 'yes' })).toEqual({ quick_issues: true, day_summary: true, auto_print: true });
-    expect(readExtras({ quick_issues: false, day_summary: false })).toEqual({ quick_issues: false, day_summary: false, auto_print: false });
+    expect(readExtras({ auto_print: true, quick_issues: 'yes' })).toEqual({ quick_issues: true, day_summary: true, auto_print: true, link_inventory: true });
+    expect(readExtras({ quick_issues: false, day_summary: false })).toEqual({ quick_issues: false, day_summary: false, auto_print: false, link_inventory: true });
+    expect(readExtras({ link_inventory: false }).link_inventory).toBe(false);
   });
 
   it('ملخص اليوم: المبالغ بالقروش بتتعرض بالجنيه، والربح = الإيراد - المصروف، والطرق الفاضية ما بتظهرش', () => {

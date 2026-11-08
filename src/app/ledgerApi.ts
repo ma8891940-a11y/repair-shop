@@ -75,6 +75,9 @@ export interface StockRow {
   min_qty?: number;
   supplier_id?: string | null;
   short?: boolean;
+  category?: string | null;
+  barcode?: string | null;
+  image_path?: string | null;
 }
 export interface DeviceMoney {
   final: number | null;
