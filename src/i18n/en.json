@@ -1674,5 +1674,17 @@
       "off-dev": "Off in npm run dev",
       "off": "Not running (background isn't animating)"
     }
+  },
+  "logoAnim": {
+    "title": "App logo animation on open",
+    "hint": "Pick the style you like. It shows the next time you open the app.",
+    "calm": "Your device asks to reduce motion, so the logo simply fades in.",
+    "draw": "Draw",
+    "drawHint": "The outline is drawn with a glowing line, then the colors fill in",
+    "shine": "Shine",
+    "shineHint": "A slight scale-up, then a light sweep passes once",
+    "assemble": "Assemble",
+    "assembleHint": "Pieces arrive from the background signals and come together",
+    "replay": "Replay"
   }
 }

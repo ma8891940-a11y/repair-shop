@@ -131,6 +131,18 @@ test('الإعدادات ← المظهر: سبب الوقوف بوضوح وخط
   await expect(red).toContainText('الويندوز 10');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(red).toHaveCount(0);
+  // حركة لوجو البرنامج: 3 أشكال بمعاينة، والاختيار بيتحفظ وبيشتغل من أول فتحة جاية
+  const picker = page.getByTestId('logo-anim-picker');
+  await expect(picker.getByRole('radio')).toHaveCount(3);
+  await expect(page.getByTestId('logo-anim-draw')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('logo-anim-assemble').click();
+  await expect(page.getByTestId('logo-anim-assemble')).toHaveAttribute('aria-checked', 'true');
+  expect(await page.evaluate(() => [localStorage.getItem('logo-anim'), document.documentElement.getAttribute('data-logo-anim')])).toEqual(['assemble', 'assemble']);
+  await page.reload();
+  await expect(page.getByTestId('logo-intro-assemble')).toHaveCount(1, { timeout: 5_000 }).catch(() => undefined);
+  await page.getByRole('tab', { name: 'المظهر' }).click().catch(() => undefined);
+  await expect(page.getByTestId('logo-anim-assemble')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('logo-anim-draw').click();
   await auto.getByRole('button', { name: 'رجّع الحركة' }).click();
   await expect(page.getByTestId('motion-state')).toHaveAttribute('data-state', 'live');
   expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();

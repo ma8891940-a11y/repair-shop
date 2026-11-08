@@ -34,8 +34,10 @@
       html[data-theme='light'] #boot .calm {
         background: radial-gradient(closest-side, #eef3f9 0%, rgb(238 243 249 / 0.72) 30%, rgb(238 243 249 / 0.3) 62%, transparent 100%);
       }
-      #boot img { position: absolute; left: 50%; top: 50%; width: 168px; height: 150px; transform: translate(-50%, -50%) scale(0.92); opacity: 0.55; }
-      @media (prefers-reduced-motion: reduce) { #boot img { transform: translate(-50%, -50%); } }
+      #boot img { position: absolute; left: 50%; top: 50%; width: 168px; height: 150px; transform: translate(-50%, -50%) scale(0.9); opacity: 0.55; }
+      /* حركة "رسم" و"تجميع" بتبدأ من غير لوجو (عشان ما يحصلش قفزة)، و"ظهور بلمعة" بتبدأ من نفس الصورة دي */
+      html:not([data-logo-anim='shine']) #boot img { opacity: 0; }
+      @media (prefers-reduced-motion: reduce) { #boot img, html:not([data-logo-anim='shine']) #boot img { transform: translate(-50%, -50%); opacity: 0.55; } }
     </style>
     <script>
       // تطبيق الوضع المحفوظ قبل ما الصفحة تترسم، عشان ما يحصلش وميض
@@ -45,7 +47,12 @@
         var l = localStorage.getItem('lang');
         if (l === 'en') { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
         if (localStorage.getItem('effects') !== '1') document.documentElement.setAttribute('data-lite', '');
-      } catch (e) {}
+        // شكل حركة اللوجو (الافتراضي نفس DEFAULT_LOGO_ANIM في src/app/prefs.tsx)
+        var a = localStorage.getItem('logo-anim');
+        document.documentElement.setAttribute('data-logo-anim', a === 'shine' || a === 'assemble' || a === 'draw' ? a : 'draw');
+      } catch (e) {
+        document.documentElement.setAttribute('data-logo-anim', 'draw');
+      }
     </script>
   </head>
   <body>

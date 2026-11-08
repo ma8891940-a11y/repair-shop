@@ -21,6 +21,7 @@ import { IdentityTab } from './settings/IdentityTab';
 import { PlanUsage } from '../app/PlanUsage';
 import { ExtrasTab } from './settings/ExtrasTab';
 import { MotionStatus } from './settings/MotionStatus';
+import { LogoAnimPicker } from './settings/LogoAnimPicker';
 import { cn } from '../ui/cn';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
@@ -148,6 +149,7 @@ function AppearanceTab() {
       <Row icon={Languages} title={t('settings.language')}>
         <Seg value={lang} onChange={(v) => setLang(v as 'ar' | 'en')} options={[['ar', t('prefs.langAr')], ['en', t('prefs.langEn')]]} label={t('settings.language')} />
       </Row>
+      <LogoAnimPicker />
       <MotionStatus />
       <Row icon={Sparkles} title={t('prefs.effects')} hint={t('settings.effectsHint')}>
         <button

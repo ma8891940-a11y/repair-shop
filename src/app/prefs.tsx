@@ -1,5 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import i18n, { type Lang } from '../i18n';
+import { LOGO_ANIMS, type LogoAnim } from '../ui/LogoIntro';
+
+/** شكل الحركة الافتراضي لحد ما صاحب المشروع يختار (نفس القيمة في index.html) */
+export const DEFAULT_LOGO_ANIM: LogoAnim = 'draw';
 
 export type Theme = 'dark' | 'light';
 
@@ -31,6 +35,9 @@ interface Prefs {
   calm: boolean;
   /** المؤثرات الكاملة شغالة فعلًا: التوهج اللي بيتبع الماوس، ونبض الأرقام، والزجاج والـ blur. الحركة الأساسية مش محتاجاها */
   rich: boolean;
+  /** شكل حركة لوجو التطبيق في الافتتاحية (من الإعدادات ← المظهر) */
+  logoAnim: LogoAnim;
+  setLogoAnim: (a: LogoAnim) => void;
   lang: Lang;
   setLang: (l: Lang) => void;
   toggleLang: () => void;
@@ -70,6 +77,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => read('theme', ['dark', 'light'] as const, 'dark'));
   const [effects, setEffectsState] = useState<boolean>(() => read('effects', ['1', '0'] as const, '0') === '1');
   const [lang, setLangState] = useState<Lang>(() => (i18n.language === 'en' ? 'en' : 'ar'));
+  const [logoAnim, setLogoAnimState] = useState<LogoAnim>(() => read('logo-anim', LOGO_ANIMS, DEFAULT_LOGO_ANIM));
   const reduced = useReducedMotionLive();
 
   useEffect(() => {
@@ -92,10 +100,16 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
   const toggleTheme = useCallback(() => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')), []);
   const setEffects = useCallback((v: boolean) => setEffectsState(v), []);
   const setLang = useCallback((l: Lang) => setLangState(l), []);
+  const setLogoAnim = useCallback((a: LogoAnim) => {
+    setLogoAnimState(a);
+    write('logo-anim', a);
+    // index.html بيقرا ده قبل ما الكود يحمّل (عشان أول لحظة تبقى زي أول فريم في الحركة)
+    document.documentElement.setAttribute('data-logo-anim', a);
+  }, []);
   const toggleLang = useCallback(() => setLangState((l) => (l === 'ar' ? 'en' : 'ar')), []);
 
   return (
-    <Ctx.Provider value={{ theme, setTheme, toggleTheme, effects, setEffects, calm: reduced, rich: effects && !reduced, lang, setLang, toggleLang }}>
+    <Ctx.Provider value={{ theme, setTheme, toggleTheme, effects, setEffects, calm: reduced, rich: effects && !reduced, logoAnim, setLogoAnim, lang, setLang, toggleLang }}>
       {children}
     </Ctx.Provider>
   );

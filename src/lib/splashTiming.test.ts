@@ -8,8 +8,9 @@ describe('ميزانية الافتتاحية من لحظة فتح البرنا�
     expect(splashSpeed(0)).toBeLessThanOrEqual(1);
     // تحميل عادي (0.1 ثانية): الفرق حوالي 10%، ما بيبانش
     expect(splashSpeed(100)).toBeGreaterThan(0.85);
-    expect(SPLASH_ANIM_MS).toBe(800);
-    expect(HANDOFF_MS).toBe(450);
+    expect(SPLASH_ANIM_MS).toBe(850);
+    expect(SPLASH_ANIM_MS).toBeLessThan(1200);
+    expect(HANDOFF_MS).toBe(400);
   });
   it('جهاز ضعيف: نفس التسلسل أسرع، والمجموع جوه الميزانية (أقل من 1.5 ثانية)', () => {
     for (const t0 of [200, 400, 550, 575]) {
@@ -30,7 +31,7 @@ describe('ميزانية الافتتاحية من لحظة فتح البرنا�
 describe('مدة طيران اللوجو', () => {
   it('في الميعاد: نفس مدة التصميم (مضروبة في معامل السرعة)', () => {
     expect(handoffDuration(800, 1)).toBe(HANDOFF_MS);
-    expect(handoffDuration(900, 0.6)).toBe(270);
+    expect(handoffDuration(900, 0.6)).toBe(240);
   });
   it('لو الرسم اتأخر: الطيران بياخد الوقت الباقي بس، فاللوجو بيستقر في الميعاد', () => {
     expect(handoffDuration(1150, 1)).toBe(LAND_BY_MS - 1150);

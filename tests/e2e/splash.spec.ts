@@ -21,7 +21,9 @@ async function record(page: Page) {
         boot: !!document.getElementById('boot'),
         splash: !!q('splash'),
         glow: !!q('splash-glow'),
-        scan: !!q('splash-scan'),
+        // العنصر الخاص بشكل الحركة: الخط المضيء (رسم)، أو اللمعة (ظهور بلمعة)، أو القطع (تجميع)
+        scan: !!(q('splash-outline') || q('splash-sheen') || q('splash-pieces')),
+        style: q('logo-intro-draw') ? 'draw' : q('logo-intro-shine') ? 'shine' : q('logo-intro-assemble') ? 'assemble' : null,
         flight: !!q('logo-flight'),
         sameCanvas: canvas ? canvas === firstCanvas : null,
         hero: r ? { cx: r.left + r.width / 2, cy: r.top + r.height / 2 } : null,
@@ -32,10 +34,12 @@ async function record(page: Page) {
     requestAnimationFrame(tick);
   });
 }
-type Frame = { t: number; boot?: boolean; splash?: boolean; glow?: boolean; scan?: boolean; flight?: boolean; sameCanvas?: boolean | null; hero?: { cx: number; cy: number } | null; landed?: DOMRect | null; converge?: boolean };
+type Frame = { t: number; boot?: boolean; splash?: boolean; glow?: boolean; scan?: boolean; style?: string | null; flight?: boolean; sameCanvas?: boolean | null; hero?: { cx: number; cy: number } | null; landed?: DOMRect | null; converge?: boolean };
 const frames = (page: Page) => page.evaluate(() => (window as unknown as { __splash: unknown[] }).__splash) as Promise<Frame[]>;
 
-test('الافتتاحية: اللوجو ثابت من أول لحظة ← في النص بالظبط ← تجمّع وتوهج وسكان ← بيطير لمكانه، والخلفية نفس الخلفية، وأقل من ثانية ونص', async ({ page }, info) => {
+for (const style of ['draw', 'shine', 'assemble'] as const) {
+test(`الافتتاحية: اللوجو ثابت من أول لحظة ← في النص بالظبط ← تجمّع وتوهج وسكان ← بيطير لمكانه، والخلفية نفس الخلفية، وأقل من ثانية ونص [${style}]`, async ({ page }, info) => {
+  await page.addInitScript((st) => localStorage.setItem('logo-anim', st), style);
   await prefs(page, info);
   // قبل ما الكود يحمّل: نأخّر الكود ونتأكد إن الخلفية واللوجو الثابت ظاهرين (مفيش شاشة بيضا)
   let release: () => void = () => undefined;
@@ -87,7 +91,10 @@ test('الافتتاحية: اللوجو ثابت من أول لحظة ← في 
   // اللوجو استقر في مكانه في شاشة الدخول (فوق)
   const landed = fs.find((f) => f.landed && !f.splash && !f.flight)!.landed!;
   expect(landed.top).toBeLessThan(80);
+  // شكل الحركة اللي اتختار هو اللي اشتغل، وعنصره ظهر
+  expect(fs.filter((f) => f.style).every((f) => f.style === style)).toBe(true);
 });
+}
 
 test('الافتتاحية مع "تقليل الحركة": الخلفية ثابتة واللوجو بيظهر ظهور بسيط من غير توهج ولا سكان ولا تجمّع ولا طيران', async ({ browser }, info) => {
   const ctx = await browser.newContext({ ...info.project.use, reducedMotion: 'reduce' });
