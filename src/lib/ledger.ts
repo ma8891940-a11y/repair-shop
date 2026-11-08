@@ -4,6 +4,8 @@ import { cairoDay, cairoDayEnd, cairoDayStart } from './dates';
 /** أنواع مصادر القيود (لازم تطابق journal_entries.source_type) */
 export const SOURCE_TYPES = ['payment', 'delivery', 'purchase', 'supplier_payment', 'part_use', 'sale', 'expense', 'salary', 'salary_payment', 'advance', 'advance_settle', 'capital', 'drawing', 'transfer', 'drawer_close', 'reversal', 'cost_adjust'] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
+/** العمليات اللي بتتعدل (قيد عكسي + نفس العملية بأرقام جديدة). لازم تطابق edit_entry في 0026 */
+export const EDITABLE_SOURCES: readonly SourceType[] = ['payment', 'expense', 'transfer', 'capital', 'drawing', 'advance', 'salary', 'salary_payment', 'supplier_payment', 'purchase', 'sale'];
 
 export type PeriodKind = 'today' | 'week' | 'month' | 'custom';
 export interface Period {

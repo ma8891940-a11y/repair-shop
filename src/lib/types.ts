@@ -30,6 +30,8 @@ export interface Profile {
   email: string;
   role: Role;
   deleted_at: string | null;
+  /** إذن تصحيح العمليات والحذف (صاحب المحل بيديه) */
+  can_correct?: boolean;
 }
 
 export interface Customer {

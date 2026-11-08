@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calculator, HandCoins, PackageMinus, Truck } from 'lucide-react';
+import { Calculator, HandCoins, PackageMinus, Pencil, Truck, Undo2 } from 'lucide-react';
+import { useCanCorrect } from '../correct';
+import { ReverseDialog } from './ReverseDialog';
+import { EditEntryDialog } from './EditEntryDialog';
 import { useLoad } from '../useLoad';
 import { useMe } from '../auth';
 import { opId, rpc, type DeviceMoney, type StockRow } from '../ledgerApi';
@@ -28,6 +31,8 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
   const owner = profile.role === 'owner';
   const [pay, setPay] = useState(false);
   const [calc, setCalc] = useState(false);
+  const canCorrect = useCanCorrect();
+  const [fix, setFix] = useState<{ mode: 'edit' | 'cancel'; entry_id: string; entry_no: number; amount: number } | null>(null);
   // الخزن تتحفظ على الجهاز من دلوقتي، عشان الدفعة تتسجل صح لو النت فصل قبل ما الفورم يتفتح
   useEffect(() => {
     if (profile.role === 'owner' || profile.role === 'reception') void warmOpLists('payment', profile.id).catch(() => undefined);
@@ -112,9 +117,24 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
                 <li key={p.id} className={cn('flex items-center gap-3 px-3 py-1.5', p.reversed && 'text-fg-3 line-through')}>
                   <span className="num text-fg">{f.money(Number(p.amount))}</span>
                   <span className="text-2xs text-fg-3">{t(`payments.${p.method}`, { defaultValue: p.method })}</span>
+                  {p.reversed && (
+                    <span className="inline-block rounded-full border border-line px-1.5 text-2xs text-fg-3" data-testid="payment-cancelled">
+                      {t('fin.cancelledTag')}
+                    </span>
+                  )}
                   <span className="ms-auto text-2xs text-fg-3">
                     {p.by} · {f.dateTime(p.created_at)}
                   </span>
+                  {canCorrect && !p.reversed && (
+                    <span className="flex gap-0.5">
+                      <button type="button" onClick={() => setFix({ mode: 'edit', entry_id: p.entry_id, entry_no: 0, amount: Number(p.amount) })} className="rounded-sm p-1 text-fg-3 hover:bg-raised hover:text-accent" aria-label={t('edit.edit')} title={t('edit.edit')} data-testid="payment-edit">
+                        <Pencil className="size-3.5" aria-hidden />
+                      </button>
+                      <button type="button" onClick={() => setFix({ mode: 'cancel', entry_id: p.entry_id, entry_no: 0, amount: Number(p.amount) })} className="rounded-sm p-1 text-fg-3 hover:bg-raised hover:text-danger" aria-label={t('edit.cancel')} title={t('edit.cancel')} data-testid="payment-cancel">
+                        <Undo2 className="size-3.5" aria-hidden />
+                      </button>
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -139,6 +159,8 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
           {canDeliver && Number(data.due) > 0 && <p className="text-2xs text-fg-3">{t('money.mustPay', { v: `${f.money(Number(data.due))} ${cur}` })}</p>}
         </div>
       )}
+      <EditEntryDialog entry={fix?.mode === 'edit' ? fix : null} onOpenChange={(v) => !v && setFix(null)} onDone={done} />
+      <ReverseDialog move={fix?.mode === 'cancel' ? { ...fix, source_type: 'payment' } : null} onOpenChange={(v) => !v && setFix(null)} onDone={done} />
       {customer && <OpDialog op="payment" open={pay} onOpenChange={setPay} fixed={{ customer, device: { id: deviceId, label: orderNo }, amount: data && Number(data.due) > 0 ? Number(data.due) : undefined }} onDone={done} />}
     </Panel>
   );

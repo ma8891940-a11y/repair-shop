@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, FileText, Search } from 'lucide-react';
+import { ArrowLeft, FileText, Search, Trash2 } from 'lucide-react';
+import { Button } from '../ui/Button';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { WhatsAppButton, WhatsAppDialog, type MessageTarget } from '../app/messaging';
@@ -22,6 +23,8 @@ import { Checkbox } from '../ui/Checkbox';
 import { useToast } from '../ui/Toast';
 import { errorMessage } from '../lib/errors';
 import { cn } from '../ui/cn';
+import { DeleteDialog } from '../app/DeleteDialog';
+import { useCanCorrect } from '../app/correct';
 
 interface CustomerRow {
   id: string;
@@ -155,6 +158,8 @@ export function CustomerProfileScreen() {
   const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const canCorrect = useCanCorrect();
+  const [del, setDel] = useState(false);
   const [wa, setWa] = useState(false);
   const { data, error, loading, reload } = useLoad(async () => {
     const [c, d] = await Promise.all([
@@ -210,7 +215,13 @@ export function CustomerProfileScreen() {
             </Link>
           )}
           {target && <WhatsAppButton onClick={() => setWa(true)} />}
+          {canCorrect && (
+            <Button size="sm" variant="ghost" icon={<Trash2 className="size-4" />} onClick={() => setDel(true)} data-testid="customer-delete">
+              {t('del.delete')}
+            </Button>
+          )}
         </div>
+        <DeleteDialog target={del ? { kind: 'customer', id: c.id, name: c.name } : null} onOpenChange={setDel} onDone={() => navigate('/customers')} />
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label={t('customers.visits')} value={f.number(data.devices.length)} />
           <Stat label={t('customers.spent')} value={`${f.money(spent)} ${f.currency(shop.currency)}`} />

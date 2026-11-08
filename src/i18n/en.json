@@ -462,7 +462,13 @@
       "E_RESTORE_NOT_EMPTY": "This shop already has data. Restore only works into a new empty shop: register a new shop and restore there",
       "E_RESTORE_MISMATCH": "The backup's numbers didn't match after restoring, so the restore was cancelled and nothing changed. The file may have been modified",
       "E_RESTORE_UNBALANCED": "The backup has an unbalanced entry, so the restore was cancelled and nothing changed",
-      "E_BACKUP_FORMAT": "This isn't a Gawalak backup file, or it's a backup of this same shop"
+      "E_BACKUP_FORMAT": "This isn't a Gawalak backup file, or it's a backup of this same shop",
+      "E_REASON_REQUIRED": "A reason is required",
+      "E_NOT_EDITABLE": "This operation can’t be edited. Reverse it and record it again",
+      "E_HAS_BALANCE": "Can’t delete: there is an outstanding balance. Settle it first",
+      "E_HAS_OPEN_DEVICES": "Can’t delete: this customer still has devices in the shop",
+      "E_HAS_STOCK": "Can’t delete: the item is still in stock. Write it off or return it first",
+      "E_HAS_MONEY": "Can’t delete: the device has payments or parts. Reverse them first"
     }
   },
   "onboarding": {
@@ -591,7 +597,11 @@
     "suspendTitle": "Suspend account",
     "suspendText": "{{name}} won't be able to sign in until you reactivate them.",
     "you": "You",
-    "empty": "No staff yet. Send the first invite above."
+    "empty": "No staff yet. Send the first invite above.",
+    "canCorrect": "Can correct & delete",
+    "canCorrectHint": "Can edit and cancel operations (by reversal with a reason) and delete customers and items",
+    "canCorrectOn": "{{name}} can now correct operations",
+    "canCorrectOff": "{{name}} can no longer correct operations"
   },
   "audit": {
     "title": "Activity log",
@@ -1040,7 +1050,10 @@
     },
     "noBalances": "No balances",
     "plSub": "Revenue and expenses per item for the period.",
-    "oldest": "Oldest debt {{d}} ago"
+    "oldest": "Oldest debt {{d}} ago",
+    "reverseQueued": "A reversal will be recorded for operation #{{no}}",
+    "cancelledTag": "Cancelled",
+    "reverseQueuedBare": "A reversal will be recorded for this payment"
   },
   "ledger": {
     "acc": {
@@ -1132,7 +1145,8 @@
     "lastCost": "Last price",
     "minCost": "Lowest",
     "lastAt": "Last purchase",
-    "cheapest": "Cheapest"
+    "cheapest": "Cheapest",
+    "name": "Item name"
   },
   "ledgerSettings": {
     "cashboxes": "Cashboxes",
@@ -1721,5 +1735,34 @@
     "credit": "Credit",
     "balanced": "Balanced: debit = credit",
     "unbalanced": "Unbalanced: difference {{amount}}"
+  },
+  "undo": {
+    "in": "Runs in {{n}} s",
+    "undo": "Undo",
+    "undone": "Cancelled — nothing changed"
+  },
+  "edit": {
+    "title": "Edit operation",
+    "save": "Save changes",
+    "saved": "Operation #{{no}} edited",
+    "hint": "The original is kept: a reversal and a new entry with these numbers are recorded together, with the reason under your name.",
+    "alreadyReversed": "This operation was already cancelled.",
+    "qty": "Qty",
+    "price": "Sale price",
+    "unitCost": "Unit cost",
+    "from": "From cashbox",
+    "to": "To cashbox",
+    "note": "Memo",
+    "edit": "Edit",
+    "cancel": "Cancel operation"
+  },
+  "del": {
+    "title": "Delete {{name}}",
+    "text": "It disappears from lists and pickers; old data (devices, money, statements) stays as is.",
+    "reasonOpt": "Reason (optional)",
+    "confirm": "Delete",
+    "queued": "Deleting “{{name}}”",
+    "done": "“{{name}}” deleted",
+    "delete": "Delete"
   }
 }

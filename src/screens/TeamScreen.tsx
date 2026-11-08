@@ -17,6 +17,7 @@ import { Alert, EmptyState, ErrorState, Skeleton } from '../ui/Feedback';
 import { Dialog } from '../ui/Dialog';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
+import { Checkbox } from '../ui/Checkbox';
 
 interface Invite {
   id: string;
@@ -41,7 +42,7 @@ export function TeamScreen() {
 
   const { data, error, loading, reload } = useLoad(async () => {
     const [u, i] = await Promise.all([
-      supabase.from('profiles').select('id, shop_id, full_name, email, role, deleted_at').order('created_at'),
+      supabase.from('profiles').select('id, shop_id, full_name, email, role, deleted_at, can_correct').order('created_at'),
       supabase.from('staff_invites').select('id, email, full_name, role, created_at').is('accepted_at', null).is('deleted_at', null).order('created_at'),
     ]);
     return { users: must(u) as Profile[], invites: must(i) as Invite[] };
@@ -69,6 +70,13 @@ export function TeamScreen() {
     setSuspend(null);
     if (ue) return toast({ tone: 'danger', title: errorMessage(ue) });
     toast({ tone: 'ok', title: active ? t('team.activate') : t('team.suspend'), description: u.full_name });
+    reload();
+  }
+
+  async function setCorrect(u: Profile, on: boolean) {
+    const { error: ge } = await supabase.rpc('set_can_correct', { p_user: u.id, p_on: on });
+    if (ge) return toast({ tone: 'danger', title: errorMessage(ge) });
+    toast({ tone: 'ok', title: t(on ? 'team.canCorrectOn' : 'team.canCorrectOff', { name: u.full_name }) });
     reload();
   }
 
@@ -164,6 +172,11 @@ export function TeamScreen() {
                         </div>
                       </div>
                       <span className="text-xs text-fg-2">{t(`roles.${u.role}`)}</span>
+                      {u.role === 'reception' && !u.deleted_at && (
+                        <span title={t('team.canCorrectHint')} data-testid="can-correct">
+                          <Checkbox checked={!!u.can_correct} onChange={(v) => void setCorrect(u, v)} label={<span className="text-xs text-fg-2">{t('team.canCorrect')}</span>} />
+                        </span>
+                      )}
                       <span className={cn('rounded-full border px-2 py-0.5 text-2xs', u.deleted_at ? 'border-[color-mix(in_srgb,var(--danger)_35%,transparent)] text-danger' : 'border-[color-mix(in_srgb,var(--ok)_35%,transparent)] text-ok')}>
                         {u.deleted_at ? t('team.suspended') : t('team.active')}
                       </span>

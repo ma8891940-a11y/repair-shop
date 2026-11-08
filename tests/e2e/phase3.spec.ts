@@ -69,8 +69,11 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
   await page.getByTestId('move-row').filter({ hasText: 'إيجار مارس' }).getByRole('button', { name: 'تصحيح بقيد عكسي' }).click();
   await page.getByRole('dialog').getByLabel('السبب').fill('اتسجل بالغلط');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل القيد العكسي' }).click();
+  // تراجع لثواني قبل ما يتنفذ، وبعدها الحركة الأصلية بتفضل ظاهرة متشطبة ومكتوب عليها "ملغاة"
+  await expect(page.getByTestId('undo-countdown')).toBeVisible();
   await expect(page.getByText('اتسجل القيد العكسي')).toBeVisible();
   await expect(page.getByTestId('statement-balance')).toContainText('7,990.25');
+  await expect(page.getByTestId('move-row').filter({ hasText: 'إيجار مارس' }).getByTestId('move-cancelled')).toBeVisible();
   await noHorizontalScroll(page);
 
   // المخزون: صنف، وشراء آجل، وبيع نقدي

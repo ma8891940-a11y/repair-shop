@@ -270,7 +270,7 @@ d('المرحلة 3: الدفتر المحاسبي', () => {
     const before = await balanceOf(A.owner, 'cash_cash');
     const exp0 = (await pos(A.owner)).expenses;
     await expect(as(rec, `select reverse_entry($1, 'غلط')`, [e])).rejects.toThrow(/E_FORBIDDEN/);
-    await expect(as(A.owner, `select reverse_entry($1, '')`, [e])).rejects.toThrow(/E_BAD_INPUT/);
+    await expect(as(A.owner, `select reverse_entry($1, '')`, [e])).rejects.toThrow(/E_REASON_REQUIRED/);
     const rev = (await as(A.owner, `select reverse_entry($1, 'الإيجار اتسجل مرتين') as r`, [e])).rows[0].r;
     expect(await balanceOf(A.owner, 'cash_cash')).toBe(before + 300000);
     expect((await pos(A.owner)).expenses).toBe(exp0 - 300000);

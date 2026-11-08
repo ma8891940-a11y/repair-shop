@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowRight, Eye, ImagePlus, KeyRound, Printer, QrCode, Receipt, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, ImagePlus, KeyRound, Printer, QrCode, Receipt, ShieldCheck, Trash2, X } from 'lucide-react';
+import { DeleteDialog } from '../app/DeleteDialog';
+import { useCanCorrect } from '../app/correct';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
 import { useLiveRefresh } from '../app/AppShell';
@@ -75,6 +77,8 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   const [err, setErr] = useState<{ msg: string; n: number } | null>(null);
   const [confirmDeliver, setConfirmDeliver] = useState(false);
   const [wa, setWa] = useState(false);
+  const canCorrect = useCanCorrect();
+  const [del, setDel] = useState(false);
   const [moneyVer, setMoneyVer] = useState(0);
   const [localStatus, setLocalStatus] = useState<DeviceStatus | null>(null);
   const sync = useSync();
@@ -219,6 +223,12 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
             <Link to={`/print/invoice/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong">
               <Receipt className="size-4" /> {t('detail.invoice')}
             </Link>
+            {canCorrect && (
+              <button type="button" onClick={() => setDel(true)} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg-2 hover:text-danger" data-testid="device-delete">
+                <Trash2 className="size-4" /> {t('del.delete')}
+              </button>
+            )}
+            <DeleteDialog target={del ? { kind: 'device', id, name: d.order_no } : null} onOpenChange={setDel} onDone={close} />
           </div>
         )}
       </div>

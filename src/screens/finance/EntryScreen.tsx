@@ -1,6 +1,11 @@
+import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Pencil, Undo2 } from 'lucide-react';
+import { Button } from '../../ui/Button';
+import { ReverseDialog } from '../../app/finance/ReverseDialog';
+import { EditEntryDialog } from '../../app/finance/EditEntryDialog';
+import { EDITABLE_SOURCES, type SourceType } from '../../lib/ledger';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useAccountName } from '../../app/ledgerApi';
@@ -36,6 +41,7 @@ export function EntryScreen() {
   const f = useFormat();
   const accName = useAccountName();
   const location = useLocation();
+  const [mode, setMode] = useState<'edit' | 'cancel' | null>(null);
 
   const { data, error, loading, reload } = useLoad(async () => {
     const e = must(await supabase.from('journal_entries').select('id, entry_no, occurred_at, source_type, device_id, memo, reverses_id, created_by').eq('id', id).maybeSingle()) as EntryRow | null;
@@ -78,6 +84,26 @@ export function EntryScreen() {
       <PageHeader
         title={data ? t('entry.title', { no: data.e.entry_no }) : t('entry.titleBare')}
         sub={data ? `${t(`fin.src.${data.e.source_type}`, { defaultValue: t('entry.other') })} · ${f.dateTime(data.e.occurred_at)}` : undefined}
+        actions={
+          data && !data.reversedBy && !['reversal', 'cost_adjust'].includes(data.e.source_type) ? (
+            <div className="flex gap-2">
+              {EDITABLE_SOURCES.includes(data.e.source_type as SourceType) && (
+                <Button size="sm" icon={<Pencil className="size-4" />} onClick={() => setMode('edit')} data-testid="entry-edit">
+                  {t('edit.edit')}
+                </Button>
+              )}
+              <Button size="sm" variant="danger" icon={<Undo2 className="size-4" />} onClick={() => setMode('cancel')} data-testid="entry-cancel">
+                {t('edit.cancel')}
+              </Button>
+            </div>
+          ) : undefined
+        }
+      />
+      <EditEntryDialog entry={mode === 'edit' && data ? { entry_id: data.e.id, entry_no: data.e.entry_no } : null} onOpenChange={(v) => !v && setMode(null)} onDone={reload} />
+      <ReverseDialog
+        move={mode === 'cancel' && data ? { entry_id: data.e.id, entry_no: data.e.entry_no, source_type: data.e.source_type as SourceType, amount: data.lines.reduce((a, l) => a + Number(l.debit), 0) } : null}
+        onOpenChange={(v) => !v && setMode(null)}
+        onDone={reload}
       />
       {error ? (
         <Panel>

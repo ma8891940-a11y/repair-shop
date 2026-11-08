@@ -20,6 +20,7 @@ import { Field, Input, Select } from '../../ui/Field';
 import { Alert, EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
+import { DeleteDialog } from '../../app/DeleteDialog';
 
 interface Supplier {
   id: string;
@@ -542,6 +543,8 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
   const [minQty, setMinQty] = useState('0');
   const [supplier, setSupplier] = useState('');
   const [price, setPrice] = useState('');
+  const [name, setName] = useState('');
+  const [del, setDel] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const prices = useLoad(
     async () => (item ? rpc<{ supplier_id: string; supplier: string; last_cost: number; min_cost: number; last_at: string; total_qty: number }[]>('item_suppliers', { p_item: item.id }) : []),
@@ -551,6 +554,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     if (!item) return;
     setMinQty(String(item.min_qty ?? 0));
     setSupplier(item.supplier_id ?? '');
+    setName(item.name);
     setPrice(item.sale_price != null ? String(item.sale_price / 100) : '');
     setErr(null);
   }, [item]);
@@ -560,7 +564,8 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     if (!Number.isInteger(mq) || mq < 0) return setErr(t('inv.errMin'));
     const p = price.trim() ? parsePounds(price) : null;
     if (price.trim() && p == null) return setErr(t('fin.errAmount'));
-    const { error } = await supabase.from('items').update({ min_qty: mq, supplier_id: supplier || null, sale_price: p }).eq('id', item.id);
+    if (!name.trim()) return setErr(t('common.required'));
+    const { error } = await supabase.from('items').update({ name: name.trim(), min_qty: mq, supplier_id: supplier || null, sale_price: p }).eq('id', item.id);
     if (error) return setErr(errorMessage(error));
     toast({ tone: 'ok', title: t('settings.saved') });
     onOpenChange(false);
@@ -577,6 +582,9 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
       className="w-[min(94vw,560px)]"
       footer={
         <>
+          <Button variant="ghost" className="me-auto text-danger" icon={<Trash2 className="size-4" />} onClick={() => setDel(true)} data-testid="item-delete">
+            {t('del.delete')}
+          </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
@@ -586,7 +594,18 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
         </>
       }
     >
+      <DeleteDialog
+        target={del && item ? { kind: 'item', id: item.id, name: item.name } : null}
+        onOpenChange={setDel}
+        onDone={() => {
+          onOpenChange(false);
+          onDone();
+        }}
+      />
       <div className="flex flex-col gap-3">
+        <Field label={t('inv.name')}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-testid="item-name" />
+        </Field>
         <div>
           <div className="readout-label mb-1.5">{t('inv.supplierPrices')}</div>
           {rows.length === 0 ? (

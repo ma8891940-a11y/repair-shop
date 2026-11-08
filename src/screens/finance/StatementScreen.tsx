@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowDownUp, Download, HandCoins, Lock, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowDownUp, Download, HandCoins, Lock, Pencil, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
@@ -10,6 +10,8 @@ import { OpDialog, type Op, type OpFixed } from '../../app/finance/OpDialog';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { CloseDrawerDialog } from '../../app/finance/CloseDrawerDialog';
 import { ReverseDialog } from '../../app/finance/ReverseDialog';
+import { EditEntryDialog } from '../../app/finance/EditEntryDialog';
+import { EDITABLE_SOURCES } from '../../lib/ledger';
 import { WhatsAppButton, WhatsAppDialog, type MessageTarget } from '../../app/messaging';
 import { supabase } from '../../lib/supabase';
 import { matchMove, plainPounds, toCsv } from '../../lib/ledger';
@@ -46,6 +48,7 @@ export function StatementScreen() {
   const [op, setOp] = useState<Op | null>(null);
   const [closing, setClosing] = useState(false);
   const [reverse, setReverse] = useState<Move | null>(null);
+  const [edit, setEdit] = useState<Move | null>(null);
   const [wa, setWa] = useState(false);
   const cur = f.currency(shop.currency);
 
@@ -225,7 +228,16 @@ export function StatementScreen() {
                         </div>
                       </td>
                       <td className="max-w-[260px]">
-                        <div className="text-fg">{label(m)}</div>
+                        <div className="text-fg">
+                          <Link to={`/finance/entry/${m.entry_id}`} className="hover:text-accent hover:underline">
+                            {label(m)}
+                          </Link>
+                          {m.reversed && (
+                            <span className="ms-2 inline-block rounded-full border border-line px-1.5 text-2xs text-fg-3 no-underline" data-testid="move-cancelled">
+                              {t('fin.cancelledTag')}
+                            </span>
+                          )}
+                        </div>
                         {m.memo && <div className="truncate text-2xs text-fg-3">{m.memo}</div>}
                       </td>
                       <td>
@@ -246,7 +258,12 @@ export function StatementScreen() {
                         {f.money(m.balance)}
                       </td>
                       <td className="text-end">
-                        {!m.reversed && m.source_type !== 'reversal' && (
+                        {!m.reversed && EDITABLE_SOURCES.includes(m.source_type) && (
+                          <button type="button" onClick={() => setEdit(m)} className="rounded-sm p-1 text-fg-3 hover:bg-raised hover:text-accent" aria-label={t('edit.edit')} title={t('edit.edit')} data-testid="move-edit">
+                            <Pencil className="size-3.5" aria-hidden />
+                          </button>
+                        )}
+                        {!m.reversed && m.source_type !== 'reversal' && m.source_type !== 'cost_adjust' && (
                           <button type="button" onClick={() => setReverse(m)} className="rounded-sm p-1 text-fg-3 hover:bg-raised hover:text-danger" aria-label={t('fin.reverse')} title={t('fin.reverse')}>
                             <Undo2 className="size-3.5" aria-hidden />
                           </button>
@@ -263,6 +280,7 @@ export function StatementScreen() {
       {op && h && <OpDialog op={op} open={!!op} onOpenChange={(v) => !v && setOp(null)} fixed={h.fixed} onDone={reload} />}
       {kind === 'cashbox' && <CloseDrawerDialog open={closing} onOpenChange={setClosing} cashboxId={id} name={h?.title ?? ''} onDone={reload} />}
       <ReverseDialog move={reverse} onOpenChange={(v) => !v && setReverse(null)} onDone={reload} />
+      <EditEntryDialog entry={edit} onOpenChange={(v) => !v && setEdit(null)} onDone={reload} />
       <WhatsAppDialog open={wa} onOpenChange={setWa} target={waTarget} initial="debt" />
     </div>
   );

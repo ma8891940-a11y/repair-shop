@@ -68,11 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    const { data: p, error: pe } = await supabase
-      .from('profiles')
-      .select('id, shop_id, full_name, email, role, deleted_at')
-      .eq('id', s.user.id)
-      .maybeSingle();
+    const one = async (cols: string) => {
+      const r = await supabase.from('profiles').select(cols).eq('id', s.user.id).maybeSingle();
+      return { data: r.data as unknown as Profile | null, error: r.error };
+    };
+    let { data: p, error: pe } = await one('id, shop_id, full_name, email, role, deleted_at, can_correct');
+    // قاعدة بيانات لسه ما اتحدّثتش بملف 0026 (من غير عمود الإذن): الدخول يشتغل عادي، والإذن بيبقى مقفول
+    if (pe && /can_correct/.test(pe.message)) ({ data: p, error: pe } = await one('id, shop_id, full_name, email, role, deleted_at'));
     // بدون نت: البرنامج بيفتح بآخر بيانات محفوظة للمستخدم ده على الجهاز
     if (pe && isNetworkError(pe)) {
       const cached = readMe(s.user.id);

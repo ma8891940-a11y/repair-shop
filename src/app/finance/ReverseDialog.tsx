@@ -1,53 +1,45 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { errorMessage } from '../../lib/errors';
 import { useFormat } from '../../i18n/format';
 import { rpc, type Move } from '../ledgerApi';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { Field, Textarea } from '../../ui/Field';
 import { Alert } from '../../ui/Feedback';
-import { useToast } from '../../ui/Toast';
+import { useUndoable } from '../correct';
 
 /** تصحيح غلط: قيد عكسي مربوط بالأصلي (القيد نفسه ما بيتعدلش ولا بيتحذف). السبب إجباري وبيتسجل في السجل */
-export function ReverseDialog({ move, onOpenChange, onDone }: { move: Move | null; onOpenChange: (v: boolean) => void; onDone?: () => void }) {
+export function ReverseDialog({ move, onOpenChange, onDone }: { move: Pick<Move, 'entry_id' | 'entry_no' | 'source_type' | 'amount'> | null; onOpenChange: (v: boolean) => void; onDone?: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
-  const toast = useToast();
+  const undoable = useUndoable();
   const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     setReason('');
     setErr(null);
   }, [move]);
-  async function submit() {
+  /** التأكيد: الديالوج بيتقفل، والقيد العكسي بيتسجل بعد ثواني التراجع */
+  function submit() {
     if (!move) return;
     if (!reason.trim()) return setErr(t('fin.errReason'));
-    setBusy(true);
-    try {
-      await rpc('reverse_entry', { p_entry: move.entry_id, p_reason: reason.trim() });
-      toast({ tone: 'ok', title: t('fin.reversed') });
-      onOpenChange(false);
-      onDone?.();
-    } catch (e) {
-      setErr(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
+    const entry = move.entry_id;
+    const why = reason.trim();
+    onOpenChange(false);
+    undoable({ title: move.entry_no ? t('fin.reverseQueued', { no: move.entry_no }) : t('fin.reverseQueuedBare'), done: t('fin.reversed'), run: () => rpc('reverse_entry', { p_entry: entry, p_reason: why }), onDone });
   }
   return (
     <Dialog
       open={!!move}
       onOpenChange={onOpenChange}
       title={t('fin.reverse')}
-      description={move ? `#${move.entry_no} · ${t(`fin.src.${move.source_type}`)} · ${f.money(move.amount)}` : undefined}
+      description={move ? `${move.entry_no ? `#${move.entry_no} · ` : ''}${t(`fin.src.${move.source_type}`)} · ${f.money(move.amount)}` : undefined}
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="danger" loading={busy} onClick={() => void submit()}>
+          <Button variant="danger" onClick={submit}>
             {t('fin.reverseNow')}
           </Button>
         </>
