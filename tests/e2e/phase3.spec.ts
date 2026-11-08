@@ -111,11 +111,14 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/finance-${info.project.name}.png`, fullPage: true });
 
   // كسر التوازن عن قصد (من ورا كل الحماية في قاعدة البيانات) والتنبيه الأحمر لازم يظهر
+  const broken = { id: '', no: '' };
   const db = new pg.Client({ connectionString: DB });
   await db.connect();
   try {
     const shop = (await db.query(`select shop_id from profiles where email = $1`, [email])).rows[0].shop_id;
-    const e = (await db.query(`select e.id, l.account_id from journal_entries e join journal_lines l on l.entry_id = e.id where e.shop_id = $1 limit 1`, [shop])).rows[0];
+    const e = (await db.query(`select e.id, e.entry_no, l.account_id from journal_entries e join journal_lines l on l.entry_id = e.id where e.shop_id = $1 limit 1`, [shop])).rows[0];
+    broken.id = e.id;
+    broken.no = String(e.entry_no);
     await db.query('begin');
     await db.query('alter table journal_lines disable trigger entry_balanced');
     await db.query(`insert into journal_lines(shop_id, entry_id, account_id, debit) values ($1, $2, $3, 1)`, [shop, e.id, e.account_id]);
@@ -129,7 +132,18 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
   await expect(page.getByTestId('ledger-unbalanced')).toBeVisible();
   await expect(page.getByText('الدفتر مش متوازن!').first()).toBeInViewport();
   await expect(page.getByTestId('ledger-balanced')).toHaveCount(0);
+  // فحص السلامة: المكان (رقم القيد) والمبلغ بالظبط (قرش واحد)، وزرار بيفتح القيد نفسه
+  const issue = page.getByTestId('integrity-issue').first();
+  await expect(issue).toContainText(`القيد رقم ${broken.no}`);
+  await expect(issue).toContainText('0.01');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/finance-red-${info.project.name}.png` });
+  await page.getByTestId('integrity-open').first().click();
+  await expect(page).toHaveURL(new RegExp(`#/finance/entry/${broken.id}`));
+  await expect(page.getByTestId('entry-balance')).toContainText('مش متوازن');
+  await expect(page.getByTestId('entry-balance')).toContainText('0.01');
+  // ولوحة التحكم بتنبّه صاحب المحل برضه
+  await page.goto('/#/');
+  await expect(page.getByTestId('integrity-issue').first()).toContainText(`القيد رقم ${broken.no}`);
 });
 
 test('المرحلة 3: الاستقبال ما تشوفش الوضع المالي ولا الأرصدة، وبتقفل الدرج بتاعها بس من غير ما تشوف المتوقع', async ({ page, browser }, info) => {

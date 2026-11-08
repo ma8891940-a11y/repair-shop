@@ -20,6 +20,7 @@ import { Panel, PanelHeader } from '../ui/Panel';
 import { FollowUpPanel } from '../app/FollowUpPanel';
 import { MarketingPanel } from '../app/MarketingPanel';
 import { OwnerAlerts } from '../app/OwnerAlerts';
+import { IntegrityAlert } from '../app/IntegrityAlert';
 import { StatusBadge } from '../ui/StatusBadge';
 import { CountUp, Ring, Sparkline } from '../ui/viz';
 import { EmptyState, ErrorState, Skeleton } from '../ui/Feedback';
@@ -97,6 +98,7 @@ export function DashboardScreen() {
         </Panel>
       ) : (
         <>
+          {owner && <IntegrityAlert className="mb-4" />}
           {owner && <OwnerAlerts />}
           <div className={cn('grid gap-3', owner ? 'grid-cols-2 lg:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4')}>
             <Kpi i={0} label={t('dashboard.today')} caption={t('dashboard.todayCap')} icon={Inbox} value={stats?.today} series={series?.today} to="/devices?filter=today" loading={loading} />

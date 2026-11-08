@@ -1006,7 +1006,8 @@
       "drawing": "Owner drawing",
       "transfer": "Transfer",
       "drawer_close": "Drawer closing",
-      "reversal": "Reversing entry (correction)"
+      "reversal": "Reversing entry (correction)",
+      "cost_adjust": "Stock cost difference"
     },
     "excel": "Excel",
     "pdf": "PDF / Print",
@@ -1686,5 +1687,39 @@
     "assemble": "Assemble",
     "assembleHint": "Pieces arrive from the background signals and come together",
     "replay": "Replay"
+  },
+  "integrity": {
+    "title": "Integrity check found {{n}} accounting difference(s)",
+    "kind": {
+      "entry_unbalanced": "Entry #{{no}} is unbalanced: difference {{amount}}",
+      "entry_missing_side": "Entry #{{no}} is missing a side (debit or credit): {{amount}}",
+      "inventory_ledger": "Inventory value in the ledger does not match stock movements: difference {{amount}}",
+      "item_value": "Item “{{item}}” has an invalid value (qty {{qty}}): {{amount}}",
+      "stock_entry": "Entry #{{no}}: stock movement does not match its ledger value by {{amount}}",
+      "payment_entry": "The payment in entry #{{no}} does not match the cash received by {{amount}}",
+      "party_missing": "Entry #{{no}} has {{amount}} on a customer/supplier/staff account without a party",
+      "shop_mismatch": "Entry #{{no}} has a line from another shop"
+    },
+    "openEntry": "Open entry",
+    "openInventory": "Open inventory",
+    "more": "And {{n}} more.",
+    "hint": "Don’t delete anything: correct it with a reversal from the entry screen, or contact support if unsure."
+  },
+  "entry": {
+    "title": "Entry #{{no}}",
+    "titleBare": "Entry",
+    "other": "Operation",
+    "notFound": "This entry does not exist",
+    "memo": "Memo",
+    "state": "Status",
+    "active": "Active",
+    "reversedBy": "Cancelled by reversal #{{no}}",
+    "reverses": "Reverses entry #{{no}}",
+    "account": "Account",
+    "party": "Party",
+    "debit": "Debit",
+    "credit": "Credit",
+    "balanced": "Balanced: debit = credit",
+    "unbalanced": "Unbalanced: difference {{amount}}"
   }
 }

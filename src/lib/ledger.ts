@@ -2,7 +2,7 @@ import { assertPiasters, type Piasters } from './money';
 import { cairoDay, cairoDayEnd, cairoDayStart } from './dates';
 
 /** أنواع مصادر القيود (لازم تطابق journal_entries.source_type) */
-export const SOURCE_TYPES = ['payment', 'delivery', 'purchase', 'supplier_payment', 'part_use', 'sale', 'expense', 'salary', 'salary_payment', 'advance', 'advance_settle', 'capital', 'drawing', 'transfer', 'drawer_close', 'reversal'] as const;
+export const SOURCE_TYPES = ['payment', 'delivery', 'purchase', 'supplier_payment', 'part_use', 'sale', 'expense', 'salary', 'salary_payment', 'advance', 'advance_settle', 'capital', 'drawing', 'transfer', 'drawer_close', 'reversal', 'cost_adjust'] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
 
 export type PeriodKind = 'today' | 'week' | 'month' | 'custom';

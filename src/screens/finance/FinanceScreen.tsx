@@ -16,6 +16,7 @@ import { CountUp, Sparkline } from '../../ui/viz';
 import { DailyChart } from '../../ui/DailyChart';
 import { Alert, EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { Button } from '../../ui/Button';
+import { IntegrityAlert } from '../../app/IntegrityAlert';
 import { cn } from '../../ui/cn';
 
 const QUICK_OPS: { op: Op; icon: LucideIcon }[] = [
@@ -96,6 +97,7 @@ export function FinanceScreen() {
               <span data-testid="ledger-unbalanced">{t('fin.unbalancedText', { n: p.unbalanced_entries, d: f.money(p.debits), c: f.money(p.credits) })}</span>
             </Alert>
           )}
+          <IntegrityAlert className="mb-4" />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             {kpis.map((k, i) => (
               <motion.div key={k.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: i * 0.04 }}>
