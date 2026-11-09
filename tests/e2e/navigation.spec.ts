@@ -17,11 +17,17 @@ test('التنقل السريع بين الشاشات ما بيسيبش الصف
   }
   // ضغط متتالي سريع على القائمة (على الموبايل الفريق جوه "المزيد")
   const mobile = info.project.name.startsWith('mobile');
+  // القايمة في مجموعات (S2): كل المجموعات المقفولة بتتفتح الأول (وبتفضل مفتوحة، فده مرة واحدة)
+  const openAll = async (root: ReturnType<typeof page.locator>) => {
+    for (const b of await root.locator('button[aria-expanded="false"]').all()) await b.click();
+  };
+  if (!mobile) await openAll(page.getByTestId('side-nav'));
   const go = async (n: string) => {
-    const link = page.getByRole('link', { name: n }).filter({ visible: true });
+    const link = page.getByRole('link', { name: n, exact: true }).filter({ visible: true });
     if (mobile && (await link.count()) === 0) {
       await page.getByRole('button', { name: 'المزيد' }).click();
-      const inDialog = page.getByRole('dialog').getByRole('link', { name: n });
+      await openAll(page.getByTestId('more-nav'));
+      const inDialog = page.getByRole('dialog').getByRole('link', { name: n, exact: true });
       await expect(inDialog).toBeVisible();
       await inDialog.click();
       await expect(page.getByRole('dialog')).toBeHidden();
@@ -34,6 +40,7 @@ test('التنقل السريع بين الشاشات ما بيسيبش الصف
   if (mobile) {
     // كل صفحات القائمة متاحة من "المزيد"
     await page.getByRole('button', { name: 'المزيد' }).click();
-    for (const n of ['الوضع المالي', 'التقارير', 'الإعدادات', 'سجل النشاط']) await expect(page.getByRole('dialog').getByRole('link', { name: n })).toBeVisible();
+    await openAll(page.getByTestId('more-nav'));
+    for (const n of ['الوضع المالي', 'التقارير', 'الإعدادات', 'سجل النشاط']) await expect(page.getByRole('dialog').getByRole('link', { name: n, exact: true })).toBeVisible();
   }
 });
