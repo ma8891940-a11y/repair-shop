@@ -60,7 +60,8 @@
     "more": "More",
     "videos": "Videos",
     "community": "Community",
-    "admin": "Admin"
+    "admin": "Admin",
+    "partners": "Partners"
   },
   "roles": {
     "owner": "Owner",
@@ -469,7 +470,10 @@
       "E_HAS_BALANCE": "Can’t delete: there is an outstanding balance. Settle it first",
       "E_HAS_OPEN_DEVICES": "Can’t delete: this customer still has devices in the shop",
       "E_HAS_STOCK": "Can’t delete: the item is still in stock. Write it off or return it first",
-      "E_HAS_MONEY": "Can’t delete: the device has payments or parts. Reverse them first"
+      "E_HAS_MONEY": "Can’t delete: the device has payments or parts. Reverse them first",
+      "E_SHARE_OVER_100": "Partner shares can’t exceed 100%",
+      "E_PERIOD_DISTRIBUTED": "This period (or part of it) was already distributed. Reverse the old distribution first if it was wrong.",
+      "E_NOTHING_TO_DISTRIBUTE": "Nothing to distribute: profit is zero or no partners in this period"
     }
   },
   "onboarding": {
@@ -961,25 +965,29 @@
       "cashbox": "Cashbox",
       "customer": "Customer statement",
       "supplier": "Supplier statement",
-      "employee": "Employee account"
+      "employee": "Employee account",
+      "partner": "Partner statement"
     },
     "balanceOf": {
       "cashbox": "Current balance",
       "customer": "Owes now",
       "supplier": "Owed now",
-      "employee": "Due now"
+      "employee": "Due now",
+      "partner": "Owed to partner"
     },
     "in": {
       "cashbox": "In",
       "customer": "Charged",
       "supplier": "Paid",
-      "employee": "Advances"
+      "employee": "Advances",
+      "partner": "Credit"
     },
     "out": {
       "cashbox": "Out",
       "customer": "Paid",
       "supplier": "Bought",
-      "employee": "Due and paid"
+      "employee": "Due and paid",
+      "partner": "Withdrawn"
     },
     "dir": {
       "all": "All",
@@ -1022,7 +1030,10 @@
       "write_off": "Write-off",
       "supplier_return": "Return to supplier",
       "sale_return": "Customer return",
-      "opening": "Opening balance"
+      "opening": "Opening balance",
+      "partner_capital": "Partner capital",
+      "partner_withdrawal": "Partner withdrawal",
+      "profit_distribution": "Profit distribution"
     },
     "excel": "Excel",
     "pdf": "PDF / Print",
@@ -1086,7 +1097,10 @@
       "cash_bank_transfer": "Bank account",
       "cash_card": "Card (POS)",
       "cash_installments": "Installments (valU)",
-      "wastage": "Wastage"
+      "wastage": "Wastage",
+      "partners_capital": "Partners’ capital",
+      "partners_current": "Partners’ current",
+      "retained": "Retained earnings"
     }
   },
   "inv": {
@@ -1897,7 +1911,8 @@
       "cash": "Cashboxes",
       "customers": "Customer debts",
       "suppliers": "Supplier debts",
-      "summary": "Summary"
+      "summary": "Summary",
+      "partners": "Partners"
     },
     "stockHint": "Enter each item, its quantity and your unit cost. You can copy the table from Excel and paste it here at once; arrows and Enter move between rows.",
     "unitCost": "Unit cost",
@@ -1932,7 +1947,8 @@
       "cash": "Cash in cashboxes",
       "receivables": "Owed to you (net)",
       "payables": "You owe (net)",
-      "capital": "Opening capital"
+      "capital": "Opening capital",
+      "partners": "To partners"
     },
     "balanced": "Ledger balanced ({{n}} opening entries)",
     "fixHint": "If a number is wrong: open the entry from Finance and reverse it, then record it again.",
@@ -1940,5 +1956,51 @@
     "finished": "Stocktake finished",
     "cardTitle": "First stocktake",
     "cardCount": "{{n}} of {{total}}"
+  },
+  "partners": {
+    "title": "Partners",
+    "sub": "Each partner’s share of net profit, capital and current account. Withdrawals are not expenses.",
+    "add": "New partner",
+    "edit": "Edit partner",
+    "name": "Partner name",
+    "phone": "Phone",
+    "share": "Share of net profit",
+    "joined": "Joined on",
+    "since": "Since {{d}}",
+    "capital": "Capital",
+    "current": "Current (profit − withdrawals)",
+    "total": "Owed to partner",
+    "actions": "Actions",
+    "deposit": "Capital deposit",
+    "withdraw": "Withdraw",
+    "statement": "Partner statement",
+    "empty": "No partners",
+    "emptyText": "If the shop has partners, add each one with their share of net profit. Shares total up to 100%; the rest stays with the shop.",
+    "rest": "Partners total {{total}}; the shop keeps {{rest}}",
+    "note": "Withdrawals only reduce the partner’s account and are not expenses, so net profit doesn’t change. Reverse any wrong operation from the statement.",
+    "free": "{{free}} available",
+    "errShare": "Share must be 0–100 (up to two decimals)",
+    "errOver": "Shares would exceed 100%. {{free}} available",
+    "saved": "Partner saved",
+    "depositHint": "Money goes into the cashbox and is recorded as the partner’s capital.",
+    "withdrawHint": "Money leaves the cashbox and is deducted from the partner’s account. Not an expense.",
+    "toCashbox": "Into cashbox",
+    "fromCashbox": "From cashbox",
+    "fromCapital": "From capital (not profits)",
+    "deposited": "Deposit recorded for {{name}}",
+    "withdrawn": "Withdrawal recorded for {{name}}",
+    "distribute": "Distribute profit",
+    "distributeHint": "Net profit for the period (revenue − expenses) is split by share; the rest stays with the shop. A period can’t be distributed twice.",
+    "distributeNow": "Distribute",
+    "distributed": "Profit distributed",
+    "from": "From",
+    "to": "To",
+    "profit": "Net profit for the period",
+    "loss": "Loss for the period",
+    "keptByShop": "Kept by the shop",
+    "shareOf": "Share {{p}}",
+    "openingHint": "Each partner’s capital at stocktake. It moves from opening capital to the partner’s account.",
+    "openingNone": "No partners yet. If the shop has partners, add them on the Partners page first.",
+    "openingGo": "Open Partners"
   }
 }

@@ -63,6 +63,7 @@ async function numbers(o: string, s: string) {
                     from accounts a left join journal_lines l on l.account_id = a.id where a.shop_id = $1 group by 1 order by 1`, [s])).rows.map((r) => [r.k, Number(r.b)]),
   );
   const parties: Record<string, unknown[]> = {};
+  const partnerRows = (await as(o, `select name, share_bp, joined_on::text, capital, current, total from partner_balances()`)).rows.map((r) => [r.name, r.share_bp, r.joined_on, Number(r.capital), Number(r.current), Number(r.total)]);
   for (const k of ['customers', 'suppliers', 'employees'])
     parties[k] = (await as(o, `select name, account, balance::bigint b from party_balances($1) order by name, account`, [k])).rows.map((r) => [r.name, r.account, Number(r.b)]);
   const stock = (await as(o, `select name, kind, qty::bigint, avg_cost::bigint, value::bigint from items_stock() order by name`)).rows.map((r) => [r.name, r.kind, Number(r.qty), Number(r.avg_cost), Number(r.value)]);
@@ -73,7 +74,7 @@ async function numbers(o: string, s: string) {
     `select e.entry_no, e.occurred_at, e.source_type, e.memo, (e.reverses_id is not null) rev, sum(l.debit)::bigint dr, sum(l.credit)::bigint cr
        from journal_entries e join journal_lines l on l.entry_id = e.id where e.shop_id = $1 group by e.id order by e.entry_no`, [s])).rows.map((r) => ({ ...r, dr: Number(r.dr), cr: Number(r.cr) }));
   const counts: Record<string, number> = {};
-  for (const t of ['customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks', 'journal_entries', 'journal_lines', 'payments', 'purchases', 'stock_moves', 'drawer_closings', 'items', 'suppliers', 'repair_steps'])
+  for (const t of ['customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks', 'journal_entries', 'journal_lines', 'payments', 'purchases', 'stock_moves', 'drawer_closings', 'items', 'suppliers', 'repair_steps', 'partners', 'profit_distributions'])
     counts[t] = Number((await admin(`select count(*) n from ${t} where shop_id = $1`, [s])).rows[0].n);
   const unbalanced = Number((await admin(`select count(*) n from (select entry_id from journal_lines where shop_id = $1 group by entry_id having sum(debit) <> sum(credit)) x`, [s])).rows[0].n);
   const notes = (await admin(`select n.body, p.full_name from device_notes n left join profiles p on p.id = n.author_id where n.shop_id = $1 order by n.created_at`, [s])).rows;
@@ -83,7 +84,7 @@ async function numbers(o: string, s: string) {
   const templates = (await admin(`select key, body from message_templates where shop_id = $1 order by key`, [s])).rows;
   // الـ ids جديدة بعد الاسترجاع (مقصود)، وصاحب المحل اللي بيسترجع هو صاحب المحل في النسخة: بنقارن من غيرهم
   const owner = (await admin(`select full_name from profiles where id = $1`, [o])).rows[0].full_name as string;
-  const out = { pos, balances, parties, stock, devices, entries, counts, unbalanced, notes, statusLog, drawers, shop, templates };
+  const out = { pos, balances, parties, partnerRows, stock, devices, entries, counts, unbalanced, notes, statusLog, drawers, shop, templates };
   return JSON.parse(JSON.stringify(out).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '<id>').split(owner).join('<owner>')) as typeof out;
 }
 
@@ -118,6 +119,10 @@ d('استرجاع النسخة الاحتياطية لمحل جديد فاضي',
     await as(A.o, `select record_purchase($1, $2, $3::jsonb)`, [id(), sup, JSON.stringify([{ item: screen, qty: 5, unit_cost: 40000 }])]);
     await as(A.o, `select record_purchase($1, $2, $3::jsonb, $4)`, [id(), sup, JSON.stringify([{ item: cases, qty: 30, unit_cost: 2500 }]), cash]);
     await as(A.o, `select record_expense($1, $2, $3, 400000, 'إيجار')`, [id(), acc.exp_rent, cash]);
+    // (البند 5) شريك برأس مال وتوزيع أرباح وسحب: لازم يرجعوا زي ما هما
+    const partner = id();
+    await as(A.o, `insert into partners(id, shop_id, name, share_bp, joined_on) values ($1, gen_random_uuid(), 'شريك النسخة', 2500, '2026-01-01')`, [partner]);
+    await as(A.o, `select partner_deposit($1, $2, $3, 700000)`, [id(), partner, cash]);
     await as(A.o, `select pay_supplier($1, $2, $3, 100000)`, [id(), sup, bank]);
 
     // عملاء وأجهزة
@@ -159,8 +164,15 @@ d('استرجاع النسخة الاحتياطية لمحل جديد فاضي',
     const drawer = (await admin(`select coalesce(sum(l.debit - l.credit), 0)::bigint b from journal_lines l where l.account_id = $1`, [cash])).rows[0].b;
     await as(R, `select close_drawer($1, $2, $3)`, [id(), cash, Number(drawer) - 1000]);
 
+    // توزيع أرباح كل الفترة لحد دلوقتي، وسحب الشريك من جاريه
+    await as(A.o, `select distribute_profit($1, '2000-01-01', now() + interval '1 minute')`, [id()]);
+    const pid = (await as(A.o, `select id from partners where name = 'شريك النسخة'`)).rows[0].id;
+    await as(A.o, `select partner_withdraw($1, $2, $3, 1000)`, [id(), pid, cash]);
+
     before = await numbers(A.o, A.s);
     expect(before.unbalanced).toBe(0);
+    expect(before.counts.partners).toBe(1);
+    expect(before.counts.profit_distributions).toBe(1);
     backup = (await as(A.o, `select export_backup() b`)).rows[0].b;
   }, 120_000);
   afterAll(async () => db?.end());

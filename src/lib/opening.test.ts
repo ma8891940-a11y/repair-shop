@@ -5,7 +5,7 @@ const blank = () => ({ name: '', kind: 'part', qty: '', cost: '', price: '' });
 
 describe('جرد المحل أول مرة', () => {
   it('التقدم من إعدادات المحل', () => {
-    expect(openingProgress(null)).toEqual({ steps: { stock: false, cash: false, customers: false, suppliers: false }, count: 0, total: 4, done: false });
+    expect(openingProgress(null)).toEqual({ steps: { stock: false, cash: false, customers: false, suppliers: false, partners: false }, count: 0, total: 5, done: false });
     expect(openingProgress({ opening_steps: { stock: true, cash: true, x: true }, opening_done: true })).toMatchObject({ count: 2, done: true });
   });
   it('لصق من Excel: من الخانة اللي عليها التركيز، وبيزوّد سطور، والأعمدة الزيادة بتتجاهل', () => {

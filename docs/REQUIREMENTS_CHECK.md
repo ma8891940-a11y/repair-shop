@@ -174,6 +174,7 @@
 | 109 | المخزون قسم مستقل بحساباته: ربط بالصيانة (إعداد)، هالك، مرتجع مورد وعميل، باركود (توليد وطباعة ومسح)، تصنيفات، صور، حركة الصنف، تعديل جماعي، استيراد وتصدير Excel، وربح المخزون للفترة | رسايل | ✅ | `0027_inventory.sql`، `InventoryScreen.tsx`، `InventoryOps.tsx`، `BarcodePrint.tsx`، `lib/barcode.ts`، `lib/csv.ts` | `db/inventory`، `db/property`، `unit/barcode`، `unit/csv`، `e2e/inventory` |
 | 110 | جرد المحل أول مرة: جدول زي Excel ولصق منه، وأرصدة افتتاحية (مخزون وخزن وديون عملاء وموردين)، وملخص، وقيود متوازنة قصاد رأس المال، ومؤشر تقدم في لوحة التحكم | رسايل | ✅ | `0028_opening.sql`، `OpeningScreen.tsx`، `OpeningCard.tsx`، `lib/opening.ts` | `db/opening`، `db/property`، `unit/opening`، `e2e/opening` |
 | 111 | قاعدة الاختبار بتتنضف قبل كل تشغيل، وكل اختبار بيمسح الداتا اللي عملها (للقاعدة المحلية بس) | رسايل | ✅ | `tests/db/purgeCore.ts`، `tests/db/purge.ts`، `tests/db/globalSetup.ts`، `tests/e2e/globalSetup.ts` | كل اختبارات `db` و`e2e` (القاعدة بتفضل فاضية بعد التشغيل) |
+| 112 | الشركاء: النسب لحد 100%، ورأس المال، وتوزيع الأرباح لأي فترة (من غير تكرار)، وكشف حساب لكل شريك، والسحب مش مصروف، وجوه النسخة الاحتياطية | رسايل | ✅ | `0029_partners.sql`، `PartnersScreen.tsx`، `lib/partners.ts` | `db/partners`، `db/restore`، `db/property`، `unit/partners`، `e2e/partners` |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |
@@ -254,3 +255,4 @@
 - السماح لأي موظف بالتصحيح (`can_correct`) ← فشل `db/editdelete` (اختبارين).
 - السماح للاستقبال بتسجيل هالك ← فشل `db/inventory`.
 - السماح للاستقبال بإدخال أرصدة افتتاحية ← فشل `db/opening`.
+- شيل حماية "مجموع النسب ≤ 100%" ← فشل `db/partners` (4 اختبارات).

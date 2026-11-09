@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Check, Plus } from 'lucide-react';
 import { PageHeader } from '../../app/AppShell';
@@ -24,6 +24,7 @@ type Step = OpeningStep | 'summary';
 const STEPS: Step[] = [...OPENING_STEPS, 'summary'];
 
 interface Summary {
+  partners: number;
   stock: number;
   stock_items: number;
   cash: number;
@@ -79,6 +80,7 @@ export function OpeningScreen() {
       {step === 'cash' && <CashStep onSaved={() => void mark('cash')} />}
       {step === 'customers' && <PartyStep kind="customer" onSaved={() => void mark('customers')} />}
       {step === 'suppliers' && <PartyStep kind="supplier" onSaved={() => void mark('suppliers')} />}
+      {step === 'partners' && <PartnersStep onSaved={() => void mark('partners')} />}
       {step === 'summary' && <SummaryStep />}
     </div>
   );
@@ -384,6 +386,69 @@ function PartyStep({ kind, onSaved }: { kind: 'customer' | 'supplier'; onSaved: 
   );
 }
 
+/** رأس مال كل شريك وقت الجرد (الشركاء نفسهم بيتضافوا من صفحة الشركاء) */
+function PartnersStep({ onSaved }: { onSaved: () => void }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const toast = useToast();
+  const list = useLoad(async () => (await rpc<{ id: string; name: string; share_bp: number }[]>('partner_balances')).map((p) => ({ ...p, share_bp: Number(p.share_bp) })), []);
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const ids = useRef(new Map() as Map<string, string>).current;
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function save() {
+    setErr(null);
+    const ready: { id: string; amount: number }[] = [];
+    for (const [pid, v] of Object.entries(vals)) {
+      if (!v.trim()) continue;
+      const a = parsePounds(v);
+      if (a == null) return setErr(t('fin.errAmount'));
+      if (a > 0) ready.push({ id: pid, amount: a });
+    }
+    setBusy(true);
+    try {
+      for (const x of ready) {
+        if (!ids.has(x.id)) ids.set(x.id, opId());
+        await rpc('opening_balance', { p_id: ids.get(x.id), p_kind: 'partner', p_ref: x.id, p_amount: x.amount });
+      }
+      if (ready.length) toast({ tone: 'ok', title: t('opening.savedParty', { n: ready.length }) });
+      onSaved();
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Panel>
+      <PanelHeader index="05" title={t('opening.step.partners')} />
+      <p className="px-4 pt-3 text-sm text-fg-2">{t('partners.openingHint')}</p>
+      <div className="grid gap-3 p-4 sm:grid-cols-2" data-testid="opening-partners">
+        {!list.data ? (
+          <Skeleton className="h-9" />
+        ) : list.data.length === 0 ? (
+          <p className="text-sm text-fg-3 sm:col-span-2">
+            {t('partners.openingNone')}{' '}
+            <Link to="/partners" className="text-accent hover:underline">
+              {t('partners.openingGo')}
+            </Link>
+          </p>
+        ) : (
+          list.data.map((p) => (
+            <label key={p.id} className="flex items-center gap-3">
+              <span className="w-36 shrink-0 text-sm text-fg">
+                {p.name} <span className="text-2xs text-fg-3">({f.percentBp(p.share_bp)})</span>
+              </span>
+              <Input mono inputMode="decimal" value={vals[p.id] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [p.id]: e.target.value }))} suffix={f.currency()} aria-label={p.name} />
+            </label>
+          ))
+        )}
+      </div>
+      <StepFooter err={err} busy={busy} onSave={() => void save()} onSkip={onSaved} />
+    </Panel>
+  );
+}
+
 function SummaryStep() {
   const { t } = useTranslation();
   const f = useFormat();
@@ -410,7 +475,7 @@ function SummaryStep() {
   ];
   return (
     <Panel>
-      <PanelHeader index="05" title={t('opening.step.summary')} />
+      <PanelHeader index="06" title={t('opening.step.summary')} />
       {error ? (
         <Alert tone="danger" className="m-4">
           {error}
@@ -437,6 +502,15 @@ function SummaryStep() {
                   {f.money(data.capital)} {f.currency(shop.currency)}
                 </td>
               </tr>
+              {data.partners !== 0 && (
+                <tr className="text-xs [&_td]:py-1">
+                  <td className="ps-3 text-fg-3">{t('opening.sum.partners')}</td>
+                  <td />
+                  <td className="num text-end text-fg-2" dir="ltr" data-testid="opening-sum-partners">
+                    {f.money(data.partners)}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
           <p className={cn('mt-3 text-sm', data.balanced ? 'text-ok' : 'text-danger')} data-testid="opening-balanced">

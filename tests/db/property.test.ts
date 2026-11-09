@@ -59,6 +59,7 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
   const sups: string[] = [];
   const custs: string[] = [];
   const devs: { id: string; cust: string }[] = [];
+  const PARTNER = randomUUID();
   beforeAll(async () => {
     db = new pg.Client({ connectionString: url });
     await db.connect();
@@ -74,6 +75,7 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
       else T = u;
     }
     for (const r of (await as(O, `select id, code from accounts where code is not null`)).rows) acc[r.code] = r.id;
+    await as(O, `insert into partners(id, shop_id, name, share_bp) values ($1, gen_random_uuid(), 'شريك', 4000)`, [PARTNER]);
     for (let i = 0; i < 4; i++) {
       const it = randomUUID();
       items.push(it);
@@ -149,6 +151,8 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
         const a = amt(50_000) * (k !== 'cash' && r() < 0.3 ? -1 : 1);
         return as(O, `select opening_balance($1, $2, $3, $4)`, [randomUUID(), k, ref, a]);
       }],
+      ['رأس مال شريك', () => as(O, `select partner_deposit($1, $2, $3, $4)`, [randomUUID(), PARTNER, cash(), amt(500_000)])],
+      ['سحب شريك', () => as(O, `select partner_withdraw($1, $2, $3, $4, null, $5)`, [randomUUID(), PARTNER, cash(), amt(30_000), r() < 0.3])],
       ['إلغاء عملية (قيد عكسي)', async () => {
         const e = (await admin(`select e.id from journal_entries e where e.shop_id = $1 and e.source_type <> 'reversal' and e.source_type <> 'cost_adjust'
                                  and not exists (select 1 from journal_entries x where x.reverses_id = e.id) order by random() limit 1`, [S])).rows[0]?.id;

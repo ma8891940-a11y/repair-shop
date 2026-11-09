@@ -7,7 +7,7 @@ test('جرد المحل أول مرة: لصق من Excel ← خزن ← ديون
   await prefs(page, info);
   await registerShop(page, uniq('open'), 'محل الجرد');
 
-  // مؤشر التقدم في لوحة التحكم: 0 من 4
+  // مؤشر التقدم في لوحة التحكم: 0 من 5
   await expect(page.getByTestId('opening-card-count')).toContainText('0');
   await page.getByTestId('opening-card').click();
   await expect(page.getByRole('heading', { name: 'جرد المحل أول مرة' })).toBeVisible();
@@ -56,6 +56,10 @@ test('جرد المحل أول مرة: لصق من Excel ← خزن ← ديون
   await page.getByLabel('المبلغ 1', { exact: true }).fill('400');
   await page.getByTestId('opening-save').click();
   await expect(page.getByText('اتسجل 1 رصيد')).toBeVisible();
+
+  // الشركاء: المحل ده ملوش شركاء ← رسالة بتوديك لصفحة الشركاء، ونتخطّى
+  await expect(page.getByTestId('opening-partners')).toContainText('مفيش شركاء متسجلين');
+  await page.getByTestId('opening-skip').click();
 
   // الملخص: 576.50 + 2000 + 250 − 400 = 2426.50
   await expect(page.getByTestId('opening-sum-stock')).toContainText('576.50');

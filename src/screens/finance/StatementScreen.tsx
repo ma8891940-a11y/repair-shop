@@ -21,7 +21,7 @@ import { Button } from '../../ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { cn } from '../../ui/cn';
 
-const KINDS: StatementKind[] = ['cashbox', 'customer', 'supplier', 'employee'];
+const KINDS: StatementKind[] = ['cashbox', 'customer', 'supplier', 'employee', 'partner'];
 type Dir = 'all' | 'in' | 'out';
 
 interface Head {
@@ -66,6 +66,9 @@ export function StatementScreen() {
     } else if (kind === 'supplier') {
       const s = must(await supabase.from('suppliers').select('id, name, phone').eq('id', id).maybeSingle()) as { id: string; name: string; phone: string | null } | null;
       head = { title: s?.name ?? '', phone: s?.phone ?? undefined, balance, fixed: s ? { supplier: { id: s.id, name: s.name } } : {} };
+    } else if (kind === 'partner') {
+      const p = must(await supabase.from('partners').select('id, name, phone, share_bp').eq('id', id).maybeSingle()) as { id: string; name: string; phone: string | null; share_bp: number } | null;
+      head = { title: p?.name ?? '', sub: p ? t('partners.shareOf', { p: f.percentBp(p.share_bp) }) : '', phone: p?.phone ?? undefined, balance, fixed: {} };
     } else {
       const p = must(await supabase.from('profiles').select('id, full_name, role').eq('id', id).maybeSingle()) as { id: string; full_name: string; role: string } | null;
       head = { title: p?.full_name ?? '', sub: p ? t(`roles.${p.role}`) : '', balance, fixed: p ? { employee: { id: p.id, name: p.full_name } } : {} };
@@ -113,7 +116,9 @@ export function StatementScreen() {
         ? [{ op: 'payment', icon: HandCoins }]
         : kind === 'supplier'
           ? [{ op: 'supplier_payment', icon: HandCoins }]
-          : [
+          : kind === 'partner'
+            ? []
+            : [
               { op: 'salary', icon: Users },
               { op: 'salary_payment', icon: HandCoins },
               { op: 'advance', icon: Wallet },
@@ -148,7 +153,7 @@ export function StatementScreen() {
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {actions.map(({ op: o, icon: I }) => (
-          <Button key={o} size="sm" variant={o === actions[0].op ? 'primary' : 'secondary'} icon={<I className="size-4" />} onClick={() => setOp(o)}>
+          <Button key={o} size="sm" variant={o === actions[0]?.op ? 'primary' : 'secondary'} icon={<I className="size-4" />} onClick={() => setOp(o)}>
             {t(`fin.ops.${o}`)}
           </Button>
         ))}

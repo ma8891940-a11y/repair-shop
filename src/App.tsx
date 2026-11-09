@@ -34,6 +34,7 @@ const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen').then(
 const PrintScreen = lazyScreen(() => import('./screens/PrintScreen').then((m) => m.PrintScreen));
 const CustomersScreen = lazyScreen(() => import('./screens/CustomersScreen').then((m) => m.CustomersScreen));
 const CustomerProfileScreen = lazyScreen(() => import('./screens/CustomersScreen').then((m) => m.CustomerProfileScreen));
+const PartnersScreen = lazyScreen(() => import('./screens/finance/PartnersScreen').then((m) => m.PartnersScreen));
 const OpeningScreen = lazyScreen(() => import('./screens/finance/OpeningScreen').then((m) => m.OpeningScreen));
 const BarcodePrint = lazyScreen(() => import('./screens/finance/BarcodePrint').then((m) => m.BarcodePrint));
 const EntryScreen = lazyScreen(() => import('./screens/finance/EntryScreen').then((m) => m.EntryScreen));
@@ -51,7 +52,7 @@ const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) =>
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, BalancesScreen, ProfitScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VideosScreen, CommunityScreen, AdminScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, BalancesScreen, ProfitScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VideosScreen, CommunityScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
@@ -193,6 +194,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
           {owner && <Route path="finance/pl" element={<ProfitScreen />} />}
           {owner && <Route path="finance/balances/:kind" element={<BalancesScreen />} />}
           {owner && <Route path="opening" element={<OpeningScreen />} />}
+          {owner && <Route path="partners" element={<PartnersScreen />} />}
           {owner && <Route path="finance/entry/:id" element={<EntryScreen />} />}
           {owner && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
           <Route path="inventory" element={<InventoryScreen />} />

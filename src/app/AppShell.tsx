@@ -2,7 +2,7 @@ import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, u
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Menu, Users, Film, MessagesSquare, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Handshake, Menu, Users, Film, MessagesSquare, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
@@ -119,6 +119,7 @@ export function AppShell() {
     { to: '/drawer', key: 'drawer', icon: Wallet, show: front && !owner },
     { to: '/inventory', key: 'inventory', icon: Boxes, show: staff },
     { to: '/videos', key: 'videos', icon: Film, show: profile.role !== 'reception' },
+    { to: '/partners', key: 'partners', icon: Handshake, show: owner },
     { to: '/reports', key: 'reports', icon: BarChart3, show: owner },
     { to: '/users', key: 'team', icon: Users, show: owner },
     { to: '/audit', key: 'audit', icon: History, show: owner },

@@ -28,12 +28,15 @@ export function useFormat() {
   return useMemo(() => {
     const tag = localeTag(lang);
     const num = new Intl.NumberFormat(tag);
+    const pct = new Intl.NumberFormat(tag, { style: 'percent', maximumFractionDigits: 2 });
     type D = Date | string;
     type O = { plain?: boolean };
     return {
       lang,
       tag,
       number: (n: number) => num.format(n),
+      /** نسبة مخزنة بالـ 0.01% (عدد صحيح من 0 لـ 10000): 6000 = 60%. للعرض بس */
+      percentBp: (bp: number) => pct.format(bp / 10000),
       money: (minor: number) => formatMinor(minor, lang),
       /** رمز العملة حسب اللغة: ج.م / EGP */
       currency: (code = 'EGP') => t(`currency.${code}`, { defaultValue: code }),

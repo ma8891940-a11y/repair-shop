@@ -3,7 +3,7 @@ import { parseCsv } from './csv';
 import { toLatinDigits } from './digits';
 import { parsePounds } from './money';
 
-export const OPENING_STEPS = ['stock', 'cash', 'customers', 'suppliers'] as const;
+export const OPENING_STEPS = ['stock', 'cash', 'customers', 'suppliers', 'partners'] as const;
 export type OpeningStep = (typeof OPENING_STEPS)[number];
 
 export interface OpeningProgress {
