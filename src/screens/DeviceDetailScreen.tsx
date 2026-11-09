@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight, Eye, ImagePlus, KeyRound, Printer, QrCode, Receipt, ShieldCheck, Trash2, X } from 'lucide-react';
 import { DeleteDialog } from '../app/DeleteDialog';
+import { useShopList } from '../app/lists';
+import { ChipToggle } from '../ui/Checkbox';
 import { readExtras } from '../lib/extras';
 import { useCanCorrect } from '../app/correct';
 import { useMe } from '../app/auth';
@@ -262,7 +264,14 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                 {f.dateTime(d.received_at)}
               </div>
             </div>
-            <StatusBadge status={d.status} />
+            <div className="flex flex-col items-end gap-1">
+              <StatusBadge status={d.status} />
+              {d.sub_status && (
+                <span className="text-2xs text-fg-2" data-testid="device-sub-status">
+                  {d.sub_status}
+                </span>
+              )}
+            </div>
           </div>
         )}
         {overlay && (
@@ -298,6 +307,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                       <Alert tone="danger">{err.msg}</Alert>
                     </div>
                   )}
+                  <SubStatusPicker deviceId={id} status={d.status} value={d.sub_status ?? null} onChanged={reload} />
                   {nextStatusesFor(d.status, profile.role).length === 0 ? (
                     <p className="text-sm text-fg-3">{t('device.noNext')}</p>
                   ) : (
@@ -861,5 +871,34 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
         )}
       </div>
     </Panel>
+  );
+}
+
+/** تفصيل الحالة (الحالات الفرعية تحت الحالة الحالية، من قوايم صاحب المحل). بيظهر بس لو فيه بنود للحالة دي */
+function SubStatusPicker({ deviceId, status, value, onChanged }: { deviceId: string; status: DeviceStatus; value: string | null; onChanged: () => void }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const { items } = useShopList('sub_statuses');
+  const mine = items.filter((i) => i.parent === status);
+  if (!mine.length && !value) return null;
+  async function pick(v: string) {
+    const { error } = await supabase.from('devices').update({ sub_status: v || null }).eq('id', deviceId);
+    if (error) return toast({ tone: 'danger', title: errorMessage(error) });
+    onChanged();
+  }
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="sub-status-picker">
+      <span className="text-xs text-fg-3">{t('lists.subStatus')}</span>
+      <div className="flex flex-wrap gap-1.5">
+        <ChipToggle pressed={!value} onChange={() => void pick('')}>
+          {t('lists.none')}
+        </ChipToggle>
+        {mine.map((i) => (
+          <ChipToggle key={i.value} pressed={value === i.value} onChange={(on) => void pick(on ? i.value : '')}>
+            {i.value}
+          </ChipToggle>
+        ))}
+      </div>
+    </div>
   );
 }

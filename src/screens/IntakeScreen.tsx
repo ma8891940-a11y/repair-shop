@@ -33,10 +33,9 @@ import type { CheckItems } from '../lib/checks';
 import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
+import { InlineAdd, ListOptions, useListLabel, useShopList } from '../app/lists';
 
-const BRANDS = ['Samsung', 'iPhone', 'Xiaomi', 'Oppo', 'Realme', 'Infinix', 'Vivo', 'Honor', 'Huawei', 'Tecno'];
-/** الملحقات بتتخزن كأكواد، والاسم المعروض من الترجمة */
-const ACCESSORIES = ['sim', 'case', 'sd', 'charger', 'earphones', 'box'] as const;
+// الماركات والملحقات والألوان من القوايم اللي بيديرها صاحب المحل (الإعدادات ← القوائم). الافتراضي في src/app/lists.tsx
 const QUICK_ISSUES = ['screen', 'battery', 'charging', 'software', 'water', 'speaker', 'mic', 'camera', 'dead'] as const;
 
 type Lookup = { state: 'idle' } | { state: 'loading' } | { state: 'found'; customer: Customer; devices: number } | { state: 'new' };
@@ -56,6 +55,9 @@ export function IntakeScreen() {
   const navigate = useNavigate();
   const toast = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const brands = useShopList('brands').items;
+  const accList = useShopList('accessories').items;
+  const listLabel = useListLabel();
 
   const [phone, setPhone] = useState('');
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' });
@@ -378,22 +380,34 @@ export function IntakeScreen() {
             <PanelHeader index="02" title={t('intake.device')} />
             <div className="flex flex-col gap-3 p-4">
               <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('intake.brandQuick')}>
-                {BRANDS.map((b) => (
+                {brands.map(({ value: b }) => (
                   <ChipToggle key={b} pressed={brand === b} onChange={(v) => setBrand(v ? b : '')}>
                     <span dir="ltr">{b}</span>
                   </ChipToggle>
                 ))}
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label={t('intake.brand')} required error={errors.brand}>
-                  <Input value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={60} dir="auto" />
-                </Field>
-                <Field label={t('intake.model')} required error={errors.model}>
-                  <Input value={model} onChange={(e) => setModel(e.target.value)} maxLength={80} dir="auto" placeholder={t('intake.modelPh')} />
-                </Field>
-                <Field label={t('intake.color')}>
-                  <Input value={color} onChange={(e) => setColor(e.target.value)} />
-                </Field>
+                <div>
+                  <Field label={t('intake.brand')} required error={errors.brand}>
+                    <Input value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={60} dir="auto" list="list-brands" />
+                  </Field>
+                  <ListOptions id="list-brands" list="brands" />
+                  <InlineAdd list="brands" value={brand} />
+                </div>
+                <div>
+                  <Field label={t('intake.model')} required error={errors.model}>
+                    <Input value={model} onChange={(e) => setModel(e.target.value)} maxLength={80} dir="auto" placeholder={t('intake.modelPh')} list="list-models" />
+                  </Field>
+                  <ListOptions id="list-models" list="models" />
+                  <InlineAdd list="models" value={model} />
+                </div>
+                <div>
+                  <Field label={t('intake.color')}>
+                    <Input value={color} onChange={(e) => setColor(e.target.value)} list="list-colors" maxLength={40} />
+                  </Field>
+                  <ListOptions id="list-colors" list="colors" />
+                  <InlineAdd list="colors" value={color} />
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field
@@ -481,9 +495,9 @@ export function IntakeScreen() {
               <div>
                 <div className="mb-1.5 text-sm font-medium text-fg-2">{t('intake.accessories')}</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {ACCESSORIES.map((a) => (
+                  {accList.map(({ value: a }) => (
                     <ChipToggle key={a} pressed={accessories.includes(a)} onChange={(v) => setAccessories((c) => (v ? [...c, a] : c.filter((x) => x !== a)))}>
-                      {t(`intake.acc.${a}`)}
+                      {listLabel('accessories', a)}
                     </ChipToggle>
                   ))}
                 </div>
@@ -534,9 +548,13 @@ export function IntakeScreen() {
                 </div>
               </div>
               <RoutingFields issue={issue} brand={brand} value={routing} onChange={setRouting} />
-              <Field label={t('intake.condition')} hint={t('intake.conditionHint')}>
+              <div>
+                <ConditionChips value={condition} onPick={setCondition} />
+                <Field label={t('intake.condition')} hint={t('intake.conditionHint')}>
                 <Textarea rows={2} value={condition} onChange={(e) => setCondition(e.target.value)} />
               </Field>
+                <InlineAdd list="conditions" value={condition} />
+              </div>
               <Field label={t('intake.estimate')} error={errors.estimate} hint={t('intake.estimateHint')}>
                 <Input dir="ltr" inputMode="decimal" mono value={estimate} onChange={(e) => setEstimate(e.target.value)} placeholder="0" suffix={cur} className="text-start text-md" />
               </Field>
@@ -593,7 +611,7 @@ export function IntakeScreen() {
               <SummaryRow label={t('intake.phone')} value={normPhone} mono />
               <SummaryRow label={t('intake.device')} value={[brand, model].filter(Boolean).join(' ') || null} />
               <SummaryRow label="IMEI" value={imeiClean || null} mono warn={!!imeiClean && !imeiOk} />
-              <SummaryRow label={t('intake.accessories')} value={accessories.length ? accessories.map((a) => t(`intake.acc.${a}`)).join(t('common.sep')) : null} />
+              <SummaryRow label={t('intake.accessories')} value={accessories.length ? accessories.map((a) => listLabel('accessories', a)).join(t('common.sep')) : null} />
               <SummaryRow label={t('intake.sumLock')} value={t(`intake.lockKind.${lockType}`)} />
               <SummaryRow label={t('intake.photos')} value={t('intake.sumPhotos', { n: photos.length, max: MAX_PHOTOS })} />
             </dl>
@@ -745,6 +763,28 @@ function PhotoDrop({ photos, onAdd, onRemove }: { photos: { url: string }[]; onA
           e.target.value = '';
         }}
       />
+    </div>
+  );
+}
+
+/** الحالة الشكلية الجاهزة (من القوايم): دوسة بتضيف البند للخانة */
+function ConditionChips({ value, onPick }: { value: string; onPick: (v: string) => void }) {
+  const { t } = useTranslation();
+  const label = useListLabel();
+  const { items } = useShopList('conditions');
+  if (!items.length) return null;
+  const parts = value.split(/[\u060C,]\s*/).map((x) => x.trim()).filter(Boolean);
+  return (
+    <div className="mb-1.5 flex flex-wrap gap-1.5" role="group" aria-label={t('lists.names.conditions')} data-testid="condition-chips">
+      {items.map((i) => {
+        const l = label('conditions', i.value);
+        const on = parts.includes(l);
+        return (
+          <ChipToggle key={i.value} pressed={on} onChange={(v) => onPick((v ? [...parts, l] : parts.filter((x) => x !== l)).join(t('common.sep')))}>
+            {l}
+          </ChipToggle>
+        );
+      })}
     </div>
   );
 }

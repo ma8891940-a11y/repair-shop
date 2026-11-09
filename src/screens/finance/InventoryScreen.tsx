@@ -21,6 +21,7 @@ import { Alert, EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 import { DeleteDialog } from '../../app/DeleteDialog';
+import { InlineAdd, ListOptions } from '../../app/lists';
 import { BulkEditDialog, ImportDialog, InvOpDialog, ItemMoves, ScanDialog, type InvOp, type InvSummary } from './InventoryOps';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { newInternalEan13 } from '../../lib/barcode';
@@ -803,9 +804,13 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
             <Field label={t('inv.name')}>
               <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-testid="item-name" />
             </Field>
-            <Field label={t('inv.category')}>
-              <Input value={category} onChange={(e) => setCategory(e.target.value)} maxLength={60} data-testid="item-category" />
-            </Field>
+            <div>
+              <Field label={t('inv.category')}>
+                <Input value={category} onChange={(e) => setCategory(e.target.value)} maxLength={60} list="list-item-categories" data-testid="item-category" />
+              </Field>
+              <ListOptions id="list-item-categories" list="item_categories" />
+              <InlineAdd list="item_categories" value={category} />
+            </div>
           </div>
         </div>
         <Field label={t('barcode.code')} hint={t('barcode.hint')}>

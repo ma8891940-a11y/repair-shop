@@ -13,7 +13,8 @@ import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { Field, Input, Select, Textarea } from '../../ui/Field';
 import { Alert, EmptyState, Skeleton } from '../../ui/Feedback';
-import { Checkbox } from '../../ui/Checkbox';
+import { Checkbox, ChipToggle } from '../../ui/Checkbox';
+import { InlineAdd, ListOptions, useListLabel, useShopList } from '../../app/lists';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 
@@ -181,12 +182,34 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
           </>
         )}
         {op === 'sale_return' && <Checkbox checked={restock} onChange={setRestock} label={t('invop.restock')} />}
+        {op === 'write_off' && <ReasonChips value={reason} onPick={setReason} />}
         <Field label={t('fin.reason')} required>
           <Textarea rows={2} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
+        {op === 'write_off' && <InlineAdd list="write_off_reasons" value={reason} />}
         {err && <Alert tone="danger">{err}</Alert>}
       </div>
     </Dialog>
+  );
+}
+
+/** أسباب الهالك الجاهزة (من القوايم): دوسة بتكتب السبب */
+function ReasonChips({ value, onPick }: { value: string; onPick: (v: string) => void }) {
+  const { t } = useTranslation();
+  const label = useListLabel();
+  const { items } = useShopList('write_off_reasons');
+  if (!items.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('lists.names.write_off_reasons')} data-testid="reason-chips">
+      {items.map((i) => {
+        const l = label('write_off_reasons', i.value);
+        return (
+          <ChipToggle key={i.value} pressed={value === l} onChange={(v) => onPick(v ? l : '')}>
+            {l}
+          </ChipToggle>
+        );
+      })}
+    </div>
   );
 }
 
@@ -247,9 +270,12 @@ export function BulkEditDialog({ ids, onOpenChange, onDone }: { ids: string[] | 
       }
     >
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label={t('inv.category')}>
-          <Input value={category} onChange={(e) => setCategory(e.target.value)} maxLength={60} />
-        </Field>
+        <div>
+          <Field label={t('inv.category')}>
+            <Input value={category} onChange={(e) => setCategory(e.target.value)} maxLength={60} list="list-bulk-categories" />
+          </Field>
+          <ListOptions id="list-bulk-categories" list="item_categories" />
+        </div>
         <Field label={t('inv.minQty')}>
           <Input mono inputMode="numeric" value={min} onChange={(e) => setMin(e.target.value)} />
         </Field>

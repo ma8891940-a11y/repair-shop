@@ -681,7 +681,8 @@
       "ledger": "Cashboxes & expenses",
       "tech": "Technicians & routes",
       "backup": "Backup",
-      "extras": "Extras"
+      "extras": "Extras",
+      "lists": "Lists"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -2102,5 +2103,60 @@
     "drawings": "Owner drawings",
     "total": "Total equity",
     "equation": "Assets {{a}} = Liabilities {{l}} + Equity {{e}}"
+  },
+  "lists": {
+    "sub": "Lists used at intake, in inventory and on the device page. Removing an item only hides it from choices; old devices and items keep their value.",
+    "names": {
+      "brands": "Brands",
+      "accessories": "Accessories received with the device",
+      "colors": "Colors",
+      "item_categories": "Item categories",
+      "write_off_reasons": "Write-off reasons",
+      "sub_statuses": "Sub-statuses",
+      "models": "Models",
+      "conditions": "Cosmetic condition"
+    },
+    "subStatusesHint": "Core statuses are fixed. Add details under each one (e.g. under \"Awaiting part\": \"Ordered\" or \"On the way\"). When the core status changes, the sub-status is cleared.",
+    "empty": "Empty",
+    "newItem": "New item",
+    "newItemFor": "New item in {{list}}",
+    "add": "Add",
+    "remove": "Remove “{{v}}” from the list",
+    "added": "“{{v}}” added to the list",
+    "addInline": "Add “{{v}}” to the list",
+    "none": "None",
+    "subStatus": "Status detail",
+    "values": {
+      "colors": {
+        "black": "Black",
+        "white": "White",
+        "blue": "Blue",
+        "green": "Green",
+        "gold": "Gold",
+        "silver": "Silver"
+      },
+      "item_categories": {
+        "screens": "Screens",
+        "batteries": "Batteries",
+        "charging": "Charging ports",
+        "cases": "Cases",
+        "chargers": "Chargers",
+        "cables": "Cables"
+      },
+      "write_off_reasons": {
+        "broken": "Broken",
+        "defective": "Defective",
+        "lost": "Lost",
+        "expired": "Spoiled in storage"
+      },
+      "conditions": {
+        "scratches": "Scratches",
+        "cracked_back": "Cracked back",
+        "dented": "Dented",
+        "bent": "Bent",
+        "clean": "Clean"
+      }
+    },
+    "elsewhere": "Ready-made faults are in ← Extras, expense items in ← Cashboxes & expenses, and payment methods in ← Payment methods."
   }
 }

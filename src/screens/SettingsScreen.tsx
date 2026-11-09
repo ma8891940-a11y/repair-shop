@@ -23,6 +23,7 @@ import { ExtrasTab } from './settings/ExtrasTab';
 import { MotionStatus } from './settings/MotionStatus';
 import { LogoAnimPicker } from './settings/LogoAnimPicker';
 import { cn } from '../ui/cn';
+import { ListsTab } from './settings/ListsTab';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
 
@@ -31,7 +32,7 @@ export function SettingsScreen() {
   const { profile } = useMe();
   const owner = profile.role === 'owner';
   const [tab, setTab] = useState(owner ? 'shop' : 'appearance');
-  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
+  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'lists', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
@@ -48,6 +49,11 @@ export function SettingsScreen() {
           <Tabs.Content value="shop" className="flex flex-col gap-4">
             <PlanUsage />
             <IdentityTab />
+          </Tabs.Content>
+        )}
+        {owner && (
+          <Tabs.Content value="lists">
+            <ListsTab />
           </Tabs.Content>
         )}
         {owner && (

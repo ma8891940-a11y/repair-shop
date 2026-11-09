@@ -65,6 +65,8 @@ export interface Device {
   route_id?: string | null;
   est_minutes?: number | null;
   return_of_tech?: string | null;
+  /** تفصيل تحت الحالة الأساسية (من قوايم صاحب المحل) */
+  sub_status?: string | null;
 }
 
 /** صف من عرض devices_list (الأجهزة + اسم العميل + الأسعار لو مسموح) */
