@@ -172,6 +172,8 @@
 | 107 | دقة الحسابات: فحص سلامة تلقائي، وتنبيه للمالك بالمكان والمبلغ وزرار يفتح القيد، وتسوية فرق التكلفة عند إلغاء شراء اتصرف جزء منه | رسايل | ✅ | `0025_integrity.sql`، `IntegrityAlert.tsx`، `EntryScreen.tsx` | `db/property` (آلاف العمليات العشوائية)، `e2e/phase3` (كسر التوازن ← التنبيه ← فتح القيد) |
 | 108 | تعديل وحذف في كل حاجة: قيد عكسي (+ قيد جديد للتعديل) في transaction واحدة، والسبب إجباري، وتأكيد و"تراجع"، وإذن من صاحب المحل، و"ملغاة" في الكشف، وحذف آمن ما بيبوّظش رصيد | رسايل | ✅ | `0026_edit_delete.sql`، `EditEntryDialog.tsx`، `DeleteDialog.tsx`، `correct.tsx`، `lib/undo.ts` | `db/editdelete`، `unit/undo`، `e2e/editdelete`، `e2e/phase3` |
 | 109 | المخزون قسم مستقل بحساباته: ربط بالصيانة (إعداد)، هالك، مرتجع مورد وعميل، باركود (توليد وطباعة ومسح)، تصنيفات، صور، حركة الصنف، تعديل جماعي، استيراد وتصدير Excel، وربح المخزون للفترة | رسايل | ✅ | `0027_inventory.sql`، `InventoryScreen.tsx`، `InventoryOps.tsx`، `BarcodePrint.tsx`، `lib/barcode.ts`، `lib/csv.ts` | `db/inventory`، `db/property`، `unit/barcode`، `unit/csv`، `e2e/inventory` |
+| 110 | جرد المحل أول مرة: جدول زي Excel ولصق منه، وأرصدة افتتاحية (مخزون وخزن وديون عملاء وموردين)، وملخص، وقيود متوازنة قصاد رأس المال، ومؤشر تقدم في لوحة التحكم | رسايل | ✅ | `0028_opening.sql`، `OpeningScreen.tsx`، `OpeningCard.tsx`، `lib/opening.ts` | `db/opening`، `db/property`، `unit/opening`، `e2e/opening` |
+| 111 | قاعدة الاختبار بتتنضف قبل كل تشغيل، وكل اختبار بيمسح الداتا اللي عملها (للقاعدة المحلية بس) | رسايل | ✅ | `tests/db/purgeCore.ts`، `tests/db/purge.ts`، `tests/db/globalSetup.ts`، `tests/e2e/globalSetup.ts` | كل اختبارات `db` و`e2e` (القاعدة بتفضل فاضية بعد التشغيل) |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |
@@ -251,3 +253,4 @@
 - قفل تسوية فرق التكلفة (`ledger_settle_item`) ← فشل `db/property` (العشوائي والمحدد).
 - السماح لأي موظف بالتصحيح (`can_correct`) ← فشل `db/editdelete` (اختبارين).
 - السماح للاستقبال بتسجيل هالك ← فشل `db/inventory`.
+- السماح للاستقبال بإدخال أرصدة افتتاحية ← فشل `db/opening`.

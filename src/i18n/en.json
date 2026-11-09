@@ -1021,7 +1021,8 @@
       "cost_adjust": "Stock cost difference",
       "write_off": "Write-off",
       "supplier_return": "Return to supplier",
-      "sale_return": "Customer return"
+      "sale_return": "Customer return",
+      "opening": "Opening balance"
     },
     "excel": "Excel",
     "pdf": "PDF / Print",
@@ -1886,5 +1887,58 @@
       "purchases": "for the period",
       "parts_used": "at cost"
     }
+  },
+  "opening": {
+    "title": "First stocktake",
+    "sub": "Record what you have today: stock, cash in each cashbox, and debts owed to and by you. Each number becomes a balanced opening entry.",
+    "steps": "Stocktake steps",
+    "step": {
+      "stock": "Stock",
+      "cash": "Cashboxes",
+      "customers": "Customer debts",
+      "suppliers": "Supplier debts",
+      "summary": "Summary"
+    },
+    "stockHint": "Enter each item, its quantity and your unit cost. You can copy the table from Excel and paste it here at once; arrows and Enter move between rows.",
+    "unitCost": "Unit cost",
+    "addRows": "More rows",
+    "stockTotal": "{{n}} item(s), worth {{v}}",
+    "errRows": "{{n}} invalid cell(s) (marked in red)",
+    "savedStock": "Opening stock recorded ({{n}} item(s))",
+    "saveNext": "Save and continue",
+    "skip": "None, skip",
+    "cashHint": "Enter the money in each cashbox right now. Empty means zero.",
+    "savedCash": "Cashbox balances recorded",
+    "customerHint": "Customers who owe the shop, or who paid a deposit the shop owes back. New ones are added.",
+    "supplierHint": "Suppliers the shop owes, or who owe the shop. New ones are added.",
+    "name": "Name",
+    "phone": "Phone",
+    "dir": "Direction",
+    "dirs": {
+      "customer": {
+        "owes_us": "Owes the shop",
+        "we_owe": "Shop owes them"
+      },
+      "supplier": {
+        "we_owe": "Shop owes them",
+        "owes_us": "Owes the shop"
+      }
+    },
+    "errParty": "Row {{n}}: name and amount are required",
+    "errPhone": "Row {{n}}: invalid mobile number",
+    "savedParty": "{{n}} balance(s) recorded",
+    "sum": {
+      "stock": "Stock",
+      "cash": "Cash in cashboxes",
+      "receivables": "Owed to you (net)",
+      "payables": "You owe (net)",
+      "capital": "Opening capital"
+    },
+    "balanced": "Ledger balanced ({{n}} opening entries)",
+    "fixHint": "If a number is wrong: open the entry from Finance and reverse it, then record it again.",
+    "finish": "Finish stocktake",
+    "finished": "Stocktake finished",
+    "cardTitle": "First stocktake",
+    "cardCount": "{{n}} of {{total}}"
   }
 }

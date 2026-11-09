@@ -4,7 +4,7 @@ create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;
 create schema auth;
-create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
+create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz, created_at timestamptz default now());
 -- زي Supabase الحقيقي: الإعداد ممكن يكون فاضي (زائر من غير تسجيل دخول)
 create function auth.uid() returns uuid language sql stable as $$
   select nullif(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub', '')::uuid

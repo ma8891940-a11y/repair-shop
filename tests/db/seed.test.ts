@@ -4,6 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { cleanupAfterFile } from './purge';
+
+// كل اللي الملف ده بيعمله في قاعدة الاختبار بيتمسح في الآخر
+cleanupAfterFile();
 
 const url = process.env.TEST_DATABASE_URL;
 let db: pg.Client;

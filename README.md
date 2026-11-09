@@ -218,7 +218,7 @@ npm run preview
 
 ## تحديث مشروع Supabase شغّال (من غير ما تبدأ من الأول)
 لو المشروع اتعمل بنسخة قديمة من `setup_all.sql`، شغّل في **SQL Editor** ملفات `supabase\migrations` **الجديدة بس**، واحد واحد بالترتيب.
-مثلًا: لو آخر ملف اتشغّل عندك `0016`، شغّل `0017_growth.sql` وبعده `0018_account_state.sql` وبعده `0019_extras.sql` وبعده `0020_admin_paging.sql` وبعده `0021_spec_rules.sql` وبعده `0022_security_review.sql` وبعده `0023_restore.sql` وبعده `0024_signout.sql` وبعده `0025_integrity.sql` وبعده `0026_edit_delete.sql` وبعده `0027_inventory.sql`.
+مثلًا: لو آخر ملف اتشغّل عندك `0016`، شغّل `0017_growth.sql` وبعده `0018_account_state.sql` وبعده `0019_extras.sql` وبعده `0020_admin_paging.sql` وبعده `0021_spec_rules.sql` وبعده `0022_security_review.sql` وبعده `0023_restore.sql` وبعده `0024_signout.sql` وبعده `0025_integrity.sql` وبعده `0026_edit_delete.sql` وبعده `0027_inventory.sql` وبعده `0028_opening.sql`.
 
 > `setup_all.sql` بيتشغّل **مرة واحدة بس** على مشروع **فاضي**. لو اتشغّل تاني على نفس المشروع هيدّي خطأ ("already exists")، وده طبيعي ومش هيبوّظ حاجة.
 
@@ -310,6 +310,7 @@ npm run lint
 npm test
 ```
 - `npm run test:db`: محتاج PostgreSQL 16 (Linux/WSL). بيطبّق `setup_all.sql` على قاعدة مؤقتة.
+- قاعدة الاختبار المحلية بتتنضف لوحدها قبل أي تشغيل، وكل اختبار بيمسح الداتا اللي عملها. ده بيشتغل بس على قاعدة على نفس الجهاز (127.0.0.1)، وأي قاعدة تانية ما بيلمسهاش. ولو عايز تبص على الداتا بعد الاختبار: `TEST_DB_RESET=0` أو `E2E_DB_RESET=0`.
 - `npm run test:e2e`: محتاج Supabase محلي (Docker). بيشتغل على `npm run dev`.
 - `E2E_PROD=1 npm run test:e2e`: نفس الاختبارات على نسخة الإنتاج (build + preview)، وده الأقرب للاستخدام الحقيقي.
 - بعد أي migration جديدة: `npm run db:setup-file` عشان يتحدّث `setup_all.sql` (فيه اختبار بيفشل لو نسيت).

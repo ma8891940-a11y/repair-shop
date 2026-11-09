@@ -7,6 +7,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { cleanupAfterFile } from './purge';
+
+// كل اللي الملف ده بيعمله في قاعدة الاختبار بيتمسح في الآخر
+cleanupAfterFile();
 
 const url = process.env.TEST_DATABASE_URL;
 const d = url ? describe : describe.skip;

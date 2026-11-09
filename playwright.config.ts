@@ -11,6 +11,8 @@ const PORT = 5180;
 
 export default defineConfig({
   testDir: 'tests/e2e',
+  // قاعدة الاختبار المحلية بتتنضف قبل التشغيل، وكل اللي التشغيل عمله بيتمسح في الآخر
+  globalSetup: './tests/e2e/globalSetup.ts',
   timeout: 90_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

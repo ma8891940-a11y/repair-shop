@@ -7,6 +7,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { cleanupAfterFile } from './purge';
+
+// كل اللي الملف ده بيعمله في قاعدة الاختبار بيتمسح في الآخر
+cleanupAfterFile();
 
 const url = process.env.TEST_DATABASE_URL;
 const d = url ? describe : describe.skip;
@@ -138,6 +142,13 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
       ['مرتجع للمورد', () => as(O, `select supplier_return($1, $2, $3, 1, $4, $5, 'مرتجع')`, [randomUUID(), pick(sups), pick(items), Math.floor(r() * 30_000), r() < 0.5 ? null : cash()])],
       ['مرتجع من عميل', () => as(R, `select sale_return($1, $2, 1, $3, $4, $5, $6, 'مرتجع')`, [randomUUID(), pick(items), Math.floor(r() * 40_000), r() < 0.5 ? cash() : null, pick(custs), r() < 0.7])],
       ['قطعة يدوية', () => as(R, `select device_manual_part($1, $2, 'قطعة', $3, $4)`, [randomUUID(), pick(devs).id, amt(20_000), cash()])],
+      ['رصيد افتتاحي', () => {
+        const k = pick(['cash', 'customer', 'supplier', 'stock'] as const);
+        if (k === 'stock') return as(O, `select opening_balance($1, 'stock', null, null, $2::jsonb)`, [randomUUID(), JSON.stringify([{ item: pick(items), qty: 1 + Math.floor(r() * 5), unit_cost: amt(20_000) }])]);
+        const ref = k === 'cash' ? cash() : k === 'customer' ? pick(custs) : pick(sups);
+        const a = amt(50_000) * (k !== 'cash' && r() < 0.3 ? -1 : 1);
+        return as(O, `select opening_balance($1, $2, $3, $4)`, [randomUUID(), k, ref, a]);
+      }],
       ['إلغاء عملية (قيد عكسي)', async () => {
         const e = (await admin(`select e.id from journal_entries e where e.shop_id = $1 and e.source_type <> 'reversal' and e.source_type <> 'cost_adjust'
                                  and not exists (select 1 from journal_entries x where x.reverses_id = e.id) order by random() limit 1`, [S])).rows[0]?.id;

@@ -2,6 +2,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { cleanupAfterFile } from './purge';
+
+// كل اللي الملف ده بيعمله في قاعدة الاختبار بيتمسح في الآخر
+cleanupAfterFile();
 
 const url = process.env.TEST_DATABASE_URL;
 const d = url ? describe : describe.skip;
@@ -162,6 +166,9 @@ d('المرحلة 6: النمو', () => {
     const rows = (await as(plat, `select * from admin_shops($1)`, [tag])).rows;
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: shop, name: SHOP, plan: 'pro', suspended: false, staff: 3, total: 1 });
+    // التقسيم لصفحات محتاج 3 محلات على الأقل: الملف بيعمل التالت بنفسه (ما يعتمدش على داتا قديمة في القاعدة)
+    const third = await user(`g6-third-${tag}@g6.test`);
+    await as(third, `select bootstrap_account('تالت', 'محل تالت للنمو')`);
     const all = (await as(plat, `select id, total from admin_shops(null, 2, 0)`)).rows;
     expect(all).toHaveLength(2);
     expect(all[0].total).toBeGreaterThanOrEqual(3);

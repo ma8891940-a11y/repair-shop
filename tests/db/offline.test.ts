@@ -2,6 +2,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
+import { cleanupAfterFile } from './purge';
+
+// كل اللي الملف ده بيعمله في قاعدة الاختبار بيتمسح في الآخر
+cleanupAfterFile();
 
 const url = process.env.TEST_DATABASE_URL;
 const d = url ? describe : describe.skip;
@@ -104,5 +108,5 @@ d('المرحلة 5: بدون إنترنت والنسخ الاحتياطي', () 
     expect(old.deleted_at).toBeInstanceOf(Date);
     expect(old.data).toEqual({});
     expect((await as(owner, `select id from list_backups()`)).rows.map((r) => r.id)).not.toContain(list[0].id);
-  }, 300_000); // بيعمل نسخة لكل المحلات في القاعدة مرتين (قاعدة الاختبار المحلية فيها آلاف المحلات من اختبارات e2e والاختبارات العشوائية)
+  }, 60_000); // بيعمل نسخة لكل المحلات في القاعدة (القاعدة بتتنضف قبل كل تشغيل، وكل ملف بيمسح اللي عمله)
 });

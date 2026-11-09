@@ -62,5 +62,7 @@ export default defineConfig({
   preview: { port: 5173, strictPort: true },
   test: {
     include: ['src/**/*.test.ts', 'tests/db/**/*.test.ts'],
+    // قاعدة الاختبار المحلية بتتنضف قبل التشغيل (بس لو TEST_DATABASE_URL على نفس الجهاز)
+    globalSetup: ['tests/db/globalSetup.ts'],
   },
 });
