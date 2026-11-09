@@ -30,6 +30,9 @@ const preloadFonts = () => ({
 export default defineConfig({
   // مسارات نسبية عشان التطبيق يشتغل جوه Electron/Tauri/Capacitor كمان
   base: './',
+  // سيرفر التطوير بيدوّر على المكتبات من صفحة البرنامج بس (index.html في الجذر)، مش من فولدرات البناء القديمة
+  // (dist أو dist-e2e). من غير كده، أول تشغيل بعد npm install ممكن يعيد تحميل الصفحة وانت شغال.
+  optimizeDeps: { entries: ['index.html'] },
   plugins: [
     react(),
     preloadFonts(),
