@@ -262,7 +262,7 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void save()} data-testid="partner-save">
+          <Button variant="primary" needsNet loading={busy} onClick={() => void save()} data-testid="partner-save">
             {t('common.save')}
           </Button>
         </>
@@ -456,7 +456,7 @@ function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void save()} data-testid="partner-money-save">
+          <Button variant="primary" needsNet loading={busy} onClick={() => void save()} data-testid="partner-money-save">
             {t('common.save')}
           </Button>
         </>
@@ -527,7 +527,7 @@ function DistributeDialog({ open, onOpenChange, onDone }: { open: boolean; onOpe
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} disabled={!split.data || split.data.overlap || split.data.shares.every((x) => x.amount === 0)} onClick={() => void go()} data-testid="distribute-confirm">
+          <Button variant="primary" needsNet loading={busy} disabled={!split.data || split.data.overlap || split.data.shares.every((x) => x.amount === 0)} onClick={() => void go()} data-testid="distribute-confirm">
             {t('partners.distributeNow')}
           </Button>
         </>

@@ -87,6 +87,30 @@ export async function runItem(item: OutboxItem): Promise<RunResult> {
       await localDb().blobs.delete(item.id);
       return { ok: true };
     }
+    if (item.kind === 'cost') {
+      // آخر تعديل يكسب: لو فيه صف للجهاز بيتعدّل، وإلا بيتضاف بنفس الـ id
+      const { data: row, error: se } = await supabase.from('device_costs').select('id').eq('device_id', p.device_id as string).is('deleted_at', null).maybeSingle();
+      if (se) throw se;
+      const vals = { estimated_cost: p.estimated_cost ?? null, final_cost: p.final_cost ?? null };
+      const { error } = row ? await supabase.from('device_costs').update(vals).eq('id', row.id) : await supabase.from('device_costs').insert({ id: p.id, shop_id: p.shop_id, device_id: p.device_id, ...vals });
+      if (error && !isDuplicate(error)) throw error;
+      return { ok: true };
+    }
+    if (item.kind === 'note') {
+      await insertOnce('device_notes', p);
+      return { ok: true };
+    }
+    if (item.kind === 'check') {
+      const { error } = await supabase.from('device_checks').upsert(p);
+      if (error) throw error;
+      return { ok: true };
+    }
+    if (item.kind === 'sale') {
+      // record_sale بـ p_id: لو وصلت قبل كده ما بتتكررش
+      const { error } = await supabase.rpc('record_sale', p);
+      if (error) throw error;
+      return { ok: true };
+    }
     return { ok: false, network: false, error: 'E_UNKNOWN_OP' };
   } catch (e) {
     return res(e);

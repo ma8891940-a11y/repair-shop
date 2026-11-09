@@ -275,7 +275,7 @@ export function IdentityTab() {
           </div>
         </Panel>
         {err && <Alert tone="danger">{err}</Alert>}
-        <Button variant="primary" loading={busy || picking} onClick={() => void save()} className="self-start">
+        <Button variant="primary" needsNet loading={busy || picking} onClick={() => void save()} className="self-start">
           {t('common.save')}
         </Button>
       </div>

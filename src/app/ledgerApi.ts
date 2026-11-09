@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { cacheGet, cacheSet, localDb } from '../offline/outbox';
 import { supabase } from '../lib/supabase';
 import type { SourceType } from '../lib/ledger';
 
@@ -111,9 +112,18 @@ export function useAccountName() {
 
 /** الخزن اللي ينفع تستقبل فلوس (لصاحب المحل والاستقبال) */
 export async function loadCashboxes(): Promise<Cashbox[]> {
-  const { data, error } = await supabase.from('accounts').select('id, code, name, method, holder_id, active').eq('kind', 'cash').eq('active', true).is('deleted_at', null).order('created_at');
-  if (error) throw error;
-  return sortCashboxes((data ?? []) as Cashbox[]);
+  // البند 14: آخر قايمة خزن بتتحفظ على الجهاز، فالبيع والدفعة من غير نت بيتسجلوا على خزنة صح
+  try {
+    const { data, error } = await supabase.from('accounts').select('id, code, name, method, holder_id, active').eq('kind', 'cash').eq('active', true).is('deleted_at', null).order('created_at');
+    if (error) throw error;
+    const list = sortCashboxes((data ?? []) as Cashbox[]);
+    void cacheSet(localDb(), 'cashboxes', list).catch(() => undefined);
+    return list;
+  } catch (e) {
+    const c = await cacheGet<Cashbox[]>(localDb(), 'cashboxes').catch(() => null);
+    if (c) return c.value;
+    throw e;
+  }
 }
 
 /** ترتيب ثابت للخزن: كاش الدرج الأول، وبعدين باقي الأساسية بالترتيب ده، وبعدين المضافة */

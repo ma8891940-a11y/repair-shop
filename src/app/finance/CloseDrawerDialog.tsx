@@ -69,7 +69,7 @@ export function CloseDrawerDialog({ open, onOpenChange, cashboxId, name, onDone 
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" loading={busy} onClick={() => void submit()}>
+            <Button variant="primary" needsNet loading={busy} onClick={() => void submit()}>
               {t('fin.closeNow')}
             </Button>
           </>

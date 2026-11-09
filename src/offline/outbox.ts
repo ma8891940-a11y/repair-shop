@@ -6,7 +6,8 @@ import Dexie, { type Table } from 'dexie';
  * - cache: آخر نسخة من البيانات اللي اتشافت (للفتح بدون نت).
  * - blobs: صور الاستلام اللي لسه ما اترفعتش.
  */
-export type OpKind = 'intake' | 'status' | 'payment' | 'photo';
+// البند 14: الشغل اليومي كله من غير نت: + التكلفة، والملاحظة الداخلية، والفحص السريع، والبيع
+export type OpKind = 'intake' | 'status' | 'payment' | 'photo' | 'cost' | 'note' | 'check' | 'sale';
 export interface OutboxItem {
   id: string; // نفس id العملية (للمنع من التكرار)
   seq: number; // ترتيب الإرسال

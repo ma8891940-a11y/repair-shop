@@ -182,7 +182,7 @@ export function NettingDialog({ info, onOpenChange, onDone }: { info: LinkInfo |
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void go()} data-testid="netting-confirm">
+          <Button variant="primary" needsNet loading={busy} onClick={() => void go()} data-testid="netting-confirm">
             {t('link.nettingNow')}
           </Button>
         </>

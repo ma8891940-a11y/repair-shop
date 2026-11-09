@@ -130,7 +130,7 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void submit()} data-testid="invop-submit">
+          <Button variant="primary" needsNet loading={busy} onClick={() => void submit()} data-testid="invop-submit">
             {t('common.save')}
           </Button>
         </>
@@ -263,7 +263,7 @@ export function BulkEditDialog({ ids, onOpenChange, onDone }: { ids: string[] | 
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void save()}>
+          <Button variant="primary" needsNet loading={busy} onClick={() => void save()}>
             {t('common.save')}
           </Button>
         </>
@@ -335,7 +335,7 @@ export function ImportDialog({ open, onOpenChange, existing, onDone }: { open: b
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} disabled={!res?.rows.length} onClick={() => void save()} data-testid="import-save">
+          <Button variant="primary" needsNet loading={busy} disabled={!res?.rows.length} onClick={() => void save()} data-testid="import-save">
             {t('import.save', { n: res?.rows.length ?? 0 })}
           </Button>
         </>

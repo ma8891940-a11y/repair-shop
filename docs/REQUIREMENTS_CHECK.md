@@ -191,6 +191,7 @@
 | 126 | البند 11: سجل النشاط بجمل عربي مفهومة برابط للحاجة نفسها، ومفيش أي اسم جدول أو عمود أو إنجليزي في الواجهة العربي | رسايل | ✅ | `lib/auditText.ts`، `AuditScreen.tsx` | `unit/auditText` (كل جدول × عملية × عمود)، `e2e/audit11` |
 | 127 | البند 12: رابط التتبع https في سطر لوحده، و"رابط البرنامج العام" في الإعدادات وتنبيه لو localhost، وخطوات الرفع المجاني في README | رسايل | ✅ | `lib/publicUrl.ts`، `lib/messages.ts`، `PublicUrlPanel.tsx`، `README.md` | `unit/publicUrl`، `e2e/publicurl` |
 | 128 | البند 13: سبب واضح بالعربي لو إرسال كود الإيميل فشل (SMTP، والحد، و"استنى N ثانية")، و"ابعت تاني" بعداد في التسجيل والدخول، وخطوات Brevo كاملة | رسايل | ✅ | `lib/errors.ts`، `RegisterWizard.tsx`، `LoginScreen.tsx`، `README.md` | `unit/errorsEmail`، `e2e/email13`، `e2e/confirm` |
+| 129 | البند 14: الشغل اليومي كله من غير نت (الاستلام، والحالة، والتكلفة، والملاحظة، والفحص، والدفعة، والبيع، والصور)، واللي محتاج نت مقفول بهدوء وبيتفتح لوحده | رسايل | ✅ | `offline/sync.tsx`، `ui/Button.tsx` (needsNet)، `ui/useOnline.ts`، `SettingsScreen.tsx` | `e2e/offline14` (وعلى نسخة الإنتاج) |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |
@@ -282,3 +283,4 @@
 - المرجع في سجل النشاط رجع يعرض الكود زي ما هو ← فشل `e2e/audit11`.
 - رابط التتبع رجع يلزق في الكلام ← فشل `unit/publicUrl` و`e2e/publicurl`.
 - رسالة فشل SMTP رجعت تظهر بالإنجليزي ← فشل `unit/errorsEmail` و`e2e/email13`.
+- الملاحظة الداخلية بطّلت تتسجل على الجهاز من غير نت ← فشل `e2e/offline14`.

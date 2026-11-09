@@ -103,7 +103,7 @@ export function BackupTab() {
               <Input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
             </Field>
           </div>
-          <Button variant="primary" className="self-start" loading={busy} icon={<FileLock2 className="size-4" />} onClick={() => void exportNow()}>
+          <Button variant="primary" needsNet className="self-start" loading={busy} icon={<FileLock2 className="size-4" />} onClick={() => void exportNow()}>
             {t('backup.exportNow')}
           </Button>
         </div>
@@ -175,7 +175,7 @@ export function BackupTab() {
             <Button variant="ghost" onClick={() => setConfirm(false)} disabled={restoring}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" loading={restoring} onClick={() => void restoreNow()}>
+            <Button variant="primary" needsNet loading={restoring} onClick={() => void restoreNow()}>
               {t('backup.restoreYes')}
             </Button>
           </>

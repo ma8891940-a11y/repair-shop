@@ -27,6 +27,7 @@ import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { newInternalEan13 } from '../../lib/barcode';
 import { plainPounds, toCsv } from '../../lib/ledger';
 import { ExportMenu } from '../../app/exporting';
+import { shouldQueue, useSync } from '../../offline/sync';
 import { PurchaseAssist } from '../../app/assist/PurchaseAssist';
 import type { ExportTable } from '../../lib/xlsx';
 import { Checkbox } from '../../ui/Checkbox';
@@ -76,7 +77,8 @@ export function InventoryScreen() {
     const suppliers = owner ? (must(await supabase.from('suppliers').select('id, name, phone').is('deleted_at', null).order('name')) as Supplier[]) : [];
     const bal = owner ? await rpc<{ party_id: string; balance: number }[]>('party_balances', { p_kind: 'suppliers' }) : [];
     return { items: items.map((i) => ({ ...i, qty: Number(i.qty), avg_cost: i.avg_cost == null ? null : Number(i.avg_cost), value: i.value == null ? null : Number(i.value) })), suppliers, bal: new Map(bal.map((b) => [b.party_id, Number(b.balance)])) };
-  }, [owner]);
+    // البند 14: آخر نسخة بتتحفظ على الجهاز، فالمخزون والبيع بيفتحوا من غير نت
+  }, [owner], { cacheKey: `inventory:${profile.id}` });
   useLiveRefresh(reload);
   const cur = f.currency(shop.currency);
   const totalValue = (data?.items ?? []).reduce((a, i) => a + (i.value ?? 0), 0);
@@ -479,7 +481,7 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void save()}>
+          <Button variant="primary" needsNet loading={busy} onClick={() => void save()}>
             {t('common.save')}
           </Button>
         </>
@@ -554,7 +556,7 @@ function SupplierDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenC
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" onClick={() => void save()}>
+          <Button variant="primary" needsNet onClick={() => void save()}>
             {t('common.save')}
           </Button>
         </>
@@ -584,12 +586,15 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
+  const sync = useSync();
   const toast = useToast();
   const accName = useAccountName();
   const [lines, setLines] = useState<Line[]>([]);
   const [supplier, setSupplier] = useState('');
   const [cashbox, setCashbox] = useState('');
   const [cbs, setCbs] = useState<Cashbox[]>([]);
+  // "سجّل" بيستنى قايمة الخزن (من السيرفر أو من النسخة اللي على الجهاز) عشان الخزنة تبقى متختارة فعلًا
+  const [cbsReady, setCbsReady] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [id, setId] = useState(opId);
@@ -600,10 +605,14 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
     setLines(preset?.lines.length ? preset.lines.map((l) => ({ item: l.item, qty: String(l.qty), price: '' })) : [{ item: '', qty: '1', price: '' }]);
     setSupplier(preset?.supplier ?? suppliers[0]?.id ?? '');
     setErr(null);
-    void loadCashboxes().then((c) => {
-      setCbs(c);
-      setCashbox(mode === 'purchase' ? '' : (c[0]?.id ?? ''));
-    });
+    setCbsReady(false);
+    void loadCashboxes()
+      .then((c) => {
+        setCbs(c);
+        setCashbox(mode === 'purchase' ? '' : (c[0]?.id ?? ''));
+      })
+      .catch(() => undefined)
+      .finally(() => setCbsReady(true));
     // بيتصفّر لما الفورم يتفتح بس (مش مع كل تحديث للصفحة، وإلا السطور بتضيع وانت بتكتب)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
@@ -651,17 +660,30 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
     if (mode === 'purchase' && !supplier) return setErr(t('fin.errParty'));
     if (mode === 'sale' && !cashbox) return setErr(t('fin.errCashbox'));
     setBusy(true);
+    const saleArgs = { p_id: id, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, price: l.price })), p_cashbox: cashbox };
+    const queueSale = async () => {
+      await sync.queue('sale', id, saleArgs);
+      toast({ tone: 'warn', title: t('sync.queued'), description: `${f.money(total)} ${f.currency(shop.currency)}` });
+      onOpenChange(false);
+      onDone();
+    };
+    if (mode === 'sale' && !navigator.onLine) {
+      await queueSale();
+      setBusy(false);
+      return;
+    }
     try {
       if (mode === 'purchase') {
         await rpc('record_purchase', { p_id: id, p_supplier: supplier, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, unit_cost: l.price })), p_cashbox: cashbox || null });
       } else {
-        await rpc('record_sale', { p_id: id, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, price: l.price })), p_cashbox: cashbox });
+        await rpc('record_sale', saleArgs);
       }
       toast({ tone: 'ok', title: t(mode === 'purchase' ? 'inv.purchased' : 'inv.sold'), description: `${f.money(total)} ${f.currency(shop.currency)}` });
       onOpenChange(false);
       onDone();
     } catch (e) {
-      setErr(errorMessage(e));
+      if (mode === 'sale' && shouldQueue(e)) await queueSale();
+      else setErr(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -682,7 +704,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} onClick={() => void save()}>
+          <Button variant="primary" loading={busy || !cbsReady} onClick={() => void save()} needsNet={mode === 'purchase'}>
             {t('fin.record')}
           </Button>
         </>
@@ -860,7 +882,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" onClick={() => void save()}>
+          <Button variant="primary" needsNet onClick={() => void save()}>
             {t('common.save')}
           </Button>
         </>

@@ -184,7 +184,7 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy || (!lists.data && !lists.error)} onClick={() => void submit()} disabled={!(profile.role === 'owner' || profile.role === 'reception')}>
+          <Button variant="primary" needsNet={op !== 'payment'} loading={busy || (!lists.data && !lists.error)} onClick={() => void submit()} disabled={!(profile.role === 'owner' || profile.role === 'reception')}>
             {t('fin.record')}
           </Button>
         </>

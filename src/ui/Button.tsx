@@ -2,6 +2,8 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from './cn';
 import { Tip } from './Tooltip';
+import { useOnline } from './useOnline';
+import { useTranslation } from 'react-i18next';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
 type Size = 'sm' | 'md' | 'lg' | 'icon';
@@ -29,19 +31,26 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: ReactNode;
   shortcut?: string;
   tip?: string;
+  /** البند 14: العملية دي محتاجة نت: من غير نت الزرار بيتقفل بهدوء ومعاه السبب، وبيتفتح لوحده لما النت يرجع */
+  needsNet?: boolean;
 }
 
 /** زرار برد فعل ضغط (بيصغر شوية) وتوهج للزرار الأساسي */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'secondary', size = 'md', loading, icon, shortcut, tip, className, children, disabled, type = 'button', ...rest },
+  { variant = 'secondary', size = 'md', loading, icon, shortcut, tip, className, children, disabled, type = 'button', needsNet, ...rest },
   ref,
 ) {
+  const online = useOnline();
+  const { t } = useTranslation();
+  const offline = !!needsNet && !online;
+  if (offline) tip = t('offline.needsNet');
   const btn = (
     <button
       ref={ref}
       type={type}
       data-variant={variant}
-      disabled={disabled || loading}
+      data-offline={offline || undefined}
+      disabled={disabled || loading || offline}
       aria-busy={loading || undefined}
       className={cn(
         'relative inline-flex select-none items-center whitespace-nowrap transition-[background-color,border-color,color,transform] duration-150 ease-out',
@@ -56,6 +65,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {children}
     </button>
   );
+  // الزرار المقفول ما بيستقبلش hover، فالسبب على العنصر اللي حواليه
+  if (offline)
+    return (
+      <span className="inline-flex" title={tip} data-testid="needs-net">
+        {btn}
+      </span>
+    );
   if (!shortcut && !tip) return btn;
   return (
     <Tip label={tip ?? (typeof children === 'string' ? children : '')} shortcut={shortcut}>

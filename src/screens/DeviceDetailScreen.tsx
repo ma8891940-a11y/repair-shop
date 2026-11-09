@@ -456,7 +456,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
             <Button variant="ghost" onClick={() => setConfirmDeliver(false)}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" loading={busy} onClick={() => void change('delivered')}>
+            <Button variant="primary" needsNet loading={busy} onClick={() => void change('delivered')}>
               {t('detail.confirm')}
             </Button>
           </>
@@ -486,6 +486,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 function CostPanel({ deviceId, shopId, cost, currency, onSaved }: { deviceId: string; shopId: string; cost: DeviceCost | null; currency: string; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
+  const sync = useSync();
   const plain = (v: number | null | undefined) => (v == null ? '' : formatPounds(v).replace(/,/g, ''));
   const [est, setEst] = useState(plain(cost?.estimated_cost));
   const [fin, setFin] = useState(plain(cost?.final_cost));
@@ -505,15 +506,18 @@ function CostPanel({ deviceId, shopId, cost, currency, onSaved }: { deviceId: st
     setErrs(e);
     if (e.est || e.fin) return;
     setBusy(true);
+    const row = { id: cost?.id ?? crypto.randomUUID(), shop_id: shopId, device_id: deviceId, estimated_cost: a, final_cost: b };
+    // البند 14: من غير نت التكلفة بتتسجل على الجهاز وتتبعت لوحدها
+    const queueIt = async () => {
+      await sync.queue('cost', `cost:${deviceId}:${Date.now()}`, row);
+      setBusy(false);
+      toast({ tone: 'warn', title: t('sync.queued') });
+    };
+    if (!navigator.onLine) return queueIt();
     const r = cost
       ? await supabase.from('device_costs').update({ estimated_cost: a, final_cost: b }).eq('id', cost.id)
-      : await supabase.from('device_costs').insert({
-          id: crypto.randomUUID(),
-          shop_id: shopId,
-          device_id: deviceId,
-          estimated_cost: a,
-          final_cost: b,
-        });
+      : await supabase.from('device_costs').insert(row);
+    if (r.error && shouldQueue(r.error)) return queueIt();
     setBusy(false);
     if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
     toast({ tone: 'ok', title: t('detail.costsSaved') });
@@ -663,18 +667,22 @@ function NotesPanel({ deviceId, shopId, notes, onAdded }: { deviceId: string; sh
   const { t } = useTranslation();
   const f = useFormat();
   const toast = useToast();
+  const sync = useSync();
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   async function add() {
     const b = body.trim();
     if (!b) return;
     setBusy(true);
-    const { error } = await supabase.from('device_notes').insert({
-      id: crypto.randomUUID(),
-      shop_id: shopId,
-      device_id: deviceId,
-      body: b,
-    });
+    const row = { id: crypto.randomUUID(), shop_id: shopId, device_id: deviceId, body: b };
+    const { error } = navigator.onLine ? await supabase.from('device_notes').insert(row) : { error: new Error('offline') };
+    if (error && (!navigator.onLine || shouldQueue(error))) {
+      // البند 14: من غير نت الملاحظة بتتسجل على الجهاز وتتبعت لوحدها
+      await sync.queue('note', row.id, row);
+      setBusy(false);
+      setBody('');
+      return toast({ tone: 'warn', title: t('sync.queued') });
+    }
     setBusy(false);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     setBody('');
@@ -827,6 +835,7 @@ function PhotosPanel({
 function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: string; shopId: string; status: DeviceStatus; checks: CheckRow[]; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
+  const sync = useSync();
   const intake = checks.find((c) => c.stage === 'intake') ?? null;
   const delivery = checks.find((c) => c.stage === 'delivery') ?? null;
   // فحص التسليم بيتفتح لما الجهاز يخلص صيانة
@@ -852,15 +861,18 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
 
   async function save() {
     setBusy(true);
-    const r = current
-      ? await supabase.from('device_checks').update({ items }).eq('id', current.id)
-      : await supabase.from('device_checks').insert({
-          id: crypto.randomUUID(),
-          shop_id: shopId,
-          device_id: deviceId,
-          stage,
-          items,
-        });
+    const row = { id: current?.id ?? crypto.randomUUID(), shop_id: shopId, device_id: deviceId, stage, items };
+    const r = !navigator.onLine
+      ? { error: new Error('offline') }
+      : current
+        ? await supabase.from('device_checks').update({ items }).eq('id', current.id)
+        : await supabase.from('device_checks').insert(row);
+    if (r.error && (!navigator.onLine || shouldQueue(r.error))) {
+      // البند 14: من غير نت الفحص بيتسجل على الجهاز وبيتبعت لوحده (والمسودة بتفضل لحد ما يوصل)
+      await sync.queue('check', `check:${row.id}:${Date.now()}`, row);
+      setBusy(false);
+      return toast({ tone: 'warn', title: t('sync.queued') });
+    }
     setBusy(false);
     if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
     clearDraft(draftKey);

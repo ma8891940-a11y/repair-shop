@@ -58,7 +58,7 @@ export function PublicUrlPanel() {
           <Field label={t('publicUrl.label')} error={typedProblem ? t(`publicUrl.problem.${typedProblem}`, { url: v.trim() }) : undefined} className="min-w-[260px] flex-1">
             <Input value={v} onChange={(e) => setV(e.target.value)} placeholder="https://gawalak.pages.dev" dir="ltr" inputMode="url" data-testid="public-url-input" />
           </Field>
-          <Button type="submit" variant="primary" loading={busy} disabled={!!typedProblem}>
+          <Button type="submit" variant="primary" needsNet loading={busy} disabled={!!typedProblem}>
             {t('publicUrl.save')}
           </Button>
         </form>

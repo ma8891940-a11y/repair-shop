@@ -243,7 +243,7 @@ function StepFooter({ err, busy, onSave, onSkip }: { err: string | null; busy: b
           {err}
         </Alert>
       )}
-      <Button variant="primary" loading={busy} onClick={onSave} data-testid="opening-save">
+      <Button variant="primary" needsNet loading={busy} onClick={onSave} data-testid="opening-save">
         {t('opening.saveNext')}
       </Button>
       <Button variant="ghost" onClick={onSkip} data-testid="opening-skip">
@@ -518,7 +518,7 @@ function SummaryStep() {
           </p>
           <p className="mt-1 text-xs text-fg-3">{t('opening.fixHint')}</p>
           <div className="mt-4 flex gap-2">
-            <Button variant="primary" onClick={() => void finish()} disabled={!data.balanced} data-testid="opening-finish">
+            <Button variant="primary" needsNet onClick={() => void finish()} disabled={!data.balanced} data-testid="opening-finish">
               {t('opening.finish')}
             </Button>
             <Button variant="ghost" onClick={reload}>

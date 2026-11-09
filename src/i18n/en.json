@@ -2638,5 +2638,9 @@
       "bad": "That’s not a valid link. Example: https://gawalak.pages.dev"
     },
     "save": "Save link"
+  },
+  "offline": {
+    "needsNet": "Needs internet. This button turns back on by itself when you’re online.",
+    "settings": "You’re offline: settings are saved on the server, so they’ll unlock by themselves when you’re back online. “Appearance” still works."
   }
 }

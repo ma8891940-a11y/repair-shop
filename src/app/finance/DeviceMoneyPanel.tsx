@@ -44,7 +44,8 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
       rpc<{ price: number; labor: number; parts?: number; margin?: number }>('suggest_device_price', { p_device: deviceId }),
     ]);
     return { ...m, suggestion: sug };
-  }, [deviceId, status, finalCost, version]);
+    // البند 14: آخر نسخة على الجهاز، فالدفعة بتتسجل من غير نت
+  }, [deviceId, status, finalCost, version], { cacheKey: `device-money:${deviceId}` });
   const cur = f.currency(shop.currency);
   const done = () => {
     reload();

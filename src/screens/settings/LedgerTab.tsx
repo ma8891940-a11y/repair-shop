@@ -114,7 +114,7 @@ export function LedgerTab() {
           ) : (
             <span />
           )}
-          <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => void add()}>
+          <Button variant="primary" needsNet icon={<Plus className="size-4" />} onClick={() => void add()}>
             {t('ledgerSettings.add')}
           </Button>
         </div>

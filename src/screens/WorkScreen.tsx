@@ -164,11 +164,11 @@ export function WorkScreen() {
                   </div>
                 </div>
                 {r.step_status === 'pending' ? (
-                  <Button size="sm" variant="primary" icon={<Play className="size-4" />} loading={busy === r.step_id} disabled={r.status === 'awaiting_approval'} onClick={() => void start(r)}>
+                  <Button size="sm" variant="primary" needsNet icon={<Play className="size-4" />} loading={busy === r.step_id} disabled={r.status === 'awaiting_approval'} onClick={() => void start(r)}>
                     {t('work.start')}
                   </Button>
                 ) : (
-                  <Button size="sm" variant="primary" icon={<CheckCheck className="size-4" />} loading={busy === r.step_id} disabled={r.status === 'awaiting_approval'} onClick={() => void done(r)}>
+                  <Button size="sm" variant="primary" needsNet icon={<CheckCheck className="size-4" />} loading={busy === r.step_id} disabled={r.status === 'awaiting_approval'} onClick={() => void done(r)}>
                     {t('work.finish')}
                   </Button>
                 )}
@@ -228,7 +228,7 @@ function FinalCheckDialog({ row, onOpenChange, onSubmit, busy }: { row: QueueRow
             {t('common.cancel')}
           </Button>
           <Button
-            variant="primary"
+            variant="primary" needsNet
             loading={busy}
             onClick={() => {
               if (Object.keys(items).length === 0) return setErr(t('work.finalEmpty'));
@@ -268,7 +268,7 @@ function RouteDialog({ row, onOpenChange, onSubmit, busy }: { row: QueueRow | nu
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy} disabled={!rid} onClick={() => onSubmit(rid)}>
+          <Button variant="primary" needsNet loading={busy} disabled={!rid} onClick={() => onSubmit(rid)}>
             {t('work.routeSave')}
           </Button>
         </>

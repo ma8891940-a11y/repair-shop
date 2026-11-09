@@ -98,7 +98,7 @@ export function AssistantTab() {
           <Field label={t('assistSet.limitLabel')} hint={usage ? t('assistSet.limitHint', { n: f.number(usage.plan_limit) }) : undefined}>
             <Input value={daily} onChange={(e) => setDaily(e.target.value)} inputMode="numeric" className="w-32" mono data-testid="assistant-daily" />
           </Field>
-          <Button type="submit" variant="primary">
+          <Button type="submit" variant="primary" needsNet>
             {t('common.save')}
           </Button>
         </form>

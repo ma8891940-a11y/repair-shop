@@ -28,6 +28,7 @@ import { ListsTab } from './settings/ListsTab';
 import { PrintTab } from './settings/PrintTab';
 import { AssistantTab } from './settings/AssistantTab';
 import { PublicUrlPanel } from './settings/PublicUrlPanel';
+import { useOnline } from '../ui/useOnline';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
 
@@ -42,10 +43,17 @@ export function SettingsScreen() {
   useEffect(() => {
     if (wanted) setTab(wanted);
   }, [wanted]);
+  // البند 14: الإعدادات بتتحفظ على السيرفر، فمن غير نت بتتقفل بهدوء (إلا المظهر، ده على الجهاز) وبتتفتح لوحدها
+  const online = useOnline();
   const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'lists', 'print', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
+      {!online && tab !== 'appearance' && (
+        <div className="mb-3" data-testid="settings-offline">
+          <Alert tone="info">{t('offline.settings')}</Alert>
+        </div>
+      )}
       <Tabs.Root value={tab} onValueChange={setTab}>
         <Tabs.List className="glass mb-4 inline-flex max-w-full flex-wrap gap-0.5 rounded-md p-1" aria-label={t('settings.title')}>
           {tabs.map((k) => (
@@ -57,54 +65,64 @@ export function SettingsScreen() {
         </Tabs.List>
         {owner && (
           <Tabs.Content value="shop" className="flex flex-col gap-4">
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
             <PlanUsage />
             <PublicUrlPanel />
-            <IdentityTab />
+            <IdentityTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="print">
-            <PrintTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <PrintTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="assistant">
-            <AssistantTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <AssistantTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="lists">
-            <ListsTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <ListsTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="payments">
-            <PaymentsTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <PaymentsTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="backup">
-            <BackupTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <BackupTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="tech">
-            <TechTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <TechTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="ledger">
-            <LedgerTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <LedgerTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="extras">
-            <ExtrasTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <ExtrasTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (
           <Tabs.Content value="messages">
-            <MessagesTab />
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <MessagesTab />            </fieldset>
           </Tabs.Content>
         )}
         <Tabs.Content value="appearance">
@@ -157,7 +175,7 @@ function PaymentsTab() {
         </div>
       </Panel>
       {err && <Alert tone="danger">{err}</Alert>}
-      <Button variant="primary" loading={busy} onClick={() => void save()} className="self-start">
+      <Button variant="primary" needsNet loading={busy} onClick={() => void save()} className="self-start">
         {t('common.save')}
       </Button>
     </div>

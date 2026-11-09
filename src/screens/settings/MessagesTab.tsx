@@ -94,7 +94,7 @@ export function MessagesTab() {
         </Panel>
         {err && <Alert tone="danger">{err}</Alert>}
         <div className="flex flex-wrap gap-2">
-          <Button variant="primary" loading={busy} disabled={empty || body === current} onClick={() => void write({ body, deleted_at: null })}>
+          <Button variant="primary" needsNet loading={busy} disabled={empty || body === current} onClick={() => void write({ body, deleted_at: null })}>
             {t('common.save')}
           </Button>
           <Button disabled={!custom || busy} onClick={() => void write({ body: current, deleted_at: new Date().toISOString() })}>

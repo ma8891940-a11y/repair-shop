@@ -113,7 +113,7 @@ export function TeamScreen() {
                 {sent}
               </Alert>
             )}
-            <Button type="submit" variant="primary" loading={busy} className="self-start">
+            <Button type="submit" variant="primary" needsNet loading={busy} className="self-start">
               {t('team.send')}
             </Button>
           </form>
