@@ -95,8 +95,10 @@ export function IntakeScreen() {
   // البند 9: المسودة بتتحفظ على الجهاز وانت بتكتب، وفيه تنبيه قبل الخروج من غير حفظ.
   // كلمة سر الجهاز والصور والتوقيع ما بيتحفظوش في المسودة أبدًا.
   const draftValue = { phone, custName, custArea, brand, model, color, imei, lockType, accessories, issue, condition, estimate, check, routing };
-  const draft = useDraft(`intake:${profile.id}`, draftValue, !saved);
-  useLeaveGuard(!saved && (hasContent(draftValue) || !!lockValue.trim() || photos.length > 0));
+  // اللي المستخدم كتبه فعلًا (من غير القيم الافتراضية: "من غير قفل"، والأولوية "عادية")
+  const typed = { phone, custName, custArea, brand, model, color, imei, accessories, issue, condition, estimate, check, route: routing.routeId ?? '', lock: lockType === 'none' ? '' : lockType, lockValue, photos: photos.length ? 'x' : '' };
+  const draft = useDraft(`intake:${profile.id}`, draftValue, !saved, hasContent({ ...typed, lockValue: '', photos: '' }));
+  useLeaveGuard(!saved && hasContent(typed));
   function restoreDraft() {
     const d = draft.take() as Partial<typeof draftValue> | null;
     if (!d) return;

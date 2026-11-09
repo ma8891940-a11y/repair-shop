@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { installEnterNav } from './app/enterNav';
 import { HashRouter, Navigate, Route, Routes, useLocation, type Location } from 'react-router';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -280,6 +281,8 @@ function Boot() {
 }
 
 export function App() {
+  // البند 10: Enter للخانة اللي بعدها والحفظ في الآخر، وCtrl+Enter في الكتابة الكبيرة
+  useEffect(() => installEnterNav(), []);
   return (
     <PrefsProvider>
       <MotionConfig reducedMotion="user">

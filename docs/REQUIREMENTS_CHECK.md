@@ -187,6 +187,7 @@
 | 122 | S3: المساعد في الاستلام والفنيين والمخزون والمالية (مقفولة افتراضيًا بتنبيه) وواتساب والتقارير وزرار عايم بيفهم الشاشة، والإعدادات ← المساعد (عام، وكل مكان، والموظفين، وحد يومي) متطبقة في القاعدة، ومن غير بيانات عميل، و"تطبيق" بس، ورسالة هادية من غير نت أو مفتاح، و`npm run setup:assistant` | رسايل | ✅ | `0033_assistant.sql`، `_shared/kinds.ts`، `app/assist.tsx`، `app/assist/*`، `AssistantTab.tsx`، `scripts/setup-assistant.mjs` | `unit/aiKinds`، `unit/assistPayloads`، `unit/assistantSettings`، `unit/setupAssistant`، `db/assistant`، `e2e/assist` |
 | 123 | البند 8: جملة النتيجة بالفصحى ومقارنة بالفترة اللي قبلها، وكل كارت بيفتح تفاصيله في لوح جانبي (فلتر، وبحث، وترتيب، وتصدير)، وتقارير جاهزة | رسايل | ✅ | `lib/financeSummary.ts`، `KpiSheet.tsx`، `ReadyReports.tsx`، `ui/Sheet.tsx` | `unit/financeSummary`، `e2e/finance8` |
 | 124 | البند 9: الفحص السريع بتلات اختيارات وحفظ تلقائي، ومسودة الاستلام (من غير كلمة سر الجهاز)، وتنبيه قبل الخروج من غير حفظ في الشاشات وكل النوافذ | رسايل | ✅ | `lib/draft.ts`، `app/useDraft.tsx`، `app/leaveGuard.tsx`، `ui/Dialog.tsx` | `unit/draft`، `e2e/unsaved` |
+| 125 | البند 10: Enter للخانة اللي بعدها والحفظ في آخر خانة، وCtrl+Enter في الكتابة الكبيرة، والخانات اللي ليها Enter بتاعها زي ما هي | رسايل | ✅ | `app/enterNav.ts`، `ui/Button.tsx`، `app/shortcuts.ts` | `e2e/enter`، `e2e/opening`، `e2e/spec` |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |
@@ -274,3 +275,4 @@
 - شيل شرط "مين من الموظفين" من `ai_take_area` ← فشل `db/assistant`.
 - شيل المقارنة بالفترة اللي قبلها من جملة النتيجة ← فشل `e2e/finance8`.
 - شيل حماية النوافذ من الخروج من غير حفظ ← فشل `e2e/unsaved`.
+- Enter بقى يحفظ على طول بدل ما ينقل للخانة اللي بعدها ← فشل `e2e/enter`.

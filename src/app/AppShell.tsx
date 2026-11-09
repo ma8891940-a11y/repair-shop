@@ -229,13 +229,14 @@ export function AppShell() {
             <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
               <ConnectionBadge live={live} />
               <div className="flex items-center md:hidden">
+                {profile.role !== 'marketing' && <ScreenAssist placement="header" />}
                 <LangToggle />
                 <ThemeToggle />
               </div>
             </div>
           </header>
 
-          <main className="flex-1 px-4 pb-24 pt-5 md:px-6 md:pb-8">
+          <main className="flex-1 px-4 pb-24 pt-5 md:px-6 md:pb-20">
             {/* دخول الشاشة بحركة خفيفة. من غير انتظار خروج الشاشة القديمة (mode="wait" كان ممكن يعلّق الصفحة فاضية لو التنقل كان سريع) */}
             <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}>
               {/* الشاشة لو لسه بتتحمّل (نادر: الأساسية بتتحمّل في الخلفية بعد الدخول) */}
@@ -273,7 +274,7 @@ export function AppShell() {
           </nav>
         </Dialog>
 
-        {profile.role !== 'marketing' && <ScreenAssist />}
+        {profile.role !== 'marketing' && <ScreenAssist placement="float" />}
         <LeaveGuardHost />
         <ShortcutsDialog open={help} onOpenChange={setHelp} shortcuts={keys} />
         <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} showCustomer={front} onOpenDevice={(id) => navigate(`/devices/${id}`)} />

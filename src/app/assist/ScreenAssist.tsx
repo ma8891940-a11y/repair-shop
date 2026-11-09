@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { CircleHelp, Send } from 'lucide-react';
@@ -22,7 +22,31 @@ export function screenOf(pathname: string): string {
  * الزرار العايم في كل شاشة: شرح الشاشة دي (مدمج، شغال من غير نت دايمًا)،
  * وسؤال للمساعد عن الشاشة دي (بيتبعت اسم الشاشة والسؤال بس، متنضّف من أي أرقام أو أسماء).
  */
-export function ScreenAssist() {
+/** الكمبيوتر (md وأكبر) ولا الموبايل */
+function useWide(): boolean {
+  const q = '(min-width: 768px)';
+  const [wide, setWide] = useState(() => (typeof window.matchMedia === 'function' ? window.matchMedia(q).matches : true));
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(q);
+    const on = () => setWide(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
+
+/**
+ * placement: على الكمبيوتر زرار عايم تحت، وعلى الموبايل زرار في الشريط اللي فوق
+ * (عشان ما يغطيش أزرار الصفحة اللي تحت، والشريط السفلي موجود أصلًا).
+ */
+export function ScreenAssist({ placement }: { placement: 'float' | 'header' }) {
+  const wide = useWide();
+  if ((placement === 'float') !== wide) return null;
+  return <ScreenAssistInner placement={placement} />;
+}
+
+function ScreenAssistInner({ placement }: { placement: 'float' | 'header' }) {
   const { t } = useTranslation();
   const location = useLocation();
   const screen = screenOf(location.pathname);
@@ -53,12 +77,16 @@ export function ScreenAssist() {
         }}
         aria-label={t('assist.screen.button')}
         title={t('assist.screen.button')}
-        className="glass fixed bottom-20 end-3 z-20 grid size-10 place-items-center rounded-full text-fg-2 shadow-2 transition-[color,transform] hover:text-accent active:scale-95 md:bottom-4 md:end-4 print:hidden"
+        className={
+          placement === 'float'
+            ? 'glass fixed bottom-4 end-4 z-20 grid size-10 place-items-center rounded-full text-fg-2 shadow-2 transition-[color,transform] hover:text-accent active:scale-95 print:hidden'
+            : 'grid size-9 place-items-center rounded-md text-fg-2 transition-colors hover:text-accent print:hidden'
+        }
         data-testid="screen-assist"
       >
         <CircleHelp className="size-5" aria-hidden />
       </button>
-      <Dialog open={open} onOpenChange={setOpen} title={t('assist.screen.title')} description={t(`assist.screen.names.${screen}`)} className="w-[min(94vw,520px)]">
+      <Dialog open={open} onOpenChange={setOpen} title={t('assist.screen.title')} guard={false} description={t(`assist.screen.names.${screen}`)} className="w-[min(94vw,520px)]">
         <div className="flex flex-col gap-3" data-testid="screen-assist-panel" data-screen={screen}>
           <div className="whitespace-pre-wrap rounded-md border border-glass-border bg-sunken/40 p-3 text-sm text-fg-2" data-testid="screen-help">
             {t(`assist.screen.help.${screen}`)}

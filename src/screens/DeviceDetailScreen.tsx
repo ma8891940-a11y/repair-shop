@@ -467,7 +467,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
 
   if (!overlay) return body;
   return (
-    <motion.div className="fixed inset-0 z-40 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} role="dialog" aria-modal>
+    <motion.div className="fixed inset-0 z-40 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} role="dialog" aria-modal data-enter-scope="off">
       <div className="fixed inset-0 bg-[color-mix(in_srgb,var(--bg)_78%,transparent)] backdrop-blur-md" onClick={close} aria-hidden />
       <div className="relative">{body}</div>
     </motion.div>
@@ -708,7 +708,10 @@ function NotesPanel({ deviceId, shopId, notes, onAdded }: { deviceId: string; sh
             maxLength={2000}
             aria-label={t('detail.notes')}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void add();
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                void add();
+              }
             }}
           />
           <Button size="sm" disabled={!body.trim()} loading={busy} onClick={() => void add()} className="self-start">

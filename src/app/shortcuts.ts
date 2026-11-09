@@ -38,6 +38,8 @@ export function useShortcuts(list: Shortcut[], enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     const onKey = (e: KeyboardEvent) => {
+      // لو حاجة تانية تعاملت مع الزرار ده (مثلًا Ctrl+Enter بيحفظ النطاق في البند 10)، ما نعملوش مرتين
+      if (e.defaultPrevented) return;
       for (const s of list) {
         if (!matches(e, s.combo)) continue;
         // F وCtrl وAlt ما بيكتبوش حروف، فبيشتغلوا جوه الخانات برضه (إلا لو الاختصار متعلّم إنه برا الخانات بس)

@@ -8,9 +8,19 @@ test('من غير حفظ: الاستلام بيسأل قبل الخروج ومس
   await registerShop(page, uniq('unsaved'), 'محل المسودات');
   const mobile = info.project.name.startsWith('mobile');
 
+  // 0) الاستلام فاضي (القيم الافتراضية بس): الخروج ما بيسألش، ومفيش مسودة
+  await page.goto('/#/intake');
+  await afterSplash(page);
+  await page.waitForTimeout(700);
+  if (mobile) await page.getByRole('navigation', { name: 'القائمة' }).getByRole('link').first().click();
+  else await page.getByTestId('side-nav').getByTestId('nav-dashboard').click();
+  await expect(page.getByRole('dialog', { name: 'فيه بيانات ما اتحفظتش' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'لوحة التحكم', exact: true }).first()).toBeVisible();
+
   // 1) الاستلام: اكتب ← حاول تخرج من القايمة ← بيسأل ← "ارجع للفورم" البيانات زي ما هي
   await page.goto('/#/intake');
   await afterSplash(page);
+  await expect(page.getByTestId('draft-banner')).toHaveCount(0);
   const phone = `010${String(Date.now()).slice(-8)}`;
   await page.locator('#intake-phone').fill(phone);
   await page.getByLabel('اسم العميل').fill('عميل المسودة');

@@ -9,10 +9,10 @@ import { Button } from '../ui/Button';
  * البند 9: حفظ تلقائي للمسودة على الجهاز وانت بتكتب (كل نص ثانية). لو فيه مسودة قديمة ما اتحفظتش،
  * بتظهر في شريط "رجّعها / امسحها" (ما بترجعش لوحدها). الكتابة الجديدة بتتحفظ عادي، والقديمة فاضلة في الشريط لحد ما تقرر.
  */
-export function useDraft<T>(key: string, value: T, enabled = true) {
+export function useDraft<T>(key: string, value: T, enabled = true, filled = hasContent(value)) {
   const [pending, setPending] = useState<Draft<T> | null>(() => {
     const d = loadDraft<T>(key);
-    return d && hasContent(d.value) ? d : null;
+    return d ? d : null;
   });
   const json = JSON.stringify(value);
   const first = useRef(true);
@@ -23,10 +23,10 @@ export function useDraft<T>(key: string, value: T, enabled = true) {
       return;
     }
     if (!enabled) return;
-    const tm = setTimeout(() => (hasContent(value) ? saveDraft(key, value) : pending ? undefined : clearDraft(key)), 500);
+    const tm = setTimeout(() => (filled ? saveDraft(key, value) : pending ? undefined : clearDraft(key)), 500);
     return () => clearTimeout(tm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, json, enabled]);
+  }, [key, json, enabled, filled]);
   return {
     pending,
     /** بيرجّع المسودة القديمة (والشريط بيختفي) */
@@ -36,7 +36,7 @@ export function useDraft<T>(key: string, value: T, enabled = true) {
       return v;
     },
     discard() {
-      if (!hasContent(value)) clearDraft(key);
+      if (!filled) clearDraft(key);
       setPending(null);
     },
     /** بعد الحفظ الناجح */
