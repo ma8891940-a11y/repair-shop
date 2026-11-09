@@ -60,6 +60,7 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
   const custs: string[] = [];
   const devs: { id: string; cust: string }[] = [];
   const PARTNER = randomUUID();
+  const LINK = randomUUID();
   beforeAll(async () => {
     db = new pg.Client({ connectionString: url });
     await db.connect();
@@ -95,6 +96,7 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
       await as(O, `insert into device_costs(id, shop_id, device_id) values ($1, gen_random_uuid(), $2)`, [randomUUID(), dv]);
       devs.push({ id: dv, cust: c });
     }
+    await as(O, `select link_parties($1, $2, $3)`, [LINK, custs[0], sups[0]]);
   }, 60_000);
   afterAll(async () => db?.end());
 
@@ -118,7 +120,7 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
     const counts: Record<string, number> = {};
     // أخطاء متوقعة (رفض صح من قاعدة البيانات)، مش أخطاء في الحسابات
     // (E_UNBALANCED مش هنا عن قصد: لو حصل يبقى غلط)
-    const ok = /E_STOCK|E_ALREADY_REVERSED|E_INSUFFICIENT|E_COST_LOCKED|E_DELIVERED_LOCKED|E_BAD_AMOUNT/;
+    const ok = /E_STOCK|E_ALREADY_REVERSED|E_INSUFFICIENT|E_COST_LOCKED|E_DELIVERED_LOCKED|E_BAD_AMOUNT|E_NETTING_LIMIT/;
     type Op = [string, () => Promise<unknown>];
     const ops: Op[] = [
       ['رأس مال', () => as(O, `select owner_capital($1, $2, $3)`, [randomUUID(), cash(), amt(2_000_000)])],
@@ -153,6 +155,12 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
       }],
       ['رأس مال شريك', () => as(O, `select partner_deposit($1, $2, $3, $4)`, [randomUUID(), PARTNER, cash(), amt(500_000)])],
       ['سحب شريك', () => as(O, `select partner_withdraw($1, $2, $3, $4, null, $5)`, [randomUUID(), PARTNER, cash(), amt(30_000), r() < 0.3])],
+      ['مقاصة عميل ومورد', async () => {
+        // العميل والمورد المربوطين بيتعملهم رصيد الأول (العمليات العشوائية ممكن تصفّرهم)، وبعدين مقاصة بأقصى مبلغ أو بجزء
+        await as(O, `select opening_balance($1, 'customer', $2, $3)`, [randomUUID(), custs[0], amt(60_000)]);
+        await as(O, `select opening_balance($1, 'supplier', $2, $3)`, [randomUUID(), sups[0], amt(60_000)]);
+        return as(O, `select net_parties($1, $2, $3)`, [randomUUID(), LINK, r() < 0.5 ? null : amt(5_000)]);
+      }],
       ['إلغاء عملية (قيد عكسي)', async () => {
         const e = (await admin(`select e.id from journal_entries e where e.shop_id = $1 and e.source_type <> 'reversal' and e.source_type <> 'cost_adjust'
                                  and not exists (select 1 from journal_entries x where x.reverses_id = e.id) order by random() limit 1`, [S])).rows[0]?.id;

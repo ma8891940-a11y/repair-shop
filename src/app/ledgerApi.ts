@@ -86,7 +86,7 @@ export interface DeviceMoney {
   parts_cost: number | null;
   payments: { id: string; amount: number; method: string; created_at: string; entry_id: string; by: string | null; reversed: boolean }[];
 }
-export type StatementKind = 'cashbox' | 'customer' | 'supplier' | 'employee' | 'partner';
+export type StatementKind = 'cashbox' | 'customer' | 'supplier' | 'employee' | 'partner' | 'linked';
 
 /** بينادي دالة في قاعدة البيانات وبيرمي الخطأ لو فشلت */
 export async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {

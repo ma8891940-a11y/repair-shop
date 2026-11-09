@@ -175,6 +175,7 @@
 | 110 | جرد المحل أول مرة: جدول زي Excel ولصق منه، وأرصدة افتتاحية (مخزون وخزن وديون عملاء وموردين)، وملخص، وقيود متوازنة قصاد رأس المال، ومؤشر تقدم في لوحة التحكم | رسايل | ✅ | `0028_opening.sql`، `OpeningScreen.tsx`، `OpeningCard.tsx`، `lib/opening.ts` | `db/opening`، `db/property`، `unit/opening`، `e2e/opening` |
 | 111 | قاعدة الاختبار بتتنضف قبل كل تشغيل، وكل اختبار بيمسح الداتا اللي عملها (للقاعدة المحلية بس) | رسايل | ✅ | `tests/db/purgeCore.ts`، `tests/db/purge.ts`، `tests/db/globalSetup.ts`، `tests/e2e/globalSetup.ts` | كل اختبارات `db` و`e2e` (القاعدة بتفضل فاضية بعد التشغيل) |
 | 112 | الشركاء: النسب لحد 100%، ورأس المال، وتوزيع الأرباح لأي فترة (من غير تكرار)، وكشف حساب لكل شريك، والسحب مش مصروف، وجوه النسخة الاحتياطية | رسايل | ✅ | `0029_partners.sql`، `PartnersScreen.tsx`، `lib/partners.ts` | `db/partners`، `db/restore`، `db/property`، `unit/partners`، `e2e/partners` |
+| 113 | ربط عميل بمورد: رصيد صافي في كشف واحد، ومقاصة بقيد متوازن، وفك الربط في أي وقت | رسايل | ✅ | `0030_party_links.sql`، `PartyLink.tsx`، `StatementScreen.tsx` | `db/links`، `db/restore`، `db/property`، `e2e/links` |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |

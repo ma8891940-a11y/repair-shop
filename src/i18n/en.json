@@ -473,7 +473,9 @@
       "E_HAS_MONEY": "Can’t delete: the device has payments or parts. Reverse them first",
       "E_SHARE_OVER_100": "Partner shares can’t exceed 100%",
       "E_PERIOD_DISTRIBUTED": "This period (or part of it) was already distributed. Reverse the old distribution first if it was wrong.",
-      "E_NOTHING_TO_DISTRIBUTE": "Nothing to distribute: profit is zero or no partners in this period"
+      "E_NOTHING_TO_DISTRIBUTE": "Nothing to distribute: profit is zero or no partners in this period",
+      "E_ALREADY_LINKED": "This customer or supplier is already linked. Unlink first",
+      "E_NETTING_LIMIT": "Netting can’t exceed the smaller balance (nothing to net if either is zero)"
     }
   },
   "onboarding": {
@@ -966,28 +968,32 @@
       "customer": "Customer statement",
       "supplier": "Supplier statement",
       "employee": "Employee account",
-      "partner": "Partner statement"
+      "partner": "Partner statement",
+      "linked": "Net customer/supplier statement"
     },
     "balanceOf": {
       "cashbox": "Current balance",
       "customer": "Owes now",
       "supplier": "Owed now",
       "employee": "Due now",
-      "partner": "Owed to partner"
+      "partner": "Owed to partner",
+      "linked": "Net owed"
     },
     "in": {
       "cashbox": "In",
       "customer": "Charged",
       "supplier": "Paid",
       "employee": "Advances",
-      "partner": "Credit"
+      "partner": "Credit",
+      "linked": "Owes"
     },
     "out": {
       "cashbox": "Out",
       "customer": "Paid",
       "supplier": "Bought",
       "employee": "Due and paid",
-      "partner": "Withdrawn"
+      "partner": "Withdrawn",
+      "linked": "Owed/netted"
     },
     "dir": {
       "all": "All",
@@ -1033,7 +1039,8 @@
       "opening": "Opening balance",
       "partner_capital": "Partner capital",
       "partner_withdrawal": "Partner withdrawal",
-      "profit_distribution": "Profit distribution"
+      "profit_distribution": "Profit distribution",
+      "netting": "Customer/supplier netting"
     },
     "excel": "Excel",
     "pdf": "PDF / Print",
@@ -2002,5 +2009,30 @@
     "openingHint": "Each partner’s capital at stocktake. It moves from opening capital to the partner’s account.",
     "openingNone": "No partners yet. If the shop has partners, add them on the Partners page first.",
     "openingGo": "Open Partners"
+  },
+  "link": {
+    "withSupplier": "Linked to supplier “{{name}}”",
+    "withCustomer": "Linked to customer “{{name}}”",
+    "netStatement": "Net statement",
+    "netting": "Netting",
+    "nettingNow": "Net now",
+    "unlink": "Unlink",
+    "unlinking": "Unlinking",
+    "unlinked": "Unlinked; old statements stay as they are",
+    "noneCustomer": "If this customer also sells to you, link them to the supplier to see the net.",
+    "noneSupplier": "If this supplier also buys from you, link them to the customer to see the net.",
+    "linkSupplier": "Link a supplier",
+    "linkCustomer": "Link a customer",
+    "hint": "Same person as customer and supplier: net = what they owe − what you owe them. You can unlink anytime.",
+    "search": "Search name or phone",
+    "noResults": "No results",
+    "linked": "Linked",
+    "nettingHint": "Netting offsets what they owe as a customer against what you owe them as a supplier (a balanced entry). The net doesn’t change; you can reverse it.",
+    "owesUs": "“{{name}}” owes as customer",
+    "weOwe": "You owe as supplier",
+    "max": "Up to {{max}}",
+    "errAmount": "Amount must be above zero and up to {{max}}",
+    "netted": "Netted {{v}}",
+    "netSub": "Owes as customer − owed as supplier"
   }
 }

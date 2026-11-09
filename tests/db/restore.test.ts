@@ -74,7 +74,7 @@ async function numbers(o: string, s: string) {
     `select e.entry_no, e.occurred_at, e.source_type, e.memo, (e.reverses_id is not null) rev, sum(l.debit)::bigint dr, sum(l.credit)::bigint cr
        from journal_entries e join journal_lines l on l.entry_id = e.id where e.shop_id = $1 group by e.id order by e.entry_no`, [s])).rows.map((r) => ({ ...r, dr: Number(r.dr), cr: Number(r.cr) }));
   const counts: Record<string, number> = {};
-  for (const t of ['customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks', 'journal_entries', 'journal_lines', 'payments', 'purchases', 'stock_moves', 'drawer_closings', 'items', 'suppliers', 'repair_steps', 'partners', 'profit_distributions'])
+  for (const t of ['customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks', 'journal_entries', 'journal_lines', 'payments', 'purchases', 'stock_moves', 'drawer_closings', 'items', 'suppliers', 'repair_steps', 'partners', 'profit_distributions', 'party_links'])
     counts[t] = Number((await admin(`select count(*) n from ${t} where shop_id = $1`, [s])).rows[0].n);
   const unbalanced = Number((await admin(`select count(*) n from (select entry_id from journal_lines where shop_id = $1 group by entry_id having sum(debit) <> sum(credit)) x`, [s])).rows[0].n);
   const notes = (await admin(`select n.body, p.full_name from device_notes n left join profiles p on p.id = n.author_id where n.shop_id = $1 order by n.created_at`, [s])).rows;
@@ -123,6 +123,16 @@ d('استرجاع النسخة الاحتياطية لمحل جديد فاضي',
     const partner = id();
     await as(A.o, `insert into partners(id, shop_id, name, share_bp, joined_on) values ($1, gen_random_uuid(), 'شريك النسخة', 2500, '2026-01-01')`, [partner]);
     await as(A.o, `select partner_deposit($1, $2, $3, 700000)`, [id(), partner, cash]);
+    // (البند 6) عميل مربوط بمورد ومقاصة بينهم
+    const linkCust = id();
+    const linkSup = id();
+    await as(A.o, `insert into customers(id, shop_id, name, phone) values ($1, gen_random_uuid(), 'تاجر مربوط', '01099990000')`, [linkCust]);
+    await as(A.o, `insert into suppliers(id, shop_id, name) values ($1, gen_random_uuid(), 'تاجر مربوط')`, [linkSup]);
+    await as(A.o, `select opening_balance($1, 'customer', $2, 30000)`, [id(), linkCust]);
+    await as(A.o, `select opening_balance($1, 'supplier', $2, 20000)`, [id(), linkSup]);
+    const linkId = id();
+    await as(A.o, `select link_parties($1, $2, $3)`, [linkId, linkCust, linkSup]);
+    await as(A.o, `select net_parties($1, $2, 15000)`, [id(), linkId]);
     await as(A.o, `select pay_supplier($1, $2, $3, 100000)`, [id(), sup, bank]);
 
     // عملاء وأجهزة
@@ -201,8 +211,8 @@ d('استرجاع النسخة الاحتياطية لمحل جديد فاضي',
     // الأرقام نفسها مش صفر (السيناريو فيه شغل فعلًا)
     expect(before.counts.journal_entries).toBeGreaterThan(15);
     expect(before.pos.cash).toBeGreaterThan(0);
-    // ليّا = العميل التاني عليه 1,000 (1,200 بالآجل − 200 دفعهم) + سلفة الفني 500
-    expect(before.pos.receivables).toBe(150000);
+    // ليّا = العميل التاني عليه 1,000 (1,200 بالآجل − 200 دفعهم) + سلفة الفني 500 + التاجر المربوط 150 (300 − مقاصة 150)
+    expect(before.pos.receivables).toBe(165000);
   });
 
   it('بعد الاسترجاع: الموظفين القدام "سابقين" ومحتاجين دعوة، ورقم الطلب الجاي بيكمل، والتتبع شغال، والمحل الأصلي ما اتلمسش', async () => {

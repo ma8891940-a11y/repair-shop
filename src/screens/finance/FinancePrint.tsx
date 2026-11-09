@@ -4,6 +4,7 @@ import { useBackground } from '../../app/stage';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
 import { useLoad, must } from '../../app/useLoad';
+import { loadLink } from '../../app/finance/PartyLink';
 import { rpc, useAccountName, type Position, type Statement, type StatementKind } from '../../app/ledgerApi';
 import { usePeriod } from '../../app/finance/PeriodFilter';
 import { supabase } from '../../lib/supabase';
@@ -57,6 +58,10 @@ export function StatementPrint() {
   const { range } = usePeriod();
   const { data } = useLoad(async () => {
     const st = await rpc<Statement>('statement', { p_kind: kind, p_id: id, p_from: range.from.toISOString(), p_to: range.to.toISOString() });
+    if (kind === 'linked') {
+      const li = await loadLink('link', id);
+      return { st, name: li ? `${li.customer} ⇄ ${li.supplier}` : '' };
+    }
     const table = kind === 'cashbox' ? 'accounts' : kind === 'customer' ? 'customers' : kind === 'supplier' ? 'suppliers' : kind === 'partner' ? 'partners' : 'profiles';
     const row = must(await supabase.from(table).select('*').eq('id', id).maybeSingle()) as Record<string, string | null> | null;
     const name = kind === 'cashbox' ? accName(row as { code: string | null; name: string | null }) : (row?.name ?? row?.full_name ?? '');

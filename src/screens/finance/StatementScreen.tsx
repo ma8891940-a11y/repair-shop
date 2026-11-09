@@ -11,6 +11,7 @@ import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { CloseDrawerDialog } from '../../app/finance/CloseDrawerDialog';
 import { ReverseDialog } from '../../app/finance/ReverseDialog';
 import { EditEntryDialog } from '../../app/finance/EditEntryDialog';
+import { loadLink, NettingDialog, PartyLinkBar, type LinkInfo } from '../../app/finance/PartyLink';
 import { EDITABLE_SOURCES } from '../../lib/ledger';
 import { WhatsAppButton, WhatsAppDialog, type MessageTarget } from '../../app/messaging';
 import { supabase } from '../../lib/supabase';
@@ -21,10 +22,11 @@ import { Button } from '../../ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { cn } from '../../ui/cn';
 
-const KINDS: StatementKind[] = ['cashbox', 'customer', 'supplier', 'employee', 'partner'];
+const KINDS: StatementKind[] = ['cashbox', 'customer', 'supplier', 'employee', 'partner', 'linked'];
 type Dir = 'all' | 'in' | 'out';
 
 interface Head {
+  link?: LinkInfo | null;
   title: string;
   sub?: string;
   phone?: string;
@@ -49,6 +51,7 @@ export function StatementScreen() {
   const [closing, setClosing] = useState(false);
   const [reverse, setReverse] = useState<Move | null>(null);
   const [edit, setEdit] = useState<Move | null>(null);
+  const [netting, setNetting] = useState<LinkInfo | null>(null);
   const [wa, setWa] = useState(false);
   const cur = f.currency(shop.currency);
 
@@ -66,6 +69,9 @@ export function StatementScreen() {
     } else if (kind === 'supplier') {
       const s = must(await supabase.from('suppliers').select('id, name, phone').eq('id', id).maybeSingle()) as { id: string; name: string; phone: string | null } | null;
       head = { title: s?.name ?? '', phone: s?.phone ?? undefined, balance, fixed: s ? { supplier: { id: s.id, name: s.name } } : {} };
+    } else if (kind === 'linked') {
+      const li = await loadLink('link', id);
+      head = { title: li ? `${li.customer} ⇄ ${li.supplier}` : '', sub: t('link.netSub'), balance, fixed: {}, link: li };
     } else if (kind === 'partner') {
       const p = must(await supabase.from('partners').select('id, name, phone, share_bp').eq('id', id).maybeSingle()) as { id: string; name: string; phone: string | null; share_bp: number } | null;
       head = { title: p?.name ?? '', sub: p ? t('partners.shareOf', { p: f.percentBp(p.share_bp) }) : '', phone: p?.phone ?? undefined, balance, fixed: {} };
@@ -116,7 +122,7 @@ export function StatementScreen() {
         ? [{ op: 'payment', icon: HandCoins }]
         : kind === 'supplier'
           ? [{ op: 'supplier_payment', icon: HandCoins }]
-          : kind === 'partner'
+          : kind === 'partner' || kind === 'linked'
             ? []
             : [
               { op: 'salary', icon: Users },
@@ -173,6 +179,24 @@ export function StatementScreen() {
         </div>
       </div>
 
+      {(kind === 'customer' || kind === 'supplier') && h && <PartyLinkBar kind={kind} id={id} name={h.title} onChanged={reload} />}
+      {kind === 'linked' && h?.link && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm" data-testid="linked-summary">
+          <span className="text-fg-2">{t('link.owesUs', { name: h.link.customer })}</span>
+          <span className="num text-fg" dir="ltr">
+            {f.money(h.link.receivable)}
+          </span>
+          <span className="text-fg-3">·</span>
+          <span className="text-fg-2">{t('link.weOwe', { name: h.link.supplier })}</span>
+          <span className="num text-fg" dir="ltr">
+            {f.money(h.link.payable)}
+          </span>
+          <Button size="sm" className="ms-auto" onClick={() => setNetting(h.link ?? null)} disabled={h.link.max_netting <= 0} data-testid="linked-netting">
+            {t('link.netting')}
+          </Button>
+        </div>
+      )}
+      <NettingDialog info={netting} onOpenChange={(v) => !v && setNetting(null)} onDone={reload} />
       <Panel className="mb-3 flex flex-wrap items-center gap-3 p-3">
         <PeriodFilter value={period} onChange={set} />
         <div className="relative min-w-[180px] flex-1">
