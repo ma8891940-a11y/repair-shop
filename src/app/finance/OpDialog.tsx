@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { cacheSet, localDb } from '../../offline/outbox';
@@ -83,8 +83,9 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
   // نسخة على الجهاز (وهو مفتوح بس) عشان الدفعة تتسجل بخزنة صح والنت فاصل
   const lists = useLoad(async () => (open ? loadOpLists(op, fixed) : null), [open, op], { cacheKey: open ? opListsKey(op, profile.id) : undefined });
 
-  // كل مرة الفورم يتفتح: عملية جديدة برقم جديد
-  useEffect(() => {
+  // كل مرة الفورم يتفتح: عملية جديدة برقم جديد.
+  // useLayoutEffect: القيم الأولية بتتحط قبل ما النافذة تترسم، فاللي المستخدم بيكتبه بسرعة ما يتمسحش (كان بيحصل على جهاز بطيء)
+  useLayoutEffect(() => {
     if (!open) return;
     setId(opId());
     setAmount(fixed.amount ? String(fixed.amount / 100) : '');

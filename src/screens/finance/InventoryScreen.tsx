@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Barcode as BarcodeIcon, Camera, FileUp, MessageCircle, PackageMinus, PackagePlus, Plus, Printer, RotateCcw, ScanBarcode, Search, ShoppingCart, Trash2, Truck, Undo2 } from 'lucide-react';
@@ -593,7 +593,8 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [id, setId] = useState(opId);
-  useEffect(() => {
+  // قبل ما النافذة تترسم (زي OpDialog): اللي بيتكتب بسرعة ما يتمسحش
+  useLayoutEffect(() => {
     if (!open) return;
     setId(opId());
     setLines(preset?.lines.length ? preset.lines.map((l) => ({ item: l.item, qty: String(l.qty), price: '' })) : [{ item: '', qty: '1', price: '' }]);
