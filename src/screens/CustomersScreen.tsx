@@ -25,6 +25,7 @@ import { errorMessage } from '../lib/errors';
 import { cn } from '../ui/cn';
 import { DeleteDialog } from '../app/DeleteDialog';
 import { useCanCorrect } from '../app/correct';
+import { ExportMenu } from '../app/exporting';
 
 interface CustomerRow {
   id: string;
@@ -83,7 +84,35 @@ export function CustomersScreen() {
 
   return (
     <div>
-      <PageHeader title={t('customers.title')} sub={t('customers.sub')} />
+      <PageHeader
+        title={t('customers.title')}
+        sub={t('customers.sub')}
+        actions={
+          <ExportMenu
+            testid="customers-export"
+            disabled={!data}
+            table={() =>
+              data && {
+                title: t('customers.title'),
+                meta: deb ? [t('export.search', { v: deb })] : [],
+                columns: [
+                  { header: t('customers.cols.name') },
+                  { header: t('customers.cols.phone') },
+                  { header: t('customers.cols.area') },
+                  { header: t('customers.cols.category') },
+                  { header: t('customers.cols.devices'), type: 'int', total: true },
+                  { header: t('customers.cols.spent'), type: 'money', total: true },
+                  { header: t('customers.cols.last'), type: 'date' },
+                ],
+                rows: data.customers.map((c) => {
+                  const s = stats.get(c.id) ?? { devices: 0, spent: 0, last: null };
+                  return [c.name, c.phone, c.area, t(`customers.categories.${c.category}`), s.devices, s.spent, s.last];
+                }),
+              }
+            }
+          />
+        }
+      />
       <Panel className="mb-3 p-3">
         <div className="relative">
           <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-3" aria-hidden />

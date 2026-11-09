@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Download, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { Link } from 'react-router';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { useLoad } from '../app/useLoad';
@@ -12,6 +12,8 @@ import { useFormat } from '../i18n/format';
 import { Panel, PanelHeader } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { ErrorState, Skeleton } from '../ui/Feedback';
+import { ExportMenu } from '../app/exporting';
+import type { ExportTable } from '../lib/xlsx';
 
 interface TechRow {
   tech_id: string;
@@ -65,14 +67,16 @@ export function ReportsScreen() {
   const cur = f.currency(shop.currency);
   const label = (r: { code: string | null; name: string | null }) => (r.code || r.name ? routeName(r) : t('reports.noRoute'));
 
-  const Section = ({ title, onCsv, children, testid }: { title: string; onCsv: () => void; children: React.ReactNode; testid: string }) => (
+  const periodLine = t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) });
+  // كل تقرير: Excel وPDF بنفس الصفوف اللي ظاهرة، وCSV زي ما كان
+  const Section = ({ title, onCsv, table, children, testid }: { title: string; onCsv: () => void; table: () => Omit<ExportTable, 'title'>; children: React.ReactNode; testid: string }) => (
     <Panel className="break-inside-avoid overflow-hidden" data-testid={testid}>
       <PanelHeader
         title={title}
         actions={
-          <Button size="sm" variant="ghost" icon={<Download className="size-3.5" />} onClick={onCsv} className="print:hidden">
-            {t('fin.excel')}
-          </Button>
+          <span className="print:hidden">
+            <ExportMenu testid={`${testid}-export`} csv={onCsv} table={() => ({ title, ...table(), meta: [periodLine] })} />
+          </span>
         }
       />
       <div className="overflow-x-auto">{children}</div>
@@ -104,6 +108,18 @@ export function ReportsScreen() {
           <Section
             testid="report-tech"
             title={t('reports.tech')}
+            table={() => ({
+              columns: [
+                { header: t('roles.technician') },
+                { header: t('reports.devices'), type: 'int', total: true },
+                { header: t('reports.steps'), type: 'int', total: true },
+                { header: t('reports.avgTime') },
+                { header: t('reports.returns'), type: 'int', total: true },
+                { header: t('reports.returnRate') },
+                { header: t('reports.revenue'), type: 'money', total: true },
+              ],
+              rows: data.tech.map((r) => [r.name, r.devices, r.steps, r.avg_minutes ? dur(r.avg_minutes) : '', r.returns, `${r.return_rate}%`, Number(r.revenue)]),
+            })}
             onCsv={() =>
               download(`technicians_${span}.csv`, [
                 [t('roles.technician'), t('reports.devices'), t('reports.steps'), t('reports.avgTime'), t('reports.returns'), t('reports.returnRate'), t('reports.revenue')],
@@ -151,6 +167,16 @@ export function ReportsScreen() {
           <Section
             testid="report-issue"
             title={t('reports.issue')}
+            table={() => ({
+              columns: [
+                { header: t('tech.route') },
+                { header: t('reports.devices'), type: 'int', total: true },
+                { header: t('reports.revenue'), type: 'money', total: true },
+                { header: t('reports.parts'), type: 'money', total: true },
+                { header: t('reports.profit'), type: 'money', total: true },
+              ],
+              rows: data.issue.map((r) => [label(r), r.devices, r.revenue, r.parts, r.profit]),
+            })}
             onCsv={() =>
               download(`issues_${span}.csv`, [
                 [t('tech.route'), t('reports.devices'), t('reports.revenue'), t('reports.parts'), t('reports.profit')],
@@ -195,6 +221,10 @@ export function ReportsScreen() {
                 key={k}
                 testid={`report-${k}`}
                 title={t(`reports.top.${k}`)}
+                table={() => ({
+                  columns: [{ header: t(`reports.top.${k}`) }, { header: t('reports.devices'), type: 'int', total: true }],
+                  rows: data.models.filter((m) => m.kind === k).map((m) => [k === 'route' ? label({ code: m.label === '-' ? null : m.label, name: null }) : m.label, m.devices]),
+                })}
                 onCsv={() => download(`top_${k}_${span}.csv`, [[t(`reports.top.${k}`), t('reports.devices')], ...data.models.filter((m) => m.kind === k).map((m) => [k === 'route' ? label({ code: m.label, name: null }) : m.label, m.devices])])}
               >
                 <ul className="divide-y divide-glass-border text-sm">
@@ -214,6 +244,10 @@ export function ReportsScreen() {
           <Section
             testid="report-short"
             title={t('reports.short')}
+            table={() => ({
+              columns: [{ header: t('inv.cols.name') }, { header: t('inv.cols.qty'), type: 'int' }, { header: t('inv.minQty'), type: 'int' }],
+              rows: data.short.map((i) => [i.name, Number(i.qty), i.min_qty ?? 0]),
+            })}
             onCsv={() => download(`shortages.csv`, [[t('inv.cols.name'), t('inv.cols.qty'), t('inv.minQty')], ...data.short.map((i) => [i.name, Number(i.qty), i.min_qty ?? 0])])}
           >
             <ul className="divide-y divide-glass-border text-sm">

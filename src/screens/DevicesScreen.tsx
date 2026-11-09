@@ -20,6 +20,8 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { EmptyState, ErrorState, Skeleton } from '../ui/Feedback';
 import { Kbd } from '../ui/Kbd';
 import { cn } from '../ui/cn';
+import { ExportMenu } from '../app/exporting';
+import type { ExportTable } from '../lib/xlsx';
 
 const FILTERS = ['today', 'under_repair', 'late'] as const;
 
@@ -94,17 +96,40 @@ export function DevicesScreen() {
 
   const hasFilters = Boolean(status || filter || debounced);
 
+  // التصدير: نفس الصفوف اللي ظاهرة (بالبحث والفلتر والترتيب)، ونفس الأعمدة. الفني من غير بيانات العميل
+  const exportTable = (): ExportTable => ({
+    title: t('devices.title'),
+    meta: [
+      isStatus(status) ? t('export.filter', { v: t(`status.${status}`) }) : '',
+      filter ? t('export.filter', { v: t(`devices.filters.${filter}`) }) : '',
+      debounced ? t('export.search', { v: debounced }) : '',
+    ].filter(Boolean),
+    columns: [
+      { header: t('devices.cols.order') },
+      ...(front ? [{ header: t('devices.cols.customer') }, { header: t('customers.cols.phone') }] : []),
+      { header: t('devices.cols.device') },
+      { header: t('devices.cols.imei') },
+      { header: t('devices.cols.status') },
+      { header: t('devices.cols.received'), type: 'datetime' as const },
+      { header: t('devices.cols.age'), type: 'int' as const },
+    ],
+    rows: rows.map((d) => [d.order_no, ...(front ? [d.customer_name, d.customer_phone] : []), `${d.brand} ${d.model}`, d.imei, t(`status.${d.status}`), d.received_at, daysSince(d.received_at, now)]),
+  });
+
   return (
     <div onKeyDown={onKey}>
       <PageHeader
         title={t('devices.title')}
         sub={t('devices.sub')}
         actions={
-          front && (
-            <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="Alt+2" tip={t('dashboard.newDeviceTip')} onClick={() => navigate('/intake')}>
-              {t('dashboard.newDevice')}
-            </Button>
-          )
+          <>
+            <ExportMenu table={exportTable} testid="devices-export" disabled={!data} />
+            {front && (
+              <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="Alt+2" tip={t('dashboard.newDeviceTip')} onClick={() => navigate('/intake')}>
+                {t('dashboard.newDevice')}
+              </Button>
+            )}
+          </>
         }
       />
       <StaleNote at={stale} />

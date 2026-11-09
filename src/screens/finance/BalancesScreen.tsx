@@ -14,6 +14,7 @@ import { useFormat } from '../../i18n/format';
 import { Panel, PanelHeader } from '../../ui/Panel';
 import { EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { cn } from '../../ui/cn';
+import { ExportMenu } from '../../app/exporting';
 
 type BalKind = 'customers' | 'suppliers' | 'employees';
 interface Row {
@@ -58,7 +59,27 @@ export function BalancesScreen() {
   return (
     <div className="max-w-4xl">
       <Back />
-      <PageHeader title={t(`fin.balances.${kind}`)} sub={t(`fin.balancesSub.${kind}`)} />
+      <PageHeader
+        title={t(`fin.balances.${kind}`)}
+        sub={t(`fin.balancesSub.${kind}`)}
+        actions={
+          <ExportMenu
+            testid="balances-export"
+            disabled={!data}
+            table={() => ({
+              title: t(`fin.balances.${kind}`),
+              columns: [
+                { header: t('customers.cols.name') },
+                ...(kind === 'customers' ? [{ header: t('customers.cols.phone') }] : []),
+                ...(kind === 'employees' ? [{ header: t('export.cols.account') }] : []),
+                { header: t('export.cols.oldest'), type: 'date' as const },
+                { header: t('fin.cols.amount'), type: 'money' as const, total: true },
+              ],
+              rows: rows.map((r) => [r.name, ...(kind === 'customers' ? [data?.phones.get(r.party_id) ?? ''] : []), ...(kind === 'employees' ? [accName({ code: r.account, name: null })] : []), r.balance > 0 ? r.oldest : null, r.balance]),
+            })}
+          />
+        }
+      />
       <div className="glass mb-3 inline-flex rounded-md p-1">
         {kinds.map((x) => (
           <Link key={x} to={`/finance/balances/${x}`} className={cn('h-7 rounded-sm px-3 text-sm leading-7', x === kind ? 'bg-accent-soft text-fg' : 'text-fg-3 hover:text-fg')} aria-current={x === kind ? 'page' : undefined}>
@@ -138,9 +159,18 @@ export function ProfitScreen() {
   const exp = rows.filter((r) => r.type === 'expense');
   const sum = (x: typeof rows) => x.reduce((a, r) => a + r.amount, 0);
   const cur = f.currency(shop.currency);
-  const Block = ({ title, items, tone }: { title: string; items: typeof rows; tone: string }) => (
+  const periodLine = t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) });
+  const Block = ({ title, items, tone, testid }: { title: string; items: typeof rows; tone: string; testid: string }) => (
     <Panel className="overflow-hidden">
-      <PanelHeader title={title} actions={<span className={cn('num text-md', tone)}>{f.money(sum(items))}</span>} />
+      <PanelHeader
+        title={title}
+        actions={
+          <span className="flex items-center gap-2">
+            <ExportMenu testid={testid} table={() => ({ title, meta: [periodLine], columns: [{ header: t('export.cols.item') }, { header: t('fin.cols.amount'), type: 'money', total: true }], rows: items.map((r) => [accName(r), r.amount]) })} />
+            <span className={cn('num text-md', tone)}>{f.money(sum(items))}</span>
+          </span>
+        }
+      />
       {items.length === 0 ? (
         <p className="p-4 text-sm text-fg-3">{t('fin.noMoves')}</p>
       ) : (
@@ -158,7 +188,22 @@ export function ProfitScreen() {
   return (
     <div className="max-w-4xl">
       <Back />
-      <PageHeader title={t('fin.kpi.profit')} sub={t('fin.plSub')} />
+      <PageHeader
+        title={t('fin.kpi.profit')}
+        sub={t('fin.plSub')}
+        actions={
+          <ExportMenu
+            testid="pl-export"
+            disabled={!data}
+            table={() => ({
+              title: t('fin.kpi.profit'),
+              meta: [periodLine, `${t('fin.kpi.profit')}: ${f.money(sum(rev) - sum(exp))} ${cur}`],
+              columns: [{ header: t('export.cols.kind') }, { header: t('export.cols.item') }, { header: t('fin.cols.amount'), type: 'money' }],
+              rows: [...rev.map((r) => [t('fin.revenue'), accName(r), r.amount]), ...exp.map((r) => [t('fin.expenses'), accName(r), r.amount])],
+            })}
+          />
+        }
+      />
       <div className="mb-3">
         <PeriodFilter value={period} onChange={set} />
       </div>
@@ -168,8 +213,8 @@ export function ProfitScreen() {
         <Skeleton className="h-40 w-full" />
       ) : (
         <div className="flex flex-col gap-4">
-          <Block title={t('fin.revenue')} items={rev} tone="text-ok" />
-          <Block title={t('fin.expenses')} items={exp} tone="text-danger" />
+          <Block title={t('fin.revenue')} items={rev} tone="text-ok" testid="pl-export-revenue" />
+          <Block title={t('fin.expenses')} items={exp} tone="text-danger" testid="pl-export-expenses" />
           <Panel className="flex items-center justify-between p-4">
             <span className="font-semibold text-fg">{t('fin.kpi.profit')}</span>
             <span className={cn('num text-xl font-semibold', sum(rev) - sum(exp) < 0 ? 'text-danger' : 'text-ok')} data-testid="pl-profit">

@@ -13,7 +13,7 @@ import { useFormat } from '../../i18n/format';
 import { Skeleton } from '../../ui/Feedback';
 import { ColorHeader, useBranding } from '../../app/brand/branding';
 
-function PrintFrame({ ready, children }: { ready: boolean; children: React.ReactNode }) {
+export function PrintFrame({ ready, children }: { ready: boolean; children: React.ReactNode }) {
   useBackground('off');
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ function PrintFrame({ ready, children }: { ready: boolean; children: React.React
   );
 }
 
-function Header({ title, sub }: { title: string; sub: string }) {
+export function PrintHeader({ title, sub }: { title: string; sub: string }) {
   const { shop } = useMe();
   const branding = useBranding();
   return (
@@ -72,7 +72,7 @@ export function StatementPrint() {
     <PrintFrame ready={!!data}>
       {data && (
         <>
-          <Header title={`${t('fin.statement')} · ${t(`fin.kinds.${kind as StatementKind}`)}`} sub={`${data.name} · ${f.date(range.from)} - ${f.date(new Date(range.to.getTime() - 1))}`} />
+          <PrintHeader title={`${t('fin.statement')} · ${t(`fin.kinds.${kind as StatementKind}`)}`} sub={`${data.name} · ${f.date(range.from)} - ${f.date(new Date(range.to.getTime() - 1))}`} />
           <table className="w-full border-collapse">
             <thead>
               <tr className="[&_th]:border-b [&_th]:border-black [&_th]:px-1 [&_th]:py-1 [&_th]:text-start">
@@ -153,7 +153,7 @@ export function DayReportPrint() {
     <PrintFrame ready={!!data}>
       {data && (
         <>
-          <Header title={t('fin.dayReport')} sub={f.dateLong(cairoDayStart(day))} />
+          <PrintHeader title={t('fin.dayReport')} sub={f.dateLong(cairoDayStart(day))} />
           <div className="grid grid-cols-2 gap-6">
             <section>
               <h2 className="mb-1 border-b border-black font-semibold">{t('fin.revenue')}</h2>

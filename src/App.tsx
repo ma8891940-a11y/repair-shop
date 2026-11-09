@@ -47,13 +47,14 @@ const WorkScreen = lazyScreen(() => import('./screens/WorkScreen').then((m) => m
 const ReportsScreen = lazyScreen(() => import('./screens/ReportsScreen').then((m) => m.ReportsScreen));
 const DayReportPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.DayReportPrint));
 const StatementPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.StatementPrint));
+const TablePrint = lazyScreen(() => import('./screens/TablePrint').then((m) => m.TablePrint));
 const VideosScreen = lazyScreen(() => import('./screens/VideosScreen').then((m) => m.VideosScreen));
 const CommunityScreen = lazyScreen(() => import('./screens/CommunityScreen').then((m) => m.CommunityScreen));
 const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) => m.AdminScreen));
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VideosScreen, CommunityScreen, AdminScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, TablePrint, VideosScreen, CommunityScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
@@ -181,6 +182,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
     <>
       <Routes location={bg ?? location}>
         {owner && <Route path="print/statement/:kind/:id" element={<StatementPrint />} />}
+        <Route path="print/table" element={<TablePrint />} />
         {owner && <Route path="print/day/:day" element={<DayReportPrint />} />}
         {front && <Route path="print/barcode/:id" element={<BarcodePrint />} />}
         {front && <Route path="print/:kind/:id" element={<PrintScreen />} />}

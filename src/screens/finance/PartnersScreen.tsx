@@ -13,6 +13,7 @@ import { parsePercent, remainingBp } from '../../lib/partners';
 import { toLatinDigits } from '../../lib/digits';
 import { cairoDay, cairoDayEnd, cairoDayStart } from '../../lib/dates';
 import { useFormat } from '../../i18n/format';
+import { ExportMenu } from '../../app/exporting';
 import { Panel } from '../../ui/Panel';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
@@ -59,6 +60,25 @@ export function PartnersScreen() {
         sub={t('partners.sub')}
         actions={
           <div className="flex flex-wrap gap-2">
+            <ExportMenu
+              testid="partners-export"
+              disabled={!data}
+              table={() =>
+                data && {
+                  title: t('partners.title'),
+                  columns: [
+                    { header: t('customers.cols.name') },
+                    { header: t('customers.cols.phone') },
+                    { header: t('export.cols.share') },
+                    { header: t('partners.joined'), type: 'date' },
+                    { header: t('export.cols.capital'), type: 'money', total: true },
+                    { header: t('export.cols.current'), type: 'money', total: true },
+                    { header: t('fin.total'), type: 'money', total: true },
+                  ],
+                  rows: data.map((x) => [x.name, x.phone, f.percentBp(x.share_bp), x.joined_on, x.capital, x.current, x.total]),
+                }
+              }
+            />
             <Button size="sm" icon={<PieChart className="size-4" />} onClick={() => setDist(true)} disabled={!data?.length} data-testid="partners-distribute">
               {t('partners.distribute')}
             </Button>

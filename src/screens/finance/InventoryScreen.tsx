@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Barcode as BarcodeIcon, Camera, Download, FileUp, MessageCircle, PackageMinus, PackagePlus, Plus, Printer, RotateCcw, ScanBarcode, Search, ShoppingCart, Trash2, Truck, Undo2 } from 'lucide-react';
+import { AlertTriangle, Barcode as BarcodeIcon, Camera, FileUp, MessageCircle, PackageMinus, PackagePlus, Plus, Printer, RotateCcw, ScanBarcode, Search, ShoppingCart, Trash2, Truck, Undo2 } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
@@ -26,6 +26,8 @@ import { BulkEditDialog, ImportDialog, InvOpDialog, ItemMoves, ScanDialog, type 
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { newInternalEan13 } from '../../lib/barcode';
 import { plainPounds, toCsv } from '../../lib/ledger';
+import { ExportMenu } from '../../app/exporting';
+import type { ExportTable } from '../../lib/xlsx';
 import { Checkbox } from '../../ui/Checkbox';
 import { logoUploadError, prepareLogoUpload } from '../../lib/brandImage';
 
@@ -110,6 +112,28 @@ export function InventoryScreen() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
+  // Excel وPDF: نفس الأصناف الظاهرة (بالبحث والتصنيف و"الناقص بس")، ونفس أعمدة ملف CSV
+  const itemsTable = (): ExportTable => ({
+    title: t('inv.title'),
+    meta: [cat ? t('export.filter', { v: cat }) : '', onlyShort ? t('export.filter', { v: t('inv.onlyShort') }) : '', q.trim() ? t('export.search', { v: q.trim() }) : ''].filter(Boolean),
+    columns: [
+      { header: t('inv.cols.name') },
+      { header: t('inv.cols.kind') },
+      { header: t('inv.category') },
+      { header: t('barcode.code') },
+      { header: t('inv.cols.qty'), type: 'int', total: true },
+      { header: t('inv.minQty'), type: 'int' },
+      { header: t('inv.cols.price'), type: 'money' },
+      ...(owner ? [{ header: t('inv.cols.avg'), type: 'money' as const }, { header: t('inv.cols.value'), type: 'money' as const, total: true }] : []),
+    ],
+    rows: shown.map((i) => [i.name, t(`inv.kinds.${i.kind}`), i.category, i.barcode, i.qty, i.min_qty ?? 0, i.sale_price, ...(owner ? [i.avg_cost, i.value ?? 0] : [])]),
+  });
+  const suppliersTable = (): ExportTable | null | undefined =>
+    data && {
+      title: t('inv.tabs.suppliers'),
+      columns: [{ header: t('inv.cols.name') }, { header: t('customers.cols.phone') }, { header: t('fin.balances.suppliers'), type: 'money', total: true }],
+      rows: data.suppliers.map((s) => [s.name, s.phone, data.bal.get(s.id) ?? 0]),
+    };
   const toggle = (id: string) =>
     setSel((cur) => {
       const n = new Set(cur);
@@ -229,9 +253,7 @@ export function InventoryScreen() {
           <Button size="sm" variant="ghost" icon={<Camera className="size-4" />} onClick={() => setScan(true)}>
             {t('scan.title')}
           </Button>
-          <Button size="sm" variant="ghost" icon={<Download className="size-4" />} onClick={exportCsv} data-testid="inv-export">
-            {t('fin.excel')}
-          </Button>
+          <ExportMenu table={itemsTable} csv={exportCsv} testid="inv-export" />
           {owner && (
             <Button size="sm" variant="ghost" icon={<FileUp className="size-4" />} onClick={() => setImporting(true)} data-testid="inv-import">
               {t('import.title')}
@@ -307,7 +329,12 @@ export function InventoryScreen() {
         </>
       ) : tab === 'summary' ? (
         <InventorySummary />
-      ) : data.suppliers.length === 0 ? (
+      ) : (
+        <>
+        <div className="mb-2 flex justify-end">
+          <ExportMenu table={suppliersTable} testid="suppliers-export" />
+        </div>
+        {data.suppliers.length === 0 ? (
         <Panel>
           <EmptyState line="store" title={t('inv.noSuppliers')} />
         </Panel>
@@ -331,6 +358,8 @@ export function InventoryScreen() {
             ))}
           </ul>
         </Panel>
+        )}
+        </>
       )}
       <ItemDialog open={dlg === 'item'} onOpenChange={(v) => !v && setDlg(null)} onDone={reload} suppliers={data?.suppliers ?? []} />
       <ItemDetailDialog item={detail} onOpenChange={(v) => !v && setDetail(null)} suppliers={data?.suppliers ?? []} onDone={reload} />
@@ -954,8 +983,23 @@ function InventorySummary() {
   ];
   return (
     <div>
-      <div className="mb-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <PeriodFilter value={period} onChange={set} />
+        <ExportMenu
+          testid="invsum-export"
+          disabled={!data}
+          table={() =>
+            data && {
+              title: t('inv.tabs.summary'),
+              meta: [t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) })],
+              columns: [{ header: t('export.cols.item') }, { header: t('inv.cols.qty'), type: 'int' }, { header: t('fin.cols.amount'), type: 'money' }],
+              rows: [
+                ...cards.map(({ k }) => [t(`invsum.${k}`), null, data[k] as number]),
+                ...data.top.map((x) => [`${t('invsum.top')}: ${x.name}`, Number(x.qty), Number(x.cost)]),
+              ],
+            }
+          }
+        />
       </div>
       {error ? (
         <Panel>

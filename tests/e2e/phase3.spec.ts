@@ -51,7 +51,8 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
   await page.getByLabel('بحث في البيان أو رقم الطلب أو الموظف').fill('مارس');
   await expect(page.getByTestId('move-row')).toHaveCount(1);
   await page.getByLabel('بحث في البيان أو رقم الطلب أو الموظف').fill('');
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Excel' }).click()]);
+  await page.getByTestId('statement-export').click();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('statement-export-csv').click()]);
   const csv = readFileSync(await dl.path(), 'utf8');
   expect(csv.charCodeAt(0)).toBe(0xfeff);
   expect(csv).toContain('-1500.25');

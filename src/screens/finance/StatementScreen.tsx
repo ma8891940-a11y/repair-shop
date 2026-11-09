@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowDownUp, Download, HandCoins, Lock, Pencil, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowDownUp, HandCoins, Lock, Pencil, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
@@ -16,6 +16,8 @@ import { EDITABLE_SOURCES } from '../../lib/ledger';
 import { WhatsAppButton, WhatsAppDialog, type MessageTarget } from '../../app/messaging';
 import { supabase } from '../../lib/supabase';
 import { matchMove, plainPounds, toCsv } from '../../lib/ledger';
+import { ExportMenu } from '../../app/exporting';
+import type { ExportTable } from '../../lib/xlsx';
 import { useFormat } from '../../i18n/format';
 import { Panel } from '../../ui/Panel';
 import { Button } from '../../ui/Button';
@@ -115,6 +117,28 @@ export function StatementScreen() {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  // Excel وPDF: نفس الحركات الظاهرة (بالفترة والبحث والاتجاه)، والرصيد الافتتاحي فوق
+  const statementTable = (): ExportTable | null | undefined =>
+    data && {
+      title: `${t('fin.statement')} - ${data.head.title}`,
+      meta: [
+        t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) }),
+        `${t('fin.opening')}: ${plainPounds(data.st.opening)}`,
+        q.trim() ? t('export.search', { v: q.trim() }) : '',
+        dir !== 'all' ? t('export.filter', { v: t(`fin.dir.${dir}`) }) : '',
+      ].filter(Boolean),
+      columns: [
+        { header: t('fin.cols.no'), type: 'int' },
+        { header: t('fin.cols.time'), type: 'datetime' },
+        { header: t('fin.cols.desc') },
+        { header: t('fin.cols.source') },
+        { header: t('fin.cols.by') },
+        { header: t('fin.cols.amount'), type: 'money', total: true },
+        { header: t('fin.cols.balance'), type: 'money' },
+      ],
+      rows: moves.map((m) => [Number(m.entry_no), m.at, [label(m), m.memo].filter(Boolean).join(' - '), m.order_no, m.by, m.amount, m.balance]),
+    };
+
   const actions: { op: Op; icon: typeof Wallet }[] =
     kind === 'cashbox'
       ? [{ op: 'transfer', icon: ArrowDownUp }]
@@ -170,9 +194,7 @@ export function StatementScreen() {
         )}
         {waTarget && h && h.balance > 0 && <WhatsAppButton onClick={() => setWa(true)} />}
         <div className="ms-auto flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" icon={<Download className="size-4" />} onClick={exportCsv} disabled={!data}>
-            {t('fin.excel')}
-          </Button>
+          <ExportMenu table={statementTable} csv={exportCsv} testid="statement-export" disabled={!data} />
           <Link to={`/print/statement/${kind}/${id}${query}`} className="inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm text-fg-2 hover:bg-raised hover:text-fg">
             <Printer className="size-4" aria-hidden /> {t('fin.pdf')}
           </Link>

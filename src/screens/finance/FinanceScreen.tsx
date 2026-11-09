@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { ArrowDownUp, Banknote, Boxes, CheckCircle2, HandCoins, Landmark, PiggyBank, Printer, Receipt, Scale, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad } from '../../app/useLoad';
+import { ExportMenu } from '../../app/exporting';
+import type { ExportTable } from '../../lib/xlsx';
 import { useMe } from '../../app/auth';
 import { rpc, sortCashboxes, useAccountName, type Position } from '../../app/ledgerApi';
 import { OpDialog, type Op } from '../../app/finance/OpDialog';
@@ -82,15 +85,47 @@ export function FinanceScreen() {
     { key: 'net_worth', value: p?.net_worth, icon: Scale, to: '#equation' },
   ];
 
+  const periodLine = t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) });
+  // الوضع المالي: نفس الكروت والمعادلة وحقوق الملكية اللي على الشاشة للفترة المختارة
+  const positionTable = (): ExportTable | null | undefined =>
+    p && {
+      title: t('fin.title'),
+      meta: [periodLine],
+      columns: [{ header: t('export.cols.item') }, { header: t('fin.cols.amount'), type: 'money' }],
+      rows: [
+        ...kpis.map((k) => [t(`fin.kpi.${k.key}`), Number(k.value ?? 0)]),
+        [t('fin.eq.assets'), Number(p.equation.assets)],
+        [t('fin.eq.liabilities'), Number(p.equation.liabilities)],
+        [t('fin.eq.equity'), Number(p.equation.equity)],
+        [t('fin.eq.earnings'), Number(p.equation.earnings)],
+        ...(p.equity_parts
+          ? (() => {
+              const eq = equityRows(p, t);
+              return [...eq.rows.map((r) => [r.label, r.v]), [t('equity.total'), eq.total]];
+            })()
+          : []),
+      ],
+    };
+  const cashboxTable = (): ExportTable | null | undefined =>
+    p && {
+      title: t('fin.cashboxes'),
+      meta: [periodLine],
+      columns: [{ header: t('export.cols.account') }, { header: t('export.cols.method') }, { header: t('fin.balanceOf.cashbox'), type: 'money', total: true }],
+      rows: sortCashboxes(p.cashboxes).map((cb) => [accName(cb), t(`payments.${cb.method}`, { defaultValue: cb.method }), Number(cb.balance)]),
+    };
+
   return (
     <div>
       <PageHeader
         title={t('fin.title')}
         sub={t('fin.sub')}
         actions={
+          <span className="flex flex-wrap gap-2">
+          <ExportMenu table={positionTable} testid="finance-export" disabled={!p} />
           <Link to={`/print/day/${range.days.at(-1)}`} className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent hover:text-fg">
             <Printer className="size-4" aria-hidden /> {t('fin.dayReport')}
           </Link>
+          </span>
         }
       />
       <div className="mb-4">
@@ -179,7 +214,10 @@ export function FinanceScreen() {
 
           {/* الخزن */}
           <section id="cashboxes" className="mt-4 scroll-mt-20">
-            <h2 className="mb-2 text-sm font-semibold text-fg-2">{t('fin.cashboxes')}</h2>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-fg-2">{t('fin.cashboxes')}</h2>
+              <ExportMenu table={cashboxTable} testid="cashboxes-export" disabled={!p} />
+            </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {loading || !p
                 ? [0, 1, 2].map((k) => <Skeleton key={k} className="h-24 w-full" />)
@@ -274,8 +312,8 @@ function TopList({ title, rows, loading, kind, empty, more }: { title: string; r
 }
 
 /** قسم "حقوق الملكية": كل جزء لوحده، والإجمالي، والمعادلة: الأصول = الالتزامات + حقوق الملكية */
-function EquityPanel({ p, money, cur }: { p: Position; money: (n: number) => string; cur: string }) {
-  const { t } = useTranslation();
+/** سطور حقوق الملكية (الشاشة والتصدير من نفس الدالة) */
+function equityRows(p: Position, t: TFunction) {
   const e = p.equity_parts!;
   const partners = e.partners.map((x) => ({ ...x, capital: Number(x.capital), current: Number(x.current) }));
   const total = Number(e.owner_capital) - Number(e.drawings) + Number(e.retained) + partners.reduce((a, x) => a + x.capital + x.current, 0);
@@ -287,6 +325,12 @@ function EquityPanel({ p, money, cur }: { p: Position; money: (n: number) => str
     { k: 'due', label: t('equity.partnersDue'), v: partners.reduce((a, x) => a + x.current, 0), sub: t('equity.partnersDueSub'), testid: 'equity-partners-due' },
     { k: 'drawings', label: t('equity.drawings'), v: -Number(e.drawings), testid: 'equity-drawings' },
   ].filter((r) => r.k === 'owner' || r.k === 'retained' || r.v !== 0 || r.k.startsWith('p-'));
+  return { rows, total };
+}
+
+function EquityPanel({ p, money, cur }: { p: Position; money: (n: number) => string; cur: string }) {
+  const { t } = useTranslation();
+  const { rows, total } = equityRows(p, t);
   const assets = Number(p.equation.assets);
   const liab = Number(p.equation.liabilities);
   return (

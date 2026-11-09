@@ -101,7 +101,9 @@ test('التواريخ في العربي (الشاشات، والإيصال، و
   await page.getByText('عميل التواريخ').filter({ visible: true }).first().click();
   await page.getByRole('link', { name: 'كشف حساب' }).click();
   await expectDatesOk(page, 'كشف الحساب', num);
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Excel' }).click()]);
+  // تصدير ← CSV (نفس الملف القديم بالظبط)
+  await page.getByTestId('statement-export').click();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('statement-export-csv').click()]);
   const csv = readFileSync((await dl.path())!, 'utf8');
   expect(csv).toContain(num);
   expect(csv).not.toMatch(/[‎‏⁦-⁩]/);

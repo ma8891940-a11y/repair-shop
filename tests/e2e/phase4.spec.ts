@@ -102,7 +102,8 @@ test('المرحلة 4: مسار IC بين فنيين بالترتيب ← نف�
   await page.goto('/#/reports');
   await expect(page.getByTestId('report-tech')).toContainText('أحمد الفك');
   await expect(page.getByTestId('report-tech')).toContainText('محمد الميكرو');
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('report-tech').getByRole('button', { name: 'Excel' }).click()]);
+  await page.getByTestId('report-tech-export').click();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('report-tech-export-csv').click()]);
   const csv = readFileSync(await dl.path(), 'utf8');
   expect(csv).toContain('أحمد الفك');
   await noHorizontalScroll(page);
