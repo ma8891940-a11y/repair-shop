@@ -59,7 +59,7 @@ export function InventoryScreen() {
   const want = params.get('do');
   const wantTab = params.get('tab');
   useEffect(() => {
-    if (wantTab === 'suppliers' && owner) setTab('suppliers');
+    if ((wantTab === 'suppliers' || wantTab === 'summary') && owner) setTab(wantTab);
     else if (!want) setTab((t0) => (t0 === 'suppliers' && !wantTab ? 'items' : t0));
     if (want === 'sale' && front) setDlg('sale');
     else if (want === 'purchase' && owner) setDlg('purchase');

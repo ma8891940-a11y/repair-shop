@@ -2387,5 +2387,69 @@
     "limitLabel": "Max questions per day for the shop",
     "limitHint": "Empty = plan limit ({{n}}). Higher than the plan is capped to the plan.",
     "limitBad": "Enter a whole number"
+  },
+  "kpi": {
+    "search": "Search details",
+    "sort": "Sort",
+    "filter": "Type",
+    "sorts": {
+      "amount_desc": "Largest first",
+      "amount_asc": "Smallest first",
+      "name": "By name"
+    },
+    "hideZero": "Hide zero balances",
+    "empty": "No details match this search or filter.",
+    "openPage": "Open full page"
+  },
+  "result": {
+    "main": {
+      "profit": "The shop made a net profit of {{v}} this period, from revenue of {{rev}} and expenses of {{exp}}",
+      "loss": "The shop recorded a net loss of {{v}} this period, with revenue of {{rev}} and expenses of {{exp}}",
+      "even": "The shop broke even this period, with revenue of {{rev}} and expenses of {{exp}}"
+    },
+    "cmp": {
+      "up": ", up {{p}}% on the previous period ({{prev}}).",
+      "down": ", down {{p}}% on the previous period ({{prev}}).",
+      "same": ", the same result as the previous period.",
+      "upNoPct": ", better than the previous period ({{prev}}).",
+      "downNoPct": ", lower than the previous period ({{prev}})."
+    }
+  },
+  "ready": {
+    "title": "Ready reports",
+    "items": {
+      "day": {
+        "t": "Daily report",
+        "d": "Movements, cashboxes and drawer, to print or PDF"
+      },
+      "pl": {
+        "t": "Revenue and expenses",
+        "d": "Each item and net profit for the period"
+      },
+      "customers": {
+        "t": "Owed to me",
+        "d": "Customers in debt and oldest debt"
+      },
+      "suppliers": {
+        "t": "Owed to suppliers",
+        "d": "Supplier balances"
+      },
+      "employees": {
+        "t": "Salaries and advances",
+        "d": "What each employee is owed"
+      },
+      "inventory": {
+        "t": "Inventory accounts",
+        "d": "Sales, cost, wastage and profit"
+      },
+      "tech": {
+        "t": "Technicians and faults",
+        "d": "Performance, profitability and shortages"
+      },
+      "partners": {
+        "t": "Partners",
+        "d": "Capital, current and distribution"
+      }
+    }
   }
 }

@@ -8,6 +8,9 @@ import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad } from '../../app/useLoad';
 import { ExportMenu } from '../../app/exporting';
 import { FinanceAssist } from '../../app/assist/FinanceAssist';
+import { KpiSheet, type KpiKey } from '../../app/finance/KpiSheet';
+import { previousRange, resultSentence } from '../../lib/financeSummary';
+import { ReadyReports } from '../../app/finance/ReadyReports';
 import type { ExportTable } from '../../lib/xlsx';
 import { useMe } from '../../app/auth';
 import { rpc, sortCashboxes, useAccountName, type Position } from '../../app/ledgerApi';
@@ -41,6 +44,7 @@ export function FinanceScreen() {
   const accName = useAccountName();
   const { period, range, set, query } = usePeriod();
   const [op, setOp] = useState<Op | null>(null);
+  const [sheet, setSheet] = useState<KpiKey | null>(null);
   // من القايمة الجانبية: ?do=expense بيفتح المصروف، و?focus=cashboxes بيروح للخزن
   const [params, setParams] = useSearchParams();
   const wantOp = params.get('do');
@@ -52,8 +56,14 @@ export function FinanceScreen() {
 
   const { data, error, loading, reload } = useLoad(async () => {
     const args = { p_from: range.from.toISOString(), p_to: range.to.toISOString() };
-    const [p, daily] = await Promise.all([rpc<Position>('financial_position', args), rpc<{ cashbox: string; day: string; net: number }[]>('cashbox_daily', args)]);
-    return { p, daily };
+    // الفترة اللي قبلها (للمقارنة في جملة النتيجة)
+    const prev = previousRange(period, new Date());
+    const [p, daily, pp] = await Promise.all([
+      rpc<Position>('financial_position', args),
+      rpc<{ cashbox: string; day: string; net: number }[]>('cashbox_daily', args),
+      rpc<Position>('financial_position', { p_from: prev.from.toISOString(), p_to: prev.to.toISOString() }).catch(() => null),
+    ]);
+    return { p, daily, prev: pp };
   }, [range.from.getTime(), range.to.getTime()]);
   useLiveRefresh(reload);
 
@@ -77,6 +87,8 @@ export function FinanceScreen() {
   }, [data, range.days]);
 
   const money = (n: number) => f.money(n);
+  // "افتح الصفحة كاملة" من اللوح الجانبي: نفس الصفحات اللي الكروت كانت بتفتحها
+  const kpiPage = (k: KpiKey) => (k === 'cash' ? `/finance${query}&focus=cashboxes` : (kpis.find((x) => x.key === k)?.to.startsWith('#') ? `/finance${query}` : kpis.find((x) => x.key === k)!.to));
   const kpis: { key: string; value?: number; icon: LucideIcon; to: string; tone?: 'ok' | 'danger' }[] = [
     { key: 'cash', value: p?.cash, icon: Wallet, to: '#cashboxes' },
     { key: 'receivables', value: p?.receivables, icon: HandCoins, to: '/finance/balances/customers' },
@@ -145,18 +157,15 @@ export function FinanceScreen() {
             </Alert>
           )}
           <IntegrityAlert className="mb-4" />
+          {p && <ResultLine r={resultSentence(p, data?.prev ?? null)} money={money} cur={cur} />}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             {kpis.map((k, i) => (
               <motion.div key={k.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: i * 0.04 }}>
-                <Link
-                  to={k.to}
-                  onClick={(e) => {
-                    if (k.to.startsWith('#')) {
-                      e.preventDefault();
-                      document.getElementById(k.to.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  }}
-                  className="glass lift group block h-full rounded-lg p-4 focus-visible:outline-none"
+                <button
+                  type="button"
+                  onClick={() => setSheet(k.key as KpiKey)}
+                  aria-haspopup="dialog"
+                  className="glass lift group block h-full w-full rounded-lg p-4 text-start focus-visible:outline-none"
                   data-testid={`kpi-${k.key}`}
                 >
                   <div className="flex items-center justify-between">
@@ -169,7 +178,7 @@ export function FinanceScreen() {
                   <div className="mt-1 text-2xs text-fg-3">
                     {cur} · {t(`fin.kpiCap.${k.key}`)}
                   </div>
-                </Link>
+                </button>
               </motion.div>
             ))}
           </div>
@@ -204,6 +213,7 @@ export function FinanceScreen() {
           {/* حقوق الملكية: رأس مال صاحب المحل والشركاء والأرباح المحتجزة والسحوبات. دي مش ديون على المحل */}
           {p?.equity_parts && <EquityPanel p={p} money={money} cur={cur} />}
 
+          <ReadyReports query={query} lastDay={range.days.at(-1)!} />
           <FinanceAssist p={p} period={periodLine} />
 
           {/* عمليات سريعة */}
@@ -251,6 +261,7 @@ export function FinanceScreen() {
           </div>
         </>
       )}
+      <KpiSheet kpi={sheet} onClose={() => setSheet(null)} p={p} range={range} query={query} page={sheet ? kpiPage(sheet) : '/finance'} />
       {op && (
         <OpDialog
           op={op}
@@ -365,5 +376,17 @@ function EquityPanel({ p, money, cur }: { p: Position; money: (n: number) => str
         {t('equity.equation', { a: money(assets), l: money(liab), e: money(total) })}
       </p>
     </Panel>
+  );
+}
+
+/** جملة النتيجة بالفصحى، ومقارنة بالفترة اللي قبلها */
+function ResultLine({ r, money, cur }: { r: ReturnType<typeof resultSentence>; money: (n: number) => string; cur: string }) {
+  const { t } = useTranslation();
+  const v = (n: number) => `${money(Math.abs(n))} ${cur}`;
+  return (
+    <p className={cn('mb-4 text-sm leading-relaxed', r.main === 'loss' ? 'text-danger' : 'text-fg-2')} data-testid="result-sentence" data-cmp={r.cmp}>
+      {t(`result.main.${r.main}`, { v: v(r.profit), rev: v(r.revenue), exp: v(r.expenses) })}
+      {r.cmp !== 'none' && t(`result.cmp.${r.cmp}`, { p: r.pct ?? 0, prev: r.prevProfit != null ? `${r.prevProfit < 0 ? '-' : ''}${v(r.prevProfit)}` : '' })}
+    </p>
   );
 }

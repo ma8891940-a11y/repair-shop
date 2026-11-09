@@ -15,7 +15,7 @@ export interface Period {
   to?: string;
 }
 
-function addDays(day: string, n: number): string {
+export function addDays(day: string, n: number): string {
   const [y, m, d] = day.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }

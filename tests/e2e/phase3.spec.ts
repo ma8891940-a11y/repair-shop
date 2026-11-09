@@ -39,8 +39,10 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
   await expect(page.getByTestId('ledger-balanced')).toBeVisible();
   await noHorizontalScroll(page);
 
-  // الربح بيتفتح لتفاصيله
+  // الربح بيتفتح لتفاصيله (لوح جانبي، ومنه الصفحة كاملة)
   await page.getByTestId('kpi-profit').click();
+  await expect(page.getByTestId('kpi-total')).toContainText('-1,500.25');
+  await page.getByTestId('kpi-open-page').click();
   await expect(page.getByTestId('pl-profit')).toContainText('-1,500.25');
   await page.goBack();
 
