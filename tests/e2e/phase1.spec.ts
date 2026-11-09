@@ -96,6 +96,7 @@ test('المرحلة 1: تسجيل ← استلام ← فني ← حالات �
 
   // سجل النشاط فيه مشاهدة القفل وتعديل التكلفة
   await page.goto('/#/audit');
-  await expect(page.getByText('عرض القفل').first()).toBeVisible();
+  // (البند 11) السجل بقى بجمل: "فلان شاف كلمة سر الجهاز 2026-..."
+  await expect(page.getByTestId('audit-sentence').filter({ hasText: 'شاف كلمة سر الجهاز' }).first()).toBeVisible();
   await expect(page.getByText('التكلفة النهائية').first()).toBeVisible();
 });

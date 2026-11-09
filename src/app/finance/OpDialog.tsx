@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useLayoutEffect } from 'react';
+import { useEffect, useMemo, useState, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import { cacheSet, localDb } from '../../offline/outbox';
@@ -85,10 +85,15 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
 
   // كل مرة الفورم يتفتح: عملية جديدة برقم جديد.
   // useLayoutEffect: القيم الأولية بتتحط قبل ما النافذة تترسم، فاللي المستخدم بيكتبه بسرعة ما يتمسحش (كان بيحصل على جهاز بطيء)
+  // واللي المستخدم كتبه في المبلغ ما بيتكتبش فوقه أبدًا وهي مفتوحة (حتى لو التهيئة اتعادت لأي سبب)
+  const typedAmount = useRef(false);
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open) {
+      typedAmount.current = false;
+      return;
+    }
     setId(opId());
-    setAmount(fixed.amount ? String(fixed.amount / 100) : '');
+    if (!typedAmount.current) setAmount(fixed.amount ? String(fixed.amount / 100) : '');
     setNote('');
     setErr(null);
     setTo('');
@@ -239,7 +244,10 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
         {needs.includes('cashbox') && cashboxSelect(cashbox, setCashbox, needs.includes('to') ? t('fin.from') : t('fin.cashbox'))}
         {needs.includes('to') && cashboxSelect(to, setTo, t('fin.to'), cashbox)}
         <Field label={t('fin.amount')}>
-          <Input autoFocus dir="ltr" inputMode="decimal" mono value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" suffix={f.currency(shop.currency)} className="text-start text-md" />
+          <Input autoFocus dir="ltr" inputMode="decimal" mono value={amount} onChange={(e) => {
+            typedAmount.current = true;
+            setAmount(e.target.value);
+          }} placeholder="0" suffix={f.currency(shop.currency)} className="text-start text-md" />
         </Field>
         <Field label={t('fin.note')}>
           <Textarea rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />

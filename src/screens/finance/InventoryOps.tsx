@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { loadCashboxes, opId, rpc, useAccountName, type Cashbox, type StockRow } from '../../app/ledgerApi';
@@ -69,7 +69,8 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
   const [busy, setBusy] = useState(false);
   const id = useMemo(() => (op ? opId() : ''), [op]);
   const cbs = useLoad(async () => (op && op !== 'write_off' ? loadCashboxes() : ([] as Cashbox[])), [op]);
-  useEffect(() => {
+  // قبل ما النافذة تترسم: اللي بيتكتب بسرعة ما يتمسحش (المبلغ الفاضي كان بيتحسب صفر)
+  useLayoutEffect(() => {
     setItem(presetItem ?? '');
     setQty('1');
     setMoney('');

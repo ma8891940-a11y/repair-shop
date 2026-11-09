@@ -76,6 +76,9 @@ describe('سجل النشاط بالعربي', () => {
     const pay: AuditRow = { id: '2', actor_id: null, action: 'insert', entity: 'payments', entity_id: 'p', before: null, after: { entry_id: 'e9', device_id: 'd1' }, created_at: '' };
     expect(linkOf(pay)).toBe('/finance/entry/e9');
     expect(entityLabel(t, 'nope')).toBe('سجل');
+    const pc: AuditRow = { id: '3', actor_id: 'u', action: 'passcode_viewed', entity: 'device_passcodes', entity_id: 'x', before: null, after: { device_id: 'd1', order_no: '2026-0009' }, created_at: '' };
+    expect(auditSentence(t, pc, 'كريم', show)).toBe('كريم شاف كلمة سر الجهاز 2026-0009');
+    expect(linkOf(pc)).toBe('/devices/d1');
     // الحقول التقنية ما بتظهرش، واللي مالوش ترجمة بيتعدّ
     const ch = readableChanges(t, { id: 1, shop_id: 1, tracking_token: 'a', status: 'received', weird: 1 }, { id: 2, shop_id: 2, tracking_token: 'b', status: 'ready', weird: 2 });
     expect(ch.changes.map((c) => c.label)).toEqual(['الحالة']);

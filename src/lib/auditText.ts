@@ -127,7 +127,8 @@ export function readableChanges(t: T, before: Record<string, unknown> | null, af
 
 /** الجملة: "أحمد غيّر حالة الجهاز 2026-0002 من «تحت الفحص» لـ «جاهز»" وهكذا */
 export function auditSentence(t: T, r: AuditRow, who: string, show: (field: string, v: unknown) => string): string {
-  const what = entityLabel(t, r.entity);
+  // كلمة سر الجهاز: الجملة عن الجهاز نفسه ("شاف كلمة سر الجهاز 2026-0003")، مش "قفل الجهاز"
+  const what = r.entity === 'device_passcodes' ? entityLabel(t, 'devices') : entityLabel(t, r.entity);
   const ref = refOf(r, t);
   const target = ref ? `${what} ${ref}` : what;
   // تغيير الحالة له جملة لوحده
