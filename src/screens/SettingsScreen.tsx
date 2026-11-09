@@ -27,6 +27,7 @@ import { cn } from '../ui/cn';
 import { ListsTab } from './settings/ListsTab';
 import { PrintTab } from './settings/PrintTab';
 import { AssistantTab } from './settings/AssistantTab';
+import { PublicUrlPanel } from './settings/PublicUrlPanel';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
 
@@ -57,6 +58,7 @@ export function SettingsScreen() {
         {owner && (
           <Tabs.Content value="shop" className="flex flex-col gap-4">
             <PlanUsage />
+            <PublicUrlPanel />
             <IdentityTab />
           </Tabs.Content>
         )}

@@ -2619,5 +2619,20 @@
     "restore": "Restore",
     "discard": "Discard",
     "checkRestored": "This is the unsaved check from last time. Press \"Save check\" to record it."
+  },
+  "publicUrl": {
+    "title": "Public app link",
+    "hint": "The address the app is hosted at (starting with https). Tracking links in WhatsApp messages and the QR on receipts and stickers are built from it, so customers can open them on their phones.",
+    "label": "Public link",
+    "warnTitle": "Tracking links won’t open for customers",
+    "warnFix": "Host the app on a free host (steps in the README under “Free hosting”) and enter the link here.",
+    "example": "Tracking link looks like:",
+    "waWarn": "The tracking link in this message won’t open for the customer (the app is only open on your device). The owner should set the “Public app link” in Settings.",
+    "problem": {
+      "local": "{{url}} is only on your device or shop network; customers can’t reach it.",
+      "notHttps": "The address must start with https.",
+      "bad": "That’s not a valid link. Example: https://gawalak.pages.dev"
+    },
+    "save": "Save link"
   }
 }

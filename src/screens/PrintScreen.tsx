@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { useBackground } from '../app/stage';
 import { trackingUrl, waLink } from '../lib/messages';
+import { appBase } from '../lib/publicUrl';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { pageSize, readPrint, type PrintDoc, type StickerSize } from '../lib/printPlan';
 import { useTranslation } from 'react-i18next';
@@ -57,7 +58,7 @@ export function PrintScreen() {
   // الـ QR بيفتح صفحة تتبع العميل بالرمز السري بتاع الجهاز
   useEffect(() => {
     if (!data || (!isLabel && !isReceipt && !isSticker)) return;
-    void QRCode.toDataURL(trackingUrl(window.location.href, data.d.tracking_token), { margin: 0, width: 360, errorCorrectionLevel: 'M' }).then(setQr);
+    void QRCode.toDataURL(trackingUrl(appBase(shop.extras, window.location.href), data.d.tracking_token), { margin: 0, width: 360, errorCorrectionLevel: 'M' }).then(setQr);
   }, [data, isLabel, isReceipt, isSticker]);
 
   useEffect(() => {

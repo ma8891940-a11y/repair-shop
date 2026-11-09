@@ -189,6 +189,7 @@
 | 124 | البند 9: الفحص السريع بتلات اختيارات وحفظ تلقائي، ومسودة الاستلام (من غير كلمة سر الجهاز)، وتنبيه قبل الخروج من غير حفظ في الشاشات وكل النوافذ | رسايل | ✅ | `lib/draft.ts`، `app/useDraft.tsx`، `app/leaveGuard.tsx`، `ui/Dialog.tsx` | `unit/draft`، `e2e/unsaved` |
 | 125 | البند 10: Enter للخانة اللي بعدها والحفظ في آخر خانة، وCtrl+Enter في الكتابة الكبيرة، والخانات اللي ليها Enter بتاعها زي ما هي | رسايل | ✅ | `app/enterNav.ts`، `ui/Button.tsx`، `app/shortcuts.ts` | `e2e/enter`، `e2e/opening`، `e2e/spec` |
 | 126 | البند 11: سجل النشاط بجمل عربي مفهومة برابط للحاجة نفسها، ومفيش أي اسم جدول أو عمود أو إنجليزي في الواجهة العربي | رسايل | ✅ | `lib/auditText.ts`، `AuditScreen.tsx` | `unit/auditText` (كل جدول × عملية × عمود)، `e2e/audit11` |
+| 127 | البند 12: رابط التتبع https في سطر لوحده، و"رابط البرنامج العام" في الإعدادات وتنبيه لو localhost، وخطوات الرفع المجاني في README | رسايل | ✅ | `lib/publicUrl.ts`، `lib/messages.ts`، `PublicUrlPanel.tsx`، `README.md` | `unit/publicUrl`، `e2e/publicurl` |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |
@@ -278,3 +279,4 @@
 - شيل حماية النوافذ من الخروج من غير حفظ ← فشل `e2e/unsaved`.
 - Enter بقى يحفظ على طول بدل ما ينقل للخانة اللي بعدها ← فشل `e2e/enter`.
 - المرجع في سجل النشاط رجع يعرض الكود زي ما هو ← فشل `e2e/audit11`.
+- رابط التتبع رجع يلزق في الكلام ← فشل `unit/publicUrl` و`e2e/publicurl`.

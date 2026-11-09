@@ -7,9 +7,22 @@ export type Vars = Partial<Record<(typeof PLACEHOLDERS)[number], string>>;
 
 /** بيملا القالب: {name} و{order}... وأي متغير مش موجود بيتشال من غير ما يسيب أقواس */
 export function fillTemplate(body: string, vars: Vars): string {
-  return body
+  const filled = body
     .replace(/\{(\w+)\}/g, (_, k: string) => (k in vars ? (vars[k as keyof Vars] ?? '') : ''))
     .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+  return vars.link ? linkOnOwnLine(filled, vars.link) : filled;
+}
+
+/** البند 12: رابط التتبع في سطر لوحده (عشان واتساب يعرفه رابط ويتداس صح، وما يلزقش في كلمة) */
+export function linkOnOwnLine(text: string, link: string): string {
+  if (!link || !text.includes(link)) return text;
+  return text
+    .split(link)
+    .map((part, i, a) => (i === 0 ? part.replace(/\s+$/, '') : i === a.length - 1 ? part.replace(/^\s+/, '') : part.trim()))
+    .join(`\n${link}\n`)
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\n+|\n+$/g, '')
     .trim();
 }
 

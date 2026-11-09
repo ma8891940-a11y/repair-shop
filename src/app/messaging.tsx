@@ -15,6 +15,7 @@ import { Dialog } from '../ui/Dialog';
 import { Field, Select, Textarea } from '../ui/Field';
 import { Alert } from '../ui/Feedback';
 import { useToast } from '../ui/Toast';
+import { appBase, urlProblem } from '../lib/publicUrl';
 import { AssistBox, useSensitiveNames } from './assist';
 import { whatsappBody } from '../lib/assistPayloads';
 
@@ -64,7 +65,7 @@ export function useMessageVars(target: MessageTarget | null) {
       device: target.device,
       status: t(`status.${target.status}`),
       cost: target.cost != null ? `${f.money(target.cost)} ${f.currency(shop.currency)}` : '',
-      link: target.token ? trackingUrl(window.location.href, target.token) : '',
+      link: target.token ? trackingUrl(appBase(shop.extras, window.location.href), target.token) : '',
       shop: shop.name,
       days: target.readySince ? String(daysSince(target.readySince, new Date())) : '',
       warranty: target.warrantyUntil ? f.date(target.warrantyUntil) : '',
@@ -78,7 +79,7 @@ export function useMessageVars(target: MessageTarget | null) {
 /** نافذة رسالة واتساب: اختار القالب، عدّل لو عايز، وافتح واتساب. الرسالة بتتسجل في سجل الرسايل. */
 export function WhatsAppDialog({ open, onOpenChange, target, initial }: { open: boolean; onOpenChange: (v: boolean) => void; target: MessageTarget | null; initial?: TemplateKey }) {
   const { t } = useTranslation();
-  const { profile } = useMe();
+  const { profile, shop } = useMe();
   const toast = useToast();
   const { get } = useTemplates();
   const vars = useMessageVars(target);
@@ -164,6 +165,12 @@ export function WhatsAppDialog({ open, onOpenChange, target, initial }: { open: 
           />
         )}
         {(err || (target && !link)) && <Alert tone="danger">{err ?? t('wa.noPhone')}</Alert>}
+        {/* البند 12: الرابط لو localhost أو شبكة داخلية، العميل مش هيعرف يفتحه */}
+        {vars.link && urlProblem(appBase(shop.extras, window.location.href)) && (
+          <div data-testid="wa-local-link">
+            <Alert tone="warn">{t('publicUrl.waWarn')}</Alert>
+          </div>
+        )}
       </div>
     </Dialog>
   );
