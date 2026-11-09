@@ -19,7 +19,9 @@ test('التنقل السريع بين الشاشات ما بيسيبش الصف
   const mobile = info.project.name.startsWith('mobile');
   // القايمة في مجموعات (S2): كل المجموعات المقفولة بتتفتح الأول (وبتفضل مفتوحة، فده مرة واحدة)
   const openAll = async (root: ReturnType<typeof page.locator>) => {
-    for (const b of await root.locator('button[aria-expanded="false"]').all()) await b.click();
+    // القايمة بتتغير مع كل فتحة: نفتح أول مقفولة لحد ما ما يفضلش ولا واحدة
+    const closed = root.locator('button[aria-expanded="false"]');
+    for (let i = 0; i < 10 && (await closed.count()) > 0; i++) await closed.first().click();
   };
   if (!mobile) await openAll(page.getByTestId('side-nav'));
   const go = async (n: string) => {
