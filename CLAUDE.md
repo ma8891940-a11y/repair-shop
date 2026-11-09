@@ -126,6 +126,7 @@
 - **لازم يعدّي:**
   - `npm run typecheck` من غير أخطاء.
   - `npm run lint` نظيف.
+  - `npm run audit:prod` من غير أي ثغرة high أو critical في البرنامج نفسه (`npm audit --omit=dev`). الثغرات في أدوات التطوير بتتراجع وبتتكتب أسبابها في PROGRESS.md.
   - `npm test` بكل الحسابات والانتقالات.
   - `npm run test:db` على قاعدة بيانات حقيقية.
   - `npm run test:e2e` لأهم مسار، على كمبيوتر وموبايل، وفي الوضعين.
