@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, Banknote, Building2, Check, CreditCard, ImagePlu
 import { useAuth } from '../../app/auth';
 import { usePrefs } from '../../app/prefs';
 import { supabase } from '../../lib/supabase';
-import { errorMessage } from '../../lib/errors';
+import { retryAfterSeconds, errorMessage } from '../../lib/errors';
 import { checkPassword, isEmail } from '../../lib/password';
 import { normalizeEgyptPhone } from '../../lib/phone';
 import { COUNTRIES, PAYMENT_METHODS, REGIONS, type Country, type PaymentMethod } from '../../lib/regions';
@@ -321,7 +321,12 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
 
   async function resend() {
     const { error: re } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase(), options: { emailRedirectTo: confirmRedirect() } });
-    if (re) return fail(re);
+    if (re) {
+      // Supabase بيقول "استنى N ثانية": العداد بيبدأ منها
+      const wait = retryAfterSeconds(re);
+      if (wait) setCooldown(wait);
+      return fail(re);
+    }
     setCooldown(60);
     toast({ tone: 'info', title: t('register.resent') });
   }

@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { errorMessage } from '../../lib/errors';
+import { errorMessage, retryAfterSeconds } from '../../lib/errors';
 import { Button } from '../../ui/Button';
 import { Field, Input } from '../../ui/Field';
 import { Alert } from '../../ui/Feedback';
@@ -33,10 +33,22 @@ export function LoginScreen() {
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}#/`);
   }, [t]);
 
+  // البند 13: "ابعت تاني" بعداد (60 ثانية، أو اللي Supabase بيقوله)
+  const [cooldown, setCooldown] = useState(0);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const tm = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(tm);
+  }, [cooldown]);
   async function resendConfirm() {
     const { error: re } = await supabase.auth.resend({ type: 'signup', email: email.trim().toLowerCase(), options: { emailRedirectTo: `${window.location.origin}${window.location.pathname}` } });
-    if (re) return setError(errorMessage(re));
+    if (re) {
+      const wait = retryAfterSeconds(re);
+      if (wait) setCooldown(wait);
+      return setError(errorMessage(re));
+    }
     setResent(true);
+    setCooldown(60);
   }
 
   const onKey = (e: KeyboardEvent) => setCaps(e.getModifierState?.('CapsLock') ?? false);
@@ -92,8 +104,12 @@ export function LoginScreen() {
           {unconfirmed && (
             <div className="flex flex-wrap items-center gap-2 text-sm text-fg-2" data-testid="unconfirmed">
               <span>{resent ? t('login.resent') : t('login.unconfirmedHint')}</span>
-              {!resent && (
-                <button type="button" onClick={() => void resendConfirm()} className="font-medium text-accent hover:underline">
+              {cooldown > 0 ? (
+                <span className="text-fg-3 tabular-nums" data-testid="resend-countdown">
+                  {t('login.resendIn', { s: cooldown })}
+                </span>
+              ) : (
+                <button type="button" onClick={() => void resendConfirm()} className="font-medium text-accent hover:underline" data-testid="resend-confirm">
                   {t('login.resendConfirm')}
                 </button>
               )}

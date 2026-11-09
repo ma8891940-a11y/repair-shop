@@ -84,6 +84,9 @@ test('الدخول قبل التأكيد: رسالة واضحة وإعادة إ�
   await expect(login.getByTestId('unconfirmed')).toBeVisible();
   await login.getByRole('button', { name: 'ابعت رسالة التأكيد تاني' }).click();
   await expect(login.getByText('اتبعتت رسالة تأكيد جديدة')).toBeVisible();
+  // البند 13: "ابعت تاني" بعداد
+  await expect(login.getByTestId('resend-countdown')).toContainText(/ابعت تاني بعد \d+ ثانية/);
+  await expect(login.getByTestId('resend-confirm')).toHaveCount(0);
   // بعد التأكيد (من الرابط في متصفح تالت)، الدخول العادي بيكمّل تسجيل المحل من غير ما يسأل تاني
   const confirm = await (await browser.newContext(info.project.use)).newPage();
   await confirm.goto(await linkFor(email));

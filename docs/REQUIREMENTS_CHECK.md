@@ -190,6 +190,7 @@
 | 125 | البند 10: Enter للخانة اللي بعدها والحفظ في آخر خانة، وCtrl+Enter في الكتابة الكبيرة، والخانات اللي ليها Enter بتاعها زي ما هي | رسايل | ✅ | `app/enterNav.ts`، `ui/Button.tsx`، `app/shortcuts.ts` | `e2e/enter`، `e2e/opening`، `e2e/spec` |
 | 126 | البند 11: سجل النشاط بجمل عربي مفهومة برابط للحاجة نفسها، ومفيش أي اسم جدول أو عمود أو إنجليزي في الواجهة العربي | رسايل | ✅ | `lib/auditText.ts`، `AuditScreen.tsx` | `unit/auditText` (كل جدول × عملية × عمود)، `e2e/audit11` |
 | 127 | البند 12: رابط التتبع https في سطر لوحده، و"رابط البرنامج العام" في الإعدادات وتنبيه لو localhost، وخطوات الرفع المجاني في README | رسايل | ✅ | `lib/publicUrl.ts`، `lib/messages.ts`، `PublicUrlPanel.tsx`، `README.md` | `unit/publicUrl`، `e2e/publicurl` |
+| 128 | البند 13: سبب واضح بالعربي لو إرسال كود الإيميل فشل (SMTP، والحد، و"استنى N ثانية")، و"ابعت تاني" بعداد في التسجيل والدخول، وخطوات Brevo كاملة | رسايل | ✅ | `lib/errors.ts`، `RegisterWizard.tsx`، `LoginScreen.tsx`، `README.md` | `unit/errorsEmail`، `e2e/email13`، `e2e/confirm` |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |
@@ -280,3 +281,4 @@
 - Enter بقى يحفظ على طول بدل ما ينقل للخانة اللي بعدها ← فشل `e2e/enter`.
 - المرجع في سجل النشاط رجع يعرض الكود زي ما هو ← فشل `e2e/audit11`.
 - رابط التتبع رجع يلزق في الكلام ← فشل `unit/publicUrl` و`e2e/publicurl`.
+- رسالة فشل SMTP رجعت تظهر بالإنجليزي ← فشل `unit/errorsEmail` و`e2e/email13`.

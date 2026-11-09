@@ -142,7 +142,8 @@
     "linkFailed": "The confirmation link didn’t work. Sign in with your email and password; if it’s still unconfirmed you can send a new email.",
     "unconfirmedHint": "You need to tap the confirmation link sent to your email first.",
     "resendConfirm": "Resend confirmation email",
-    "resent": "A new confirmation email was sent. Open your inbox and tap the link."
+    "resent": "A new confirmation email was sent. Open your inbox and tap the link.",
+    "resendIn": "Resend in {{s}}s"
   },
   "register": {
     "step": "Step {{n}} of {{total}}",
@@ -485,7 +486,10 @@
       "E_NOTHING_TO_DISTRIBUTE": "Nothing to distribute: profit is zero or no partners in this period",
       "E_ALREADY_LINKED": "This customer or supplier is already linked. Unlink first",
       "E_NETTING_LIMIT": "Netting can’t exceed the smaller balance (nothing to net if either is zero)"
-    }
+    },
+    "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
+    "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
+    "emailSend": "The email wasn’t sent: Supabase’s sending (SMTP) settings have a problem. The project owner should check them (Brevo steps in the README under “Your own email”), then try again."
   },
   "onboarding": {
     "joinTitle": "Join the shop",
