@@ -15,6 +15,8 @@ import { Dialog } from '../ui/Dialog';
 import { Field, Select, Textarea } from '../ui/Field';
 import { Alert } from '../ui/Feedback';
 import { useToast } from '../ui/Toast';
+import { AssistBox, useSensitiveNames } from './assist';
+import { whatsappBody } from '../lib/assistPayloads';
 
 /** قوالب المحل (لو صاحب المحل عدّلها) وإلا الافتراضي باللغة الحالية */
 export function useTemplates() {
@@ -80,6 +82,7 @@ export function WhatsAppDialog({ open, onOpenChange, target, initial }: { open: 
   const toast = useToast();
   const { get } = useTemplates();
   const vars = useMessageVars(target);
+  useSensitiveNames([target?.customerName]);
   const [key, setKey] = useState<TemplateKey>(initial ?? 'status');
   const [text, setText] = useState('');
   const [err, setErr] = useState<string | null>(null);
@@ -87,10 +90,13 @@ export function WhatsAppDialog({ open, onOpenChange, target, initial }: { open: 
   useEffect(() => {
     if (open && initial) setKey(initial);
   }, [open, initial]);
+  // القالب بيتملي لما الرسالة تتفتح أو القالب يتغيّر بس. (vars بيتعمل من جديد مع كل رسم، فبنقارن بمحتواه،
+  // عشان أي تعديل بإيدك أو "تطبيق" للمسودة ما يترجعش للقالب تاني)
+  const varsKey = JSON.stringify(vars);
   useEffect(() => {
     if (open) setText(fillTemplate(get(key), vars));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, key, vars]);
+  }, [open, key, varsKey]);
 
   const link = target ? waLink(target.phone, text) : null;
 
@@ -133,6 +139,30 @@ export function WhatsAppDialog({ open, onOpenChange, target, initial }: { open: 
         <Field label={t('wa.preview')}>
           <Textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} />
         </Field>
+        {/* مسودة بالذكاء: بتتكتب بمتغيرات ({name}، {order}...) والبرنامج بيملاها هنا، فالاسم والرقم ما بيخرجوش */}
+        {target && (
+          <AssistBox
+            compact
+            area="customers"
+            kind="whatsapp"
+            title={t('assist.wa.title')}
+            askLabel={t('assist.wa.ask')}
+            testid="assist-wa"
+            privacy={t('assist.privacyNoCustomer')}
+            build={() => whatsappBody({ purpose: key, status: target.status, names: [target.customerName] })}
+            render={(answer) => {
+              const filled = fillTemplate(answer, vars);
+              return (
+                <div className="flex flex-col gap-2">
+                  <p className="whitespace-pre-wrap">{filled}</p>
+                  <Button size="sm" variant="primary" className="self-start" onClick={() => setText(filled)} data-testid="assist-wa-apply">
+                    {t('assist.apply')}
+                  </Button>
+                </div>
+              );
+            }}
+          />
+        )}
         {(err || (target && !link)) && <Alert tone="danger">{err ?? t('wa.noPhone')}</Alert>}
       </div>
     </Dialog>

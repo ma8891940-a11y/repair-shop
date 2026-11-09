@@ -26,6 +26,7 @@ import { cn } from '../ui/cn';
 import { DeleteDialog } from '../app/DeleteDialog';
 import { useCanCorrect } from '../app/correct';
 import { ExportMenu } from '../app/exporting';
+import { useSensitiveNames } from '../app/assist';
 
 interface CustomerRow {
   id: string;
@@ -69,6 +70,7 @@ export function CustomersScreen() {
     return { customers: must(c) as CustomerRow[], devices: must(d) as Pick<DeviceListRow, 'customer_id' | 'final_cost' | 'status' | 'received_at'>[] };
   }, [deb]);
   useLiveRefresh(reload);
+  useSensitiveNames((data?.customers ?? []).map((c) => c.name));
 
   const stats = useMemo(() => {
     const m = new Map<string, { devices: number; spent: number; last: string | null }>();
@@ -199,6 +201,7 @@ export function CustomerProfileScreen() {
     const costs = devices.length ? must(await supabase.from('device_costs').select('device_id, final_cost').in('device_id', devices.map((x) => x.id))) : [];
     return { customer: must(c) as CustomerRow | null, devices, costs: (costs ?? []) as { device_id: string; final_cost: number | null }[] };
   }, [id]);
+  useSensitiveNames([data?.customer?.name]);
 
   if (error) return <ErrorState message={error} onRetry={reload} />;
   if (loading || !data) return <Skeleton className="h-40 w-full" />;

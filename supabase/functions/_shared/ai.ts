@@ -18,7 +18,7 @@ export interface Provider {
   keyName: string;
   /** الموديلات بالترتيب: لو الأول مش موجود (اتشال)، بيجرّب اللي بعده */
   models: (env: Env) => string[];
-  request: (model: string, key: string, system: string, user: string) => { url: string; init: RequestInit };
+  request: (model: string, key: string, system: string, user: string, json?: boolean) => { url: string; init: RequestInit };
   text: (json: unknown) => string;
 }
 
@@ -32,7 +32,7 @@ export const PROVIDERS: Record<string, Provider> = {
       const own = env('GEMINI_MODEL')?.trim();
       return own ? [own, ...GEMINI_DEFAULT_MODELS.filter((m) => m !== own)] : GEMINI_DEFAULT_MODELS;
     },
-    request: (model, key, system, user) => ({
+    request: (model, key, system, user, json) => ({
       url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       init: {
         method: 'POST',
@@ -41,7 +41,7 @@ export const PROVIDERS: Record<string, Provider> = {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: 'user', parts: [{ text: user }] }],
-          generationConfig: { maxOutputTokens: 700, temperature: 0.4 },
+          generationConfig: { maxOutputTokens: 900, temperature: 0.4, ...(json ? { responseMimeType: 'application/json' } : {}) },
         }),
       },
     }),
@@ -78,9 +78,9 @@ export function buildUserMessage(body: unknown): string | null {
 }
 
 /** بيسأل الخدمة، ولو الموديل مش موجود (404) بيجرّب اللي بعده */
-export async function askProvider(p: { provider: Provider; key: string }, env: Env, user: string, doFetch: typeof fetch = fetch): Promise<string | null> {
+export async function askProvider(p: { provider: Provider; key: string }, env: Env, user: string, doFetch: typeof fetch = fetch, system = SYSTEM, json = false): Promise<string | null> {
   for (const model of p.provider.models(env)) {
-    const { url, init } = p.provider.request(model, p.key, SYSTEM, user);
+    const { url, init } = p.provider.request(model, p.key, system, user, json);
     const r = await doFetch(url, init);
     if (r.status === 404) continue;
     if (!r.ok) return null;

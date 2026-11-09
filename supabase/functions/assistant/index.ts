@@ -4,13 +4,15 @@
 // - المفتاح في أسرار Supabase (GEMINI_API_KEY)، مش في الواجهة ولا في .env.local.
 // - اختيار الخدمة بإعداد AI_PROVIDER (الافتراضي gemini). التفاصيل في ../_shared/ai.ts.
 // - لو مفيش مفتاح: الدالة بترجع E_AI_DISABLED، والواجهة بتقول إن المساعد مقفول.
-// - بيتبعت الموديل ووصف العطل بس (متنضّفين). أي بيانات تانية بتتجاهل.
+// - كل نوع سؤال (kind) ليه حقول مسموحة بس، متنضّفة تاني هنا (_shared/kinds.ts). من غير أي بيانات عميل.
+// - المكان والصلاحية وإعدادات صاحب المحل والحد اليومي بتتأكد في قاعدة البيانات (ai_take_area).
 // - لازم المستخدم يكون داخل، والاستخدام بيتسجل بـ ai_take (الحد اليومي من الخطة).
 // - السؤال والإجابة ما بيتخزنوش في أي مكان.
 //
 // النشر: supabase functions deploy assistant
 // المفتاح:  supabase secrets set GEMINI_API_KEY=...
-import { askProvider, buildUserMessage, pickProvider } from '../_shared/ai.ts';
+import { askProvider, pickProvider } from '../_shared/ai.ts';
+import { buildRequest } from '../_shared/kinds.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -28,7 +30,7 @@ Deno.serve(async (req) => {
   const url = env('SUPABASE_URL')!;
   const anon = env('SUPABASE_ANON_KEY')!;
 
-  let body: { status?: boolean; device?: string; issue?: string };
+  let body: Record<string, unknown> & { status?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -36,21 +38,22 @@ Deno.serve(async (req) => {
   }
   const p = pickProvider(env);
   // الواجهة بتسأل الأول: المساعد متفعّل ولا لأ (من غير ما يتحسب من الحد اليومي)
-  if (body.status) return json({ enabled: !!p });
+  if (body.status === true) return json({ enabled: !!p });
   if (!p) return json({ error: 'E_AI_DISABLED' }, 503);
 
-  const user = buildUserMessage(body);
-  if (!user) return json({ error: 'E_BAD_INPUT' }, 400);
+  const r = buildRequest(body);
+  if (!r) return json({ error: 'E_BAD_INPUT' }, 400);
 
-  // الحد اليومي (وبيتأكد إن المستخدم موظف في محل شغال)
-  const take = await fetch(`${url}/rest/v1/rpc/ai_take`, { method: 'POST', headers: { Authorization: auth, apikey: anon, 'Content-Type': 'application/json' }, body: '{}' });
+  // المكان مفتوح؟ والمستخدم مسموح له؟ والحد اليومي للمحل؟ (كله في قاعدة البيانات)
+  const take = await fetch(`${url}/rest/v1/rpc/ai_take_area`, { method: 'POST', headers: { Authorization: auth, apikey: anon, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_area: r.area }) });
   if (!take.ok) {
     const t = await take.text();
-    return json({ error: /E_PLAN_LIMIT/.test(t) ? 'E_PLAN_LIMIT' : /E_FORBIDDEN/.test(t) ? 'E_FORBIDDEN' : 'E_AUTH_REQUIRED' }, take.status === 401 ? 401 : 403);
+    const code = /E_PLAN_LIMIT/.test(t) ? 'E_PLAN_LIMIT' : /E_AI_OFF/.test(t) ? 'E_AI_OFF' : /E_FORBIDDEN/.test(t) ? 'E_FORBIDDEN' : 'E_AUTH_REQUIRED';
+    return json({ error: code }, take.status === 401 ? 401 : 403);
   }
   const left = ((await take.json()) as { left?: number }).left ?? null;
 
-  const answer = await askProvider(p, env, user);
+  const answer = await askProvider(p, env, r.user, fetch, r.system, r.json);
   if (!answer) return json({ error: 'E_AI_UNAVAILABLE' }, 502);
-  return json({ answer, left });
+  return json({ answer, left, kind: r.kind });
 });

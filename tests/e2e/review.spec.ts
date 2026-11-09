@@ -209,7 +209,8 @@ test('المساعد متفعّل (رد السيرفر متمثّل): الإجا
   await page.getByRole('button', { name: 'اقترح الأسباب وخطوات الفحص' }).click();
   await expect(page.getByTestId('assistant-answer')).toContainText('IC الشحن');
   const ask = sent.find((b) => !(b as { status?: boolean }).status) as Record<string, string>;
-  expect(Object.keys(ask).sort()).toEqual(['device', 'issue']);
+  expect(Object.keys(ask).sort()).toEqual(['device', 'issue', 'kind']);
+  expect(ask.kind).toBe('diagnose');
   expect(ask.device).toContain('A54');
   expect(ask.issue).toContain('مش بيشحن');
   expect(JSON.stringify(ask)).not.toContain('01038383838');

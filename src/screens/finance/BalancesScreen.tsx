@@ -15,6 +15,7 @@ import { Panel, PanelHeader } from '../../ui/Panel';
 import { EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { cn } from '../../ui/cn';
 import { ExportMenu } from '../../app/exporting';
+import { useSensitiveNames } from '../../app/assist';
 
 type BalKind = 'customers' | 'suppliers' | 'employees';
 interface Row {
@@ -55,6 +56,7 @@ export function BalancesScreen() {
   const [wa, setWa] = useState<MessageTarget | null>(null);
   useLiveRefresh(reload);
   const rows = (data?.rows ?? []).map((r) => ({ ...r, balance: Number(r.balance) }));
+  useSensitiveNames(rows.filter((r) => r.party_type === 'customer').map((r) => r.name));
   const total = rows.reduce((a, r) => a + r.balance, 0);
   return (
     <div className="max-w-4xl">

@@ -9,6 +9,7 @@ import { useShortcuts } from './shortcuts';
 import { effectiveShortcuts, type ShortcutAction } from './shortcutsRegistry';
 import { navGroups, type NavEntry } from './navGroups';
 import { MoreNav, NAV_ICONS, SideNav, useNavPrefs } from './SideNav';
+import { ScreenAssist } from './assist/ScreenAssist';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { openMotionDiag } from './diagShortcut';
 import { AppLogo } from '../ui/Logo';
@@ -270,6 +271,7 @@ export function AppShell() {
           </nav>
         </Dialog>
 
+        {profile.role !== 'marketing' && <ScreenAssist />}
         <ShortcutsDialog open={help} onOpenChange={setHelp} shortcuts={keys} />
         <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} showCustomer={front} onOpenDevice={(id) => navigate(`/devices/${id}`)} />
       </div>

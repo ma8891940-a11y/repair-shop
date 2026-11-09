@@ -14,6 +14,7 @@
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "test:e2e": "playwright test",
     "db:setup-file": "node scripts/build-setup.mjs",
+    "setup:assistant": "node scripts/setup-assistant.mjs",
     "perf:splash": "node scripts/perf-splash.cjs"
   },
   "dependencies": {

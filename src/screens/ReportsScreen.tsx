@@ -14,6 +14,8 @@ import { Button } from '../ui/Button';
 import { ErrorState, Skeleton } from '../ui/Feedback';
 import { ExportMenu } from '../app/exporting';
 import type { ExportTable } from '../lib/xlsx';
+import { AssistBox } from '../app/assist';
+import { anonymizeRows } from '../lib/assistPayloads';
 
 interface TechRow {
   tech_id: string;
@@ -105,6 +107,32 @@ export function ReportsScreen() {
         <Skeleton className="h-64 w-full" />
       ) : (
         <div className="flex flex-col gap-4">
+          {(() => {
+            // ملخص مكتوب: أسماء الفنيين بتتشفّر (فني 1، فني 2) وبترجع في الرد، والأرقام بس
+            const tech = anonymizeRows(
+              data.tech.map((r) => ({ label: r.name, values: [{ k: 'devices', n: r.devices }, { k: 'steps', n: r.steps }, { k: 'returns', n: r.returns }, { k: 'revenue', n: Number(r.revenue), money: true }] })),
+              data.tech.map((r) => r.name),
+              t('assist.report.techCode'),
+            );
+            const issues = data.issue.map((r) => ({ label: label(r), values: [{ k: 'devices', n: r.devices }, { k: 'revenue', n: r.revenue, money: true }, { k: 'parts', n: r.parts, money: true }, { k: 'profit', n: r.profit, money: true }] }));
+            return (
+              <AssistBox
+                area="reports"
+                kind="report"
+                className="print:hidden"
+                title={t('assist.report.title')}
+                askLabel={t('assist.report.ask')}
+                testid="assist-report"
+                privacy={t('assist.privacyReport')}
+                build={() => {
+                  const models = data.models.map((m) => ({ label: `${t(`reports.top.${m.kind}`)}: ${m.kind === 'route' ? label({ code: m.label === '-' ? null : m.label, name: null }) : m.label}`, values: [{ k: 'devices', n: Number(m.devices) }] }));
+                  const rows = [...tech.rows, ...issues, ...models];
+                  return rows.length ? { title: t('reports.title'), period: periodLine, rows } : null;
+                }}
+                render={(answer) => <p className="whitespace-pre-wrap">{tech.restore(answer)}</p>}
+              />
+            );
+          })()}
           <Section
             testid="report-tech"
             title={t('reports.tech')}

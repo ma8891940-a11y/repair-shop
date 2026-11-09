@@ -702,7 +702,8 @@
       "backup": "Backup",
       "extras": "Extras",
       "lists": "Lists",
-      "print": "Printing"
+      "print": "Printing",
+      "assistant": "Assistant"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -2266,5 +2267,125 @@
       "capital": "Capital",
       "current": "Current"
     }
+  },
+  "assist": {
+    "apply": "Apply",
+    "applyHint": "Just a suggestion: nothing changes until you press \"Apply\", and you can edit afterwards.",
+    "privacyNoCustomer": "No customer name, number or address.",
+    "privacyItems": "Only item names and quantities are sent.",
+    "privacyReport": "Report numbers only; technician names are coded (Tech 1, Tech 2).",
+    "privacyScreen": "Only the screen name and your question are sent (numbers and names removed). The help above is built in and works offline.",
+    "note": {
+      "no-key": "The assistant needs a key on the server (owner: Settings → Assistant). Suggestions from shop history still work.",
+      "offline": "Needs internet. Suggestions from shop history and the built-in guide still work.",
+      "off": "The assistant is turned off here in Settings → Assistant.",
+      "limit": "The shop’s daily assistant limit is used up. It resets tomorrow.",
+      "forbidden": "This area isn’t available for your role.",
+      "unavailable": "The assistant isn’t responding right now. Try again shortly."
+    },
+    "intake": {
+      "title": "Intake suggestions",
+      "ask": "Suggest with AI",
+      "hints": "From this shop’s history for the same model (tap to fill the form):"
+    },
+    "purchase": {
+      "title": "Purchase suggestions",
+      "ask": "Suggest with AI",
+      "local": "From minimum stock and last 30 days sales:",
+      "none": "Nothing needs buying right now.",
+      "apply": "Put into a purchase invoice",
+      "have": "have {{n}}, sold {{s}}"
+    },
+    "finance": {
+      "title": "Ask about money",
+      "ask": "Ask",
+      "askPh": "e.g. Why did profit drop this month?",
+      "week": "Weekly summary",
+      "privacy": "Only aggregated numbers are sent (cash, revenue, expenses, profit…), no names or transactions. On Gemini’s free tier Google may use data to improve its services.",
+      "off": "The finance assistant is off (by default).",
+      "openSettings": "Turn it on in Settings → Assistant"
+    },
+    "wa": {
+      "title": "AI draft",
+      "ask": "Write a draft"
+    },
+    "report": {
+      "title": "Written report summary",
+      "ask": "Write a summary",
+      "techCode": "Tech"
+    },
+    "screen": {
+      "button": "Help with this screen",
+      "title": "Help",
+      "ask": "Ask",
+      "placeholder": "Your question about this screen",
+      "names": {
+        "dashboard": "Dashboard",
+        "intake": "Device intake",
+        "devices": "Devices",
+        "device": "Device page",
+        "customers": "Customers",
+        "finance": "Finance",
+        "inventory": "Inventory",
+        "reports": "Reports",
+        "partners": "Partners",
+        "settings": "Settings",
+        "work": "My work",
+        "other": "The app"
+      },
+      "help": {
+        "dashboard": "Today at a glance: devices received, under repair, late and ready.\nClick a card to open its list. Alt+2 opens intake.",
+        "intake": "1) Type the phone: a registered customer appears.\n2) Pick the brand, type the model, then the fault.\n3) \"Intake suggestions\" show this model’s most common faults in your shop and their average cost.\n4) Ctrl+Enter saves, then print the sticker and receipt.",
+        "devices": "All devices. Search by order no., phone or IMEI, and use the status tabs and filters.\nArrow keys and Enter open a device. \"Export\" gives exactly what’s shown as Excel or PDF.",
+        "device": "Change status, record cost and payments, print sticker, receipt and invoice, and message the customer on WhatsApp.\nDelivery needs a final cost and the balance paid.",
+        "customers": "Customers with device counts and total paid. Open one to see devices, statement and send a message.",
+        "finance": "Financial position for the period: cash, receivables, payables, inventory and profit. Each card opens details.\nCashboxes are below; each opens its statement. The equation must balance.",
+        "inventory": "Items with quantity and average cost. Sale, purchase and write-off are at the top.\n\"Purchase suggestions\" show what’s below minimum or selling fast; \"Apply\" opens a filled purchase invoice.",
+        "reports": "Period reports: technicians, profit per fault type, top models and shortages. Each exports to Excel or PDF.",
+        "partners": "Partners with share, capital and current account. Capital is equity, not debt. Distribute profit once per period.",
+        "settings": "Shop settings: details and logo, payments, technicians, lists, printing, assistant, messages, backup and appearance.",
+        "work": "Your work: devices assigned to you in order. Open one, start the step, record what you did, and finish with the final check.",
+        "other": "Press \"?\" outside a field for all shortcuts, and Ctrl+K for search and commands."
+      }
+    }
+  },
+  "assistSet": {
+    "status": "Status",
+    "ready": "The assistant is running on the server.",
+    "setup": "To set it up the first time, run npm run setup:assistant on the computer (step by step), or follow the steps in the README.",
+    "usage": "Used today: {{used}} of {{limit}} questions.",
+    "where": "Where it works",
+    "enabled": "Assistant on in the app",
+    "areas": {
+      "tech": "Diagnosis hints for technicians",
+      "intake": "Intake suggestions",
+      "inventory": "Purchase suggestions",
+      "finance": "Finance questions and weekly summary",
+      "customers": "WhatsApp message drafts",
+      "reports": "Report summaries",
+      "screen": "Floating help button on every screen"
+    },
+    "areaHints": {
+      "tech": "Model and fault description only.",
+      "intake": "Model, fault and this model’s past faults in the shop.",
+      "inventory": "Item names and quantities.",
+      "finance": "Aggregated numbers only. Off by default.",
+      "customers": "Purpose and status. Name and number are filled on your device.",
+      "reports": "Report numbers; technicians coded.",
+      "screen": "Screen name and the question."
+    },
+    "financeWarnTitle": "Before turning on finance",
+    "financeWarn": "The assistant uses Gemini’s free tier, and Google may use submitted data to improve its services. Finance sends aggregated numbers only (no customer or supplier names or transactions), but keep it off if you’re not comfortable.",
+    "never": "Everywhere: no customer name, number or address is ever sent, and suggestions only apply when you press \"Apply\".",
+    "who": "Who can use it",
+    "staff": {
+      "reception": "Reception",
+      "technician": "Technicians"
+    },
+    "whoHint": "The owner always can. Technicians never reach finance, reports or purchasing, whatever the settings.",
+    "limit": "Daily limit",
+    "limitLabel": "Max questions per day for the shop",
+    "limitHint": "Empty = plan limit ({{n}}). Higher than the plan is capped to the plan.",
+    "limitBad": "Enter a whole number"
   }
 }

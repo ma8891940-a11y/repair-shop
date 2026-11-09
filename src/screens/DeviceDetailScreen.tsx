@@ -36,6 +36,7 @@ import { shouldQueue, useSync } from '../offline/sync';
 import { StaleNote } from '../ui/StaleNote';
 import { cn } from '../ui/cn';
 import { AssistantPanel } from '../app/AssistantPanel';
+import { useSensitiveNames } from '../app/assist';
 
 interface LogRow {
   id: string;
@@ -121,6 +122,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
     };
   }, [id, front], { cacheKey: `device:${id}:${profile.id}` });
   useLiveRefresh(reload);
+  useSensitiveNames([data?.customer?.name]);
 
   const close = () => (overlay ? navigate(-1) : navigate('/devices'));
   useEffect(() => {

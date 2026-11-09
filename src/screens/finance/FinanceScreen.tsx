@@ -7,6 +7,7 @@ import { ArrowDownUp, Banknote, Boxes, CheckCircle2, HandCoins, Landmark, PiggyB
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad } from '../../app/useLoad';
 import { ExportMenu } from '../../app/exporting';
+import { FinanceAssist } from '../../app/assist/FinanceAssist';
 import type { ExportTable } from '../../lib/xlsx';
 import { useMe } from '../../app/auth';
 import { rpc, sortCashboxes, useAccountName, type Position } from '../../app/ledgerApi';
@@ -202,6 +203,8 @@ export function FinanceScreen() {
 
           {/* حقوق الملكية: رأس مال صاحب المحل والشركاء والأرباح المحتجزة والسحوبات. دي مش ديون على المحل */}
           {p?.equity_parts && <EquityPanel p={p} money={money} cur={cur} />}
+
+          <FinanceAssist p={p} period={periodLine} />
 
           {/* عمليات سريعة */}
           <div className="mt-4 flex flex-wrap gap-2">

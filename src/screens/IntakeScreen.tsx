@@ -35,6 +35,8 @@ import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
 import { InlineAdd, ListOptions, useListLabel, useShopList } from '../app/lists';
 import { intakeDocs, printChain, readPrint } from '../lib/printPlan';
+import { IntakeAssist } from '../app/assist/IntakeAssist';
+import { useSensitiveNames } from '../app/assist';
 
 // الماركات والملحقات والألوان من القوايم اللي بيديرها صاحب المحل (الإعدادات ← القوائم). الافتراضي في src/app/lists.tsx
 const QUICK_ISSUES = ['screen', 'battery', 'charging', 'software', 'water', 'speaker', 'mic', 'camera', 'dead'] as const;
@@ -63,6 +65,7 @@ export function IntakeScreen() {
   const [phone, setPhone] = useState('');
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' });
   const [custName, setCustName] = useState('');
+  useSensitiveNames([custName]);
   const [custArea, setCustArea] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
@@ -549,6 +552,18 @@ export function IntakeScreen() {
                     );
                   })}
                 </div>
+              </div>
+              <div className="sm:col-span-2">
+                <IntakeAssist
+                  brand={brand}
+                  model={model}
+                  issue={issue}
+                  names={[custName]}
+                  onApply={(v) => {
+                    setIssue(v.issue);
+                    if (v.cost != null) setEstimate(formatPounds(v.cost));
+                  }}
+                />
               </div>
               <RoutingFields issue={issue} brand={brand} value={routing} onChange={setRouting} />
               <div>

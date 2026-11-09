@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { BookOpen, Bot, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { assistantPayload } from '../lib/aiScrub';
+import { deepScrub, sensitiveNames } from '../lib/assistPayloads';
 import { matchFaults, type FaultKey } from '../lib/faultGuide';
 import { Panel, PanelHeader } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { Alert } from '../ui/Feedback';
 import { useMe } from './auth';
 import { assistantState, type AssistantState } from '../lib/assistantStatus';
+import { canUse, readAssistant } from '../lib/assistantSettings';
 
 // حالة المساعد على السيرفر: بنسأل مرة واحدة في كل فتحة للبرنامج (ولو ما اشتغلش بنسأل تاني المرة الجاية)
 let stateOnce: Promise<AssistantState> | null = null;
@@ -66,7 +68,10 @@ export function AssistantPanel({ brand, model, issue, names }: { brand: string; 
   const [note, setNote] = useState<string | null>(null);
   // حالة المساعد على السيرفر (null = لسه بنسأل)
   const [state, setState] = useState<AssistantState | null>(null);
-  const enabled = state === null ? null : state === 'on';
+  // صاحب المحل ممكن يقفل التشخيص أو يقفله على الفنيين (الإعدادات ← المساعد). الدليل المدمج شغال دايمًا
+  const { shop, profile } = useMe();
+  const allowed = canUse(readAssistant(shop.extras), 'tech', profile.role);
+  const enabled = state === null ? null : state === 'on' && allowed;
 
   useEffect(() => {
     let live = true;
@@ -87,12 +92,18 @@ export function AssistantPanel({ brand, model, issue, names }: { brand: string; 
     setGuide(null);
     setNote(null);
     try {
-      const { data, error } = await supabase.functions.invoke('assistant', { body: assistantPayload({ brand, model, issue, names }) });
+      const { data, error } = await supabase.functions.invoke('assistant', { body: { ...deepScrub(assistantPayload({ brand, model, issue, names }), sensitiveNames()), kind: 'diagnose' } });
       if (error || !data?.answer) throw error ?? new Error('E_AI_UNAVAILABLE');
       setAnswer(String(data.answer));
     } catch (e) {
       const ctx = (e as { context?: { status?: number } })?.context;
-      setNote(ctx?.status === 403 ? t('assistant.limit') : ctx?.status === 503 ? t('assistant.disabled') : t('assistant.offlineGuide'));
+      let code = '';
+      try {
+        code = String((((await (ctx as Response | undefined)?.clone().json()) ?? {}) as { error?: string }).error ?? '');
+      } catch {
+        code = '';
+      }
+      setNote(code === 'E_AI_OFF' ? t('assist.note.off') : ctx?.status === 403 ? t('assistant.limit') : ctx?.status === 503 ? t('assistant.disabled') : t('assistant.offlineGuide'));
       showGuide();
     } finally {
       setBusy(false);
@@ -104,7 +115,8 @@ export function AssistantPanel({ brand, model, issue, names }: { brand: string; 
       <PanelHeader title={t('assistant.title')} />
       <div className="flex flex-col gap-3 p-4">
         <p className="text-2xs text-fg-3">{t('assistant.privacy')}</p>
-        {state && <AssistantStateNote state={state} />}
+        {state && allowed && <AssistantStateNote state={state} />}
+        {!allowed && <p className="text-xs text-fg-3" data-testid="assist-off-here">{t('assist.note.off')}</p>}
         <div className="flex flex-wrap gap-2">
           {enabled && (
             <Button size="sm" variant="primary" loading={busy} icon={busy ? undefined : <Send className="size-4" />} onClick={() => void ask()} disabled={!issue.trim()}>

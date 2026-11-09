@@ -27,6 +27,7 @@ import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { newInternalEan13 } from '../../lib/barcode';
 import { plainPounds, toCsv } from '../../lib/ledger';
 import { ExportMenu } from '../../app/exporting';
+import { PurchaseAssist } from '../../app/assist/PurchaseAssist';
 import type { ExportTable } from '../../lib/xlsx';
 import { Checkbox } from '../../ui/Checkbox';
 import { logoUploadError, prepareLogoUpload } from '../../lib/brandImage';
@@ -195,6 +196,15 @@ export function InventoryScreen() {
         <Skeleton className="h-48 w-full" />
       ) : tab === 'items' ? (
         <>
+        {owner && (
+          <PurchaseAssist
+            items={data.items}
+            onApply={(p) => {
+              setPreset(p);
+              setDlg('purchase');
+            }}
+          />
+        )}
         {shortCount > 0 && (
           <Panel className="mb-3 flex flex-wrap items-center gap-3 border-[color-mix(in_srgb,var(--warn)_40%,var(--glass-border))] p-3" data-testid="shortages">
             <AlertTriangle className="size-4 text-warn" aria-hidden />
