@@ -7,20 +7,51 @@ import { matchFaults, type FaultKey } from '../lib/faultGuide';
 import { Panel, PanelHeader } from '../ui/Panel';
 import { Button } from '../ui/Button';
 import { Alert } from '../ui/Feedback';
+import { useMe } from './auth';
+import { assistantState, type AssistantState } from '../lib/assistantStatus';
 
-// المساعد متفعّل على السيرفر؟ بنسأل مرة واحدة بس في كل فتحة للبرنامج (مش مع كل جهاز)
-let enabledOnce: Promise<boolean> | null = null;
-function assistantEnabled(): Promise<boolean> {
-  enabledOnce ??= supabase.functions
+// حالة المساعد على السيرفر: بنسأل مرة واحدة في كل فتحة للبرنامج (ولو ما اشتغلش بنسأل تاني المرة الجاية)
+let stateOnce: Promise<AssistantState> | null = null;
+export function loadAssistantState(): Promise<AssistantState> {
+  stateOnce ??= supabase.functions
     .invoke('assistant', { body: { status: true } })
-    .then(({ data, error }) => !error && data?.enabled === true)
-    .catch(() => false)
+    .then(({ data, error }) => {
+      const ctx = (error as { context?: { status?: number } } | null)?.context;
+      return assistantState({ data: error ? null : (data as { enabled?: boolean }), status: ctx?.status ?? null, networkError: !!error && !ctx, online: navigator.onLine });
+    })
+    .catch(() => assistantState({ networkError: true, online: navigator.onLine }))
     .then((v) => {
-      // لو ما ردّش (مثلًا من غير نت) نسأل تاني المرة الجاية
-      if (!v) enabledOnce = null;
+      if (v !== 'on') stateOnce = null;
       return v;
     });
-  return enabledOnce;
+  return stateOnce;
+}
+
+/** سبب إن المساعد مش شغال، بالعربي، وخطوات الحل لصاحب المحل (الفني بيتقاله يكلّم صاحب المحل) */
+export function AssistantStateNote({ state }: { state: AssistantState }) {
+  const { t } = useTranslation();
+  const { profile } = useMe();
+  if (state === 'on') return null;
+  const owner = profile.role === 'owner';
+  return (
+    <div data-testid="assistant-disabled" data-state={state}>
+      <Alert tone={state === 'offline' ? 'info' : 'warn'} title={t(`assistant.state.${state}.title`)}>
+        <p>{t(`assistant.state.${state}.why`)}</p>
+        {state !== 'offline' &&
+          (owner ? (
+            <ol className="mt-2 list-decimal space-y-0.5 ps-5 text-xs">
+              {(t(`assistant.state.${state}.steps`, { returnObjects: true }) as string[]).map((st) => (
+                <li key={st}>
+                  <bdi>{st}</bdi>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-1 text-xs">{t('assistant.askOwner')}</p>
+          ))}
+      </Alert>
+    </div>
+  );
 }
 
 /**
@@ -33,12 +64,13 @@ export function AssistantPanel({ brand, model, issue, names }: { brand: string; 
   const [answer, setAnswer] = useState<string | null>(null);
   const [guide, setGuide] = useState<FaultKey[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  // المساعد متفعّل على السيرفر؟ (null = لسه بنسأل)
-  const [enabled, setEnabled] = useState<boolean | null>(null);
+  // حالة المساعد على السيرفر (null = لسه بنسأل)
+  const [state, setState] = useState<AssistantState | null>(null);
+  const enabled = state === null ? null : state === 'on';
 
   useEffect(() => {
     let live = true;
-    void assistantEnabled().then((v) => live && setEnabled(v));
+    void loadAssistantState().then((v) => live && setState(v));
     return () => {
       live = false;
     };
@@ -72,11 +104,7 @@ export function AssistantPanel({ brand, model, issue, names }: { brand: string; 
       <PanelHeader title={t('assistant.title')} />
       <div className="flex flex-col gap-3 p-4">
         <p className="text-2xs text-fg-3">{t('assistant.privacy')}</p>
-        {enabled === false && (
-          <div data-testid="assistant-disabled">
-            <Alert tone="info">{t('assistant.disabled')}</Alert>
-          </div>
-        )}
+        {state && <AssistantStateNote state={state} />}
         <div className="flex flex-wrap gap-2">
           {enabled && (
             <Button size="sm" variant="primary" loading={busy} icon={busy ? undefined : <Send className="size-4" />} onClick={() => void ask()} disabled={!issue.trim()}>

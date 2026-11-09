@@ -1,5 +1,5 @@
 /**
- * حالة الحركة دلوقتي (لشاشة التشخيص Ctrl+Shift+D): بتتحدّث من الخلفية والحارس، ومن غير أي إرسال لأي مكان.
+ * حالة الحركة دلوقتي (لشاشة التشخيص Ctrl+Alt+Shift+M): بتتحدّث من الخلفية والحارس، ومن غير أي إرسال لأي مكان.
  */
 export type GuardState = 'waiting' | 'measuring' | 'off-dev' | 'off';
 export interface MotionDiag {

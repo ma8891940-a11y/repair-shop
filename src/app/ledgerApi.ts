@@ -26,6 +26,11 @@ export interface Position {
   receivables: number;
   payables: number;
   inventory: number;
+  /** أصول ثابتة (معدات) */
+  fixed_assets?: number;
+  /** أرباح اتوزعت على الشركاء ولسه ما اتسحبتش (حقوق ملكية) */
+  partners_due?: number;
+  equity_parts?: { owner_capital: number; drawings: number; retained: number; partners: { id: string; name: string; share_bp: number; capital: number; current: number }[] };
   revenue: number;
   expenses: number;
   profit: number;

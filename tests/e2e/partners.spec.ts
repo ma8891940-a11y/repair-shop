@@ -96,4 +96,43 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
   await afterSplash(page);
   await expect(page.getByTestId('kpi-profit')).toContainText('300');
   await expect(page.getByTestId('ledger-balanced')).toBeVisible();
+  const payables = await page.getByTestId('kpi-payables').innerText();
+
+  // شريك جديد داخل بـ 50,000 كاش من فورم الشريك نفسه: الخزنة بتزيد، والربح و"عليّا للناس" زي ما هما
+  await page.goto('/#/partners');
+  await afterSplash(page);
+  await page.getByTestId('partners-add').click();
+  dlg = page.getByRole('dialog');
+  await dlg.getByLabel('اسم الشريك').fill('كريم');
+  await dlg.getByLabel('النسبة من صافي الربح').fill('5');
+  await dlg.getByTestId('cap-kind-cash').click();
+  await dlg.getByTestId('cap-amount').fill('50000');
+  await dlg.getByTestId('partner-save').click();
+  await expect(page.getByText('اتحفظ الشريك')).toBeVisible();
+  await expect(page.getByTestId('partner-row').filter({ hasText: 'كريم' }).getByTestId('partner-capital')).toContainText('50,000');
+
+  // وشريك داخل ببضاعة (3 جرابات × 20): المخزون بيزيد
+  await page.getByTestId('partners-add').click();
+  dlg = page.getByRole('dialog');
+  await dlg.getByLabel('اسم الشريك').fill('منير');
+  await dlg.getByLabel('النسبة من صافي الربح').fill('0');
+  await dlg.getByTestId('cap-kind-goods').click();
+  await dlg.getByLabel('الصنف 1', { exact: true }).selectOption({ label: 'جراب' });
+  await dlg.getByLabel('الكمية 1', { exact: true }).fill('3');
+  await dlg.getByLabel('تكلفة الوحدة 1', { exact: true }).fill('20');
+  await dlg.getByTestId('partner-save').click();
+  await expect(page.getByTestId('partner-row').filter({ hasText: 'منير' }).getByTestId('partner-capital')).toContainText('60');
+
+  await page.goto('/#/finance');
+  await afterSplash(page);
+  await expect(page.getByTestId('kpi-profit')).toContainText('300');
+  expect(await page.getByTestId('kpi-payables').innerText()).toBe(payables);
+  await expect(page.getByTestId('kpi-inventory')).toContainText('60');
+  // حقوق الملكية في قسم لوحده، والمعادلة متوازنة
+  const eq = page.getByTestId('equity-panel');
+  await expect(eq).toBeVisible();
+  await expect(eq.getByTestId('equity-partner').filter({ hasText: 'كريم' })).toContainText('50,000');
+  await expect(eq.getByTestId('equity-partners-due')).toContainText('أرباح مستحقة للشركاء');
+  await expect(page.getByTestId('equity-equation')).toHaveClass(/text-ok/);
+  await expect(page.getByTestId('ledger-balanced')).toBeVisible();
 });

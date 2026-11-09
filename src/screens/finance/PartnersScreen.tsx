@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
 import { parsePounds } from '../../lib/money';
 import { parsePercent, remainingBp } from '../../lib/partners';
+import { toLatinDigits } from '../../lib/digits';
 import { cairoDay, cairoDayEnd, cairoDayStart } from '../../lib/dates';
 import { useFormat } from '../../i18n/format';
 import { Panel } from '../../ui/Panel';
@@ -167,6 +168,21 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const isNew = partner === 'new';
+  // رأس مال الشريك وقت الإضافة (اختياري): النوع والمبلغ والتاريخ
+  const [capKind, setCapKind] = useState<CapitalKind>('cash');
+  const [capAmount, setCapAmount] = useState('');
+  const [capDate, setCapDate] = useState(cairoDay(new Date()));
+  const [cashbox, setCashbox] = useState('');
+  const [lines, setLines] = useState<GoodsLine[]>([{ item: '', qty: '1', cost: '' }]);
+  const ids = useMemo(() => (partner ? { partner: crypto.randomUUID(), cap: opId() } : null), [partner]);
+  const lists = useLoad(async () => {
+    if (partner !== 'new') return { cbs: [] as Cashbox[], items: [] as { id: string; name: string }[] };
+    const [cbs, items] = await Promise.all([loadCashboxes(), rpc<{ id: string; name: string }[]>('items_stock')]);
+    return { cbs, items };
+  }, [partner === 'new']);
+  useEffect(() => {
+    if (!cashbox && lists.data?.cbs.length) setCashbox(lists.data.cbs[0].id);
+  }, [lists.data, cashbox]);
   useEffect(() => {
     if (!partner) return;
     const p = partner === 'new' ? null : partner;
@@ -174,6 +190,10 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
     setPhone(p?.phone ?? '');
     setShare(p ? String(p.share_bp / 100) : '');
     setJoined(p?.joined_on ?? cairoDay(new Date()));
+    setCapKind('cash');
+    setCapAmount('');
+    setCapDate(cairoDay(new Date()));
+    setLines([{ item: '', qty: '1', cost: '' }]);
     setErr(null);
   }, [partner]);
   const free = remainingBp(others.map((o) => o.share_bp));
@@ -183,11 +203,30 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
     if (!name.trim()) return setErr(t('common.required'));
     if (bp == null) return setErr(t('partners.errShare'));
     if (bp > free) return setErr(t('partners.errOver', { free: f.percentBp(free) }));
+    // رأس المال اختياري: لو الخانة فاضية (أو مفيش سطور بضاعة) الشريك بيتضاف من غيره، ويتسجل بعدين من "زيادة رأس المال"
+    const hasCap = isNew && (capKind === 'goods' ? lines.some((l) => l.item || l.cost.trim()) : capAmount.trim() !== '');
+    const cap = hasCap ? capitalArgs(capKind, capAmount, lines) : null;
+    if (typeof cap === 'string') return setErr(t(cap));
     setBusy(true);
     const row = { name: name.trim(), phone: phone.trim() || null, share_bp: bp, joined_on: joined };
-    const { error } = isNew ? await supabase.from('partners').insert({ id: crypto.randomUUID(), shop_id: crypto.randomUUID(), ...row }) : await supabase.from('partners').update(row).eq('id', (partner as PartnerRow).id);
+    const pid = isNew ? ids!.partner : (partner as PartnerRow).id;
+    const { error } = isNew
+      ? await supabase.from('partners').upsert({ id: pid, shop_id: crypto.randomUUID(), ...row }, { onConflict: 'id', ignoreDuplicates: true })
+      : await supabase.from('partners').update(row).eq('id', pid);
+    if (error) {
+      setBusy(false);
+      return setErr(errorMessage(error));
+    }
+    if (cap) {
+      try {
+        await rpc('partner_capital_in', { p_id: ids!.cap, p_partner: pid, p_kind: capKind, p_amount: cap.amount, p_date: capDate, p_cashbox: capKind === 'cash' ? cashbox : null, p_lines: cap.lines, p_note: null });
+      } catch (e) {
+        setBusy(false);
+        onDone();
+        return setErr(errorMessage(e));
+      }
+    }
     setBusy(false);
-    if (error) return setErr(errorMessage(error));
     toast({ tone: 'ok', title: t('partners.saved') });
     onOpenChange(false);
     onDone();
@@ -197,6 +236,7 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
       open={!!partner}
       onOpenChange={onOpenChange}
       title={isNew ? t('partners.add') : t('partners.edit')}
+      className="w-[min(94vw,620px)]"
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -222,6 +262,14 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
           <Input type="date" dir="ltr" value={joined} onChange={(e) => setJoined(e.target.value)} />
         </Field>
       </div>
+      {isNew && (
+        <div className="mt-4 border-t border-glass-border pt-3" data-testid="new-partner-capital">
+          <div className="mb-2 text-sm font-semibold text-fg">{t('partners.capTitle')}</div>
+          <p className="mb-2 text-2xs text-fg-3">{t('partners.capHint')}</p>
+          <CapitalFields kind={capKind} setKind={setCapKind} amount={capAmount} setAmount={setCapAmount} date={capDate} setDate={setCapDate} cashbox={cashbox} setCashbox={setCashbox} lines={lines} setLines={setLines}
+            cashboxes={lists.data?.cbs ?? []} items={lists.data?.items ?? []} />
+        </div>
+      )}
       {err && (
         <Alert tone="danger" className="mt-3">
           {err}
@@ -231,39 +279,143 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
   );
 }
 
-/** إيداع رأس مال، أو سحب (من الجاري أو من رأس المال). السحب مش مصروف */
-function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow; kind: 'deposit' | 'withdraw' } | null; onOpenChange: (v: boolean) => void; onDone: () => void }) {
+export type CapitalKind = 'cash' | 'goods' | 'equipment' | 'old';
+const KINDS: CapitalKind[] = ['cash', 'goods', 'equipment', 'old'];
+type GoodsLine = { item: string; qty: string; cost: string };
+
+/**
+ * رأس مال الشريك (زيادة) أو سحب جزء منه، بتاريخ. أنواع رأس المال:
+ * فلوس دخلت خزنة، أو بضاعة (المخزون بيزيد)، أو معدات (أصول ثابتة)، أو رأس مال قديم قبل البرنامج (من غير ما الخزن تتلمس).
+ * ده حقوق ملكية: ما بيتحسبش إيراد ولا ربح، ولا دين على المحل.
+ */
+export function CapitalFields({ kind, setKind, amount, setAmount, date, setDate, cashbox, setCashbox, lines, setLines, cashboxes, items, withdraw }: {
+  kind: CapitalKind; setKind: (k: CapitalKind) => void; amount: string; setAmount: (v: string) => void; date: string; setDate: (v: string) => void;
+  cashbox: string; setCashbox: (v: string) => void; lines: GoodsLine[]; setLines: (f: (l: GoodsLine[]) => GoodsLine[]) => void;
+  cashboxes: Cashbox[]; items: { id: string; name: string }[]; withdraw?: boolean;
+}) {
   const { t } = useTranslation();
   const f = useFormat();
-  const toast = useToast();
   const accName = useAccountName();
+  return (
+    <div className="flex flex-col gap-3">
+      {!withdraw && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={t('partners.capKind')}>
+          {KINDS.map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} data-testid={`cap-kind-${k}`}
+              className={cn('rounded-md border px-2 py-2 text-start text-xs', kind === k ? 'border-accent bg-accent-soft text-fg' : 'border-glass-border text-fg-2 hover:text-fg')}>
+              <div className="font-medium">{t(`partners.kinds.${k}.title`)}</div>
+              <div className="mt-0.5 text-2xs text-fg-3">{t(`partners.kinds.${k}.hint`)}</div>
+            </button>
+          ))}
+        </div>
+      )}
+      {kind === 'goods' && !withdraw ? (
+        <div className="flex flex-col gap-2" data-testid="cap-goods">
+          {lines.map((l, i) => (
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_70px_100px] gap-2">
+              <Select value={l.item} onChange={(e) => setLines((cur) => cur.map((x, k) => (k === i ? { ...x, item: e.target.value } : x)))} aria-label={`${t('inv.cols.name')} ${i + 1}`}>
+                <option value="">{t('fin.pick')}</option>
+                {items.map((it) => (
+                  <option key={it.id} value={it.id}>
+                    {it.name}
+                  </option>
+                ))}
+              </Select>
+              <Input mono inputMode="numeric" value={l.qty} onChange={(e) => setLines((cur) => cur.map((x, k) => (k === i ? { ...x, qty: e.target.value } : x)))} aria-label={`${t('inv.cols.qty')} ${i + 1}`} />
+              <Input mono inputMode="decimal" value={l.cost} onChange={(e) => setLines((cur) => cur.map((x, k) => (k === i ? { ...x, cost: e.target.value } : x)))} aria-label={`${t('opening.unitCost')} ${i + 1}`} suffix={f.currency()} />
+            </div>
+          ))}
+          <Button size="sm" variant="ghost" className="self-start" icon={<Plus className="size-4" />} onClick={() => setLines((cur) => [...cur, { item: '', qty: '1', cost: '' }])}>
+            {t('opening.addRows')}
+          </Button>
+          {items.length === 0 && <p className="text-xs text-fg-3">{t('partners.noItems')}</p>}
+        </div>
+      ) : (
+        <Field label={t('fin.amount')} required>
+          <Input mono inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} suffix={f.currency()} data-testid="cap-amount" />
+        </Field>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label={t('partners.capDate')}>
+          <Input type="date" dir="ltr" value={date} max={cairoDay(new Date())} onChange={(e) => setDate(e.target.value)} data-testid="cap-date" />
+        </Field>
+        {(kind === 'cash' || withdraw) && (
+          <Field label={withdraw ? t('partners.fromCashbox') : t('partners.toCashbox')}>
+            <Select value={cashbox} onChange={(e) => setCashbox(e.target.value)}>
+              {cashboxes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {accName(c)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** بيجهّز الطلب لقاعدة البيانات، أو بيرجّع مفتاح رسالة الخطأ */
+export function capitalArgs(kind: CapitalKind, amount: string, lines: GoodsLine[]): { amount: number | null; lines: { item: string; qty: number; unit_cost: number }[] | null } | string {
+  if (kind === 'goods') {
+    const out = [];
+    for (const l of lines) {
+      if (!l.item && !l.cost.trim()) continue;
+      const q = Number(toLatinDigits(l.qty.trim()));
+      const c = parsePounds(l.cost);
+      if (!l.item || !Number.isInteger(q) || q <= 0 || c == null) return 'inv.errLines';
+      out.push({ item: l.item, qty: q, unit_cost: c });
+    }
+    if (!out.length) return 'inv.errLines';
+    return { amount: null, lines: out };
+  }
+  const a = parsePounds(amount);
+  if (!a || a <= 0) return 'fin.errAmount';
+  return { amount: a, lines: null };
+}
+
+/** زيادة رأس المال (بأي نوع) أو سحب جزء منه، بتاريخ */
+function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow; kind: 'deposit' | 'withdraw' } | null; onOpenChange: (v: boolean) => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const [kind, setKind] = useState<CapitalKind>('cash');
   const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(cairoDay(new Date()));
   const [cashbox, setCashbox] = useState('');
+  const [lines, setLines] = useState<GoodsLine[]>([{ item: '', qty: '1', cost: '' }]);
   const [note, setNote] = useState('');
   const [fromCapital, setFromCapital] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const id = useMemo(() => (target ? opId() : ''), [target]);
-  const cbs = useLoad(async () => (target ? loadCashboxes() : ([] as Cashbox[])), [!!target]);
+  const lists = useLoad(async () => {
+    if (!target) return { cbs: [] as Cashbox[], items: [] as { id: string; name: string }[] };
+    const [cbs, items] = await Promise.all([loadCashboxes(), rpc<{ id: string; name: string }[]>('items_stock')]);
+    return { cbs, items };
+  }, [!!target]);
   useEffect(() => {
+    setKind('cash');
     setAmount('');
+    setDate(cairoDay(new Date()));
+    setLines([{ item: '', qty: '1', cost: '' }]);
     setNote('');
     setFromCapital(false);
     setErr(null);
   }, [target]);
   useEffect(() => {
-    if (!cashbox && cbs.data?.length) setCashbox(cbs.data[0].id);
-  }, [cbs.data, cashbox]);
+    if (!cashbox && lists.data?.cbs.length) setCashbox(lists.data.cbs[0].id);
+  }, [lists.data, cashbox]);
   async function save() {
     if (!target) return;
     setErr(null);
-    const a = parsePounds(amount);
-    if (!a || a <= 0) return setErr(t('fin.errAmount'));
+    const w = target.kind === 'withdraw';
+    const args = capitalArgs(w ? 'cash' : kind, amount, lines);
+    if (typeof args === 'string') return setErr(t(args));
     setBusy(true);
     try {
-      if (target.kind === 'deposit') await rpc('partner_deposit', { p_id: id, p_partner: target.p.id, p_cashbox: cashbox, p_amount: a, p_note: note.trim() || null });
-      else await rpc('partner_withdraw', { p_id: id, p_partner: target.p.id, p_cashbox: cashbox, p_amount: a, p_note: note.trim() || null, p_from_capital: fromCapital });
-      toast({ tone: 'ok', title: t(target.kind === 'deposit' ? 'partners.deposited' : 'partners.withdrawn', { name: target.p.name }) });
+      if (!w) await rpc('partner_capital_in', { p_id: id, p_partner: target.p.id, p_kind: kind, p_amount: args.amount, p_date: date, p_cashbox: kind === 'cash' ? cashbox : null, p_lines: args.lines, p_note: note.trim() || null });
+      else await rpc('partner_capital_out', { p_id: id, p_partner: target.p.id, p_cashbox: cashbox, p_amount: args.amount, p_date: date, p_from_capital: fromCapital, p_note: note.trim() || null });
+      toast({ tone: 'ok', title: t(w ? 'partners.withdrawn' : 'partners.deposited', { name: target.p.name }) });
       onOpenChange(false);
       onDone();
     } catch (e) {
@@ -278,6 +430,7 @@ function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow
       onOpenChange={onOpenChange}
       title={target ? `${t(target.kind === 'deposit' ? 'partners.deposit' : 'partners.withdraw')} · ${target.p.name}` : ''}
       description={target?.kind === 'withdraw' ? t('partners.withdrawHint') : t('partners.depositHint')}
+      className="w-[min(94vw,620px)]"
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -290,18 +443,8 @@ function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow
       }
     >
       <div className="flex flex-col gap-3">
-        <Field label={t('fin.amount')} required>
-          <Input mono inputMode="decimal" autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} suffix={f.currency()} />
-        </Field>
-        <Field label={target?.kind === 'deposit' ? t('partners.toCashbox') : t('partners.fromCashbox')}>
-          <Select value={cashbox} onChange={(e) => setCashbox(e.target.value)}>
-            {(cbs.data ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {accName(c)}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <CapitalFields kind={kind} setKind={setKind} amount={amount} setAmount={setAmount} date={date} setDate={setDate} cashbox={cashbox} setCashbox={setCashbox} lines={lines} setLines={setLines}
+          cashboxes={lists.data?.cbs ?? []} items={lists.data?.items ?? []} withdraw={target?.kind === 'withdraw'} />
         {target?.kind === 'withdraw' && <Checkbox checked={fromCapital} onChange={setFromCapital} label={t('partners.fromCapital')} />}
         <Field label={t('edit.note')}>
           <Textarea rows={2} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />

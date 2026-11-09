@@ -150,4 +150,75 @@ d('الشركاء: النسب، ورأس المال، والسحب (مش مصر�
     expect(sp.shares.map((x: { partner: string }) => x.partner)).not.toContain(late);
     expect((await as(O, `select integrity_report() r`)).rows[0].r).toEqual([]);
   });
+
+  it('شريك دخل بـ 50,000 كاش: الخزنة +50,000، والربح ما اتغيرش، و"عليا للناس" ما اتغيرش، والمعادلة متوازنة، وقيمة المحل ما نزلتش', async () => {
+    const C = id();
+    await as(O, `insert into partners(id, shop_id, name, share_bp) values ($1, gen_random_uuid(), 'كريم', 500)`, [C]);
+    const before = await pos();
+    const cash0 = await bal('cash_cash');
+    await as(O, `select partner_capital_in($1, $2, 'cash', 5000000, null, $3)`, [id(), C, acc.cash_cash]);
+    const after = await pos();
+    expect(await bal('cash_cash')).toBe(cash0 + 5000000);
+    expect(Number(after.profit)).toBe(Number(before.profit));
+    expect(Number(after.payables)).toBe(Number(before.payables));
+    // قيمة المحل (الأصول − اللي لناس من بره) بتزيد بالفلوس اللي دخلت، ما بتنزلش
+    expect(Number(after.net_worth)).toBe(Number(before.net_worth) + 5000000);
+    expect(after.balanced).toBe(true);
+    const e = after.equation;
+    expect(Number(e.assets)).toBe(Number(e.liabilities) + Number(e.equity) + Number(e.earnings));
+    const pc = after.equity_parts.partners.find((x: { id: string }) => x.id === C);
+    expect(Number(pc.capital)).toBe(5000000);
+  });
+
+  it('شريك دخل ببضاعة: المخزون بيزيد بنفس الطريقة (والحركة في المخزون بالكمية والتكلفة)، وبمعدات: الأصول الثابتة، وبرأس مال قديم: من غير ما الخزن تتلمس', async () => {
+    const C = id();
+    const it = id();
+    await as(O, `insert into partners(id, shop_id, name, share_bp) values ($1, gen_random_uuid(), 'منير', 0)`, [C]);
+    await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'part', 'شاشات من الشريك')`, [it]);
+    const before = await pos();
+    // 20 شاشة × 400 ج = 8,000، بتاريخ قديم
+    await as(O, `select partner_capital_in($1, $2, 'goods', null, (now() at time zone 'Africa/Cairo')::date - 10, null, $3::jsonb)`, [id(), C, JSON.stringify([{ item: it, qty: 20, unit_cost: 40000 }])]);
+    let after = await pos();
+    expect(Number(after.inventory)).toBe(Number(before.inventory) + 800000);
+    expect(Number(after.profit)).toBe(Number(before.profit));
+    expect(Number(after.payables)).toBe(Number(before.payables));
+    expect(Number((await admin(`select sum(qty) q from stock_moves where item_id = $1`, [it])).rows[0].q)).toBe(20);
+    // معدات بـ 3,000 (مكنة فصل شاشات): الأصول الثابتة وقيمة المحل
+    await as(O, `select partner_capital_in($1, $2, 'equipment', 300000, null, null, null, 'مكنة فصل شاشات')`, [id(), C]);
+    after = await pos();
+    expect(Number(after.fixed_assets)).toBe(300000);
+    expect(Number(after.net_worth)).toBe(Number(before.net_worth) + 1100000);
+    // رأس مال قديم 2,000: الخزن ما اتلمستش، ورأس مال صاحب المحل بيقل بنفس المبلغ
+    const cash0 = Number(after.cash);
+    const own0 = Number(after.equity_parts.owner_capital);
+    await as(O, `select partner_capital_in($1, $2, 'old', 200000, '2025-12-31')`, [id(), C]);
+    after = await pos();
+    expect(Number(after.cash)).toBe(cash0);
+    expect(Number(after.equity_parts.owner_capital)).toBe(own0 - 200000);
+    const pm = after.equity_parts.partners.find((x: { id: string }) => x.id === C);
+    expect(Number(pm.capital)).toBe(1300000);
+    expect(after.balanced).toBe(true);
+    // التاريخ في كشف الشريك زي ما اتكتب، وتاريخ في المستقبل ممنوع
+    const st = (await as(O, `select statement('partner', $1, '2025-01-01', now() + interval '1 day') s`, [C])).rows[0].s;
+    expect(st.moves[0].at.slice(0, 10)).toBe('2025-12-31');
+    await expect(as(O, `select partner_capital_in($1, $2, 'cash', 100, (now() at time zone 'Africa/Cairo')::date + 2, $3)`, [id(), C, acc.cash_cash])).rejects.toThrow(/E_BAD_DATE/);
+    // سحب جزء من رأس المال بتاريخ
+    await as(O, `select partner_capital_out($1, $2, $3, 100000, (now() at time zone 'Africa/Cairo')::date - 1)`, [id(), C, acc.cash_cash]);
+    expect(Number((await pos()).equity_parts.partners.find((x: { id: string }) => x.id === C).capital)).toBe(1200000);
+    await expect(as(R, `select partner_capital_in($1, $2, 'cash', 100, null, $3)`, [id(), C, acc.cash_cash])).rejects.toThrow(/E_FORBIDDEN/);
+    expect((await as(O, `select integrity_report() r`)).rows[0].r).toEqual([]);
+  });
+
+  it('أرباح الشركاء اللي اتوزعت ولسه ما اتسحبتش: سطر لوحدها، ومش جوه "عليا للناس"', async () => {
+    const p = await pos();
+    // من الاختبارات اللي فوق: أحمد 28,000 + سامي 24,000 قرش ليهم في الجاري
+    expect(Number(p.partners_due)).toBe(28000 + 24000);
+    // "عليا للناس" = الموردين والمرتبات (وعربون العملاء) بس: نفس الرقم من القيود مباشرة، من غير حسابات الشركاء
+    const ext = Number((await admin(`select coalesce(sum(greatest(b, 0)), 0) n from (select sum(l.credit - l.debit) b from journal_lines l join accounts a on a.id = l.account_id
+                                      where a.shop_id = (select shop_id from accounts where id = $1) and a.kind in ('payable', 'salaries') group by l.account_id, l.party_id) x`, [acc.ap])).rows[0].n);
+    const custCredit = Number((await admin(`select coalesce(sum(greatest(b, 0)), 0) n from (select sum(l.credit - l.debit) b from journal_lines l join accounts a on a.id = l.account_id
+                                      where a.shop_id = (select shop_id from accounts where id = $1) and a.kind in ('receivable', 'advances') group by l.account_id, l.party_id) x`, [acc.ap])).rows[0].n);
+    expect(Number(p.payables)).toBe(ext + custCredit);
+  });
 });
+

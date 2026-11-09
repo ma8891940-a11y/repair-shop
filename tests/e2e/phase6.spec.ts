@@ -61,7 +61,9 @@ test('المرحلة 6: فيديو من الفني ← مراجعة التسوي
 
   // 4) المساعد: من غير مفتاح Gemini على السيرفر بيبقى مقفول برسالة واضحة، والدليل المدمج متاح
   const devicePath = await quickIntake(page, '01088889999', 'عميل التقييم');
-  await expect(page.getByTestId('assistant-disabled')).toContainText('محتاج مفتاح Gemini المجاني');
+  await expect(page.getByTestId('assistant-disabled')).toHaveAttribute('data-state', 'no-key');
+  await expect(page.getByTestId('assistant-disabled')).toContainText('المساعد محتاج مفتاح');
+  await expect(page.getByTestId('assistant-disabled')).toContainText('GEMINI_API_KEY');
   await expect(page.getByRole('button', { name: 'اقترح الأسباب وخطوات الفحص' })).toHaveCount(0);
   await page.getByRole('button', { name: 'دليل الأعطال المدمج' }).click();
   await expect(page.getByTestId('assistant-guide')).toContainText('مشكلة في الشاشة');

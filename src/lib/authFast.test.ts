@@ -4,7 +4,7 @@ import { mayHaveSession } from './authFast';
 describe('معرفة إن مفيش مستخدم داخل من غير ما نستنى', () => {
   it('مفيش جلسة محفوظة ولا رابط تأكيد: أكيد مش داخل', () => {
     expect(mayHaveSession([], '', '')).toBe(false);
-    expect(mayHaveSession(['theme', 'lang', 'bg-still-v2'], '#/', '')).toBe(false);
+    expect(mayHaveSession(['theme', 'lang', 'bg-still-v3'], '#/', '')).toBe(false);
     expect(mayHaveSession(['theme'], '#/register', '')).toBe(false);
   });
   it('فيه جلسة محفوظة: نستنى Supabase', () => {

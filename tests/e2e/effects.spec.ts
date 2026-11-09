@@ -40,7 +40,7 @@ test.describe('المؤثرات الكاملة', () => {
   test('القفل التلقائي: بطء تحت 50 إطار لمدة 3 ثواني بيقفلها، والتنبيه فيه "رجّعها"', async ({ page }, info) => {
     await prefs(page, info, { effects: true });
     // بنختبر حارس المؤثرات لوحده: الخلفية ثابتة من الأول، عشان حارس الخلفية (2 ثانية) ما يسبقوش ويخفّف الحمل
-    await page.addInitScript(() => localStorage.setItem('bg-still-v2', '1'));
+    await page.addInitScript(() => localStorage.setItem('bg-still-v3', '1'));
     // فترة السماح بتبدأ من فتح الشاشة، فبنقيس من قبل الفتح
     const opened = Date.now();
     await page.goto('/');

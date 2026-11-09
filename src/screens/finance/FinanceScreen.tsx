@@ -154,6 +154,9 @@ export function FinanceScreen() {
             )}
           </Panel>
 
+          {/* حقوق الملكية: رأس مال صاحب المحل والشركاء والأرباح المحتجزة والسحوبات. دي مش ديون على المحل */}
+          {p?.equity_parts && <EquityPanel p={p} money={money} cur={cur} />}
+
           {/* عمليات سريعة */}
           <div className="mt-4 flex flex-wrap gap-2">
             {QUICK_OPS.map(({ op: o, icon: I }) => (
@@ -243,6 +246,54 @@ function TopList({ title, rows, loading, kind, empty, more }: { title: string; r
           ))}
         </ul>
       )}
+    </Panel>
+  );
+}
+
+/** قسم "حقوق الملكية": كل جزء لوحده، والإجمالي، والمعادلة: الأصول = الالتزامات + حقوق الملكية */
+function EquityPanel({ p, money, cur }: { p: Position; money: (n: number) => string; cur: string }) {
+  const { t } = useTranslation();
+  const e = p.equity_parts!;
+  const partners = e.partners.map((x) => ({ ...x, capital: Number(x.capital), current: Number(x.current) }));
+  const total = Number(e.owner_capital) - Number(e.drawings) + Number(e.retained) + partners.reduce((a, x) => a + x.capital + x.current, 0);
+  const rows: { k: string; label: string; v: number; sub?: string; testid: string }[] = [
+    { k: 'owner', label: t('equity.owner'), v: Number(e.owner_capital), testid: 'equity-owner' },
+    ...partners.map((x) => ({ k: `p-${x.id}`, label: t('equity.partnerCapital', { name: x.name }), v: x.capital, testid: 'equity-partner' })),
+    { k: 'retained', label: t('equity.retained'), v: Number(e.retained), sub: t('equity.retainedSub'), testid: 'equity-retained' },
+    // جاري الشركاء كله (عشان السطور تجمع الإجمالي بالظبط): أرباح اتوزعت ولسه ما اتسحبتش (أو خسارة اتوزعت)
+    { k: 'due', label: t('equity.partnersDue'), v: partners.reduce((a, x) => a + x.current, 0), sub: t('equity.partnersDueSub'), testid: 'equity-partners-due' },
+    { k: 'drawings', label: t('equity.drawings'), v: -Number(e.drawings), testid: 'equity-drawings' },
+  ].filter((r) => r.k === 'owner' || r.k === 'retained' || r.v !== 0 || r.k.startsWith('p-'));
+  const assets = Number(p.equation.assets);
+  const liab = Number(p.equation.liabilities);
+  return (
+    <Panel className="mt-4 p-4" data-testid="equity-panel">
+      <h2 className="mb-1 text-sm font-semibold text-fg">{t('equity.title')}</h2>
+      <p className="mb-3 text-xs text-fg-3">{t('equity.sub')}</p>
+      <table className="w-full max-w-xl text-sm">
+        <tbody className="divide-y divide-glass-border">
+          {rows.map((r) => (
+            <tr key={r.k} className="[&_td]:py-1.5" data-testid={r.testid}>
+              <td>
+                <div className="text-fg">{r.label}</div>
+                {r.sub && <div className="text-2xs text-fg-3">{r.sub}</div>}
+              </td>
+              <td className={cn('num text-end', r.v < 0 ? 'text-danger' : 'text-fg')} dir="ltr">
+                {money(r.v)}
+              </td>
+            </tr>
+          ))}
+          <tr className="font-semibold [&_td]:py-2">
+            <td className="text-fg">{t('equity.total')}</td>
+            <td className="num text-end text-accent" dir="ltr" data-testid="equity-total">
+              {money(total)} <span className="font-sans text-2xs font-normal text-fg-3">{cur}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p className={cn('mt-3 text-xs', assets === liab + total ? 'text-ok' : 'text-danger')} data-testid="equity-equation">
+        {t('equity.equation', { a: money(assets), l: money(liab), e: money(total) })}
+      </p>
     </Panel>
   );
 }

@@ -176,6 +176,9 @@
 | 111 | قاعدة الاختبار بتتنضف قبل كل تشغيل، وكل اختبار بيمسح الداتا اللي عملها (للقاعدة المحلية بس) | رسايل | ✅ | `tests/db/purgeCore.ts`، `tests/db/purge.ts`، `tests/db/globalSetup.ts`، `tests/e2e/globalSetup.ts` | كل اختبارات `db` و`e2e` (القاعدة بتفضل فاضية بعد التشغيل) |
 | 112 | الشركاء: النسب لحد 100%، ورأس المال، وتوزيع الأرباح لأي فترة (من غير تكرار)، وكشف حساب لكل شريك، والسحب مش مصروف، وجوه النسخة الاحتياطية | رسايل | ✅ | `0029_partners.sql`، `PartnersScreen.tsx`، `lib/partners.ts` | `db/partners`، `db/restore`، `db/property`، `unit/partners`، `e2e/partners` |
 | 113 | ربط عميل بمورد: رصيد صافي في كشف واحد، ومقاصة بقيد متوازن، وفك الربط في أي وقت | رسايل | ✅ | `0030_party_links.sql`، `PartyLink.tsx`، `StatementScreen.tsx` | `db/links`، `db/restore`، `db/property`، `e2e/links` |
+| 114 | شاشة تشخيص الحركة باختصار مش محجوز (Ctrl+Alt+Shift+M) وزرار في الإعدادات ← المظهر، والإعدادات بتقول إن الخلفية جوه البرنامج ثابتة بالتصميم، وتثبيت قديم بقواعد الحارس القديمة بيتمسح | رسايل | ✅ | `diagShortcut.ts`، `MotionDiagPanel.tsx`، `MotionStatus.tsx`، `motionStatus.ts` | `unit/diagShortcut`، `e2e/motion` (نسخة الإنتاج و30 إطار) |
+| 115 | المساعد الذكي ليه مكان في القايمة، ولو مش شغال بيقول السبب (محتاج مفتاح / مش منشور / من غير نت) بالخطوات | رسايل | ✅ | `AssistantScreen.tsx`، `AssistantPanel.tsx`، `lib/assistantStatus.ts` | `unit/assistantStatus`، `e2e/assistant`، `e2e/phase6` |
+| 116 | رأس مال الشريك بأنواعه وتاريخه (كاش، أو بضاعة، أو معدات، أو قديم)، وحقوق الملكية في قسم لوحده في الوضع المالي، و"عليّا للناس" من غير الشركاء | رسايل | ✅ | `0031_partner_capital.sql`، `PartnersScreen.tsx`، `FinanceScreen.tsx` | `db/partners` (50,000 كاش، وبضاعة، ومعدات، وقديم)، `e2e/partners` |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |

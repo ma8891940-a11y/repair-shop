@@ -127,7 +127,7 @@ test('شرط الأمان: الأداء تحت 50 إطار لمدة 2 ثانية
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
   await expect(stage).toHaveAttribute('data-auto-still', '', { timeout: 25_000 });
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBe('1');
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v3'))).toBe('1');
   // ما اختفتش: نفس الخلفية والخطوط لسه مرسومة، وبعد ما الحركة تنطفي بتثبت
   const shot = () => page.evaluate(() => document.querySelector<HTMLCanvasElement>('[data-testid="stage-bg"] canvas')!.toDataURL());
   await page.waitForTimeout(800);
@@ -150,7 +150,7 @@ test('شرط الأمان: الأداء تحت 50 إطار لمدة 2 ثانية
   await expect(page.getByTestId('motion-state')).toHaveAttribute('data-state', 'still');
   await expect(page.getByTestId('motion-reason-auto')).toContainText('اتثبتت تلقائيًا عشان البطء');
   await page.getByRole('button', { name: 'رجّع الحركة' }).click();
-  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v3'))).toBeNull();
   await expect(page.getByRole('button', { name: 'رجّع الحركة' })).toHaveCount(0);
   await expect(page.getByTestId('motion-state')).toHaveAttribute('data-state', 'live');
 });
@@ -174,7 +174,7 @@ test('شرط الأمان ما بيشتغلش في npm run dev، ولا وقت �
   await page.waitForTimeout(7_000);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   await expect(stage).not.toHaveAttribute('data-auto-still', '');
-  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v3'))).toBeNull();
   // مع الحارس شغال: بطء وقت التحميل بس (أول ثانية بعد ما الصفحة تخلص) ما بيتحسبش
   await page.evaluate(() => localStorage.setItem('bg-guard-dev', '1'));
   await page.reload();

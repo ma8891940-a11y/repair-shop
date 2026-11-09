@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motionDiag, stopReason } from './motionDiag';
 import { createFrameCost } from '../lib/fpsGuard';
+import { DIAG_SHORTCUT, isDiagShortcut, OPEN_DIAG_EVENT } from './diagShortcut';
 
 /**
- * شاشة تشخيص صغيرة للخلفية المتحركة: بتظهر وتستخبى بـ Ctrl+Shift+D.
+ * شاشة تشخيص صغيرة للخلفية المتحركة: بتظهر وتستخبى بـ Ctrl+Alt+Shift+M، أو من زرار "تشخيص الحركة" في الإعدادات ← المظهر.
+ * (Ctrl+Shift+D كان محجوز في Chrome وEdge لحفظ كل التبويبات في المفضلة، فالمتصفح كان بياخده قبل البرنامج.)
  * بتعرض عدد الإطارات دلوقتي، وتكلفة الإطار، والخلفية شغالة ولا واقفة وليه، وحالة حارس الأداء.
  */
 export function MotionDiagPanel() {
@@ -14,13 +16,19 @@ export function MotionDiagPanel() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd' || e.code === 'KeyD')) {
+      // بالحرف الفعلي على الكيبورد (e.code)، عشان يشتغل والكيبورد عربي برضه
+      if (isDiagShortcut(e)) {
         e.preventDefault();
         setOpen((o) => !o);
       }
     };
+    const onOpen = () => setOpen(true);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener(OPEN_DIAG_EVENT, onOpen);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener(OPEN_DIAG_EVENT, onOpen);
+    };
   }, []);
 
   // عدّاد إطارات مستقل (بيشتغل بس والشاشة مفتوحة)
@@ -63,7 +71,7 @@ export function MotionDiagPanel() {
     <div role="status" aria-label={t('diag.title')} data-testid="motion-diag" data-moving={snap.moving ? '1' : '0'} data-reason={reason ?? ''} className="glass-strong fixed bottom-3 start-3 z-[200] w-72 rounded-lg p-3 text-xs shadow-3 print:hidden">
       <div className="mb-2 flex items-center justify-between font-semibold text-fg">
         {t('diag.title')}
-        <kbd className="rounded border border-line px-1 text-2xs text-fg-3">Ctrl+Shift+D</kbd>
+        <kbd className="rounded border border-line px-1 text-2xs text-fg-3">{DIAG_SHORTCUT}</kbd>
       </div>
       <div className="flex flex-col gap-1">
         {row(t('diag.fps'), String(Math.round(snap.now)), 'diag-fps')}

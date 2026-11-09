@@ -45,7 +45,7 @@ test('توفير الطاقة (المتصفح مقفول على 30 إطار) و�
   await page.goto('/');
   await afterSplash(page);
   await page.waitForTimeout(9_000);
-  const still = await page.evaluate(() => localStorage.getItem('bg-still-v2'));
+  const still = await page.evaluate(() => localStorage.getItem('bg-still-v3'));
   if (still) console.log('GUARD-LOG', JSON.stringify(await page.evaluate(() => (window as unknown as { __motionDiag: { log: unknown[] } }).__motionDiag.log)));
   expect(still).toBeNull();
   await expect(page.getByTestId('stage-bg')).not.toHaveAttribute('data-auto-still', '');
@@ -75,7 +75,7 @@ test('التنقل بين الدخول والتسجيل والافتتاحية،
   await page.reload();
   await afterSplash(page);
   await expectMoving(page);
-  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v3'))).toBeNull();
 });
 
 test('"تقليل الحركة" من الويندوز: الخلفية بتقف، ولما يتقفل بترجع لوحدها من غير تحديث الصفحة', async ({ page }, info) => {
@@ -89,12 +89,15 @@ test('"تقليل الحركة" من الويندوز: الخلفية بتقف،
   await expectMoving(page);
 });
 
-test('شاشة التشخيص (Ctrl+Shift+D): عدد الإطارات، والخلفية شغالة ولا واقفة، وسبب الوقوف', async ({ page }, info) => {
+test('شاشة التشخيص (Ctrl+Alt+Shift+M، مش المحجوز في Chrome): عدد الإطارات، والخلفية شغالة ولا واقفة، وسبب الوقوف', async ({ page }, info) => {
   await prefs(page, info);
   await page.goto('/');
   await afterSplash(page);
   await expect(page.getByTestId('motion-diag')).toHaveCount(0);
+  // الاختصار القديم (محجوز في Chrome لحفظ التبويبات في المفضلة) ما بقاش بيفتحها
   await page.keyboard.press('Control+Shift+D');
+  await expect(page.getByTestId('motion-diag')).toHaveCount(0);
+  await page.keyboard.press('Control+Alt+Shift+M');
   const d = page.getByTestId('motion-diag');
   await expect(d).toBeVisible();
   await expect.poll(async () => Number(await page.getByTestId('diag-fps').innerText())).toBeGreaterThan(5);
@@ -103,7 +106,7 @@ test('شاشة التشخيص (Ctrl+Shift+D): عدد الإطارات، والخ
   await expect(page.getByTestId('diag-state')).toHaveText('واقفة');
   await expect(page.getByTestId('diag-reason')).toHaveText('الويندوز طالب تقليل الحركة');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.keyboard.press('Control+Shift+D');
+  await page.keyboard.press('Control+Alt+Shift+M');
   await expect(d).toHaveCount(0);
 });
 
@@ -113,7 +116,7 @@ test('الإعدادات ← المظهر: سبب الوقوف بوضوح وخط
   await registerShop(page, uniq('motion'));
   // اتثبتت قبل كده عشان البطء
   await page.evaluate(() => {
-    localStorage.setItem('bg-still-v2', '1');
+    localStorage.setItem('bg-still-v3', '1');
     window.dispatchEvent(new CustomEvent('bg-still', { detail: true }));
   });
   await page.goto('/#/settings');
@@ -131,6 +134,11 @@ test('الإعدادات ← المظهر: سبب الوقوف بوضوح وخط
   await expect(red).toContainText('الويندوز 10');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(red).toHaveCount(0);
+  // جوه البرنامج: الخلفية ثابتة بالتصميم، والإعدادات بتقول كده صريح، وزرار "تشخيص الحركة" بيفتح الشاشة من غير اختصار
+  await expect(page.getByTestId('motion-inside-note')).toContainText('ثابتة بالتصميم');
+  await page.getByTestId('open-motion-diag').click();
+  await expect(page.getByTestId('motion-diag')).toBeVisible();
+  await expect(page.getByTestId('diag-reason')).toContainText('اتثبتت عشان البطء');
   // حركة لوجو البرنامج: 3 أشكال بمعاينة، والاختيار بيتحفظ وبيشتغل من أول فتحة جاية
   const picker = page.getByTestId('logo-anim-picker');
   await expect(picker.getByRole('radio')).toHaveCount(3);
@@ -145,5 +153,19 @@ test('الإعدادات ← المظهر: سبب الوقوف بوضوح وخط
   await page.getByTestId('logo-anim-draw').click();
   await auto.getByRole('button', { name: 'رجّع الحركة' }).click();
   await expect(page.getByTestId('motion-state')).toHaveAttribute('data-state', 'live');
-  expect(await page.evaluate(() => localStorage.getItem('bg-still-v2'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('bg-still-v3'))).toBeNull();
+});
+
+test('تثبيت قديم اتسجل بقواعد الحارس القديمة (قبل تصليح الـ 30 إطار) بيتمسح بعد التحديث، والحركة بترجع', async ({ page }, info) => {
+  await prefs(page, info);
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('seeded')) {
+      localStorage.setItem('bg-still-v2', '1');
+      sessionStorage.setItem('seeded', '1');
+    }
+  });
+  await page.goto('/');
+  await afterSplash(page);
+  expect(await page.evaluate(() => [localStorage.getItem('bg-still-v2'), localStorage.getItem('bg-still-v3')])).toEqual([null, null]);
+  await expectMoving(page);
 });

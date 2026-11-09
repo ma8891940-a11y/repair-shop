@@ -61,7 +61,8 @@
     "videos": "Videos",
     "community": "Community",
     "admin": "Admin",
-    "partners": "Partners"
+    "partners": "Partners",
+    "assistant": "AI assistant"
   },
   "roles": {
     "owner": "Owner",
@@ -976,7 +977,7 @@
       "customer": "Owes now",
       "supplier": "Owed now",
       "employee": "Due now",
-      "partner": "Owed to partner",
+      "partner": "Partner’s share in the shop",
       "linked": "Net owed"
     },
     "in": {
@@ -1563,7 +1564,36 @@
     "causes": "Likely causes",
     "steps": "Inspection steps",
     "disabled": "The AI assistant is off: it needs a free Gemini key on the server (steps in README). Until then, use the built-in fault guide.",
-    "guide": "Built-in fault guide"
+    "guide": "Built-in fault guide",
+    "pageTitle": "AI assistant",
+    "pageSub": "Enter the model and fault; it suggests causes and checks. The built-in fault guide always works offline.",
+    "issue": "Fault as the customer described it",
+    "askOwner": "Ask the shop owner to enable it (the steps are on this page for them).",
+    "state": {
+      "no-key": {
+        "title": "The assistant needs a key",
+        "why": "The assistant is deployed, but there’s no free Gemini key in Supabase secrets. Use the built-in fault guide until it’s added.",
+        "steps": [
+          "Get a free key at https://aistudio.google.com → Get API key → Create API key (no card or payment).",
+          "In Supabase: your project → Edge Functions → Secrets → new secret GEMINI_API_KEY with the key.",
+          "Come back and refresh this page: this message will disappear."
+        ]
+      },
+      "no-function": {
+        "title": "The assistant isn’t deployed",
+        "why": "The assistant function isn’t on your Supabase project or isn’t responding. Use the built-in fault guide until it’s deployed.",
+        "steps": [
+          "Open a terminal in the project folder: npx supabase login",
+          "Then: npx supabase functions deploy assistant --use-api --remote=PROJECT_REF (your project code from the Supabase URL)",
+          "Add the free Gemini key in Secrets as GEMINI_API_KEY (full steps in README → AI assistant)."
+        ]
+      },
+      "offline": {
+        "title": "Offline",
+        "why": "The AI assistant needs the internet. The built-in fault guide works offline.",
+        "steps": []
+      }
+    }
   },
   "rating": {
     "title": "Rate the service",
@@ -1691,7 +1721,7 @@
         "On a laptop running on battery: Chrome → Settings → Performance → turn off \"Energy saver\", or Edge: Settings → System and performance → turn off \"Efficiency mode\". (The app now tells this apart from real slowness, but a really busy device can still freeze it.)",
         "Windows 10 and 11: set the power mode to \"Best performance\" (Settings → System → Power & battery on 11, or Power & sleep on 10).",
         "If you're testing with npm run dev, try the production build (steps in README); it's much faster.",
-        "If it freezes again, check \"Graphics acceleration\" below, or open diagnostics with Ctrl+Shift+D."
+        "If it freezes again, check \"Graphics acceleration\" below, or open diagnostics with Ctrl+Alt+Shift+M."
       ]
     },
     "software": {
@@ -1702,7 +1732,9 @@
         "Edge: open edge://settings/system, turn on \"Use graphics acceleration when available\", then Restart.",
         "Then open the app again."
       ]
-    }
+    },
+    "insideNote": "Inside the app (after sign-in) the background is still by design, for performance. That’s not a fault. Motion runs on the splash, sign-in, registration and customer tracking screens; the status above is about those.",
+    "openDiag": "Motion diagnostics"
   },
   "marketingDue": {
     "title": "Reminders (with consent)",
@@ -1724,7 +1756,7 @@
     "reasons": {
       "reduced": "Windows asks to reduce motion",
       "auto": "Frozen because of slowness",
-      "inside": "Inside the app (still by design)",
+      "inside": "Inside the app: still by design for performance. Motion runs on the splash and sign-in screens",
       "hidden": "Tab hidden",
       "print": "Print page"
     },
@@ -1976,9 +2008,9 @@
     "since": "Since {{d}}",
     "capital": "Capital",
     "current": "Current (profit − withdrawals)",
-    "total": "Owed to partner",
+    "total": "Share in the shop",
     "actions": "Actions",
-    "deposit": "Capital deposit",
+    "deposit": "Add capital",
     "withdraw": "Withdraw",
     "statement": "Partner statement",
     "empty": "No partners",
@@ -1989,7 +2021,7 @@
     "errShare": "Share must be 0–100 (up to two decimals)",
     "errOver": "Shares would exceed 100%. {{free}} available",
     "saved": "Partner saved",
-    "depositHint": "Money goes into the cashbox and is recorded as the partner’s capital.",
+    "depositHint": "Capital increases by the type you pick (cash, goods, equipment or earlier) on that date. Not profit.",
     "withdrawHint": "Money leaves the cashbox and is deducted from the partner’s account. Not an expense.",
     "toCashbox": "Into cashbox",
     "fromCashbox": "From cashbox",
@@ -2008,7 +2040,30 @@
     "shareOf": "Share {{p}}",
     "openingHint": "Each partner’s capital at stocktake. It moves from opening capital to the partner’s account.",
     "openingNone": "No partners yet. If the shop has partners, add them on the Partners page first.",
-    "openingGo": "Open Partners"
+    "openingGo": "Open Partners",
+    "capTitle": "Partner capital",
+    "capHint": "What the partner brings in. It’s equity: not profit and not a debt. Leave the amount empty to record it later.",
+    "capKind": "Capital type",
+    "capDate": "Date",
+    "noItems": "No items yet. Add items in Inventory first.",
+    "kinds": {
+      "cash": {
+        "title": "Cash now",
+        "hint": "The receiving cashbox increases"
+      },
+      "goods": {
+        "title": "Goods",
+        "hint": "Stock increases by qty and cost"
+      },
+      "equipment": {
+        "title": "Equipment",
+        "hint": "Increases assets (and shop value)"
+      },
+      "old": {
+        "title": "Earlier capital",
+        "hint": "Before using the app; cashboxes untouched"
+      }
+    }
   },
   "link": {
     "withSupplier": "Linked to supplier “{{name}}”",
@@ -2034,5 +2089,18 @@
     "errAmount": "Amount must be above zero and up to {{max}}",
     "netted": "Netted {{v}}",
     "netSub": "Owes as customer − owed as supplier"
+  },
+  "equity": {
+    "title": "Equity",
+    "sub": "This is the owner’s and partners’ share of the shop, not debt to outsiders. “I owe people” holds suppliers, salaries and customer deposits only.",
+    "owner": "Owner’s capital",
+    "partnerCapital": "Partner capital: {{name}}",
+    "retained": "Retained earnings",
+    "retainedSub": "Profit since day one, less what was distributed to partners",
+    "partnersDue": "Profit due to partners",
+    "partnersDueSub": "Distributed but not withdrawn yet. This is equity, not external debt",
+    "drawings": "Owner drawings",
+    "total": "Total equity",
+    "equation": "Assets {{a}} = Liabilities {{l}} + Equity {{e}}"
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Activity, CheckCircle2, Cpu, Gauge, PauseCircle } from 'lucide-react';
+import { Activity, CheckCircle2, Cpu, Gauge, Info, PauseCircle, Stethoscope } from 'lucide-react';
+import { DIAG_SHORTCUT, openMotionDiag } from '../../app/diagShortcut';
 import { usePrefs } from '../../app/prefs';
 import { setBgStillSaved, useBgStillSaved } from '../../app/stage';
 import { detectSoftwareRendering, motionReasons, type MotionReason } from '../../app/motionStatus';
@@ -26,6 +27,11 @@ export function MotionStatus() {
           {stopped ? <PauseCircle className="size-4 text-warn" aria-hidden /> : <CheckCircle2 className="size-4 text-ok" aria-hidden />}
           <span className={stopped ? 'text-warn' : 'text-ok'}>{stopped ? t('motion.stopped') : t('motion.running')}</span>
         </div>
+        {/* جوه البرنامج الخلفية ثابتة بالتصميم: ده مش عطل، فلازم يتقال صريح */}
+        <p className="flex gap-2 rounded-md border border-glass-border bg-sunken/40 p-3 text-xs text-fg-2" data-testid="motion-inside-note">
+          <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
+          <span>{t('motion.insideNote')}</span>
+        </p>
         {reasons.map((r) => {
           const Icon = ICON[r];
           return (
@@ -50,6 +56,12 @@ export function MotionStatus() {
             </div>
           );
         })}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="ghost" icon={<Stethoscope className="size-4" />} onClick={openMotionDiag} data-testid="open-motion-diag">
+            {t('motion.openDiag')}
+          </Button>
+          <kbd className="rounded border border-line px-1.5 text-2xs text-fg-3">{DIAG_SHORTCUT}</kbd>
+        </div>
       </div>
     </Panel>
   );
