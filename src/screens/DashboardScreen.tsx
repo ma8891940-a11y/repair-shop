@@ -84,7 +84,7 @@ export function DashboardScreen() {
           front && (
             <div className="flex flex-wrap gap-2">
               <DaySummaryButton />
-              <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="F2" tip={t('dashboard.newDeviceTip')} onClick={() => navigate('/intake')}>
+              <Button variant="primary" icon={<PackagePlus className="size-4" />} shortcut="Alt+2" tip={t('dashboard.newDeviceTip')} onClick={() => navigate('/intake')}>
                 {t('dashboard.newDevice')}
               </Button>
             </div>

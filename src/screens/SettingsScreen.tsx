@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router';
 import * as Tabs from '@radix-ui/react-tabs';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +32,13 @@ export function SettingsScreen() {
   const { t } = useTranslation();
   const { profile } = useMe();
   const owner = profile.role === 'owner';
+  // ?tab=tech وغيرها (من القايمة الجانبية): التبويب ده يفتح على طول
+  const [params] = useSearchParams();
   const [tab, setTab] = useState(owner ? 'shop' : 'appearance');
+  const wanted = params.get('tab');
+  useEffect(() => {
+    if (wanted) setTab(wanted);
+  }, [wanted]);
   const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'lists', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">

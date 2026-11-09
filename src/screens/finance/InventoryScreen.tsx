@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Barcode as BarcodeIcon, Camera, Download, FileUp, MessageCircle, PackageMinus, PackagePlus, Plus, Printer, RotateCcw, ScanBarcode, Search, ShoppingCart, Trash2, Truck, Undo2 } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
@@ -51,6 +51,20 @@ export function InventoryScreen() {
   const [scan, setScan] = useState(false);
   const [preset, setPreset] = useState<{ supplier: string; lines: { item: string; qty: number }[] } | null>(null);
   const front = profile.role === 'owner' || profile.role === 'reception';
+  // من القايمة الجانبية: ?do=sale|purchase|write_off بيفتح العملية على طول، و?tab=suppliers بيفتح الموردين
+  const [params, setParams] = useSearchParams();
+  const want = params.get('do');
+  const wantTab = params.get('tab');
+  useEffect(() => {
+    if (wantTab === 'suppliers' && owner) setTab('suppliers');
+    else if (!want) setTab((t0) => (t0 === 'suppliers' && !wantTab ? 'items' : t0));
+    if (want === 'sale' && front) setDlg('sale');
+    else if (want === 'purchase' && owner) setDlg('purchase');
+    else if ((want === 'write_off' || want === 'supplier_return') && owner) setInvOp(want);
+    else if (want === 'sale_return' && front) setInvOp('sale_return');
+  }, [want, wantTab, owner, front]);
+  // لما العملية تتقفل، الرابط يرجع للمخزون عادي (عشان "رجوع" ما يفتحهاش تاني)
+  const clearDo = () => want && setParams({}, { replace: true });
   const [dlg, setDlg] = useState<'item' | 'purchase' | 'sale' | 'supplier' | null>(null);
   const [onlyShort, setOnlyShort] = useState(false);
   const [detail, setDetail] = useState<StockRow | null>(null);
@@ -330,6 +344,7 @@ export function InventoryScreen() {
             if (!v) {
               setDlg(null);
               setPreset(null);
+              clearDo();
             }
           }}
           items={data.items}
@@ -337,7 +352,18 @@ export function InventoryScreen() {
           onDone={reload}
         />
       )}
-      <InvOpDialog op={invOp} items={data?.items ?? []} suppliers={data?.suppliers ?? []} onOpenChange={(v) => !v && setInvOp(null)} onDone={reload} />
+      <InvOpDialog
+        op={invOp}
+        items={data?.items ?? []}
+        suppliers={data?.suppliers ?? []}
+        onOpenChange={(v) => {
+          if (!v) {
+            setInvOp(null);
+            clearDo();
+          }
+        }}
+        onDone={reload}
+      />
       <BulkEditDialog
         ids={bulk}
         onOpenChange={(v) => !v && setBulk(null)}
@@ -348,7 +374,21 @@ export function InventoryScreen() {
       />
       <ImportDialog open={importing} onOpenChange={setImporting} existing={data?.items ?? []} onDone={reload} />
       <ScanDialog open={scan} onOpenChange={setScan} onCode={onCode} />
-      {data && <LinesDialog mode="sale" open={dlg === 'sale'} onOpenChange={(v) => !v && setDlg(null)} items={data.items} suppliers={[]} onDone={reload} />}
+      {data && (
+        <LinesDialog
+          mode="sale"
+          open={dlg === 'sale'}
+          onOpenChange={(v) => {
+            if (!v) {
+              setDlg(null);
+              clearDo();
+            }
+          }}
+          items={data.items}
+          suppliers={[]}
+          onDone={reload}
+        />
+      )}
     </div>
   );
 }

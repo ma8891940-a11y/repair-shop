@@ -2,10 +2,15 @@ import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, u
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { ClipboardList, Gauge, Sparkles, History, Languages, LogOut, Moon, PackagePlus, Search, Settings, Contact, Landmark, Wallet, Boxes, Wrench, BarChart3, Handshake, Bot, Menu, Users, Film, MessagesSquare, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { Gauge, Keyboard, Sparkles, Languages, LogOut, Moon, Search, Menu } from 'lucide-react';
 import { useAuth, useMe } from './auth';
 import { usePrefs } from './prefs';
 import { useShortcuts } from './shortcuts';
+import { effectiveShortcuts, type ShortcutAction } from './shortcutsRegistry';
+import { navGroups, type NavEntry } from './navGroups';
+import { MoreNav, NAV_ICONS, SideNav, useNavPrefs } from './SideNav';
+import { ShortcutsDialog } from './ShortcutsDialog';
+import { openMotionDiag } from './diagShortcut';
 import { AppLogo } from '../ui/Logo';
 import { Skeleton } from '../ui/Feedback';
 import { LangToggle, ThemeToggle } from '../ui/ThemeToggle';
@@ -18,15 +23,6 @@ import { Dialog } from '../ui/Dialog';
 import { ConnectionBadge } from './ConnectionBadge';
 import { supabase } from '../lib/supabase';
 import { cn } from '../ui/cn';
-
-interface NavItem {
-  to: string;
-  key: string;
-  icon: LucideIcon;
-  shortcut?: string;
-  end?: boolean;
-  show: boolean;
-}
 
 /** الاتصال اللحظي (Realtime) للمحل كله: أي شاشة تقدر تسمع للتغييرات */
 type Listener = () => void;
@@ -106,28 +102,14 @@ export function AppShell() {
   useBackground('still');
   const owner = profile.role === 'owner';
   const front = profile.role === 'owner' || profile.role === 'reception';
-  const marketing = profile.role === 'marketing';
-  const staff = !marketing;
 
-  const nav: NavItem[] = [
-    { to: '/work', key: 'work', icon: Wrench, show: profile.role === 'technician' },
-    { to: '/', key: 'dashboard', icon: Gauge, shortcut: 'F1', end: true, show: staff },
-    { to: '/devices', key: 'devices', icon: ClipboardList, shortcut: 'F3', end: true, show: staff },
-    { to: '/intake', key: 'intake', icon: PackagePlus, shortcut: 'F2', show: front },
-    { to: '/customers', key: 'customers', icon: Contact, shortcut: 'F4', show: front },
-    { to: '/finance', key: 'finance', icon: Landmark, shortcut: 'F5', show: owner },
-    { to: '/drawer', key: 'drawer', icon: Wallet, show: front && !owner },
-    { to: '/inventory', key: 'inventory', icon: Boxes, show: staff },
-    { to: '/assistant', key: 'assistant', icon: Bot, show: owner || profile.role === 'technician' },
-    { to: '/videos', key: 'videos', icon: Film, show: profile.role !== 'reception' },
-    { to: '/partners', key: 'partners', icon: Handshake, show: owner },
-    { to: '/reports', key: 'reports', icon: BarChart3, show: owner },
-    { to: '/users', key: 'team', icon: Users, show: owner },
-    { to: '/audit', key: 'audit', icon: History, show: owner },
-    { to: '/community', key: 'community', icon: MessagesSquare, show: staff },
-    { to: '/admin', key: 'admin', icon: ShieldCheck, show: isAdmin },
-    { to: '/settings', key: 'settings', icon: Settings, show: true },
-  ].filter((n) => n.show);
+  // القايمة في مجموعات بالصلاحيات (src/app/navGroups.ts)
+  const groups = useMemo(() => navGroups({ role: profile.role as 'owner' | 'reception' | 'technician' | 'marketing', isAdmin }), [profile.role, isAdmin]);
+  const nav: NavEntry[] = useMemo(() => groups.flatMap((g) => g.items).filter((n, k, a) => a.findIndex((x) => x.key === n.key) === k), [groups]);
+  const keys = useMemo(() => effectiveShortcuts((shop.extras as { shortcuts?: unknown } | null)?.shortcuts), [shop.extras]);
+  const comboOf = (id?: ShortcutAction) => keys.find((k) => k.id === id)?.combos[0];
+  const [help, setHelp] = useState(false);
+  const { favItems } = useNavPrefs(groups);
 
   const toggleEffects = () => {
     setEffects(!effects);
@@ -136,28 +118,39 @@ export function AppShell() {
 
   const commands: Command[] = useMemo(
     () => [
-      ...nav.map((n) => ({ id: `nav-${n.key}`, label: t(`nav.${n.key}`), icon: <n.icon className="size-4" />, shortcut: n.shortcut, run: () => navigate(n.to) })),
-      { id: 'theme', label: t('palette.toggleTheme'), icon: <Moon className="size-4" />, shortcut: 'Ctrl+J', run: toggleTheme },
-      { id: 'lang', label: t('palette.toggleLang'), icon: <Languages className="size-4" />, shortcut: 'Ctrl+L', run: toggleLang },
+      ...nav.map((n) => {
+        const I = NAV_ICONS[n.icon] ?? Gauge;
+        return { id: `nav-${n.key}`, label: t(`nav.${n.key}`), icon: <I className="size-4" />, shortcut: comboOf(n.shortcut), run: () => navigate(n.to) };
+      }),
+      { id: 'theme', label: t('palette.toggleTheme'), icon: <Moon className="size-4" />, shortcut: comboOf('theme'), run: toggleTheme },
+      { id: 'lang', label: t('palette.toggleLang'), icon: <Languages className="size-4" />, shortcut: comboOf('lang'), run: toggleLang },
+      { id: 'shortcuts', label: t('shortcuts.title'), icon: <Keyboard className="size-4" />, shortcut: '?', run: () => setHelp(true) },
       { id: 'effects', label: t('palette.toggleEffects'), icon: <Sparkles className="size-4" />, run: toggleEffects },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, navigate, toggleTheme, toggleLang, effects, front, owner],
+    [t, navigate, toggleTheme, toggleLang, effects, front, owner, nav, keys],
   );
 
-  const shortcuts = useMemo(
-    () => [
-      { combo: 'F1', handler: () => navigate('/') },
-      { combo: 'F2', handler: () => front && navigate('/intake') },
-      { combo: 'F3', handler: () => setPalette(true) },
-      { combo: 'F4', handler: () => front && navigate('/customers') },
-      { combo: 'F5', handler: () => owner && navigate('/finance') },
-      { combo: 'Ctrl+K', handler: () => setPalette((v) => !v), allowInInputs: true },
-      { combo: 'Ctrl+J', handler: () => toggleTheme(), allowInInputs: true },
-      { combo: 'Ctrl+L', handler: () => toggleLang(), allowInInputs: true },
-    ],
-    [navigate, front, owner, toggleTheme, toggleLang],
-  );
+  // كل الاختصارات من src/app/shortcutsRegistry.ts (وتعديلات صاحب المحل)
+  const shortcuts = useMemo(() => {
+    const go = (to: string, ok = true) => () => ok && navigate(to);
+    const run: Record<ShortcutAction, () => void> = {
+      'nav.dashboard': go('/'),
+      'nav.intake': go('/intake', front),
+      'nav.devices': go('/devices'),
+      'nav.customers': go('/customers', front),
+      'nav.finance': go('/finance', owner),
+      'nav.inventory': go('/inventory'),
+      palette: () => setPalette((v) => !v),
+      theme: () => toggleTheme(),
+      lang: () => toggleLang(),
+      help: () => setHelp((v) => !v),
+      diag: () => openMotionDiag(),
+    };
+    return keys
+      .filter((k) => k.id !== 'diag') // شاشة التشخيص ليها مستمع لوحدها (MotionDiagPanel)
+      .flatMap((k) => k.combos.map((combo) => ({ combo, handler: run[k.id], allowInInputs: k.inInputs, outsideInputsOnly: !k.inInputs })));
+  }, [keys, navigate, front, owner, toggleTheme, toggleLang]);
   useShortcuts(shortcuts);
 
   return (
@@ -174,15 +167,16 @@ export function AppShell() {
             </div>
           </div>
           <div className="mx-4 mb-2 h-px bg-gradient-to-l from-transparent via-[rgb(var(--accent-rgb)/0.35)] to-transparent" />
-          <nav className="flex flex-1 flex-col gap-0.5 px-2" aria-label={t('nav.menu')}>
-            {nav.map((n) => (
-              <SideLink key={n.to} item={n} label={t(`nav.${n.key}`)} />
-            ))}
-          </nav>
+          <SideNav groups={groups} shortcuts={keys} />
           <div className="border-t border-glass-border p-3">
             <div className="mb-2 flex items-center gap-1">
               <ThemeToggle />
               <LangToggle />
+              <Tip label={t('shortcuts.title')} shortcut="?">
+                <button type="button" onClick={() => setHelp(true)} aria-label={t('shortcuts.title')} className="grid size-9 place-items-center rounded-md text-fg-2 transition-colors hover:bg-raised/70 hover:text-fg" data-testid="open-shortcuts">
+                  <Keyboard className="size-4" />
+                </button>
+              </Tip>
               <Tip label={t('prefs.effects')}>
                 <button
                   type="button"
@@ -224,8 +218,9 @@ export function AppShell() {
               <Search className="size-4" aria-hidden />
               <span className="flex-1 truncate text-start">{front ? t('shell.searchPlaceholder') : t('shell.searchPlaceholderTech')}</span>
               <span className="hidden items-center gap-1 sm:flex">
-                <Kbd>Ctrl</Kbd>
-                <Kbd>K</Kbd>
+                {(comboOf('palette') ?? 'Ctrl+K').split('+').map((k) => (
+                  <Kbd key={k}>{k}</Kbd>
+                ))}
               </span>
             </button>
             <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
@@ -248,12 +243,16 @@ export function AppShell() {
 
         {/* شريط سفلي (موبايل) */}
         <nav aria-label={t('nav.menu')} className="glass fixed inset-x-0 bottom-0 z-30 flex rounded-none border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] md:hidden">
-          {nav.slice(0, 4).map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => cn('flex flex-1 flex-col items-center gap-0.5 py-2 text-2xs transition-colors', isActive ? 'text-accent' : 'text-fg-3')}>
-              <n.icon className="size-5" aria-hidden />
-              {t(`nav.${n.key}`)}
-            </NavLink>
-          ))}
+          {/* أول 4: المفضلة لو فيه، وإلا أهم الشاشات */}
+          {(favItems.length ? favItems : nav.filter((n) => ['work', 'dashboard', 'devices', 'intake', 'customers'].includes(n.key))).slice(0, 4).map((n) => {
+            const I = NAV_ICONS[n.icon] ?? Gauge;
+            return (
+              <NavLink key={n.key} to={n.to} end={n.end} className={({ isActive }) => cn('flex flex-1 flex-col items-center gap-0.5 py-2 text-2xs transition-colors', isActive ? 'text-accent' : 'text-fg-3')}>
+                <I className="size-5" aria-hidden />
+                {t(`nav.${n.key}`)}
+              </NavLink>
+            );
+          })}
           <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className="flex flex-1 flex-col items-center gap-0.5 py-2 text-2xs text-fg-3">
             <Menu className="size-5" aria-hidden />
             {t('nav.more')}
@@ -262,61 +261,19 @@ export function AppShell() {
 
         {/* "المزيد" على الموبايل: باقي القائمة والخروج */}
         <Dialog open={more} onOpenChange={setMore} title={t('nav.more')}>
-          <nav aria-label={t('nav.more')} className="grid grid-cols-3 gap-2">
-            {nav.slice(4).map((n) => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                end={n.end}
-                onClick={() => setMore(false)}
-                className={({ isActive }) => cn('flex flex-col items-center gap-1 rounded-md border border-glass-border p-3 text-xs', isActive ? 'border-accent text-accent' : 'text-fg-2 hover:text-fg')}
-              >
-                <n.icon className="size-5" aria-hidden />
-                {t(`nav.${n.key}`)}
-              </NavLink>
-            ))}
-            <button type="button" onClick={() => void signOut()} className="flex flex-col items-center gap-1 rounded-md border border-glass-border p-3 text-xs text-fg-2 hover:text-danger">
-              <LogOut className="size-5 rtl:-scale-x-100" aria-hidden />
+          <nav aria-label={t('nav.more')} className="flex flex-col gap-3">
+            <MoreNav groups={groups} onPick={() => setMore(false)} />
+            <button type="button" onClick={() => void signOut()} className="flex items-center justify-center gap-2 rounded-md border border-glass-border p-3 text-xs text-fg-2 hover:text-danger">
+              <LogOut className="size-4 rtl:-scale-x-100" aria-hidden />
               {t('common.signOut')}
             </button>
           </nav>
         </Dialog>
 
+        <ShortcutsDialog open={help} onOpenChange={setHelp} shortcuts={keys} />
         <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} showCustomer={front} onOpenDevice={(id) => navigate(`/devices/${id}`)} />
       </div>
     </LiveCtx.Provider>
-  );
-}
-
-function SideLink({ item, label }: { item: NavItem; label: string }) {
-  const { i18n } = useTranslation();
-  const link = (
-    <NavLink
-      to={item.to}
-      end={item.end}
-      className={({ isActive }) =>
-        cn('group relative flex h-9 items-center gap-2.5 rounded-md px-3 text-sm transition-colors duration-150', isActive ? 'text-fg' : 'text-fg-2 hover:bg-raised/50 hover:text-fg')
-      }
-    >
-      {({ isActive }) => (
-        <>
-          {isActive && (
-            <motion.span layoutId="nav-active" className="absolute inset-0 rounded-md border border-[rgb(var(--accent-rgb)/0.25)] bg-accent-soft" transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}>
-              <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-accent shadow-[0_0_10px_var(--accent-glow)]" />
-            </motion.span>
-          )}
-          <item.icon className={cn('relative size-4 shrink-0', isActive ? 'text-accent' : 'text-fg-3 group-hover:text-fg-2')} aria-hidden />
-          <span className="relative flex-1">{label}</span>
-        </>
-      )}
-    </NavLink>
-  );
-  return item.shortcut ? (
-    <Tip label={label} shortcut={item.shortcut} side={i18n.dir() === 'rtl' ? 'left' : 'right'}>
-      {link}
-    </Tip>
-  ) : (
-    link
   );
 }
 

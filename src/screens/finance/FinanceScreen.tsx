@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownUp, Banknote, Boxes, CheckCircle2, HandCoins, Landmark, PiggyBank, Printer, Receipt, Scale, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react';
@@ -37,6 +37,13 @@ export function FinanceScreen() {
   const accName = useAccountName();
   const { period, range, set, query } = usePeriod();
   const [op, setOp] = useState<Op | null>(null);
+  // من القايمة الجانبية: ?do=expense بيفتح المصروف، و?focus=cashboxes بيروح للخزن
+  const [params, setParams] = useSearchParams();
+  const wantOp = params.get('do');
+  const focus = params.get('focus');
+  useEffect(() => {
+    if (wantOp === 'expense') setOp('expense');
+  }, [wantOp]);
   const cur = f.currency(shop.currency);
 
   const { data, error, loading, reload } = useLoad(async () => {
@@ -47,6 +54,10 @@ export function FinanceScreen() {
   useLiveRefresh(reload);
 
   const p = data?.p;
+  // الخزن: بعد ما الأرقام تظهر، الصفحة بتنزل لهم
+  useEffect(() => {
+    if (focus === 'cashboxes' && data) document.getElementById('cashboxes')?.scrollIntoView({ block: 'start' });
+  }, [focus, data]);
   const days = useMemo(() => (p ? fillDaily(range.days, p.daily, (day) => ({ day, revenue: 0, expenses: 0, profit: 0 })) : []), [p, range.days]);
   // رصيد كل خزنة في آخر كل يوم من الفترة (للـ sparkline): من الرصيد الحالي ورجوعًا
   const spark = useMemo(() => {
@@ -199,7 +210,19 @@ export function FinanceScreen() {
           </div>
         </>
       )}
-      {op && <OpDialog op={op} open={!!op} onOpenChange={(v) => !v && setOp(null)} onDone={reload} />}
+      {op && (
+        <OpDialog
+          op={op}
+          open={!!op}
+          onOpenChange={(v) => {
+            if (!v) {
+              setOp(null);
+              if (wantOp) setParams({}, { replace: true });
+            }
+          }}
+          onDone={reload}
+        />
+      )}
     </div>
   );
 }

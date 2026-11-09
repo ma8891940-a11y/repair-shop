@@ -62,7 +62,15 @@
     "community": "Community",
     "admin": "Admin",
     "partners": "Partners",
-    "assistant": "AI assistant"
+    "assistant": "AI assistant",
+    "technicians": "Technicians & routes",
+    "sale": "Sell",
+    "stocktake": "Stocktake",
+    "purchases": "Purchases",
+    "returns": "Returns & write-offs",
+    "cashboxes": "Cashboxes",
+    "expenses": "Expenses",
+    "suppliers": "Suppliers"
   },
   "roles": {
     "owner": "Owner",
@@ -2158,5 +2166,47 @@
       }
     },
     "elsewhere": "Ready-made faults are in ← Extras, expense items in ← Cashboxes & expenses, and payment methods in ← Payment methods."
+  },
+  "navGroups": {
+    "favorites": "Favorites",
+    "repair": "Repairs",
+    "sales": "Sales & inventory",
+    "finance": "Finance",
+    "people": "Customers & suppliers",
+    "reports": "Reports",
+    "settings": "Settings",
+    "top": "Home",
+    "pin": "Pin “{{name}}” to favorites",
+    "unpin": "Unpin “{{name}}” from favorites"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "sub": "All shortcuts. Those marked “outside fields” don’t work while typing; the rest work anywhere.",
+    "change": "Change",
+    "reset": "Default",
+    "pressNow": "Press the new shortcut (Esc to cancel)",
+    "saved": "Shortcut saved",
+    "outsideInputs": "Outside fields only",
+    "laptopNote": "On most laptops F1–F4 need Fn, so use Alt + the number. Shortcuts reserved by the browser or Windows (like Ctrl+T, Ctrl+J, F5) can’t be chosen.",
+    "actions": {
+      "nav.dashboard": "Dashboard",
+      "nav.intake": "New intake",
+      "nav.devices": "Devices",
+      "nav.customers": "Customers",
+      "nav.finance": "Finance",
+      "nav.inventory": "Inventory",
+      "palette": "Command palette & search",
+      "theme": "Dark/light mode",
+      "lang": "Language",
+      "help": "Shortcuts screen",
+      "diag": "Motion diagnostics"
+    },
+    "problem": {
+      "reserved": "“{{c}}” is reserved by the browser or Windows. Pick another.",
+      "alt-shift": "Alt+Shift switches the keyboard language on Windows. Pick another.",
+      "altgr": "Ctrl+Alt types characters on some keyboards (AltGr). Add Shift or pick another.",
+      "plain": "A single key types into fields. Add Ctrl or Alt.",
+      "taken": "“{{c}}” is already used."
+    }
   }
 }

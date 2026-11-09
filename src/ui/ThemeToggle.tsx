@@ -12,7 +12,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   const { t } = useTranslation();
   const label = theme === 'dark' ? t('prefs.lightMode') : t('prefs.darkMode');
   return (
-    <Tip label={label} shortcut="Ctrl+J">
+    <Tip label={label} shortcut="Alt+T">
       <button type="button" onClick={toggleTheme} aria-label={label} className={cn(iconBtn, className)}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.span key={theme} initial={{ y: 10, opacity: 0, rotate: -40 }} animate={{ y: 0, opacity: 1, rotate: 0 }} exit={{ y: -10, opacity: 0, rotate: 40 }} transition={{ duration: 0.18 }}>
@@ -29,7 +29,7 @@ export function LangToggle({ className }: { className?: string }) {
   const { lang, toggleLang } = usePrefs();
   const { t } = useTranslation();
   return (
-    <Tip label={t('prefs.language')} shortcut="Ctrl+L">
+    <Tip label={t('prefs.language')} shortcut="Alt+L">
       <button type="button" onClick={toggleLang} aria-label={t('prefs.switchTo')} className={cn('flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-fg-2 transition-colors hover:bg-raised/70 hover:text-fg', className)}>
         <Languages className="size-4" aria-hidden />
         <span lang={lang === 'ar' ? 'en' : 'ar'}>{t('prefs.otherLangShort')}</span>
