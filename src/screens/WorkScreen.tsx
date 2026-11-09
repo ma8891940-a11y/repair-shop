@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { clearDraft, loadDraft, saveDraft } from '../lib/draft';
 import { Link, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -92,6 +93,7 @@ export function WorkScreen() {
     setBusy(r.step_id);
     try {
       const res = await rpc<{ next_step: string | null; next_tech?: string | null; ready: boolean }>('finish_step', { p_step: r.step_id, p_check: check ?? null, p_next_route: route ?? null });
+      if (check) clearDraft(`final:${r.step_id}`);
       setFinalFor(null);
       setRouteFor(null);
       if (res.ready) toast({ tone: 'ok', title: t('work.ready', { o: r.order_no }) });
@@ -195,7 +197,16 @@ export function PriorityBadge({ p }: { p: string }) {
 /** الفحص النهائي قبل ما الجهاز يبقى جاهز: نفس قائمة الفحص السريع، ومقارنة بفحص الاستلام */
 function FinalCheckDialog({ row, onOpenChange, onSubmit, busy }: { row: QueueRow | null; onOpenChange: (v: boolean) => void; onSubmit: (c: CheckItems) => void; busy: boolean }) {
   const { t } = useTranslation();
-  const [items, setItems] = useState<CheckItems>({});
+  const [items, setItemsRaw] = useState<CheckItems>({});
+  // البند 9: الفحص النهائي بيتحفظ مسودة لكل جهاز، ولو النافذة اتقفلت بيرجع زي ما سبته
+  const draftKey = row ? `final:${row.step_id}` : '';
+  useEffect(() => {
+    if (draftKey) setItemsRaw(loadDraft<CheckItems>(draftKey)?.value ?? {});
+  }, [draftKey]);
+  const setItems = (v: CheckItems) => {
+    setItemsRaw(v);
+    if (draftKey) saveDraft(draftKey, v);
+  };
   const [err, setErr] = useState<string | null>(null);
   const intake = useLoad(async () => {
     if (!row) return null;

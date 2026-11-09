@@ -37,6 +37,8 @@ import { StaleNote } from '../ui/StaleNote';
 import { cn } from '../ui/cn';
 import { AssistantPanel } from '../app/AssistantPanel';
 import { useSensitiveNames } from '../app/assist';
+import { clearDraft, loadDraft, saveDraft } from '../lib/draft';
+import { useLeaveGuard } from '../app/leaveGuard';
 
 interface LogRow {
   id: string;
@@ -828,9 +830,22 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
   const deliveryOpen = ['repaired', 'ready', 'delivered', 'unrepairable'].includes(status);
   const [stage, setStage] = useState<'intake' | 'delivery'>(deliveryOpen ? 'delivery' : 'intake');
   const current = stage === 'intake' ? intake : delivery;
-  const [items, setItems] = useState<CheckItems>(current?.items ?? {});
+  const [items, setItemsRaw] = useState<CheckItems>(current?.items ?? {});
   const [busy, setBusy] = useState(false);
-  useEffect(() => setItems((stage === 'intake' ? intake : delivery)?.items ?? {}), [stage, intake, delivery]);
+  // البند 9: الفحص بيتحفظ مسودة على الجهاز مع كل اختيار، ولو رجعت لنفس الجهاز بيرجع زي ما سبته
+  const draftKey = `check:${deviceId}:${stage}`;
+  const [fromDraft, setFromDraft] = useState(false);
+  useEffect(() => {
+    const d = loadDraft<CheckItems>(draftKey);
+    setItemsRaw(d?.value ?? (stage === 'intake' ? intake : delivery)?.items ?? {});
+    setFromDraft(!!d);
+  }, [stage, intake, delivery, draftKey]);
+  const setItems = (v: CheckItems) => {
+    setItemsRaw(v);
+    saveDraft(draftKey, v);
+  };
+  const changed = JSON.stringify(items) !== JSON.stringify(current?.items ?? {});
+  useLeaveGuard(changed && Object.keys(items).length > 0);
 
   async function save() {
     setBusy(true);
@@ -845,6 +860,8 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
         });
     setBusy(false);
     if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
+    clearDraft(draftKey);
+    setFromDraft(false);
     toast({ tone: 'ok', title: t('checks.saved') });
     onSaved();
   }
@@ -872,6 +889,11 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
         }
       />
       <div className="flex flex-col gap-3 p-4">
+        {fromDraft && changed && (
+          <p className="text-2xs text-warn" data-testid="check-draft">
+            {t('draft.checkRestored')}
+          </p>
+        )}
         <QuickCheck value={items} onChange={setItems} disabled={status === 'delivered' && stage === 'delivery' && !!delivery} />
         <Button size="sm" loading={busy} onClick={() => void save()} className="self-start">
           {t('checks.save')}

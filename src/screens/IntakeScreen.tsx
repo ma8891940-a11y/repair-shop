@@ -37,6 +37,9 @@ import { InlineAdd, ListOptions, useListLabel, useShopList } from '../app/lists'
 import { intakeDocs, printChain, readPrint } from '../lib/printPlan';
 import { IntakeAssist } from '../app/assist/IntakeAssist';
 import { useSensitiveNames } from '../app/assist';
+import { DraftBanner, useDraft } from '../app/useDraft';
+import { useLeaveGuard } from '../app/leaveGuard';
+import { hasContent } from '../lib/draft';
 
 // الماركات والملحقات والألوان من القوايم اللي بيديرها صاحب المحل (الإعدادات ← القوائم). الافتراضي في src/app/lists.tsx
 const QUICK_ISSUES = ['screen', 'battery', 'charging', 'software', 'water', 'speaker', 'mic', 'camera', 'dead'] as const;
@@ -89,6 +92,29 @@ export function IntakeScreen() {
   const [saved, setSaved] = useState<{ id: string; orderNo: string | null } | null>(null);
   const extras = readExtras(shop.extras);
   const [presets, setPresets] = useState<Preset[]>([]);
+  // البند 9: المسودة بتتحفظ على الجهاز وانت بتكتب، وفيه تنبيه قبل الخروج من غير حفظ.
+  // كلمة سر الجهاز والصور والتوقيع ما بيتحفظوش في المسودة أبدًا.
+  const draftValue = { phone, custName, custArea, brand, model, color, imei, lockType, accessories, issue, condition, estimate, check, routing };
+  const draft = useDraft(`intake:${profile.id}`, draftValue, !saved);
+  useLeaveGuard(!saved && (hasContent(draftValue) || !!lockValue.trim() || photos.length > 0));
+  function restoreDraft() {
+    const d = draft.take() as Partial<typeof draftValue> | null;
+    if (!d) return;
+    setPhone(d.phone ?? '');
+    setCustName(d.custName ?? '');
+    setCustArea(d.custArea ?? '');
+    setBrand(d.brand ?? '');
+    setModel(d.model ?? '');
+    setColor(d.color ?? '');
+    setImei(d.imei ?? '');
+    setLockType(d.lockType ?? 'none');
+    setAccessories(Array.isArray(d.accessories) ? d.accessories : []);
+    setIssue(d.issue ?? '');
+    setCondition(d.condition ?? '');
+    setEstimate(d.estimate ?? '');
+    setCheck(d.check ?? {});
+    if (d.routing) setRouting(d.routing);
+  }
   useEffect(() => {
     if (!extras.quick_issues) return;
     void supabase
@@ -202,6 +228,7 @@ export function IntakeScreen() {
         await sync.queue('photo', pid, { device: id });
       }
       setSaved({ id, orderNo: null });
+      draft.clear();
     };
     if (!navigator.onLine) {
       try {
@@ -241,6 +268,7 @@ export function IntakeScreen() {
       }
       for (const p of photos) await uploadDevicePhoto(profile.shop_id, id, p.file);
       setSaved({ id, orderNo: d.data.order_no as string });
+      draft.clear();
       // الطباعة التلقائية (الإعدادات ← الطباعة): المستندات اللي متعلّمة للاستلام بتتطبع ورا بعض (الاستيكر الأول)
       const plan = readPrint(shop.extras);
       const chain = printChain(id, intakeDocs(plan));
@@ -308,6 +336,7 @@ export function IntakeScreen() {
           </span>
         }
       />
+      {draft.pending && <DraftBanner at={draft.pending.at} onRestore={restoreDraft} onDiscard={draft.discard} />}
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
         <div className="flex min-w-0 flex-col gap-4">

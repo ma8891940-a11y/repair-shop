@@ -2451,5 +2451,19 @@
         "d": "Capital, current and distribution"
       }
     }
+  },
+  "leave": {
+    "title": "You have unsaved data",
+    "text": "If you leave now, what you typed won’t be saved in the app (it stays as a draft on this device that you can restore).",
+    "stay": "Back to the form",
+    "go": "Leave without saving",
+    "dialog": "You have unsaved data.",
+    "closeAnyway": "Close without saving"
+  },
+  "draft": {
+    "found": "There’s an unsaved draft from {{at}}.",
+    "restore": "Restore",
+    "discard": "Discard",
+    "checkRestored": "This is the unsaved check from last time. Press \"Save check\" to record it."
   }
 }

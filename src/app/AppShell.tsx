@@ -1,5 +1,5 @@
 import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router';
+import { NavLink, useLocation, useOutlet } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Gauge, Keyboard, Sparkles, Languages, LogOut, Moon, Search, Menu } from 'lucide-react';
@@ -10,6 +10,7 @@ import { effectiveShortcuts, type ShortcutAction } from './shortcutsRegistry';
 import { navGroups, type NavEntry } from './navGroups';
 import { MoreNav, NAV_ICONS, SideNav, useNavPrefs } from './SideNav';
 import { ScreenAssist } from './assist/ScreenAssist';
+import { LeaveGuardHost, useGuardedNavigate } from './leaveGuard';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { openMotionDiag } from './diagShortcut';
 import { AppLogo } from '../ui/Logo';
@@ -71,7 +72,8 @@ export function AppShell() {
   const { signOut, isAdmin } = useAuth();
   const { toggleTheme, toggleLang, effects, setEffects } = usePrefs();
   const toast = useToast();
-  const navigate = useNavigate();
+  // التنقل من القايمة والاختصارات ولوحة الأوامر بيسأل الأول لو فيه بيانات ما اتحفظتش (البند 9)
+  const navigate = useGuardedNavigate();
   const location = useLocation();
   const outlet = useOutlet();
   const [palette, setPalette] = useState(false);
@@ -272,6 +274,7 @@ export function AppShell() {
         </Dialog>
 
         {profile.role !== 'marketing' && <ScreenAssist />}
+        <LeaveGuardHost />
         <ShortcutsDialog open={help} onOpenChange={setHelp} shortcuts={keys} />
         <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} showCustomer={front} onOpenDevice={(id) => navigate(`/devices/${id}`)} />
       </div>
