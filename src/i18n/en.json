@@ -589,7 +589,18 @@
     "hintReceipt": "Choose the thermal printer, 80mm paper and no margins",
     "hintInvoice": "Choose a regular printer and A4 paper",
     "parts": "Parts replaced",
-    "sendWa": "Send on WhatsApp"
+    "sendWa": "Send on WhatsApp",
+    "docs": {
+      "sticker": "Device sticker",
+      "receipt": "Thermal receipt",
+      "receipt-a4": "A4 intake receipt",
+      "invoice": "Delivery invoice"
+    },
+    "next": "Next: {{doc}}",
+    "receiptA4": "Intake receipt",
+    "paid": "Paid",
+    "remaining": "Remaining",
+    "deliveryReady": "Delivered. Print the delivery invoice?"
   },
   "team": {
     "title": "Team",
@@ -690,7 +701,8 @@
       "tech": "Technicians & routes",
       "backup": "Backup",
       "extras": "Extras",
-      "lists": "Lists"
+      "lists": "Lists",
+      "print": "Printing"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -2207,6 +2219,52 @@
       "altgr": "Ctrl+Alt types characters on some keyboards (AltGr). Add Shift or pick another.",
       "plain": "A single key types into fields. Add Ctrl or Alt.",
       "taken": "“{{c}}” is already used."
+    }
+  },
+  "printSet": {
+    "intake": "At intake",
+    "delivery": "At delivery",
+    "sticker": "Thermal sticker for the device",
+    "stickerHint": "Order no., customer name and phone, fault, total, paid, remaining, date and a small QR. Black and white, large type.",
+    "size": "Sticker size",
+    "sizes": {
+      "80": "80 mm receipt paper",
+      "50x30": "50×30 mm label",
+      "58x40": "58×40 mm label"
+    },
+    "paperReceipt": "Paper intake receipt (A4)",
+    "paperReceiptHint": "With the shop logo: device details, accessories, condition, estimate, intake terms and signature.",
+    "thermalReceipt": "Thermal intake receipt (80 mm)",
+    "thermalReceiptHint": "The same receipt on the thermal printer.",
+    "auto": "Print automatically after intake",
+    "autoHint": "After saving the intake, the documents above open for printing one after another (sticker first). Otherwise there’s a button for each.",
+    "invoice": "Paper delivery invoice (A4)",
+    "invoiceHint": "Repair, parts, total, paid, remaining and warranty. After delivery a “Delivery invoice” button appears.",
+    "printerNote": "Pick the printer in the print dialog: each document has its own size (thermal 80 mm or label, paper A4), and the browser remembers the last printer. Once installed on the computer (Electron/Tauri) the app can print to a set printer without a dialog."
+  },
+  "export": {
+    "button": "Export",
+    "xlsx": "Excel (xlsx)",
+    "pdf": "PDF / Print",
+    "csv": "CSV",
+    "total": "Total",
+    "printedAt": "Printed: {{at}}",
+    "nothing": "Nothing to print. Go back and choose Export → PDF.",
+    "empty": "No data for this period or filter.",
+    "rows": "Rows: {{n}}",
+    "period": "Period: {{from}} → {{to}}",
+    "filter": "Filter: {{v}}",
+    "search": "Search: {{v}}",
+    "sort": "Sort: {{v}}",
+    "cols": {
+      "account": "Account",
+      "oldest": "Oldest debt",
+      "item": "Item",
+      "kind": "Type",
+      "method": "Method",
+      "share": "Share",
+      "capital": "Capital",
+      "current": "Current"
     }
   }
 }

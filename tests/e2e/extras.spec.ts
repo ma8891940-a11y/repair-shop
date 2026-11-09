@@ -39,7 +39,8 @@ test('الإضافات: عطل جاهز بيملا العطل والتكلفة �
   await expect(page.getByLabel('العطل زي ما العميل وصفه')).toHaveValue('تغيير شاشة أصلية');
   await expect(page.getByLabel('التكلفة التقديرية')).toHaveValue('1,500.50');
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
-  await expect(page).toHaveURL(/#\/print\/receipt\//);
+  // الافتراضي في الاستلام: الاستيكر الحراري الأول وبعده إيصال A4 (الإعدادات ← الطباعة)
+  await expect(page).toHaveURL(/#\/print\/sticker\/.*next=receipt-a4/);
   // التنبيهات ("اتسجّل الجهاز"...) ما بتتطبعش على الإيصال
   await page.emulateMedia({ media: 'print' });
   await expect(page.locator('[aria-live="polite"]').first()).toBeHidden();

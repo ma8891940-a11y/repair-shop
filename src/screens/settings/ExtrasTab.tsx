@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Archive, Plus } from 'lucide-react';
+import { readPrint } from '../../lib/printPlan';
 import { useMe } from '../../app/auth';
 import { useLoad, must } from '../../app/useLoad';
 import { supabase } from '../../lib/supabase';
@@ -37,7 +38,12 @@ export function ExtrasTab() {
   const presets = useLoad(async () => must(await supabase.from('issue_presets').select('id, label, issue, est_cost, sort').is('deleted_at', null).order('sort').order('created_at')) as Preset[], []);
 
   async function toggle(k: keyof Extras, v: boolean) {
-    const { error } = await supabase.from('shops').update({ extras: { ...extras, [k]: v } }).eq('id', shop.id);
+    // لازم نحافظ على باقي الإعدادات المتخزنة في نفس المكان (الاختصارات، والطباعة...): قبل كده الحفظ هنا كان بيمسحها
+    const raw = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
+    const patch: Record<string, unknown> = { [k]: v };
+    // "اطبع تلقائي" هو نفس خيار الإعدادات ← الطباعة
+    if (k === 'auto_print') patch.print = { ...readPrint(raw), autoAfterIntake: v };
+    const { error } = await supabase.from('shops').update({ extras: { ...raw, ...extras, ...patch } }).eq('id', shop.id);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await refresh();
     toast({ tone: 'ok', title: t('settings.saved') });
@@ -67,7 +73,7 @@ export function ExtrasTab() {
         <div className="flex flex-col gap-4 p-4">
           {(['quick_issues', 'auto_print', 'day_summary', 'link_inventory'] as const).map((k) => (
             <div key={k}>
-              <Checkbox checked={extras[k]} onChange={(v) => void toggle(k, v)} label={t(`extras.${k}.name`)} />
+              <Checkbox checked={k === 'auto_print' ? readPrint(shop.extras).autoAfterIntake : extras[k]} onChange={(v) => void toggle(k, v)} label={t(`extras.${k}.name`)} />
               <p className="ms-7 mt-0.5 text-2xs text-fg-3">{t(`extras.${k}.hint`)}</p>
             </div>
           ))}

@@ -25,6 +25,7 @@ import { MotionStatus } from './settings/MotionStatus';
 import { LogoAnimPicker } from './settings/LogoAnimPicker';
 import { cn } from '../ui/cn';
 import { ListsTab } from './settings/ListsTab';
+import { PrintTab } from './settings/PrintTab';
 
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
 
@@ -39,7 +40,7 @@ export function SettingsScreen() {
   useEffect(() => {
     if (wanted) setTab(wanted);
   }, [wanted]);
-  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'lists', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
+  const tabs = (owner ? ['shop', 'payments', 'tech', 'ledger', 'lists', 'print', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
@@ -56,6 +57,11 @@ export function SettingsScreen() {
           <Tabs.Content value="shop" className="flex flex-col gap-4">
             <PlanUsage />
             <IdentityTab />
+          </Tabs.Content>
+        )}
+        {owner && (
+          <Tabs.Content value="print">
+            <PrintTab />
           </Tabs.Content>
         )}
         {owner && (

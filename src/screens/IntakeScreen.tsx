@@ -4,7 +4,7 @@ import type { Preset } from './settings/ExtrasTab';
 import { useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, ImagePlus, KeyRound, Phone, ShieldAlert, ShieldCheck, Trash2, UserRound } from 'lucide-react';
+import { CheckCircle2, ImagePlus, Printer, KeyRound, Phone, ShieldAlert, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { useMe } from '../app/auth';
 import { PageHeader } from '../app/AppShell';
 import { useShortcuts } from '../app/shortcuts';
@@ -34,6 +34,7 @@ import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
 import { InlineAdd, ListOptions, useListLabel, useShopList } from '../app/lists';
+import { intakeDocs, printChain, readPrint } from '../lib/printPlan';
 
 // الماركات والملحقات والألوان من القوايم اللي بيديرها صاحب المحل (الإعدادات ← القوائم). الافتراضي في src/app/lists.tsx
 const QUICK_ISSUES = ['screen', 'battery', 'charging', 'software', 'water', 'speaker', 'mic', 'camera', 'dead'] as const;
@@ -237,8 +238,10 @@ export function IntakeScreen() {
       }
       for (const p of photos) await uploadDevicePhoto(profile.shop_id, id, p.file);
       setSaved({ id, orderNo: d.data.order_no as string });
-      // الطباعة التلقائية (ميزة إضافية): الإيصال بيتفتح للطباعة على طول
-      if (extras.auto_print) navigate(`/print/receipt/${id}`);
+      // الطباعة التلقائية (الإعدادات ← الطباعة): المستندات اللي متعلّمة للاستلام بتتطبع ورا بعض (الاستيكر الأول)
+      const plan = readPrint(shop.extras);
+      const chain = printChain(id, intakeDocs(plan));
+      if (plan.autoAfterIntake && chain) navigate(chain);
     } catch (e) {
       if (shouldQueue(e)) {
         // النت قطع في النص: الباقي بيتسجل على الجهاز ويكمّل بعدين
@@ -677,6 +680,16 @@ export function IntakeScreen() {
             )}
           </div>
         </div>
+        {/* اطبع بإيدك: المستندات المتعلّمة للاستلام في الإعدادات ← الطباعة */}
+        {saved?.orderNo && intakeDocs(readPrint(shop.extras)).length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2" data-testid="intake-print">
+            {intakeDocs(readPrint(shop.extras)).map((doc) => (
+              <Button key={doc} size="sm" icon={<Printer className="size-4" />} onClick={() => navigate(`/print/${doc}/${saved.id}`)} data-testid={`intake-print-${doc}`}>
+                {t(`print.docs.${doc}`)}
+              </Button>
+            ))}
+          </div>
+        )}
       </Dialog>
     </form>
   );

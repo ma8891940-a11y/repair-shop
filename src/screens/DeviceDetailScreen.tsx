@@ -7,6 +7,7 @@ import { DeleteDialog } from '../app/DeleteDialog';
 import { useShopList } from '../app/lists';
 import { ChipToggle } from '../ui/Checkbox';
 import { readExtras } from '../lib/extras';
+import { readPrint } from '../lib/printPlan';
 import { useCanCorrect } from '../app/correct';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
@@ -165,6 +166,10 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
           throw r.error;
         }
         setLocalStatus(null);
+        // التسليم: فاتورة التسليم الورقية (لو متعلّمة في الإعدادات ← الطباعة)
+        if (to === 'delivered' && readPrint(shop.extras).deliveryPaper) {
+          toast({ tone: 'info', title: t('print.deliveryReady'), duration: 10000, action: { label: t('print.docs.invoice'), onClick: () => navigate(`/print/invoice/${id}`) } });
+        }
         // كل تغيير حالة بيبعت رسالة للعميل (واتساب برابط جاهز): التنبيه فيه زرار يفتح الرسالة المناسبة للحالة
         toast({
           tone: 'ok',
@@ -220,8 +225,14 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
             <Link to={`/print/label/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong">
               <QrCode className="size-4" /> {t('detail.label')}
             </Link>
+            <Link to={`/print/sticker/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong" data-testid="print-sticker-link">
+              <Printer className="size-4" /> {t('print.docs.sticker')}
+            </Link>
             <Link to={`/print/receipt/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong">
               <Printer className="size-4" /> {t('detail.receipt')}
+            </Link>
+            <Link to={`/print/receipt-a4/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong" data-testid="print-receipt-a4-link">
+              <Receipt className="size-4" /> {t('print.docs.receipt-a4')}
             </Link>
             <Link to={`/print/invoice/${id}`} className="glass inline-flex h-8 items-center gap-1.5 rounded-sm px-3 text-sm text-fg hover:border-glass-border-strong">
               <Receipt className="size-4" /> {t('detail.invoice')}
