@@ -40,7 +40,8 @@ test('الفروع: فرع جديد ببادئة ← مبدّل الفروع ←
   await bs.getByTestId('branch-add').click();
   const dlg = page.getByRole('dialog');
   await fillField(dlg.getByTestId('branch-name'), 'فرع المعادي');
-  await fillField(dlg.getByTestId('branch-prefix'), 'b2');
+  // الخانة بتكبّر الحروف لوحدها (b2 ← B2)، فهنا بنكتب عادي ونستنى القيمة الكبيرة
+  await dlg.getByTestId('branch-prefix').fill('b2');
   await expect(dlg.getByTestId('branch-prefix')).toHaveValue('B2');
   await dlg.getByTestId('branch-save').click();
   await expect(page.getByText('اتحفظ الفرع')).toBeVisible();
