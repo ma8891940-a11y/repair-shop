@@ -24,6 +24,8 @@ import { useToast } from '../ui/Toast';
 import { Dialog } from '../ui/Dialog';
 import { ConnectionBadge } from './ConnectionBadge';
 import { BranchSwitcher } from './BranchSwitcher';
+import { usePerms } from './perms';
+import { useBranch } from './branch';
 import { supabase } from '../lib/supabase';
 import { cn } from '../ui/cn';
 
@@ -108,7 +110,14 @@ export function AppShell() {
   const front = profile.role === 'owner' || profile.role === 'reception';
 
   // القايمة في مجموعات بالصلاحيات (src/app/navGroups.ts)
-  const groups = useMemo(() => navGroups({ role: profile.role as 'owner' | 'reception' | 'technician' | 'marketing', isAdmin }), [profile.role, isAdmin]);
+  // P: القايمة بالصلاحيات الفعلية ونوع الفرع الشغال ("كل الفروع" = كل الأقسام)
+  const { perms } = usePerms();
+  const br = useBranch();
+  const branchKind = br.multi && br.view === 'all' ? 'both' : (br.working?.kind ?? 'both');
+  const groups = useMemo(
+    () => navGroups({ role: profile.role as 'owner' | 'reception' | 'technician' | 'marketing', isAdmin, perms, branchKind }),
+    [profile.role, isAdmin, perms, branchKind],
+  );
   const nav: NavEntry[] = useMemo(() => groups.flatMap((g) => g.items).filter((n, k, a) => a.findIndex((x) => x.key === n.key) === k), [groups]);
   const keys = useMemo(() => effectiveShortcuts((shop.extras as { shortcuts?: unknown } | null)?.shortcuts), [shop.extras]);
   const comboOf = (id?: ShortcutAction) => keys.find((k) => k.id === id)?.combos[0];

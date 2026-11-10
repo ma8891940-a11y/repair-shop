@@ -495,7 +495,10 @@
       "E_BRANCH_CASHBOX": "This cashbox belongs to another branch. Pick one from the same branch",
       "E_BRANCH_MOVE": "A device changes branch only through \"Send to branch\"",
       "E_IN_TRANSIT": "The device is already on its way to another branch",
-      "E_HAS_BALANCE_BRANCH": "This branch's cashboxes hold money. Transfer it first"
+      "E_HAS_BALANCE_BRANCH": "This branch's cashboxes hold money. Transfer it first",
+      "E_OWNER_PERMS": "The owner always has every permission; it can't be removed",
+      "E_ROLE_IN_USE": "Staff have this role. Remove it from them first",
+      "E_BRANCH_KIND": "This section isn't part of this branch type"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -706,7 +709,10 @@
       "audit_log": "activity log",
       "_other": "record",
       "branches": "Branch",
-      "staff_branches": "Employee branches"
+      "staff_branches": "Employee branches",
+      "roles": "Role",
+      "staff_roles": "Employee roles",
+      "staff_overrides": "Permission exception"
     },
     "actions": {
       "insert": "add",
@@ -752,7 +758,7 @@
       "issue": "fault",
       "imei": "IMEI",
       "color": "colour",
-      "kind": "type",
+      "kind": "Branch type",
       "area": "area",
       "sub_status": "status detail",
       "full_name": "name",
@@ -807,7 +813,14 @@
       "branch_ids": "Branches",
       "branch_id": "Branch",
       "transfer_to": "On the way to branch",
-      "transfer_at": "Sent at"
+      "transfer_at": "Sent at",
+      "perms": "Permissions",
+      "base": "Based on",
+      "preset": "Preset role",
+      "section": "Section",
+      "op": "Operation",
+      "allow": "Allowed",
+      "role_ids": "Roles"
     },
     "sentence": {
       "insert": "{{who}} added the {{target}}",
@@ -836,7 +849,8 @@
       "device_send": "{{who}} sent {{target}} to another branch",
       "device_receive": "{{who}} received {{target}} at the branch",
       "device_transfer_cancel": "{{who}} cancelled sending {{target}} to another branch",
-      "stock_transfer": "{{who}} transferred {{target}} between branches"
+      "stock_transfer": "{{who}} transferred {{target}} between branches",
+      "staff_roles": "{{who}} changed {{target}}'s roles"
     },
     "otherChanges": "and other data ({{n}})",
     "yes": "yes",
@@ -885,7 +899,8 @@
       "lists": "Lists",
       "print": "Printing",
       "assistant": "Assistant",
-      "branches": "Branches"
+      "branches": "Branches",
+      "roles": "Roles & permissions"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -2817,5 +2832,67 @@
     "deleteRow": "Delete row {{n}}",
     "selectRow": "Select row {{n}}",
     "selectAll": "Select all rows"
+  },
+  "perm": {
+    "sections": {
+      "devices": "Devices",
+      "intake": "Intake",
+      "customers": "Customers",
+      "technicians": "Technicians",
+      "inventory": "Inventory",
+      "sales": "Sales",
+      "purchases": "Purchases",
+      "cashbox": "Cashboxes & drawer",
+      "expenses": "Expenses",
+      "finance": "Financial position",
+      "partners": "Partners",
+      "reports": "Reports",
+      "staff": "Staff",
+      "settings": "Settings",
+      "audit": "Activity log"
+    },
+    "ops": {
+      "view": "View",
+      "add": "Add",
+      "edit": "Edit",
+      "delete": "Delete",
+      "amounts": "See amounts & profits",
+      "export": "Print & export"
+    },
+    "title": "Roles & permissions",
+    "hint": "Roles with your own names, each with a permissions table. The owner always has every permission. Changes apply to staff right away and are recorded in the activity log.",
+    "stage": "This stage removes permissions only: things the employee couldn't do before (like the financial position and profits) open in the next stage.",
+    "newRole": "New role",
+    "roleName": "Role name",
+    "base": "Based on",
+    "bases": {
+      "reception": "Reception",
+      "technician": "Technician"
+    },
+    "baseHint": "A technician only sees their own devices, without prices",
+    "preset": "Preset",
+    "saved": "Role saved",
+    "archive": "Remove role",
+    "archived": "Role removed",
+    "inUse": "Staff have this role. Remove it from them first",
+    "staffRoles": "Roles",
+    "staffRolesTitle": "{{name}}'s roles",
+    "staffRolesSaved": "{{name}}'s roles saved",
+    "pickRole": "Pick at least one role",
+    "exceptions": "Exceptions for this employee only",
+    "exceptionsHint": "Click a cell: as role → allowed → denied. Exceptions show in a different color.",
+    "exception": "Exception",
+    "inherit": "As role",
+    "allow": "Allowed",
+    "deny": "Denied",
+    "branchKind": "Branch type",
+    "kinds": {
+      "both": "Repair & sales",
+      "repair": "Repair only",
+      "sales": "Sales only"
+    },
+    "kindHint": "Unrelated sections disappear. Changing the type deletes no data.",
+    "kindSaved": "Branch type changed",
+    "ownerAll": "Owner: every permission"
   }
 }

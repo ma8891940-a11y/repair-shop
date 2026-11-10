@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { AlarmClock, ArrowRight, CheckCheck, Inbox, PackagePlus, TrendingUp, Wallet, Wrench, type LucideIcon } from 'lucide-react';
 import { useMe } from '../app/auth';
 import { useBranch } from '../app/branch';
+import { usePerms } from '../app/perms';
+import { branchHas } from '../app/navGroups';
 import { StaleNote } from '../ui/StaleNote';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
@@ -38,6 +40,10 @@ export function DashboardScreen() {
   const navigate = useNavigate();
   const owner = profile.role === 'owner';
   const front = (profile.role === 'owner' || profile.role === 'reception');
+  // P: أقسام الأجهزة بتختفي تمامًا لو مفيش صلاحية، أو الفرع "مبيعات بس"
+  const { can: may } = usePerms();
+  const kind = br.multi && br.view === 'all' ? 'both' : (br.working?.kind ?? 'both');
+  const showDevices = may('devices') && branchHas(kind, 'devices');
 
   // ربح اليوم (صاحب المحل بس): من الدفتر نفسه = إيرادات اليوم − مصروفاته (ومنها تكلفة القطع)
   const profit = useLoad(async () => {
@@ -105,10 +111,14 @@ export function DashboardScreen() {
           {owner && <OpeningCard />}
           {owner && <OwnerAlerts />}
           <div className={cn('grid gap-3', owner ? 'grid-cols-2 lg:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4')}>
-            <Kpi i={0} label={t('dashboard.today')} caption={t('dashboard.todayCap')} icon={Inbox} value={stats?.today} series={series?.today} to="/devices?filter=today" loading={loading} />
-            <Kpi i={1} label={t('dashboard.under')} caption={t('dashboard.underCap')} icon={Wrench} value={stats?.underRepair} series={series?.underRepair} to="/devices?filter=under_repair" loading={loading} />
-            <Kpi i={2} label={t('dashboard.ready')} caption={t('dashboard.readyCap')} icon={CheckCheck} value={stats?.ready} series={series?.ready} to="/devices?status=ready" loading={loading} tone="ok" />
-            <Kpi i={3} label={t('dashboard.late')} caption={t('dashboard.lateCap')} icon={AlarmClock} value={stats?.late} series={series?.late} to="/devices?filter=late" loading={loading} tone={stats && stats.late > 0 ? 'danger' : undefined} />
+            {showDevices && (
+              <>
+                <Kpi i={0} label={t('dashboard.today')} caption={t('dashboard.todayCap')} icon={Inbox} value={stats?.today} series={series?.today} to="/devices?filter=today" loading={loading} />
+                <Kpi i={1} label={t('dashboard.under')} caption={t('dashboard.underCap')} icon={Wrench} value={stats?.underRepair} series={series?.underRepair} to="/devices?filter=under_repair" loading={loading} />
+                <Kpi i={2} label={t('dashboard.ready')} caption={t('dashboard.readyCap')} icon={CheckCheck} value={stats?.ready} series={series?.ready} to="/devices?status=ready" loading={loading} tone="ok" />
+                <Kpi i={3} label={t('dashboard.late')} caption={t('dashboard.lateCap')} icon={AlarmClock} value={stats?.late} series={series?.late} to="/devices?filter=late" loading={loading} tone={stats && stats.late > 0 ? 'danger' : undefined} />
+              </>
+            )}
             {owner && (
               <Kpi
                 i={4}
@@ -139,6 +149,27 @@ export function DashboardScreen() {
             )}
           </div>
 
+          {!showDevices && (
+            <Panel className="mt-4 flex flex-wrap items-center gap-2 p-4" data-testid="dashboard-sales-only">
+              {may('sales', 'add') && branchHas(kind, 'sales') && (
+                <Button variant="primary" onClick={() => navigate('/inventory?do=sale')}>
+                  {t('nav.sale')}
+                </Button>
+              )}
+              {(may('inventory') || may('sales')) && (
+                <Button variant="outline" onClick={() => navigate('/inventory')}>
+                  {t('nav.inventory')}
+                </Button>
+              )}
+              {may('customers') && (
+                <Button variant="ghost" onClick={() => navigate('/customers')}>
+                  {t('nav.customers')}
+                </Button>
+              )}
+            </Panel>
+          )}
+          {showDevices && (
+          <>
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
             <Panel className="min-w-0">
               <PanelHeader index="01" title={t('dashboard.dist')} actions={<span className="text-xs text-fg-3">{t('units.devices', { n: f.number(active.length) })}</span>} />
@@ -192,6 +223,8 @@ export function DashboardScreen() {
             {front && <FollowUpPanel />}
             {front && <MarketingPanel />}
           </div>
+          </>
+          )}
         </>
       )}
     </div>

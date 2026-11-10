@@ -11,6 +11,8 @@ export interface Branch {
   is_main: boolean;
   phone: string | null;
   address: string | null;
+  /** P: صيانة بس، أو مبيعات بس، أو الاتنين */
+  kind?: 'repair' | 'sales' | 'both';
 }
 
 interface BranchState {
@@ -65,7 +67,7 @@ export function BranchProvider({ children }: { children: ReactNode }) {
     if (!uid) return;
     try {
       const [b, m] = await Promise.all([
-        supabase.from('branches').select('id, name, prefix, is_main, phone, address').is('deleted_at', null).order('is_main', { ascending: false }).order('created_at'),
+        supabase.from('branches').select('id, name, prefix, is_main, phone, address, kind').is('deleted_at', null).order('is_main', { ascending: false }).order('created_at'),
         supabase.rpc('my_branch_ids'),
       ]);
       if (b.error) throw b.error;

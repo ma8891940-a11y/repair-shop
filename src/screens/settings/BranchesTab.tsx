@@ -34,6 +34,16 @@ export function BranchesTab() {
     return { cb: count(cb.data), dv: count(dv.data) };
   }, [b.all.length]);
 
+  async function setKind(x: Branch, kind: string) {
+    try {
+      await rpc('set_branch_kind', { p_id: x.id, p_kind: kind });
+      toast({ tone: 'ok', title: t('perm.kindSaved') });
+      await b.reload();
+    } catch (e) {
+      toast({ tone: 'danger', title: errorMessage(e) });
+    }
+  }
+
   async function archive() {
     if (!closing) return;
     setBusy(true);
@@ -77,6 +87,21 @@ export function BranchesTab() {
                     {x.prefix ? `${x.prefix}-${year}-0001` : `${year}-0001`}
                   </div>
                 </div>
+                {/* P: نوع الفرع (الأقسام اللي مالهاش علاقة بتختفي، والتغيير ما بيمسحش بيانات) */}
+                <select
+                  value={x.kind ?? 'both'}
+                  onChange={(e) => void setKind(x, e.target.value)}
+                  aria-label={`${t('perm.branchKind')} ${x.name}`}
+                  title={t('perm.kindHint')}
+                  className="h-8 rounded-md border border-line bg-sunken/60 px-2 text-xs text-fg"
+                  data-testid="branch-kind"
+                >
+                  {(['both', 'repair', 'sales'] as const).map((k) => (
+                    <option key={k} value={k}>
+                      {t(`perm.kinds.${k}`)}
+                    </option>
+                  ))}
+                </select>
                 <span className="text-2xs text-fg-3">{t('branch.cashboxes', { n: stats.data?.cb[x.id] ?? 0 })}</span>
                 <span className="text-2xs text-fg-3">{t('branch.devicesOpen', { n: stats.data?.dv[x.id] ?? 0 })}</span>
                 <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} needsNet onClick={() => setEdit(x)} aria-label={`${t('branch.edit')} ${x.name}`}>

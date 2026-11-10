@@ -1,7 +1,8 @@
 import { useLayoutEffect, useState, type FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Building2, MailPlus, UserCheck, UserX, X } from 'lucide-react';
+import { Building2, MailPlus, ShieldCheck, UserCheck, UserX, X } from 'lucide-react';
+import { StaffRolesDialog } from '../app/StaffRolesDialog';
 import { useMe } from '../app/auth';
 import { useBranch } from '../app/branch';
 import { useLoad, must } from '../app/useLoad';
@@ -44,6 +45,7 @@ export function TeamScreen() {
   const br = useBranch();
   const [invBranches, setInvBranches] = useState<string[]>([]);
   const [branchesOf, setBranchesOf] = useState<Profile | null>(null);
+  const [rolesOf, setRolesOf] = useState<Profile | null>(null);
 
   const { data, error, loading, reload } = useLoad(async () => {
     const [u, i, s] = await Promise.all([
@@ -197,6 +199,11 @@ export function TeamScreen() {
                         </Button>
                       )}
                       <span className="text-xs text-fg-2">{t(`roles.${u.role}`)}</span>
+                      {u.role !== 'owner' && u.role !== 'marketing' && !u.deleted_at && (
+                        <Button size="sm" variant="ghost" icon={<ShieldCheck className="size-3.5" />} needsNet onClick={() => setRolesOf(u)} data-testid="member-roles">
+                          {t('perm.staffRoles')}
+                        </Button>
+                      )}
                       {u.role === 'reception' && !u.deleted_at && (
                         <span title={t('team.canCorrectHint')} data-testid="can-correct">
                           <Checkbox checked={!!u.can_correct} onChange={(v) => void setCorrect(u, v)} label={<span className="text-xs text-fg-2">{t('team.canCorrect')}</span>} />
@@ -223,6 +230,7 @@ export function TeamScreen() {
           )}
         </div>
       </div>
+      <StaffRolesDialog user={rolesOf} onOpenChange={(v) => !v && setRolesOf(null)} onDone={reload} />
       <StaffBranchesDialog
         user={branchesOf}
         current={branchesOf ? (data?.branches[branchesOf.id]?.length ? data.branches[branchesOf.id] : br.all.filter((x) => x.is_main).map((x) => x.id)) : []}

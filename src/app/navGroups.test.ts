@@ -19,6 +19,21 @@ describe('القايمة الجانبية في مجموعات بالصلاحيا
     // مجموعات فاضية ما بتظهرش
     expect(navGroups({ role: 'technician', isAdmin: false }).map((g) => g.key)).not.toContain('finance');
   });
+  it('P: كاشير المبيعات (جدول صلاحيات) ما بيشوفش الأجهزة ولا الاستلام ولا الفنيين في القايمة، وبيشوف البيع والمخزون والعملاء', () => {
+    const cashier = { customers: ['view', 'add'], inventory: ['view'], sales: ['view', 'add', 'edit'], cashbox: ['view', 'add'] };
+    const k = keys({ role: 'reception', isAdmin: false, perms: cashier });
+    for (const x of ['intake', 'devices', 'technicians', 'videos']) expect(k, x).not.toContain(x);
+    for (const x of ['sale', 'inventory', 'customers', 'drawer']) expect(k, x).toContain(x);
+  });
+  it('P: نوع الفرع: "صيانة بس" ما فيهاش بيع، و"مبيعات بس" ما فيهاش استلام ولا أجهزة', () => {
+    expect(keys({ role: 'owner', isAdmin: false, branchKind: 'repair' })).not.toContain('sale');
+    expect(keys({ role: 'owner', isAdmin: false, branchKind: 'repair' })).toContain('intake');
+    const s2 = keys({ role: 'owner', isAdmin: false, branchKind: 'sales' });
+    for (const x of ['intake', 'devices', 'technicians']) expect(s2, x).not.toContain(x);
+    expect(s2).toContain('sale');
+    // "كل الفروع": كل حاجة
+    expect(keys({ role: 'owner', isAdmin: false, branchKind: 'both' })).toEqual(keys({ role: 'owner', isAdmin: false }));
+  });
   it('المشرف بس بيشوف لوحة المشرف، وكل بند ليه مفتاح واحد في المجموعة بتاعته', () => {
     expect(keys({ role: 'owner', isAdmin: true })).toContain('admin');
     expect(keys({ role: 'owner', isAdmin: false })).not.toContain('admin');

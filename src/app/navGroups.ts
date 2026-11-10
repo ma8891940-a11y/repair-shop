@@ -18,17 +18,55 @@ export interface NavGroup {
   key: NavGroupKey;
   items: NavEntry[];
 }
+export type Perms = Record<string, string[]>;
+export type BranchKind = 'repair' | 'sales' | 'both';
 export interface NavAccess {
   role: 'owner' | 'reception' | 'technician' | 'marketing';
   isAdmin: boolean;
+  /** P: صلاحيات المستخدم الفعلية (من my_perms). من غيرها = اللي الدور الأساسي بيعمله */
+  perms?: Perms | null;
+  /** P: نوع الفرع الشغال ("كل الفروع" = both) */
+  branchKind?: BranchKind;
 }
 
-export function navGroups({ role, isAdmin }: NavAccess): NavGroup[] {
+/** المستخدم ليه الصلاحية دي؟ (صاحب المحل دايمًا، ومن غير جدول = الدور الأساسي) */
+export function can(perms: Perms | null | undefined, section: string, op = 'view'): boolean {
+  if (!perms) return true;
+  return (perms[section] ?? []).includes(op);
+}
+
+/** القسم ده موجود في نوع الفرع ده؟ صيانة بس: من غير مبيعات. مبيعات بس: من غير استلام وأجهزة وفنيين */
+export function branchHas(kind: BranchKind | undefined, section: string): boolean {
+  if (kind === 'repair') return section !== 'sales';
+  if (kind === 'sales') return !['devices', 'intake', 'technicians'].includes(section);
+  return true;
+}
+
+// كل بند في القايمة ← القسم والعملية اللي بيحتاجها
+const NEEDS: Record<string, [string, string]> = {
+  work: ['devices', 'view'],
+  intake: ['intake', 'add'],
+  devices: ['devices', 'view'],
+  technicians: ['technicians', 'view'],
+  videos: ['devices', 'view'],
+  sale: ['sales', 'add'],
+  inventory: ['inventory', 'view'],
+  drawer: ['cashbox', 'view'],
+  customers: ['customers', 'view'],
+};
+
+export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavGroup[] {
   const owner = role === 'owner';
   const front = owner || role === 'reception';
   const tech = role === 'technician';
   const staff = role !== 'marketing';
-  const e = (show: boolean, item: NavEntry) => (show ? [item] : []);
+  const e = (show: boolean, item: NavEntry) => {
+    const need = NEEDS[item.key];
+    // المخزون: بيظهر لو بيشوف المخزون أو بيبيع
+    const allowed = !need || can(perms, need[0], need[1]) || (item.key === 'inventory' && can(perms, 'sales', 'view'));
+    const inBranch = !need || branchHas(branchKind, need[0]);
+    return show && allowed && inBranch ? [item] : [];
+  };
   const groups: NavGroup[] = [
     {
       key: 'top',

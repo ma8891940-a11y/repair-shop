@@ -27,6 +27,7 @@ import { cn } from '../ui/cn';
 import { ListsTab } from './settings/ListsTab';
 import { PrintTab } from './settings/PrintTab';
 import { BranchesTab } from './settings/BranchesTab';
+import { RolesTab } from './settings/RolesTab';
 import { AssistantTab } from './settings/AssistantTab';
 import { PublicUrlPanel } from './settings/PublicUrlPanel';
 import { useOnline } from '../ui/useOnline';
@@ -46,7 +47,7 @@ export function SettingsScreen() {
   }, [wanted]);
   // البند 14: الإعدادات بتتحفظ على السيرفر، فمن غير نت بتتقفل بهدوء (إلا المظهر، ده على الجهاز) وبتتفتح لوحدها
   const online = useOnline();
-  const tabs = (owner ? ['shop', 'branches', 'payments', 'tech', 'ledger', 'lists', 'print', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
+  const tabs = (owner ? ['shop', 'branches', 'roles', 'payments', 'tech', 'ledger', 'lists', 'print', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
@@ -76,6 +77,12 @@ export function SettingsScreen() {
           <Tabs.Content value="branches">
             <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
             <BranchesTab />            </fieldset>
+          </Tabs.Content>
+        )}
+        {owner && (
+          <Tabs.Content value="roles">
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <RolesTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (

@@ -5,6 +5,7 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './app/auth';
 import { BranchProvider } from './app/branch';
+import { PermsProvider, usePerms } from './app/perms';
 import { SyncProvider } from './offline/sync';
 import { PrefsProvider, usePrefs } from './app/prefs';
 import { EffectsGuard } from './app/EffectsGuard';
@@ -146,7 +147,9 @@ function Gate() {
   if (profile.role === 'marketing') return <MarketingRoutes />;
   return (
     <BranchProvider>
-      <AppRoutes role={profile.role} admin={isAdmin} />
+      <PermsProvider>
+        <AppRoutes role={profile.role} admin={isAdmin} />
+      </PermsProvider>
     </BranchProvider>
   );
 }
@@ -181,6 +184,8 @@ function MarketingRoutes() {
 function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
   const owner = role === 'owner';
   const front = role === 'owner' || role === 'reception';
+  // P: الشاشة نفسها بتختفي لو مفيش صلاحية (حتى لو اتفتحت باختصار أو رابط)، والحماية الحقيقية في قاعدة البيانات
+  const { can: may } = usePerms();
   const location = useLocation();
   // لو الجهاز اتفتح من كارت، الشاشة اللي ورا بتفضل ظاهرة والتفاصيل تطلع فوقها
   const bg = (location.state as { bg?: Location } | null)?.bg;
@@ -194,11 +199,11 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
         {front && <Route path="print/:kind/:id" element={<PrintScreen />} />}
         <Route element={<AppShell />}>
           <Route index element={<DashboardScreen />} />
-          {front && <Route path="intake" element={<IntakeScreen />} />}
-          <Route path="devices" element={<DevicesScreen />} />
-          <Route path="devices/:id" element={<DeviceDetailScreen />} />
-          {front && <Route path="customers" element={<CustomersScreen />} />}
-          {front && <Route path="customers/:id" element={<CustomerProfileScreen />} />}
+          {front && may('intake', 'add') && <Route path="intake" element={<IntakeScreen />} />}
+          {may('devices') && <Route path="devices" element={<DevicesScreen />} />}
+          {may('devices') && <Route path="devices/:id" element={<DeviceDetailScreen />} />}
+          {front && may('customers') && <Route path="customers" element={<CustomersScreen />} />}
+          {front && may('customers') && <Route path="customers/:id" element={<CustomerProfileScreen />} />}
           {owner && <Route path="finance" element={<FinanceScreen />} />}
           {owner && <Route path="finance/pl" element={<ProfitScreen />} />}
           {owner && <Route path="finance/balances/:kind" element={<BalancesScreen />} />}
@@ -207,10 +212,10 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
           {(owner || role === 'technician') && <Route path="assistant" element={<AssistantScreen />} />}
           {owner && <Route path="finance/entry/:id" element={<EntryScreen />} />}
           {owner && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
-          <Route path="inventory" element={<InventoryScreen />} />
+          {(may('inventory') || may('sales')) && <Route path="inventory" element={<InventoryScreen />} />}
           <Route path="work" element={<WorkScreen />} />
           {owner && <Route path="reports" element={<ReportsScreen />} />}
-          {front && <Route path="drawer" element={<DrawerScreen />} />}
+          {front && may('cashbox') && <Route path="drawer" element={<DrawerScreen />} />}
           {owner && <Route path="users" element={<TeamScreen />} />}
           {owner && <Route path="audit" element={<AuditScreen />} />}
           <Route path="settings" element={<SettingsScreen />} />
