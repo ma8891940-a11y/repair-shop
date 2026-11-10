@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { afterSplash, prefs, registerShop, uniq } from './helpers';
+import { afterSplash, prefs, registerShop, uniq, withMotionDiag } from './helpers';
 
 /** بيسجّل كل فريم: الافتتاحية واللوجو والتوهج والسكان والانتقال، وهل الخلفية هي نفس الـ canvas */
 async function record(page: Page) {
@@ -173,7 +173,7 @@ test('شرط الأمان ما بيشتغلش في npm run dev، ولا وقت �
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
   await page.waitForTimeout(7_000);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  await expect(stage).not.toHaveAttribute('data-auto-still', '');
+  await withMotionDiag(page, 'npm run dev من غير مفتاح الاختبار', () => expect(stage).not.toHaveAttribute('data-auto-still', ''));
   expect(await page.evaluate(() => localStorage.getItem('bg-still-v3'))).toBeNull();
   // مع الحارس شغال: بطء وقت التحميل بس (أول ثانية بعد ما الصفحة تخلص) ما بيتحسبش
   await page.evaluate(() => localStorage.setItem('bg-guard-dev', '1'));
@@ -182,7 +182,7 @@ test('شرط الأمان ما بيشتغلش في npm run dev، ولا وقت �
   await page.waitForTimeout(1_200);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   await page.waitForTimeout(5_000);
-  await expect(stage).not.toHaveAttribute('data-auto-still', '');
+  await withMotionDiag(page, 'بطء وقت التحميل بس', () => expect(stage).not.toHaveAttribute('data-auto-still', ''));
   // والتبويب في الخلفية: الحارس بيقف. (في وضع الاختبار من غير شاشة، فتح تبويب تاني ما بيخفيش الصفحة، فبنبعت نفس الحدث بتاع المتصفح)
   const setHidden = (h: boolean) =>
     page.evaluate((hidden) => {

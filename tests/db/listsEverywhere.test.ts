@@ -101,4 +101,19 @@ d('قوائم الملء السريع', () => {
     expect((await as(O, `select brand from items_stock() where id = $1`, [item])).rows[0].brand).toBe('Motorola');
     await expect(as(O, `update shop_lists set value = 'Moto' where id = $1`, [k])).rejects.toThrow(/E_LIST_VALUE_FIXED/);
   });
+
+  it('بنود المصروفات بنفس الصلاحية: إضافة بند، وقفله ما بيمسحش قيوده', async () => {
+    const e = id();
+    await expect(as(R, `select add_expense_type($1, 'كهربا الفرع')`, [e])).rejects.toThrow(/E_FORBIDDEN/);
+    await as(O, `update shops set extras = coalesce(extras, '{}'::jsonb) || '{"lists_edit": ["reception"]}'::jsonb where id = $1`, [shop]);
+    await as(R, `select add_expense_type($1, 'كهربا الفرع')`, [e]);
+    expect((await admin(`select kind, active, name from accounts where id = $1`, [e])).rows[0]).toEqual({ kind: 'expense', active: true, name: 'كهربا الفرع' });
+    const cash = (await admin(`select id from accounts where shop_id = $1 and code = 'cash_cash'`, [shop])).rows[0].id;
+    await as(O, `select owner_capital($1, $2, 100000)`, [id(), cash]);
+    await as(O, `select record_expense($1, $2, $3, 5000)`, [id(), e, cash]);
+    await as(R, `select hide_expense_type($1)`, [e]);
+    expect((await admin(`select active from accounts where id = $1`, [e])).rows[0].active).toBe(false);
+    expect(Number((await admin(`select sum(debit - credit) b from journal_lines where account_id = $1`, [e])).rows[0].b)).toBe(5000);
+    await as(O, `update shops set extras = extras - 'lists_edit' where id = $1`, [shop]);
+  });
 });

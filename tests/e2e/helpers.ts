@@ -208,3 +208,23 @@ export async function fillField(input: Locator, value: string) {
   }
   await expect(input).toHaveValue(value);
 }
+
+/**
+ * تشخيص الخلفية المتحركة (قرار صاحب المشروع: لو اختبار الحركة فشل في تشغيل كامل، يبان السبب بالظبط):
+ * بيطبع حالة الحارس وآخر قراءات الإطارات لو الشرط فشل، وبعدين بيرمي نفس الخطأ.
+ */
+export async function withMotionDiag<T>(page: Page, what: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    const d = await page
+      .evaluate(() => {
+        const m = (window as unknown as { __motionDiag?: { log: unknown[] } & Record<string, unknown> }).__motionDiag;
+        return m ? JSON.stringify({ ...m, log: m.log.slice(-25) }) : 'no __motionDiag';
+      })
+      .catch((x) => `diag failed: ${String(x)}`);
+    console.log(`--- motion diag (${what}) ---\n${d}`);
+    throw e;
+  }
+}
+

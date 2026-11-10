@@ -9,6 +9,7 @@ import { useMe } from '../auth';
 import { useLoad } from '../useLoad';
 import { cashboxesFor, loadCashboxes, opId, rpc, useAccountName, type Account, type Cashbox } from '../ledgerApi';
 import { getBranchHeader } from '../../lib/branchHeader';
+import { ChipAdd, ChipRemove } from '../ChipEdit';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { Field, Input, Select, Textarea } from '../../ui/Field';
@@ -237,15 +238,51 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
           </Field>
         )}
         {needs.includes('expense') && (
-          <Field label={t('fin.expenseItem')}>
-            <Select value={expense} onChange={(e) => setExpense(e.target.value)}>
-              {l?.exp.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {accName(a)}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div className="flex flex-col gap-1">
+            <Field label={t('fin.expenseItem')}>
+              <Select value={expense} onChange={(e) => setExpense(e.target.value)}>
+                {l?.exp.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {accName(a)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {/* بنود المصروفات: إضافة بند أو قفل البند المختار من هنا (بصلاحية القوايم). القفل ما بيمسحش قيوده */}
+            <div className="flex flex-wrap items-center gap-1.5" data-testid="expense-types-edit">
+              <ChipAdd
+                onAdd={async (v) => {
+                  const nid = opId();
+                  try {
+                    await rpc('add_expense_type', { p_id: nid, p_name: v });
+                  } catch (e) {
+                    toast({ tone: 'danger', title: errorMessage(e) });
+                    return false;
+                  }
+                  await lists.reload();
+                  setExpense(nid);
+                  return true;
+                }}
+                placeholder={t('fin.expenseItem')}
+              />
+              {expense && (
+                <ChipRemove
+                  label={accName(l?.exp.find((x) => x.id === expense))}
+                  onRemove={async () => {
+                    try {
+                      await rpc('hide_expense_type', { p_id: expense });
+                    } catch (e) {
+                      toast({ tone: 'danger', title: errorMessage(e) });
+                      return false;
+                    }
+                    setExpense('');
+                    await lists.reload();
+                    return true;
+                  }}
+                />
+              )}
+            </div>
+          </div>
         )}
         {needs.includes('cashbox') && cashboxSelect(cashbox, setCashbox, needs.includes('to') ? t('fin.from') : t('fin.cashbox'))}
         {needs.includes('to') && cashboxSelect(to, setTo, t('fin.to'), cashbox, true)}

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { afterSplash, prefs, registerShop, uniq } from './helpers';
+import { afterSplash, prefs, registerShop, uniq, withMotionDiag } from './helpers';
 
 // الخلفية المتحركة: ما تثبتش بالغلط، وترجع لوحدها، وأسباب وقوفها واضحة، وشاشة التشخيص
 
@@ -11,7 +11,7 @@ async function moving(page: Page) {
   const b = await snap();
   return a !== '' && a !== b;
 }
-const expectMoving = (page: Page, v = true) => expect.poll(() => moving(page), { timeout: 10_000 }).toBe(v);
+const expectMoving = (page: Page, v = true) => withMotionDiag(page, `moving=${v}`, () => expect.poll(() => moving(page), { timeout: 10_000 }).toBe(v));
 /** الحارس شغال في الاختبار حتى في npm run dev (بالمفتاح بتاع الاختبار) */
 const guardOn = (page: Page) => page.addInitScript(() => localStorage.setItem('bg-guard-dev', '1'));
 async function setHidden(page: Page, h: boolean) {

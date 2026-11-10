@@ -35,7 +35,7 @@ test('الإضافات: عطل جاهز بيملا العطل والتكلفة �
   await page.getByLabel('اسم العميل').fill('عميل الإضافات');
   await page.getByRole('button', { name: 'Samsung', exact: true }).click();
   await page.getByLabel('الموديل').fill('A54');
-  await page.getByTestId('intake-presets').getByRole('button', { name: /شاشة A54/ }).click();
+  await page.getByTestId('intake-presets').getByRole('button', { name: /^شاشة A54/ }).click();
   await expect(page.getByLabel('العطل زي ما العميل وصفه')).toHaveValue('تغيير شاشة أصلية');
   await expect(page.getByLabel('التكلفة التقديرية')).toHaveValue('1,500.50');
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();

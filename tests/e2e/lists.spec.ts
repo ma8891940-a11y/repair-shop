@@ -31,8 +31,8 @@ test('القوائم: ماركة جديدة ← بتظهر في الاستلام
   await expect(page.getByText('اتضاف «بنفسجي» للقايمة')).toBeVisible();
   await expect(page.getByTestId('inline-add-colors')).toHaveCount(0);
   // الحالة الشكلية بدوسة، والموديل الجديد بـ "إضافة للقائمة"
-  await page.getByTestId('condition-chips').getByRole('button', { name: 'خدوش' }).click();
-  await page.getByTestId('condition-chips').getByRole('button', { name: 'خبطة' }).click();
+  await page.getByTestId('condition-chips').getByRole('button', { name: 'خدوش', exact: true }).click();
+  await page.getByTestId('condition-chips').getByRole('button', { name: 'خبطة', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'الحالة الشكلية' })).toHaveValue('خدوش، خبطة');
   await page.getByLabel('الموديل').fill('Phone 2a');
   await page.getByTestId('inline-add-models').click();

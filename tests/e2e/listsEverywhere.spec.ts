@@ -6,10 +6,10 @@ import { afterSplash, prefs, registerShop, uniq } from './helpers';
 const BRAND = `Nothing${Date.now() % 1000}`;
 
 async function openCombo(page: Page, testid: string, typed: string) {
-  const input = page.getByTestId(testid);
+  const input = page.getByTestId(testid).first();
   await input.click();
   await input.fill(typed);
-  return page.getByTestId(`${testid}-menu`);
+  return page.getByTestId(`${testid}-menu`).first();
 }
 
 test('قوائم الملء السريع: ماركة من الاستلام ← المخزون والجرد ← حذف من القايمة المنسدلة ← القديم زي ما هو ← من غير نت', async ({ page, context }, info) => {
@@ -35,10 +35,10 @@ test('قوائم الملء السريع: ماركة من الاستلام ← �
   await afterSplash(page);
   await page.getByRole('button', { name: 'صنف جديد' }).click();
   const dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف', { exact: true }).fill(`شاشة ${BRAND}`);
+  await dlg.getByLabel(/^الصنف/).first().fill(`شاشة ${BRAND}`);
   const m2 = await openCombo(page, 'new-item-brand', BRAND.slice(0, 5));
   await m2.getByTestId('list-option').filter({ hasText: BRAND }).getByRole('button').first().click();
-  await expect(page.getByTestId('new-item-brand')).toHaveValue(BRAND);
+  await expect(page.getByTestId('new-item-brand').first()).toHaveValue(BRAND);
   await dlg.getByRole('button', { name: 'حفظ', exact: true }).click();
   await expect(page.getByTestId('item-row').filter({ hasText: `شاشة ${BRAND}` })).toBeVisible();
   // وفلتر الماركة فيه الماركة

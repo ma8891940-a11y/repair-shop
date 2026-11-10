@@ -85,3 +85,27 @@ begin
 end $$;
 revoke execute on function public.items_stock(boolean) from public, anon;
 grant execute on function public.items_stock(boolean) to authenticated;
+
+-- ---------- بنود المصروفات من نافذة المصروف نفسها (بنفس صلاحية القوايم) ----------
+-- بند المصروف حساب في الدفتر: الإضافة حساب جديد، و"الحذف" بيقفله بس (قيوده القديمة زي ما هي)
+create or replace function public.add_expense_type(p_id uuid, p_name text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); nm text := trim(coalesce(p_name, ''));
+begin
+  if s is null or not public.can_edit_lists() then raise exception 'E_FORBIDDEN'; end if;
+  if nm = '' or length(nm) > 80 then raise exception 'E_BAD_INPUT'; end if;
+  if exists (select 1 from public.accounts where id = p_id) then return p_id; end if;
+  insert into public.accounts(id, shop_id, name, type, kind) values (p_id, s, nm, 'expense', 'expense');
+  return p_id;
+end $$;
+
+create or replace function public.hide_expense_type(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id();
+begin
+  if s is null or not public.can_edit_lists() then raise exception 'E_FORBIDDEN'; end if;
+  update public.accounts set active = false where id = p_id and shop_id = s and kind = 'expense' and deleted_at is null;
+  if not found then raise exception 'E_NOT_FOUND'; end if;
+end $$;
+revoke execute on function public.add_expense_type(uuid, text), public.hide_expense_type(uuid) from public, anon;
+grant execute on function public.add_expense_type(uuid, text), public.hide_expense_type(uuid) to authenticated;
