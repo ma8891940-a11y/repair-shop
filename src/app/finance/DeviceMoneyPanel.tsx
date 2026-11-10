@@ -312,7 +312,8 @@ function ManualPartPanel({ deviceId, status, onChanged }: { deviceId: string; st
             ))}
           </Select>
         </Field>
-        <Button loading={busy} icon={<PackageMinus className="size-4" />} onClick={() => void add()} data-testid="manual-part-add">
+        {/* بيستنى قايمة الخزن (كان ممكن يتداس قبلها فيتبعت من غير خزنة) */}
+        <Button loading={busy || (!cbs.data && !cbs.error)} disabled={!cashbox} icon={<PackageMinus className="size-4" />} onClick={() => void add()} data-testid="manual-part-add">
           {t('parts.manualAdd')}
         </Button>
       </div>

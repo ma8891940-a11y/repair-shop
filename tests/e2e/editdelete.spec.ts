@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { activateInvite, afterSplash, noHorizontalScroll, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
+import { activateInvite, afterSplash, noHorizontalScroll, prefs, quickIntake, registerShop, uniq, fillAmount, fillField } from './helpers';
 
 // البند 2: تعديل وحذف في كل حاجة، بقيد عكسي، وبسبب، وبتأكيد و"تراجع"، والصلاحية بإذن من صاحب المحل
 test('التعديل والإلغاء والحذف: دفعة بتتعدل وبتتلغي، والتراجع بيمنع الحذف، والاستقبال بإذن بس', async ({ page, browser }, info) => {
@@ -22,7 +22,7 @@ test('التعديل والإلغاء والحذف: دفعة بتتعدل وبت
   await fillAmount(dlg, '150');
   await dlg.getByRole('button', { name: 'احفظ التعديل' }).click();
   await expect(dlg.getByText('اكتب سبب التصحيح')).toBeVisible();
-  await dlg.getByLabel('السبب').fill('المبلغ اتكتب غلط');
+  await fillField(dlg.getByLabel('السبب'), 'المبلغ اتكتب غلط');
   await dlg.getByRole('button', { name: 'احفظ التعديل' }).click();
   await expect(page.getByText(/اتعدلت العملية رقم/)).toBeVisible();
   // الأصل لسه ظاهر متشطب ومكتوب عليه "ملغاة"، والجديد ساري
@@ -38,7 +38,7 @@ test('التعديل والإلغاء والحذف: دفعة بتتعدل وبت
   await page.goto(dev);
   await afterSplash(page);
   await page.getByTestId('payment-cancel').first().click();
-  await page.getByRole('dialog').getByLabel('السبب').fill('غلط');
+  await fillField(page.getByRole('dialog').getByLabel('السبب'), 'غلط');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل القيد العكسي' }).click();
   await page.getByRole('button', { name: 'تراجع' }).click();
   await expect(page.getByText('اتلغى، ومفيش حاجة اتغيرت')).toBeVisible();

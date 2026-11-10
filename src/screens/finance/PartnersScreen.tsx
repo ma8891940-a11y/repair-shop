@@ -271,7 +271,7 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" needsNet loading={busy} onClick={() => void save()} data-testid="partner-save">
+          <Button variant="primary" needsNet loading={busy || (isNew && !lists.data && !lists.error)} onClick={() => void save()} data-testid="partner-save">
             {t('common.save')}
           </Button>
         </>
@@ -478,7 +478,15 @@ function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" needsNet loading={busy} onClick={() => void save()} data-testid="partner-money-save">
+          {/* الحفظ بيستنى قايمة الخزن (كان ممكن يتداس قبلها فيتبعت من غير خزنة) */}
+          <Button
+            variant="primary"
+            needsNet
+            loading={busy || (!lists.data && !lists.error)}
+            disabled={(target?.kind === 'withdraw' || kind === 'cash') && !cashbox}
+            onClick={() => void save()}
+            data-testid="partner-money-save"
+          >
             {t('common.save')}
           </Button>
         </>

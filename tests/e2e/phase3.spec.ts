@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
-import { activateInvite, afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount } from './helpers';
+import { activateInvite, afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField } from './helpers';
 
 const DB = process.env.E2E_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
@@ -10,7 +10,7 @@ async function op(page: Page, name: string, fill: { amount: string; selects?: Re
   const dlg = page.getByRole('dialog');
   for (const [label, value] of Object.entries(fill.selects ?? {})) await dlg.getByLabel(label).selectOption({ label: value });
   await fillAmount(dlg, fill.amount);
-  if (fill.note) await dlg.getByLabel('البيان (اختياري)').fill(fill.note);
+  if (fill.note) await fillField(dlg.getByLabel('البيان (اختياري)'), fill.note);
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية').first()).toBeVisible();
   await expect(dlg).toHaveCount(0);
@@ -62,7 +62,7 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
 
   // تقفيل الدرج: معدود 6490 ← عجز 9.75
   await page.getByRole('button', { name: 'تقفيل الدرج' }).click();
-  await page.getByRole('dialog').getByLabel('المعدود فعلًا').fill('6490');
+  await fillField(page.getByRole('dialog').getByLabel('المعدود فعلًا'), '6490');
   await page.getByRole('dialog').getByRole('button', { name: 'قفّل الدرج' }).click();
   await expect(page.getByTestId('drawer-result')).toContainText('-9.75');
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق' }).last().click();
@@ -70,7 +70,7 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
 
   // تصحيح بقيد عكسي: المصروف بيرجع
   await page.getByTestId('move-row').filter({ hasText: 'إيجار مارس' }).getByRole('button', { name: 'تصحيح بقيد عكسي' }).click();
-  await page.getByRole('dialog').getByLabel('السبب').fill('اتسجل بالغلط');
+  await fillField(page.getByRole('dialog').getByLabel('السبب'), 'اتسجل بالغلط');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل القيد العكسي' }).click();
   // تراجع لثواني قبل ما يتنفذ، وبعدها الحركة الأصلية بتفضل ظاهرة متشطبة ومكتوب عليها "ملغاة"
   await expect(page.getByTestId('undo-countdown')).toBeVisible();
@@ -82,28 +82,28 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
   // المخزون: صنف، وشراء آجل، وبيع نقدي
   await page.goto('/#/inventory');
   await page.getByRole('button', { name: 'صنف جديد' }).click();
-  await page.getByRole('dialog').getByLabel('الصنف').fill('جراب سيليكون');
+  await fillField(page.getByRole('dialog').getByLabel('الصنف'), 'جراب سيليكون');
   await page.getByRole('dialog').getByLabel('النوع').selectOption('accessory');
-  await page.getByRole('dialog').getByLabel('سعر البيع').fill('75');
+  await fillField(page.getByRole('dialog').getByLabel('سعر البيع'), '75');
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتضاف الصنف')).toBeVisible();
   await page.getByRole('tab', { name: 'الموردين' }).click();
   await page.getByRole('button', { name: 'مورد جديد' }).click();
-  await page.getByRole('dialog').getByLabel('اسم المورد').fill('مورد الإكسسوارات');
+  await fillField(page.getByRole('dialog').getByLabel('اسم المورد'), 'مورد الإكسسوارات');
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتضاف المورد')).toBeVisible();
   await page.getByRole('tab', { name: 'الأصناف' }).click();
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   let dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ index: 1 });
-  await dlg.getByLabel('الكمية').fill('10');
-  await dlg.getByLabel('سعر الوحدة').fill('30');
+  await fillField(dlg.getByLabel('الكمية'), '10');
+  await fillField(dlg.getByLabel('سعر الوحدة'), '30');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل الشراء')).toBeVisible();
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ index: 1 });
-  await dlg.getByLabel('الكمية').fill('2');
+  await fillField(dlg.getByLabel('الكمية'), '2');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل البيع')).toBeVisible();
   // البيع النقدي دخل كاش الدرج (الخزنة الأولى)، مش أي خزنة تانية

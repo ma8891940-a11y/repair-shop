@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField } from './helpers';
 
 // البند 5: الشركاء: النسب لحد 100%، ورأس المال، وتوزيع الأرباح، والسحب مش مصروف، وكشف حساب الشريك
 test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزيع ← سحب (الربح زي ما هو) ← كشف حساب', async ({ page }, info) => {
@@ -13,8 +13,8 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
   const addPartner = async (name: string, share: string) => {
     await page.getByTestId('partners-add').click();
     const dlg = page.getByRole('dialog');
-    await dlg.getByLabel('اسم الشريك').fill(name);
-    await dlg.getByLabel('النسبة من صافي الربح').fill(share);
+    await fillField(dlg.getByLabel('اسم الشريك'), name);
+    await fillField(dlg.getByLabel('النسبة من صافي الربح'), share);
     await dlg.getByTestId('partner-save').click();
   };
   await addPartner('أحمد', '60');
@@ -39,27 +39,27 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
   await afterSplash(page);
   await page.getByRole('tab', { name: 'الموردين' }).click();
   await page.getByRole('button', { name: 'مورد جديد' }).click();
-  await page.getByRole('dialog').getByLabel('اسم المورد').fill('مورد');
+  await fillField(page.getByRole('dialog').getByLabel('اسم المورد'), 'مورد');
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتضاف المورد')).toBeVisible();
   await page.getByRole('tab', { name: 'الأصناف' }).click();
   await page.getByRole('button', { name: 'صنف جديد' }).click();
-  await page.getByRole('dialog').getByLabel('الصنف').fill('جراب');
+  await fillField(page.getByRole('dialog').getByLabel('الصنف'), 'جراب');
   await page.getByRole('dialog').getByLabel('النوع').selectOption('accessory');
-  await page.getByRole('dialog').getByLabel('سعر البيع').fill('50');
+  await fillField(page.getByRole('dialog').getByLabel('سعر البيع'), '50');
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتضاف الصنف')).toBeVisible();
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   let dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ index: 1 });
-  await dlg.getByLabel('الكمية').fill('10');
-  await dlg.getByLabel('سعر الوحدة').fill('20');
+  await fillField(dlg.getByLabel('الكمية'), '10');
+  await fillField(dlg.getByLabel('سعر الوحدة'), '20');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل الشراء')).toBeVisible();
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ index: 1 });
-  await dlg.getByLabel('الكمية').fill('10');
+  await fillField(dlg.getByLabel('الكمية'), '10');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل البيع')).toBeVisible();
 
@@ -103,10 +103,10 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
   await afterSplash(page);
   await page.getByTestId('partners-add').click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('اسم الشريك').fill('كريم');
-  await dlg.getByLabel('النسبة من صافي الربح').fill('5');
+  await fillField(dlg.getByLabel('اسم الشريك'), 'كريم');
+  await fillField(dlg.getByLabel('النسبة من صافي الربح'), '5');
   await dlg.getByTestId('cap-kind-cash').click();
-  await dlg.getByTestId('cap-amount').fill('50000');
+  await fillField(dlg.getByTestId('cap-amount'), '50000');
   await dlg.getByTestId('partner-save').click();
   await expect(page.getByText('اتحفظ الشريك')).toBeVisible();
   await expect(page.getByTestId('partner-row').filter({ hasText: 'كريم' }).getByTestId('partner-capital')).toContainText('50,000');
@@ -114,12 +114,12 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
   // وشريك داخل ببضاعة (3 جرابات × 20): المخزون بيزيد
   await page.getByTestId('partners-add').click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('اسم الشريك').fill('منير');
-  await dlg.getByLabel('النسبة من صافي الربح').fill('0');
+  await fillField(dlg.getByLabel('اسم الشريك'), 'منير');
+  await fillField(dlg.getByLabel('النسبة من صافي الربح'), '0');
   await dlg.getByTestId('cap-kind-goods').click();
   await dlg.getByLabel('الصنف 1', { exact: true }).selectOption({ label: 'جراب' });
-  await dlg.getByLabel('الكمية 1', { exact: true }).fill('3');
-  await dlg.getByLabel('تكلفة الوحدة 1', { exact: true }).fill('20');
+  await fillField(dlg.getByLabel('الكمية 1', { exact: true }), '3');
+  await fillField(dlg.getByLabel('تكلفة الوحدة 1', { exact: true }), '20');
   await dlg.getByTestId('partner-save').click();
   await expect(page.getByTestId('partner-row').filter({ hasText: 'منير' }).getByTestId('partner-capital')).toContainText('60');
 

@@ -24,6 +24,8 @@ export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { p
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
   const seq = useRef(0);
+  // محاولات تانية بعد فشل شبكة والنت شغال (طلب واحد ممكن يفشل والسيرفر مشغول)
+  const retries = useRef(0);
   const fnRef = useRef(fn);
   fnRef.current = fn;
 
@@ -34,6 +36,7 @@ export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { p
       .current()
       .then((d) => {
         if (my !== seq.current) return;
+        retries.current = 0;
         setData(d);
         setError(null);
         setStale(null);
@@ -42,7 +45,15 @@ export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { p
       })
       .catch(async (e: unknown) => {
         if (my !== seq.current) return;
-        if (keyRef.current && (isNetworkError(e) || (typeof navigator !== 'undefined' && !navigator.onLine))) {
+        const online = typeof navigator === 'undefined' || navigator.onLine;
+        // فشل شبكة والنت شغال: نحاول تاني لوحدنا (بعد 1 ثم 2 ثم 4 ثواني)، بدل ما نفضل على النسخة القديمة
+        if (isNetworkError(e) && online && retries.current < 3) {
+          const wait = 1000 * 2 ** retries.current++;
+          setTimeout(() => {
+            if (my === seq.current) setTick((x) => x + 1);
+          }, wait);
+        }
+        if (keyRef.current && (isNetworkError(e) || !online)) {
           const c = await cacheGet<T>(localDb(), keyRef.current).catch(() => null);
           if (my !== seq.current) return;
           if (c) {
@@ -66,7 +77,18 @@ export function useLoad<T>(fn: () => Promise<T>, deps: DependencyList, opts: { p
     return () => clearInterval(t);
   }, [opts.pollMs]);
 
-  const reload = useCallback(() => setTick((x) => x + 1), []);
+  // النسخة المعروضة قديمة (من الجهاز): أول ما النت يرجع بنحمّل تاني
+  useEffect(() => {
+    if (stale == null) return;
+    const on = () => setTick((x) => x + 1);
+    window.addEventListener('online', on);
+    return () => window.removeEventListener('online', on);
+  }, [stale]);
+
+  const reload = useCallback(() => {
+    retries.current = 0;
+    setTick((x) => x + 1);
+  }, []);
   return { data, error, loading: loading && data === undefined, reload, stale };
 }
 

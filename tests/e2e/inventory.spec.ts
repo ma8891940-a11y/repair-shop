@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { afterSplash, noHorizontalScroll, prefs, quickIntake, registerShop, uniq } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, quickIntake, registerShop, uniq, fillField } from './helpers';
 
 // البند 3: المخزون قسم مستقل بحساباته
 test('المخزون: استيراد Excel ← شراء ← هالك ← مرتجع مورد ← بيع ومرتجع عميل ← باركود وبحث ← حركة الصنف ← تعديل جماعي ← حسابات المخزون ← قطعة يدوية', async ({ page }, info) => {
@@ -15,7 +15,7 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await afterSplash(page);
   await page.getByRole('tab', { name: 'الموردين' }).click();
   await page.getByRole('button', { name: 'مورد جديد' }).click();
-  await page.getByRole('dialog').getByLabel('اسم المورد').fill('مورد القطع');
+  await fillField(page.getByRole('dialog').getByLabel('اسم المورد'), 'مورد القطع');
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتضاف المورد')).toBeVisible();
   await page.getByRole('tab', { name: 'الأصناف' }).click();
@@ -37,8 +37,8 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   let dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (0)' });
-  await dlg.getByLabel('الكمية').fill('10');
-  await dlg.getByLabel('سعر الوحدة').fill('20');
+  await fillField(dlg.getByLabel('الكمية'), '10');
+  await fillField(dlg.getByLabel('سعر الوحدة'), '20');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل الشراء')).toBeVisible();
 
@@ -48,7 +48,7 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (10)' });
   await dlg.getByTestId('invop-submit').click();
   await expect(dlg.getByText('اكتب سبب التصحيح')).toBeVisible();
-  await dlg.getByLabel('السبب').fill('اتقطع');
+  await fillField(dlg.getByLabel('السبب'), 'اتقطع');
   await dlg.getByTestId('invop-submit').click();
   await expect(page.getByText('اتسجل الهالك')).toBeVisible();
 
@@ -58,8 +58,8 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (9)' });
   await dlg.getByRole('combobox', { name: /^المورد/ }).selectOption({ label: 'مورد القطع' });
   await expect(dlg.getByText('تكلفتها عندك 20')).toBeVisible();
-  await dlg.getByLabel('المورد هيرجّع أو هيخصم').fill('15');
-  await dlg.getByLabel('السبب').fill('لون غلط');
+  await fillField(dlg.getByLabel('المورد هيرجّع أو هيخصم'), '15');
+  await fillField(dlg.getByLabel('السبب'), 'لون غلط');
   await dlg.getByTestId('invop-submit').click();
   await expect(page.getByText('اتسجل المرتجع للمورد')).toBeVisible();
 
@@ -67,14 +67,14 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (8)' });
-  await dlg.getByLabel('الكمية').fill('3');
+  await fillField(dlg.getByLabel('الكمية'), '3');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل البيع')).toBeVisible();
   await page.getByTestId('op-sale_return').click();
   dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (5)' });
-  await dlg.getByLabel('المبلغ اللي هيرجع للعميل').fill('50');
-  await dlg.getByLabel('السبب').fill('غيّر رأيه');
+  await fillField(dlg.getByLabel('المبلغ اللي هيرجع للعميل'), '50');
+  await fillField(dlg.getByLabel('السبب'), 'غيّر رأيه');
   await dlg.getByTestId('invop-submit').click();
   await expect(page.getByText('اتسجل المرتجع من العميل')).toBeVisible();
   await expect(page.getByTestId('item-row').filter({ hasText: 'جراب شفاف' })).toContainText('6');
@@ -105,7 +105,7 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await expect(page.getByTestId('item-row')).toHaveCount(2);
   for (const r of await page.getByTestId('item-row').all()) await r.getByRole('checkbox').click();
   await page.getByTestId('bulk-edit').click();
-  await page.getByRole('dialog').getByLabel('التصنيف').fill('مستلزمات');
+  await fillField(page.getByRole('dialog').getByLabel('التصنيف'), 'مستلزمات');
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتعدّل 2 صنف')).toBeVisible();
   await expect(page.getByTestId('item-row').filter({ hasText: 'مستلزمات' })).toHaveCount(2);
@@ -125,8 +125,8 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await page.getByRole('checkbox', { name: 'ربط المخزون بالصيانة' }).click();
   await expect(page.getByText('اتحفظ').first()).toBeVisible();
   await quickIntake(page, `011${String(Date.now()).slice(-8)}`, 'عميل القطعة');
-  await page.getByTestId('manual-part-name').fill('فلاتة شحن');
-  await page.getByTestId('manual-part-cost').fill('120');
+  await fillField(page.getByTestId('manual-part-name'), 'فلاتة شحن');
+  await fillField(page.getByTestId('manual-part-cost'), '120');
   await page.getByTestId('manual-part-add').click();
   await expect(page.getByText('اتسجلت القطعة على الجهاز')).toBeVisible();
   // تكلفة القطع على الجهاز (صاحب المحل بيشوفها)

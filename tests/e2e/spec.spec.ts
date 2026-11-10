@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField } from './helpers';
 
 test('استكمال المواصفات: أجرة العطل والسعر المقترح، النواقص والباركود، التوقيع على الإيصال، والمتبقي في صفحة التتبع', async ({ page, browser }, info) => {
   test.setTimeout(180_000);
@@ -21,30 +21,30 @@ test('استكمال المواصفات: أجرة العطل والسعر الم
   await page.goto('/#/inventory');
   await page.getByRole('tab', { name: 'الموردين' }).click();
   await page.getByRole('button', { name: 'مورد جديد' }).click();
-  await page.getByRole('dialog').getByLabel('اسم المورد').fill('مورد الشاشات');
-  await page.getByRole('dialog').getByLabel('الموبايل').fill('01222222222');
+  await fillField(page.getByRole('dialog').getByLabel('اسم المورد'), 'مورد الشاشات');
+  await fillField(page.getByRole('dialog').getByLabel('الموبايل'), '01222222222');
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();
   await page.getByRole('tab', { name: 'الأصناف' }).click();
   await page.getByRole('button', { name: 'صنف جديد' }).click();
   let dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').fill('شاشة A54');
-  await dlg.getByLabel('الكود (اختياري)').fill('٦٢٢٠٠١');
-  await dlg.getByLabel('سعر البيع').fill('900');
-  await dlg.getByLabel('الحد الأدنى').fill('2');
+  await fillField(dlg.getByLabel('الصنف'), 'شاشة A54');
+  await fillField(dlg.getByLabel('الكود (اختياري)'), '٦٢٢٠٠١');
+  await fillField(dlg.getByLabel('سعر البيع'), '900');
+  await fillField(dlg.getByLabel('الحد الأدنى'), '2');
   await dlg.getByLabel('المورد الأساسي').selectOption({ label: 'مورد الشاشات' });
   await dlg.getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('اتضاف الصنف')).toBeVisible();
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   dlg = page.getByRole('dialog');
   await dlg.getByLabel('الصنف').selectOption({ index: 1 });
-  await dlg.getByLabel('الكمية').fill('3');
-  await dlg.getByLabel('سعر الوحدة').fill('500');
+  await fillField(dlg.getByLabel('الكمية'), '3');
+  await fillField(dlg.getByLabel('سعر الوحدة'), '500');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل الشراء')).toBeVisible();
   // بيع بالباركود (أرقام عربية) ← الكمية 2 وده الحد الأدنى فالصنف يبقى ناقص
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('باركود').fill('622001');
+  await fillField(dlg.getByLabel('باركود'), '622001');
   await dlg.getByLabel('باركود').press('Enter');
   await expect(dlg.getByLabel('الكمية')).toHaveValue('1');
   await dlg.getByRole('button', { name: 'سجّل' }).click();

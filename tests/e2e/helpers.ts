@@ -188,6 +188,23 @@ export async function fillAmount(dlg: Locator, value: string) {
   if (await form.count()) await expect(form.first()).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
   const input = dlg.getByLabel('المبلغ');
   await expect(input).toBeEditable();
-  await input.fill(value);
+  await fillField(input, value);
+}
+
+/**
+ * بيكتب في خانة (Locator) ويتأكد إن النص وصل، ولو ضاع بيكتب تاني (لحد 4 مرات).
+ * اتأكدنا بالتتبع (trace) إن تحت ضغط التشغيل الكامل، أول كتابة بعد ما نافذة تفتح على طول ممكن توصل للمتصفح
+ * من غير ما React يستلمها، فالخانة بترجع فاضية. النتيجة المطلوبة نفسها ما بتتغيرش: القيمة لازم توصل.
+ */
+export async function fillField(input: Locator, value: string) {
+  for (let i = 0; i < 4; i++) {
+    await input.fill(value);
+    try {
+      await expect(input).toHaveValue(value, { timeout: 1500 });
+      return;
+    } catch {
+      /* ضاعت: نكتب تاني */
+    }
+  }
   await expect(input).toHaveValue(value);
 }

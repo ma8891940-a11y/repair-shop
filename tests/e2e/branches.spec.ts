@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { activateInvite, afterSplash, fillAmount, noHorizontalScroll, prefs, registerShop, uniq } from './helpers';
+import { activateInvite, afterSplash, fillAmount, noHorizontalScroll, prefs, registerShop, uniq, fillField } from './helpers';
 
 // B. الفروع: محل بفرع واحد بسيط زي ما هو، وفرع جديد ببادئة، ومبدّل الفروع، والجهاز في الطريق لفرع،
 // وخزن الفرع في الدفعة، ومقارنة الفروع، والموظف بيشوف فرعه بس
@@ -39,8 +39,8 @@ test('الفروع: فرع جديد ببادئة ← مبدّل الفروع ←
   await expect(bs.getByTestId('branch-row')).toHaveCount(1);
   await bs.getByTestId('branch-add').click();
   const dlg = page.getByRole('dialog');
-  await dlg.getByTestId('branch-name').fill('فرع المعادي');
-  await dlg.getByTestId('branch-prefix').fill('b2');
+  await fillField(dlg.getByTestId('branch-name'), 'فرع المعادي');
+  await fillField(dlg.getByTestId('branch-prefix'), 'b2');
   await expect(dlg.getByTestId('branch-prefix')).toHaveValue('B2');
   await dlg.getByTestId('branch-save').click();
   await expect(page.getByText('اتحفظ الفرع')).toBeVisible();
@@ -48,8 +48,8 @@ test('الفروع: فرع جديد ببادئة ← مبدّل الفروع ←
   await expect(bs.getByTestId('branch-row').filter({ hasText: 'فرع المعادي' })).toContainText(`B2-${year}-0001`);
   // نفس البادئة تاني ← رسالة واضحة
   await bs.getByTestId('branch-add').click();
-  await dlg.getByTestId('branch-name').fill('فرع تاني');
-  await dlg.getByTestId('branch-prefix').fill('B2');
+  await fillField(dlg.getByTestId('branch-name'), 'فرع تاني');
+  await fillField(dlg.getByTestId('branch-prefix'), 'B2');
   await dlg.getByTestId('branch-save').click();
   await expect(dlg.getByText('البادئة دي مستخدمة لفرع تاني')).toBeVisible();
   await dlg.getByRole('button', { name: 'إلغاء' }).click();
@@ -118,7 +118,7 @@ test('الفروع: فرع جديد ببادئة ← مبدّل الفروع ←
   await expect(cmp).toHaveCount(0);
 
   // 9) موظف استقبال بفرع المعادي بس: ما يشوفش أجهزة الرئيسي، ومفيش "كل الفروع"
-  await page.goto('/#/team');
+  await page.goto('/#/users');
   const em = uniq('br-rec');
   await page.getByLabel('الاسم').fill('استقبال المعادي');
   await page.getByLabel('الإيميل').fill(em);

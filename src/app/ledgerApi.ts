@@ -106,6 +106,8 @@ const cashboxBranch = new Map<string, string>();
  * B: لو العملية على خزنة، بتتسجل في فرع الخزنة دي (مش لازم يكون الفرع المعروض)، و branch بيحدد الفرع صراحة.
  */
 export async function rpc<T>(fn: string, args: Record<string, unknown> = {}, o: { branch?: string | null } = {}): Promise<T> {
+  // خزنة فاضية (القايمة لسه ما وصلتش): رسالة واضحة بدل خطأ 400 من السيرفر
+  if (args.p_cashbox === '') throw { message: 'E_BAD_ACCOUNT', code: 'P0001' };
   const b = o.branch ?? (typeof args.p_cashbox === 'string' ? cashboxBranch.get(args.p_cashbox) : undefined);
   let q = supabase.rpc(fn, args);
   if (b && getBranchHeader()) q = q.setHeader(BRANCH_HEADER, b);
