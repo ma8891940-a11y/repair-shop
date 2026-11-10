@@ -84,7 +84,7 @@ test('التواريخ في العربي (الشاشات، والإيصال، و
   // صفحة التتبع (العميل)
   await page.goto(dev);
   await afterSplash(page);
-  await page.getByRole('button', { name: 'واتساب' }).first().click();
+  await page.getByRole('button', { name: 'واتساب', exact: true }).first().click();
   const msg = await page.getByRole('dialog').getByLabel('معاينة').inputValue();
   const token = (msg.match(/#\/t\/([0-9a-f]{24})/) ?? [])[1];
   await page.keyboard.press('Escape');

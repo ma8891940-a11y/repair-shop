@@ -76,7 +76,7 @@ test('المساعد في كل مكان: الاستلام (من تاريخ ال�
   // 3) الحفظ ← صفحة الجهاز ← واتساب: المسودة بالمتغيرات والاسم بيتملي على الجهاز، و"تطبيق" بيحطها في الرسالة
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
   await page.getByRole('button', { name: 'فتح الجهاز' }).click();
-  await page.getByRole('button', { name: 'واتساب' }).first().click();
+  await page.getByRole('button', { name: 'واتساب', exact: true }).first().click();
   const dlg = page.getByRole('dialog');
   await dlg.getByTestId('assist-wa-ask').click();
   await expect(dlg.getByTestId('assist-wa-answer')).toContainText("أهلا سامح، جهازك Samsung A35");

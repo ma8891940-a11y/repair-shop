@@ -1,25 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PRINT, intakeDocs, pageSize, printChain, readPrint } from './printPlan';
+import { DEFAULT_PRINT, pageSize, printUrl, readPrint, readSticker, remaining, STICKER_LINES, STICKER_PAD_MM, STICKER_PRESETS, LINE_HEIGHT, stickerFont } from './printPlan';
 
-describe('الطباعة: يطبع إيه في كل خطوة', () => {
-  it('الافتراضي: استيكر حراري وإيصال ورقي في الاستلام، وفاتورة ورقية في التسليم', () => {
-    expect(readPrint(null)).toEqual(DEFAULT_PRINT);
-    expect(intakeDocs(DEFAULT_PRINT)).toEqual(['sticker', 'receipt-a4']);
-    expect(DEFAULT_PRINT.deliveryPaper).toBe(true);
+// S5 (تعديل): الاستيكر الصغير، والمقاسات، واللي بيتعمل تلقائي بعد الاستلام
+describe('إعدادات الطباعة', () => {
+  it('الافتراضي: استيكر 40×30 من غير إطار ولا إزاحة، ونسخة واحدة، ومفيش حاجة تلقائي', () => {
+    expect(readPrint({})).toEqual(DEFAULT_PRINT);
+    expect(DEFAULT_PRINT.sticker).toEqual({ w: 40, h: 30, frame: false, dx: 0, dy: 0, copies: 1 });
+    expect(STICKER_PRESETS.map(([w, h]) => `${w}x${h}`)).toEqual(['30x20', '38x25', '40x30', '50x25', '50x30', '58x40', '60x40']);
   });
-  it('مفتاح "اطبع تلقائي" القديم (auto_print) بيفضل شغال، والإعداد الجديد بيغلبه', () => {
-    expect(readPrint({ auto_print: true }).autoAfterIntake).toBe(true);
-    expect(readPrint({ auto_print: true, print: { autoAfterIntake: false } }).autoAfterIntake).toBe(false);
+  it('الإعدادات القديمة ("اطبع تلقائي") بتتنقل من غير ما حاجة تضيع', () => {
+    expect(readPrint({ auto_print: true }).auto).toEqual({ thermal: false, paper: true, sticker: true, qr: false, whatsapp: false });
+    expect(readPrint({ print: { autoAfterIntake: true, intakeSticker: false, intakeThermal: true } }).auto).toMatchObject({ sticker: false, thermal: true, paper: true });
+    expect(readPrint({ print: { auto: { whatsapp: true, qr: true } } }).auto).toEqual({ thermal: false, paper: false, sticker: false, qr: true, whatsapp: true });
   });
-  it('الترتيب ورا بعض، والمقاسات، والقيم الغلط بترجع للافتراضي', () => {
-    expect(printChain('d1', ['sticker', 'receipt', 'receipt-a4'])).toBe('/print/sticker/d1?next=receipt,receipt-a4');
-    expect(printChain('d1', ['receipt-a4'])).toBe('/print/receipt-a4/d1');
-    expect(printChain('d1', [])).toBeNull();
-    expect(pageSize('sticker', '50x30')).toBe('50mm 30mm');
-    expect(pageSize('sticker', '58x40')).toBe('58mm 40mm');
-    expect(pageSize('sticker', '80')).toBe('80mm auto');
-    expect(pageSize('invoice', '80')).toBe('A4');
-    expect(readPrint({ print: { stickerSize: '99', intakeSticker: 'yes' } })).toMatchObject({ stickerSize: '80', intakeSticker: true });
-    expect(intakeDocs(readPrint({ print: { intakeSticker: false, intakePaper: false } }))).toEqual([]);
+  it('المقاس اللي بيتكتب باليد: أرقام في حدود معقولة', () => {
+    expect(readSticker({ w: 200, h: 5, dx: -30, dy: 2.345, copies: 0 })).toEqual({ w: 120, h: 10, frame: false, dx: -10, dy: 2.3, copies: 1 });
+    expect(readSticker({ w: '40' })).toMatchObject({ w: 40 });
+    expect(pageSize('sticker', readSticker({ w: 38, h: 25 }))).toBe('38mm 25mm');
+  });
+  it('الباقي = التكلفة − المقدم، بأعداد صحيحة ومش أقل من صفر', () => {
+    expect(remaining(50_000, 20_000)).toBe(30_000);
+    expect(remaining(50_000, 60_000)).toBe(0);
+    expect(remaining(null, 100)).toBeNull();
+  });
+  it('الخط بيتظبط عشان السطور كلها تدخل في الارتفاع، في المقاسات السبعة', () => {
+    for (const [w, h] of STICKER_PRESETS) {
+      const f = stickerFont({ w, h });
+      const used = STICKER_LINES.reduce((a, l) => a + f[l.key] * LINE_HEIGHT, 0);
+      expect(used, `${w}x${h}`).toBeLessThanOrEqual(h - STICKER_PAD_MM * 2 + 0.05);
+      expect(f.order).toBeGreaterThan(f.name);
+      expect(f.date).toBeGreaterThan(0.9);
+    }
+  });
+  it('رابط الطباعة جوه الإطار المخفي', () => {
+    expect(printUrl('sticker', 'd1', { embed: true, no: '77' })).toBe('/print/sticker/d1?embed=1&no=77');
+    expect(printUrl('receipt-a4', 'd1')).toBe('/print/receipt-a4/d1');
   });
 });

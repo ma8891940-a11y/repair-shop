@@ -8,6 +8,7 @@ import { useShopList } from '../app/lists';
 import { ChipToggle } from '../ui/Checkbox';
 import { readExtras } from '../lib/extras';
 import { readPrint } from '../lib/printPlan';
+import { PrintSendPanel } from '../app/print/PrintSendPanel';
 import { useCanCorrect } from '../app/correct';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
@@ -366,6 +367,12 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                   version={moneyVer}
                   onChanged={reload}
                 />
+              )}
+              {/* "طباعة وإرسال": نفس أزرار شاشة الاستلام، عشان تطبع أو تبعت تاني بعدين */}
+              {front && (
+                <Panel className="p-4">
+                  <PrintSendPanel deviceId={id} />
+                </Panel>
               )}
               {(profile.role !== 'reception' || !readExtras(shop.extras).link_inventory) && (
                 <PartsPanel

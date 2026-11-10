@@ -41,7 +41,7 @@ test('المرحلة 2: قالب رسالة ← استلام بفحص ← وات
   const deviceHash = page.url().replace(/^.*#/, '/#');
 
   // 3) واتساب بالقالب المعدّل: الرابط wa.me برقم دولي والنص فيه رابط التتبع
-  await page.getByRole('button', { name: 'واتساب' }).first().click();
+  await page.getByRole('button', { name: 'واتساب', exact: true }).first().click();
   const dlg = page.getByRole('dialog');
   await dlg.getByLabel('الرسالة').selectOption('received');
   const text = await dlg.getByLabel('معاينة').inputValue();

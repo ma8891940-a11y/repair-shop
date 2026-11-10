@@ -42,7 +42,11 @@ export function ExtrasTab() {
     const raw = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
     const patch: Record<string, unknown> = { [k]: v };
     // "اطبع تلقائي" هو نفس خيار الإعدادات ← الطباعة
-    if (k === 'auto_print') patch.print = { ...readPrint(raw), autoAfterIntake: v };
+    if (k === 'auto_print') {
+      // (S5) "اطبع تلقائي" هنا = الاستيكر والإيصال الورقي تلقائي بعد الاستلام (الإعدادات ← الطباعة فيها التفاصيل)
+      const cur = readPrint(raw);
+      patch.print = { ...((raw.print as object) ?? {}), auto: { ...cur.auto, sticker: v, paper: v } };
+    }
     const { error } = await supabase.from('shops').update({ extras: { ...raw, ...extras, ...patch } }).eq('id', shop.id);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await refresh();
@@ -73,7 +77,7 @@ export function ExtrasTab() {
         <div className="flex flex-col gap-4 p-4">
           {(['quick_issues', 'auto_print', 'day_summary', 'link_inventory'] as const).map((k) => (
             <div key={k}>
-              <Checkbox checked={k === 'auto_print' ? readPrint(shop.extras).autoAfterIntake : extras[k]} onChange={(v) => void toggle(k, v)} label={t(`extras.${k}.name`)} />
+              <Checkbox checked={k === 'auto_print' ? readPrint(shop.extras).auto.sticker || readPrint(shop.extras).auto.paper : extras[k]} onChange={(v) => void toggle(k, v)} label={t(`extras.${k}.name`)} />
               <p className="ms-7 mt-0.5 text-2xs text-fg-3">{t(`extras.${k}.hint`)}</p>
             </div>
           ))}

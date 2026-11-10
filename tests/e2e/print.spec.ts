@@ -1,30 +1,92 @@
-import { expect, test } from '@playwright/test';
-import { afterSplash, prefs, registerShop, uniq, fillAmount } from './helpers';
+import { expect, test, type Page } from '@playwright/test';
+import { afterSplash, fillAmount, prefs, registerShop, uniq } from './helpers';
 
-// S5 الطباعة: الإعدادات لكل خطوة، والاستيكر الحراري فيه كل البيانات بالـ 3 مقاسات، وإيصال A4، وفاتورة التسليم
-test('الطباعة: الافتراضي صح، والاستيكر كامل بكل مقاس، والطباعة التلقائية بالترتيب، وفاتورة التسليم فيها المدفوع والفاضل والضمان', async ({ page }, info) => {
-  test.setTimeout(240_000);
+// S5 (تعديل صاحب المشروع): استيكر صغير وبسيط بمقاسات، و"طباعة وإرسال" في شاشة الاستلام نفسها وصفحة الجهاز
+const PRESETS = ['30x20', '38x25', '40x30', '50x25', '50x30', '58x40', '60x40'];
+
+/** كل سطر في الاستيكر جوه حدوده (من غير ما يطلع بره)، والمحتوى كله داخل في الارتفاع */
+async function fitsInside(page: Page, testid: string) {
+  return page.getByTestId(testid).first().evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    // السطور نفسها (مش الأجزاء اللي جوه سطر الفلوس، دي بتتقص بـ "..." جوه السطر)
+    const lines = [...el.children] as HTMLElement[];
+    const out = lines
+      .filter((c) => {
+        const r = c.getBoundingClientRect();
+        return !(r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5 && r.left >= box.left - 0.5 && r.right <= box.right + 0.5);
+      })
+      .map((c) => `${c.dataset.testid}:${Math.round(c.getBoundingClientRect().bottom - box.bottom)}`);
+    return { inside: out.length === 0, out: out.join(','), fitsHeight: el.scrollHeight <= el.clientHeight + 1, sh: el.scrollHeight, ch: el.clientHeight, lines: lines.length };
+  });
+}
+
+test('الاستيكر: المقاسات السبعة كل البيانات جوه حدوده، والمقاس باليد والإطار والإزاحة والنسخ بيتحفظوا', async ({ page }, info) => {
+  test.setTimeout(180_000);
   await prefs(page, info);
   await page.addInitScript(() => {
     window.print = () => undefined;
   });
-  await registerShop(page, uniq('print'), 'محل الطباعة');
-
-  // 1) الإعدادات ← الطباعة: الافتراضي (استيكر + ورقي في الاستلام، وورقي في التسليم، ومن غير تلقائي)
+  await registerShop(page, uniq('stk'), 'محل الاستيكر');
   await page.goto('/#/settings?tab=print');
-  const box = (name: string) => page.getByTestId('print-settings').getByRole('checkbox', { name });
-  await expect(box('استيكر حراري يتلزق على الجهاز')).toHaveAttribute('data-state', 'checked');
-  await expect(box('إيصال استلام ورقي (A4)')).toHaveAttribute('data-state', 'checked');
-  await expect(box('إيصال استلام حراري (80مم)')).toHaveAttribute('data-state', 'unchecked');
-  await expect(box('فاتورة تسليم ورقية (A4)')).toHaveAttribute('data-state', 'checked');
-  await expect(box('اطبع تلقائي بعد الاستلام')).toHaveAttribute('data-state', 'unchecked');
-  await expect(page.getByTestId('sticker-size')).toHaveValue('80');
-  await box('اطبع تلقائي بعد الاستلام').click();
-  await expect(box('اطبع تلقائي بعد الاستلام')).toHaveAttribute('data-state', 'checked');
+  const ps = page.getByTestId('print-settings');
+  // الافتراضي: 40×30، ومفيش حاجة تلقائي
+  await expect(ps.getByTestId('preset-40x30')).toHaveAttribute('aria-pressed', 'true');
+  for (const a of ['طباعة حرارية (إيصال الاستلام)', 'طباعة ورقية (إيصال A4)', 'استيكر الجهاز', 'ملصق QR للتتبع', 'إرسال واتساب للعميل']) {
+    await expect(ps.getByRole('checkbox', { name: a })).toHaveAttribute('data-state', 'unchecked');
+  }
+  await expect(ps).toContainText('الهوامش None');
+  // المعاينة الحية: كل مقاس، والبيانات كلها جوه
+  for (const p of PRESETS) {
+    await ps.getByTestId(`preset-${p}`).click();
+    await expect(ps.getByTestId('preview-sticker')).toHaveAttribute('data-size', p);
+    const r = await fitsInside(page, 'preview-sticker');
+    expect(r, p).toMatchObject({ inside: true, fitsHeight: true, lines: 6 });
+  }
+  // المقاس باليد، والإطار، والإزاحة، والنسخ ← بعد إعادة التحميل زي ما هي
+  await ps.getByTestId('sticker-w').fill('45');
+  await ps.getByTestId('sticker-h').fill('28');
+  await ps.getByRole('button', { name: 'احفظ المقاس' }).click();
+  await expect(ps.getByTestId('preview-sticker')).toHaveAttribute('data-size', '45x28');
+  await ps.getByRole('checkbox', { name: 'طباعة الإطار حوالين الاستيكر' }).click();
+  await ps.getByTestId('sticker-dx').fill('1.5');
+  await ps.getByTestId('sticker-dx').blur();
+  await ps.getByTestId('sticker-copies').fill('2');
+  await page.waitForTimeout(600);
+  await page.reload();
+  await afterSplash(page);
+  await expect(page.getByTestId('preview-sticker')).toHaveAttribute('data-size', '45x28');
+  await expect(page.getByRole('checkbox', { name: 'طباعة الإطار حوالين الاستيكر' })).toHaveAttribute('data-state', 'checked');
+  await expect(page.getByTestId('sticker-dx')).toHaveValue('1.5');
+  await expect(page.getByTestId('sticker-copies')).toHaveValue('2');
+  // طباعة اختبار (إطار ومسطرة) بالمقاس
+  await page.goto('/#/print/sticker-test/test');
+  await expect(page.getByTestId('sticker-test')).toContainText('45 × 28 mm');
+});
 
-  // 2) الاستلام بتقدير 500: الحفظ بيفتح الاستيكر الأول، وبعده إيصال A4
+test('طباعة وإرسال في شاشة الاستلام: التلقائي بيتعمل لوحده، وكل زرار بضغطة وعلامة، والاستيكر فيه الباقي صح، ورقم محفوظ، وصفحة الجهاز فيها نفس الأزرار', async ({ page }, info) => {
+  test.setTimeout(240_000);
+  await prefs(page, info);
+  await page.addInitScript(() => {
+    window.print = () => undefined;
+    (window as unknown as { __opened: string[] }).__opened = [];
+    window.open = ((u: string) => {
+      (window as unknown as { __opened: string[] }).__opened.push(String(u));
+      return {} as Window;
+    }) as typeof window.open;
+  });
+  await registerShop(page, uniq('psend'), 'محل الطباعة');
+  // تلقائي بعد الاستلام: الاستيكر والورقي والـ QR
+  await page.goto('/#/settings?tab=print');
+  const ps = page.getByTestId('print-settings');
+  for (const a of ['استيكر الجهاز', 'طباعة ورقية (إيصال A4)', 'ملصق QR للتتبع']) {
+    await ps.getByRole('checkbox', { name: a }).click();
+    await expect(ps.getByRole('checkbox', { name: a })).toHaveAttribute('data-state', 'checked');
+  }
+
+  // الاستلام بتقدير 500، وEnter في آخر خانة بيحفظ
   const phone = `010${String(Date.now()).slice(-8)}`;
   await page.goto('/#/intake');
+  await afterSplash(page);
   await page.locator('#intake-phone').fill(phone);
   await page.getByLabel('اسم العميل').fill('عميل الطباعة');
   await page.getByRole('button', { name: 'Samsung', exact: true }).click();
@@ -32,43 +94,34 @@ test('الطباعة: الافتراضي صح، والاستيكر كامل بك
   await page.getByLabel('العطل زي ما العميل وصفه').fill('شاشة مكسورة');
   await page.getByLabel('التكلفة التقديرية').fill('500');
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
-  await expect(page).toHaveURL(/#\/print\/sticker\/.*next=receipt-a4/);
-  const st = page.getByTestId('print-sticker');
-  await expect(st).toHaveAttribute('data-size', '80');
-  await expect(st.getByTestId('sticker-order')).not.toBeEmpty();
-  await expect(st.getByTestId('sticker-customer')).toHaveText('عميل الطباعة');
-  await expect(st.getByTestId('sticker-phone')).toHaveText(phone);
-  await expect(st.getByTestId('sticker-issue')).toContainText('شاشة مكسورة');
-  await expect(st.getByTestId('sticker-issue')).toContainText('A35');
-  await expect(st.getByTestId('sticker-total')).toContainText('500');
-  await expect(st.getByTestId('sticker-paid')).toContainText('0');
-  await expect(st.getByTestId('sticker-due')).toContainText('500');
-  await expect(st.getByTestId('sticker-date')).not.toBeEmpty();
-  await expect(st.locator('img')).toHaveCount(1); // QR صغير
-  const stickerUrl = page.url().replace(/^.*#/, '/#').split('?')[0];
-  const id = stickerUrl.split('/').pop()!;
+  const panel = page.getByTestId('print-send');
+  await expect(panel).toBeVisible();
+  // اللي متعلّم تلقائي اتعمل من نفس الشاشة، والباقي لسه
+  for (const a of ['sticker', 'paper', 'qr']) await expect(panel.getByTestId(`ps-${a}-done`)).toHaveAttribute('data-done', 'true', { timeout: 30_000 });
+  for (const a of ['thermal', 'whatsapp']) await expect(panel.getByTestId(`ps-${a}-done`)).toHaveAttribute('data-done', 'false');
+  await expect(page).toHaveURL(/#\/intake/);
+  // الحراري بضغطة
+  await panel.getByTestId('ps-thermal').click();
+  await expect(panel.getByTestId('ps-thermal-done')).toHaveAttribute('data-done', 'true', { timeout: 30_000 });
+  // واتساب: رسالة الاستلام برابط التتبع
+  await panel.getByTestId('ps-whatsapp').click();
+  await expect(panel.getByTestId('ps-whatsapp-done')).toContainText('اتبعت');
+  const wa = (await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened)).find((u) => u.startsWith('https://wa.me/'))!;
+  expect(decodeURIComponent(wa)).toMatch(/#\/t\/[0-9a-f]{24}/);
+  // رقم محفوظ: بيفضل بعد إعادة التحميل، وبيتطبع على الاستيكر لو اتختار
+  await panel.getByTestId('saved-number').fill('A-777');
+  await panel.getByTestId('saved-number-use').click();
+  await panel.getByTestId('ps-sticker').click();
+  await expect.poll(() => page.locator('[data-testid="print-frame"]').last().getAttribute('src').catch(() => ''), { timeout: 10_000 }).toContain('no=A-777');
+  await page.keyboard.press('Escape');
 
-  await page.getByTestId('print-next').click();
-  await expect(page).toHaveURL(new RegExp(`#/print/receipt-a4/${id}`));
-  const a4 = page.getByTestId('print-receipt-a4');
-  await expect(a4).toBeVisible();
-  await expect(a4.getByTestId('shop-name-big').or(a4.locator('img[alt="محل الطباعة"]')).first()).toBeVisible();
-  await expect(a4).toContainText('شاشة مكسورة');
-  await expect(a4.getByTestId('print-terms')).toBeVisible();
-
-  // 3) المقاسين التانيين: نفس البيانات كلها
-  for (const size of ['50x30', '58x40']) {
-    await page.goto(`${stickerUrl}?size=${size}`);
-    await afterSplash(page);
-    const s = page.getByTestId('print-sticker');
-    await expect(s).toHaveAttribute('data-size', size);
-    for (const k of ['order', 'customer', 'phone', 'issue', 'total', 'paid', 'due', 'date']) await expect(s.getByTestId(`sticker-${k}`)).toBeVisible();
-    await expect(s.getByTestId('sticker-customer')).toHaveText('عميل الطباعة');
-  }
-
-  // 4) الجهاز: دفعة 200 ← الاستيكر بيقول مدفوع 200 وفاضل 300
-  await page.goto(`/#/devices/${id}`);
-  await afterSplash(page);
+  // صفحة الجهاز: نفس الأزرار والعلامات، ودفعة 200 ← الاستيكر: التكلفة 500 والمقدم 200 والباقي 300
+  await page.goto('/#/devices');
+  await page.getByText('عميل الطباعة').filter({ visible: true }).first().click();
+  const id = page.url().split('/devices/')[1];
+  const dp = page.getByTestId('print-send');
+  await expect(dp.getByTestId('ps-thermal-done')).toHaveAttribute('data-done', 'true');
+  await expect(dp.getByTestId('saved-number')).toHaveValue('A-777');
   await page.getByLabel('التكلفة النهائية').fill('500');
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
@@ -76,11 +129,21 @@ test('الطباعة: الافتراضي صح، والاستيكر كامل بك
   await fillAmount(page.getByRole('dialog'), '200');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
-  await page.getByTestId('print-sticker-link').click();
-  await expect(page.getByTestId('sticker-paid')).toContainText('200');
-  await expect(page.getByTestId('sticker-due')).toContainText('300');
+  await page.goto(`/#/print/sticker/${id}`);
+  const st = page.getByTestId('sticker');
+  await expect(st.getByTestId('sticker-total')).toContainText('500');
+  await expect(st.getByTestId('sticker-paid')).toContainText('200');
+  await expect(st.getByTestId('sticker-due')).toContainText('300');
+  await expect(st.getByTestId('sticker-customer')).toHaveText('عميل الطباعة');
+  await expect(st.getByTestId('sticker-phone')).toHaveText(phone);
+  await expect(st.getByTestId('sticker-issue')).toContainText('شاشة مكسورة');
+  await expect(st.locator('img, svg')).toHaveCount(0); // من غير لوجو ولا QR ولا باركود
+  expect(await fitsInside(page, 'sticker')).toMatchObject({ inside: true, fitsHeight: true });
+  // ملصق الـ QR للتتبع (منفصل عن الاستيكر)
+  await page.goto(`/#/print/label/${id}`);
+  await expect(page.getByTestId('qr-img')).toBeVisible();
 
-  // 5) الباقي ← التسليم ← "فاتورة التسليم" فيها الإصلاح والمبلغ والمدفوع والفاضل والضمان
+  // التسليم ← فاتورة التسليم فيها المدفوع والفاضل والضمان
   await page.goto(`/#/devices/${id}`);
   await afterSplash(page);
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
@@ -95,34 +158,8 @@ test('الطباعة: الافتراضي صح، والاستيكر كامل بك
   await page.getByRole('button', { name: 'تأكيد' }).click();
   await expect(page.getByText('اتسلّم الجهاز. اطبع فاتورة التسليم؟')).toBeVisible();
   await page.getByRole('button', { name: 'فاتورة التسليم' }).click();
-  await expect(page).toHaveURL(new RegExp(`#/print/invoice/${id}`));
   const inv = page.getByTestId('print-invoice');
-  await expect(inv).toContainText('شاشة مكسورة');
   await expect(inv.getByTestId('invoice-paid')).toContainText('500');
   await expect(inv.getByTestId('invoice-due')).toContainText('0');
   await expect(inv).toContainText('الضمان');
-});
-
-test('الطباعة: التلقائي مقفول ← مفيش تحويل، وفيه زرار لكل مستند، ومن غير استيكر بيطبع الورقي بس', async ({ page }, info) => {
-  test.setTimeout(180_000);
-  await prefs(page, info);
-  await page.addInitScript(() => {
-    window.print = () => undefined;
-  });
-  await registerShop(page, uniq('print2'), 'محل الطباعة 2');
-  await page.goto('/#/settings?tab=print');
-  await page.getByTestId('print-settings').getByRole('checkbox', { name: 'استيكر حراري يتلزق على الجهاز' }).click();
-  await expect(page.getByText('اتحفظ').first()).toBeVisible();
-  await page.goto('/#/intake');
-  await page.locator('#intake-phone').fill(`011${String(Date.now()).slice(-8)}`);
-  await page.getByLabel('اسم العميل').fill('عميل');
-  await page.getByRole('button', { name: 'Samsung', exact: true }).click();
-  await page.getByLabel('الموديل').fill('A15');
-  await page.getByLabel('العطل زي ما العميل وصفه').fill('شحن');
-  await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
-  await expect(page.getByText('اتسجّل الجهاز')).toBeVisible();
-  await expect(page).toHaveURL(/#\/intake/);
-  await expect(page.getByTestId('intake-print-sticker')).toHaveCount(0);
-  await page.getByTestId('intake-print-receipt-a4').click();
-  await expect(page.getByTestId('print-receipt-a4')).toBeVisible();
 });

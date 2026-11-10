@@ -33,7 +33,8 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
         <RD.Overlay className="fixed inset-0 z-40 bg-[rgb(4_8_10/0.55)] backdrop-blur-[3px] data-[state=open]:animate-[fade-in_160ms_ease-out]" />
         <RD.Content
           dir={i18n.dir()}
-          onInputCapture={() => guard && setDirty(true)}
+          // الخانات اللي بتتحفظ لوحدها (data-autosave، زي "رقم محفوظ") ما بتعتبرش بيانات مش محفوظة
+          onInputCapture={(e) => guard && !(e.target as HTMLElement).closest?.('[data-autosave]') && setDirty(true)}
           className={cn(
             // مش أطول من الشاشة: العنوان والأزرار ثابتين، والمحتوى بيعمل scroll (مهم على الموبايل والفورمات الطويلة)
             'glass-strong fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-1.5rem)] w-[min(92vw,460px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl focus:outline-none',

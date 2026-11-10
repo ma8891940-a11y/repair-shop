@@ -8,7 +8,7 @@ test('رابط البرنامج العام: تنبيه وهو localhost، وال
   await registerShop(page, uniq('pub'), 'محل الرابط');
   await quickIntake(page, `010${String(Date.now()).slice(-8)}`, 'عميل الرابط');
   // قبل: البرنامج مفتوح من 127.0.0.1 ← رسالة واتساب فيها تنبيه
-  await page.getByRole('button', { name: 'واتساب' }).first().click();
+  await page.getByRole('button', { name: 'واتساب', exact: true }).first().click();
   await expect(page.getByTestId('wa-local-link')).toBeVisible();
   await page.keyboard.press('Escape');
 
@@ -30,7 +30,7 @@ test('رابط البرنامج العام: تنبيه وهو localhost، وال
   // بعد: الرسالة فيها الرابط العام في سطر لوحده، ومن غير تنبيه
   await page.goto('/#/devices');
   await page.getByText('عميل الرابط').filter({ visible: true }).first().click();
-  await page.getByRole('button', { name: 'واتساب' }).first().click();
+  await page.getByRole('button', { name: 'واتساب', exact: true }).first().click();
   const msg = await page.getByRole('dialog').getByLabel('معاينة').inputValue();
   const line = msg.split('\n').find((l) => l.includes('/#/t/'));
   expect(line).toMatch(/^https:\/\/gawalak\.pages\.dev\/#\/t\/[0-9a-f]{24}$/);

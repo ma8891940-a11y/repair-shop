@@ -99,7 +99,7 @@ test('استكمال المواصفات: أجرة العطل والسعر الم
   // صفحة التتبع (من غير دخول) بتعرض المتبقي
   await page.goto(deviceHash);
   await afterSplash(page);
-  await page.getByRole('button', { name: 'واتساب' }).first().click();
+  await page.getByRole('button', { name: 'واتساب', exact: true }).first().click();
   const text = await page.getByRole('dialog').getByLabel('معاينة').inputValue();
   const token = (text.match(/#\/t\/([0-9a-f]{24})/) ?? [])[1];
   const ctx = await browser.newContext(info.project.use);

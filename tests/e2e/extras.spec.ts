@@ -39,9 +39,17 @@ test('الإضافات: عطل جاهز بيملا العطل والتكلفة �
   await expect(page.getByLabel('العطل زي ما العميل وصفه')).toHaveValue('تغيير شاشة أصلية');
   await expect(page.getByLabel('التكلفة التقديرية')).toHaveValue('1,500.50');
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
-  // الافتراضي في الاستلام: الاستيكر الحراري الأول وبعده إيصال A4 (الإعدادات ← الطباعة)
-  await expect(page).toHaveURL(/#\/print\/sticker\/.*next=receipt-a4/);
+  // "اطبع تلقائي" = الاستيكر والإيصال الورقي بيتطبعوا لوحدهم من نفس الشاشة ("طباعة وإرسال")، من غير ما نسيبها
+  await expect(page.getByTestId('print-send')).toBeVisible();
+  await expect(page.getByTestId('ps-sticker-done')).toHaveAttribute('data-done', 'true', { timeout: 30_000 });
+  await expect(page.getByTestId('ps-paper-done')).toHaveAttribute('data-done', 'true', { timeout: 30_000 });
+  await expect(page).toHaveURL(/#\/intake/);
   // التنبيهات ("اتسجّل الجهاز"...) ما بتتطبعش على الإيصال
+  await page.keyboard.press('Escape');
+  await page.goto('/#/devices');
+  await page.getByText('عميل الإضافات').filter({ visible: true }).first().click();
+  const id = page.url().split('/devices/')[1];
+  await page.goto(`/#/print/receipt/${id}`);
   await page.emulateMedia({ media: 'print' });
   await expect(page.locator('[aria-live="polite"]').first()).toBeHidden();
   await page.emulateMedia({ media: 'screen' });

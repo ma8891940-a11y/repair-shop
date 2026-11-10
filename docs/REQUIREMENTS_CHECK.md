@@ -192,6 +192,7 @@
 | 127 | البند 12: رابط التتبع https في سطر لوحده، و"رابط البرنامج العام" في الإعدادات وتنبيه لو localhost، وخطوات الرفع المجاني في README | رسايل | ✅ | `lib/publicUrl.ts`، `lib/messages.ts`، `PublicUrlPanel.tsx`، `README.md` | `unit/publicUrl`، `e2e/publicurl` |
 | 128 | البند 13: سبب واضح بالعربي لو إرسال كود الإيميل فشل (SMTP، والحد، و"استنى N ثانية")، و"ابعت تاني" بعداد في التسجيل والدخول، وخطوات Brevo كاملة | رسايل | ✅ | `lib/errors.ts`، `RegisterWizard.tsx`، `LoginScreen.tsx`، `README.md` | `unit/errorsEmail`، `e2e/email13`، `e2e/confirm` |
 | 129 | البند 14: الشغل اليومي كله من غير نت (الاستلام، والحالة، والتكلفة، والملاحظة، والفحص، والدفعة، والبيع، والصور)، واللي محتاج نت مقفول بهدوء وبيتفتح لوحده | رسايل | ✅ | `offline/sync.tsx`، `ui/Button.tsx` (needsNet)، `ui/useOnline.ts`، `SettingsScreen.tsx` | `e2e/offline14` (وعلى نسخة الإنتاج) |
+| 130 | تعديل S5: استيكر صغير بسيط (من غير QR ولا باركود ولا لوجو) بخط بيتظبط لوحده و"..."، بالمقاسات السبعة أو باليد، وإطار وإزاحة ونسخ ومعاينة حية وطباعة اختبار، و"طباعة وإرسال" (حراري، وورقي، واستيكر، وQR، وواتساب) في الاستلام وصفحة الجهاز بعلامة "اتطبع/اتبعت"، واختيار التلقائي، و"رقم محفوظ" | رسايل | ✅ | `lib/printPlan.ts`، `app/print/StickerLabel.tsx`، `app/print/PrintSendPanel.tsx`، `PrintTab.tsx`، `PrintScreen.tsx` | `unit/printPlan`، `e2e/print`، `e2e/extras` |
 
 ## ي) الإضافات (FEATURES_ADDED.md)
 | # | المتطلب | الحالة | الاختبار |

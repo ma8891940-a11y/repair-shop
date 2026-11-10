@@ -2396,10 +2396,24 @@
     "thermalReceipt": "Thermal intake receipt (80 mm)",
     "thermalReceiptHint": "The same receipt on the thermal printer.",
     "auto": "Print automatically after intake",
-    "autoHint": "After saving the intake, the documents above open for printing one after another (sticker first). Otherwise there’s a button for each.",
+    "autoHint": "Choose what runs by itself as soon as the intake is saved. The rest have buttons under “Print and send” on the intake screen and device page.",
     "invoice": "Paper delivery invoice (A4)",
     "invoiceHint": "Repair, parts, total, paid, remaining and warranty. After delivery a “Delivery invoice” button appears.",
-    "printerNote": "Pick the printer in the print dialog: each document has its own size (thermal 80 mm or label, paper A4), and the browser remembers the last printer. Once installed on the computer (Electron/Tauri) the app can print to a set printer without a dialog."
+    "printerNote": "Pick the printer in the print dialog: each document has its own size (thermal 80 mm or label, paper A4), and the browser remembers the last printer. Once installed on the computer (Electron/Tauri) the app can print to a set printer without a dialog.",
+    "autoTitle": "After intake: do automatically",
+    "stickerTitle": "Sticker size",
+    "presets": "Preset sizes",
+    "width": "Width (mm)",
+    "height": "Height (mm)",
+    "copies": "Copies",
+    "applySize": "Save size",
+    "frame": "Print a frame around the sticker",
+    "dx": "Horizontal offset (mm)",
+    "dy": "Vertical offset (mm)",
+    "testPrint": "Test print",
+    "preview": "Real-size preview ({{w}}×{{h}} mm)",
+    "sampleName": "Ahmed Mohamed",
+    "sampleIssue": "Samsung A54 · broken screen"
   },
   "export": {
     "button": "Export",
@@ -2642,5 +2656,31 @@
   "offline": {
     "needsNet": "Needs internet. This button turns back on by itself when you’re online.",
     "settings": "You’re offline: settings are saved on the server, so they’ll unlock by themselves when you’re back online. “Appearance” still works."
+  },
+  "sticker": {
+    "cost": "Cost",
+    "paid": "Paid",
+    "due": "Due",
+    "printerNote": "The size here must match the sticker size in the printer. In the print dialog choose the thermal printer, set the paper size to the same size, and margins to None."
+  },
+  "printSend": {
+    "title": "Print and send",
+    "actions": {
+      "thermal": "Thermal print (intake receipt)",
+      "paper": "Paper print (A4 receipt)",
+      "sticker": "Device sticker",
+      "qr": "Tracking QR label",
+      "whatsapp": "WhatsApp the customer"
+    },
+    "printed": "Printed",
+    "sent": "Sent",
+    "notYet": "Not yet",
+    "failed": "Printing didn’t finish. Try again.",
+    "popupBlocked": "The browser blocked opening WhatsApp automatically. Press “WhatsApp the customer”.",
+    "savedNumber": "Saved number",
+    "copy": "Copy",
+    "copied": "Copied",
+    "useOnSticker": "Print it on the sticker",
+    "lastAt": "Last sticker printed at {{at}}"
   }
 }

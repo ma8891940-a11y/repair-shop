@@ -4,7 +4,8 @@ import { useBackground } from '../app/stage';
 import { trackingUrl, waLink } from '../lib/messages';
 import { appBase } from '../lib/publicUrl';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { pageSize, readPrint, type PrintDoc, type StickerSize } from '../lib/printPlan';
+import { pageSize, readPrint, type PrintDoc } from '../lib/printPlan';
+import { StickerLabel, StickerTest } from '../app/print/StickerLabel';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
@@ -29,6 +30,8 @@ export function PrintScreen() {
   const navigate = useNavigate();
   const isLabel = kind === 'label';
   const isSticker = kind === 'sticker';
+  // طباعة اختبار للاستيكر (إطار ومسطرة) من الإعدادات ← الطباعة: من غير جهاز
+  const isTest = kind === 'sticker-test';
   // isReceipt = محتوى إيصال الاستلام (الحراري 80مم أو الورقي A4)، وthermal = شكل الطابعة الحرارية
   const isPaperReceipt = kind === 'receipt-a4';
   const isReceipt = kind === 'receipt' || isPaperReceipt;
@@ -37,12 +40,17 @@ export function PrintScreen() {
   // الطباعة ورا بعض (من الاستلام): بعد ما ده يتطبع، اللي بعده يفتح
   const next = (params.get('next') ?? '').split(',').filter((x): x is PrintDoc => ['sticker', 'receipt', 'receipt-a4', 'invoice'].includes(x));
   const settings = readPrint(shop.extras);
-  const size: StickerSize = (['80', '50x30', '58x40'] as const).find((x) => x === params.get('size')) ?? settings.stickerSize;
+  const st = settings.sticker;
+  // embed: جوه إطار مخفي من شاشة الاستلام أو الجهاز (الطباعة من غير ما تسيب الشاشة)
+  const embed = params.get('embed') === '1';
+  // "رقم محفوظ" بدل رقم الطلب على الاستيكر (لو اتختار)
+  const noOverride = params.get('no');
   const [qr, setQr] = useState<string | null>(null);
   const branding = useBranding();
   const b = branding.data ?? null;
 
   const { data, error } = useLoad(async () => {
+    if (isTest) return null;
     const d = must(await supabase.from('devices').select('*').eq('id', id).maybeSingle()) as Device | null;
     if (!d) throw new Error('E_NOT_FOUND');
     const [c, k] = await Promise.all([
@@ -55,17 +63,22 @@ export function PrintScreen() {
     return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null, parts, money };
   }, [id, kind]);
 
-  // الـ QR بيفتح صفحة تتبع العميل بالرمز السري بتاع الجهاز
+  // الـ QR بيفتح صفحة تتبع العميل بالرمز السري بتاع الجهاز (الإيصال وملصق الـ QR بس، الاستيكر من غيره)
   useEffect(() => {
-    if (!data || (!isLabel && !isReceipt && !isSticker)) return;
+    if (!data || (!isLabel && !isReceipt)) return;
     void QRCode.toDataURL(trackingUrl(appBase(shop.extras, window.location.href), data.d.tracking_token), { margin: 0, width: 360, errorCorrectionLevel: 'M' }).then(setQr);
-  }, [data, isLabel, isReceipt, isSticker]);
+  }, [data, isLabel, isReceipt, shop.extras]);
 
+  const ready = isTest || (!!data && !branding.loading && (!(isLabel || isReceipt) || !!qr));
   useEffect(() => {
-    if (!data || branding.loading || ((isLabel || isReceipt || isSticker) && !qr)) return;
-    const tm = setTimeout(() => window.print(), 350);
+    if (!ready) return;
+    const tm = setTimeout(() => {
+      window.print();
+      // جوه الإطار المخفي: بنقول للشاشة إنه اتطبع (نافذة الطباعة بتقفل الصفحة لحد ما تخلص)
+      if (embed) window.parent?.postMessage({ type: 'gawalak-printed', kind, id }, window.location.origin);
+    }, embed ? 150 : 350);
     return () => clearTimeout(tm);
-  }, [data, qr, isLabel, isReceipt, isSticker, branding.loading]);
+  }, [ready, embed, kind, id]);
   // بعد ما نافذة الطباعة تتقفل: المستند اللي بعده (لو فيه)
   const nextUrl = next.length ? `/print/${next[0]}/${id}${next.length > 1 ? `?next=${next.slice(1).join(',')}` : ''}` : null;
   useEffect(() => {
@@ -100,8 +113,9 @@ export function PrintScreen() {
 
   return (
     <div className="min-h-dvh bg-white text-black">
-      <style>{`@page { size: ${pageSize(kind as PrintDoc | 'label', size)}; margin: ${isLabel || isSticker ? '1.5mm' : thermal ? '3mm' : '14mm'}; }`}</style>
-      <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden">
+      {/* الاستيكر: الصفحة بالمقاس بالظبط والهوامش صفر، وكل نسخة في صفحة لوحدها */}
+      <style>{`@page { size: ${pageSize(isTest ? 'sticker' : (kind as PrintDoc), st)}; margin: ${isSticker || isTest ? '0' : isLabel ? '1mm' : thermal ? '3mm' : '14mm'}; }${isSticker || isTest ? ' @media print { html, body { margin: 0 !important; padding: 0 !important; } .sticker-page { break-after: page; page-break-after: always; } .sticker-page:last-child { break-after: auto; page-break-after: auto; } }' : ''}`}</style>
+      <div className={`flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden${embed ? ' hidden' : ''}`}>
         <button type="button" onClick={() => window.print()} className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-on-accent">
           {t('print.print')}
         </button>
@@ -118,20 +132,42 @@ export function PrintScreen() {
             {t('print.sendWa')}
           </a>
         )}
-        <span className="text-xs text-neutral-600">{thermal || isLabel || isSticker ? t('print.hintReceipt') : t('print.hintInvoice')}</span>
+        <span className="text-xs text-neutral-600">{isSticker || isTest ? t('sticker.printerNote') : thermal || isLabel ? t('print.hintReceipt') : t('print.hintInvoice')}</span>
       </div>
 
-      {error ? (
+      {isTest ? (
+        <div className="sticker-page mx-auto my-4 w-fit print:m-0">
+          <StickerTest st={st} />
+        </div>
+      ) : error ? (
         <p className="p-6 text-sm text-red-700">{error}</p>
       ) : !data ? (
         <div className="mx-auto w-[76mm] p-4">
           <Skeleton className="h-40 w-full" />
         </div>
       ) : isSticker ? (
-        <Sticker size={size} d={data.d} c={data.c} money={data.money} est={data.k?.estimated_cost ?? null} qr={qr} shopName={shop.name} cur={cur} />
+        <div className="print-sticker" data-testid="print-sticker">
+          {Array.from({ length: st.copies }, (_, i) => (
+            <div key={i} className="sticker-page mx-auto my-4 w-fit print:m-0">
+              <StickerLabel
+                st={st}
+                testid={i === 0 ? 'sticker' : `sticker-${i + 1}`}
+                data={{
+                  no: noOverride || data.d.order_no,
+                  name: data.c?.name ?? '',
+                  phone: data.c?.phone ?? '',
+                  issue: [data.d.brand, data.d.model].filter(Boolean).join(' ') + (data.d.issue ? ` · ${data.d.issue}` : ''),
+                  cost: data.money?.final != null ? Number(data.money.final) : (data.k?.estimated_cost ?? null),
+                  paid: Number(data.money?.paid ?? 0),
+                  date: data.d.received_at,
+                }}
+              />
+            </div>
+          ))}
+        </div>
       ) : isLabel ? (
-        <article className="mx-auto flex w-[76mm] items-center gap-3 p-[2mm] text-[11px] print:w-full print:p-0" aria-label={t('label.title')}>
-          {qr ? <img src={qr} alt="" className="size-[30mm] shrink-0" /> : <div className="size-[30mm] shrink-0 bg-neutral-100" />}
+        <article className="mx-auto flex h-[28mm] w-[48mm] items-center gap-[1.5mm] overflow-hidden text-[9px] text-black" aria-label={t('label.title')} data-testid="qr-label">
+          {qr ? <img src={qr} alt="" className="size-[24mm] shrink-0" data-testid="qr-img" /> : <div className="size-[24mm] shrink-0 bg-neutral-100" />}
           <div className="min-w-0">
             {b?.logo_thermal ? <img src={b.logo_thermal} alt={shop.name} className="mb-0.5 h-[7mm] w-auto max-w-full object-contain" data-testid="shop-logo-thermal" /> : <div className="truncate text-[13px] font-extrabold" data-testid="shop-name-big">{shop.name}</div>}
             <div className="font-mono text-[20px] font-bold leading-tight" dir="ltr">
@@ -282,70 +318,5 @@ export function PrintScreen() {
         </article>
       )}
     </div>
-  );
-}
-
-/**
- * استيكر حراري يتلزق على الجهاز (أبيض وأسود، بخط كبير): رقم الطلب، والعميل وتليفونه، والعطل،
- * والمبلغ الكامل والمدفوع والفاضل، والتاريخ، وQR صغير للتتبع. المقاسات: 80مم، أو 50×30، أو 58×40.
- */
-function Sticker({ size, d, c, money, est, qr, shopName, cur }: {
-  size: StickerSize; d: Device; c: Customer | null; money: { final: number | null; paid: number; due: number } | null; est: number | null; qr: string | null; shopName: string; cur: string;
-}) {
-  const { t } = useTranslation();
-  const f = useFormat();
-  const total = money?.final != null ? Number(money.final) : est;
-  const paid = Number(money?.paid ?? 0);
-  const due = total != null ? Math.max(total - paid, 0) : null;
-  const small = size === '50x30';
-  const box = size === '50x30' ? 'h-[27mm] w-[47mm]' : size === '58x40' ? 'h-[37mm] w-[55mm]' : 'w-[76mm]';
-  return (
-    <article className={`mx-auto my-4 overflow-hidden border border-dashed border-neutral-400 p-[1.5mm] leading-tight text-black print:m-0 print:border-0 ${box}`} data-testid="print-sticker" data-size={size}>
-      <div className="flex items-start gap-[1.5mm]">
-        <div className="min-w-0 flex-1">
-          <div className={`font-mono font-black ${small ? 'text-[15px]' : 'text-[22px]'}`} dir="ltr" data-testid="sticker-order">
-            {d.order_no}
-          </div>
-          <div className={`truncate font-bold ${small ? 'text-[10px]' : 'text-[14px]'}`} data-testid="sticker-customer">
-            <bdi>{c?.name ?? ''}</bdi>
-          </div>
-          <div className={`font-mono ${small ? 'text-[10px]' : 'text-[13px]'}`} dir="ltr" data-testid="sticker-phone">
-            {c?.phone ?? ''}
-          </div>
-        </div>
-        {qr && <img src={qr} alt="" className={small ? 'size-[13mm] shrink-0' : 'size-[17mm] shrink-0'} />}
-      </div>
-      <div className={`mt-[1mm] line-clamp-2 border-t border-black pt-[0.5mm] ${small ? 'text-[9px]' : 'text-[12px]'}`} data-testid="sticker-issue">
-        {d.brand} {d.model} · {d.issue}
-      </div>
-      <table className={`mt-[0.5mm] w-full ${small ? 'text-[9px]' : 'text-[12px]'}`}>
-        <tbody>
-          <tr>
-            <td>{t('print.total')}</td>
-            <td className="text-end font-mono font-bold" dir="ltr" data-testid="sticker-total">
-              {total != null ? f.money(total) : t('print.afterCheck')}
-            </td>
-            <td>{t('print.paid')}</td>
-            <td className="text-end font-mono" dir="ltr" data-testid="sticker-paid">
-              {f.money(paid)}
-            </td>
-          </tr>
-          <tr className="font-bold">
-            <td>{t('print.remaining')}</td>
-            <td className="text-end font-mono" dir="ltr" data-testid="sticker-due">
-              {due != null ? f.money(due) : '—'}
-            </td>
-            <td colSpan={2} className="text-end" data-testid="sticker-date">
-              {f.date(d.received_at)}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      {!small && (
-        <div className="mt-[0.5mm] truncate text-[9px] text-neutral-700">
-          {shopName} · {cur}
-        </div>
-      )}
-    </article>
   );
 }

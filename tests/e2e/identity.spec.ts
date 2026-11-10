@@ -66,7 +66,7 @@ test('هوية المحل: كل محل بيطبع باسمه ولوجوه، ال
   // صفحة التتبع: لوجو المحل واسمه، من غير لوجو التطبيق
   await page.goto(devA);
   await afterSplash(page);
-  await page.getByRole('button', { name: 'واتساب' }).first().click();
+  await page.getByRole('button', { name: 'واتساب', exact: true }).first().click();
   const text = await page.getByRole('dialog').getByLabel('معاينة').inputValue();
   expect(text).toContain('محل النجوم'); // الرسالة باسم المحل
   const token = (text.match(/#\/t\/([0-9a-f]{24})/) ?? [])[1];
