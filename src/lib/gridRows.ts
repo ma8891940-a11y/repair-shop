@@ -1,11 +1,13 @@
 // جداول الإدخال (الجرد): السطور بتتزوّد بالعدد المكتوب بالظبط، والحذف لسطر أو أكتر أو للسطور الفاضية.
 // كل سطر ليه مفتاح ثابت (k)، فحذف سطر ما بيلخبطش اللي بعده.
 
+import { toLatinDigits } from './digits';
+
 export const MAX_ADD = 500;
 
 /** عدد السطور المكتوب: من 1 لـ 500 (الفاضي أو الغلط = 1) */
 export function rowCount(v: string): number {
-  const n = Math.trunc(Number(String(v).replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).trim()));
+  const n = Math.trunc(Number(toLatinDigits(String(v)).trim()));
   if (!Number.isFinite(n) || n < 1) return 1;
   return Math.min(n, MAX_ADD);
 }

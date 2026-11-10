@@ -387,6 +387,19 @@ function PartyStep({ kind, onSaved }: { kind: 'customer' | 'supplier'; onSaved: 
   const table = kind === 'customer' ? 'customers' : 'suppliers';
   const set = (i: number, k: keyof PartyRow, v: string) => setRows((cur) => cur.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
 
+  // Enter في آخر خانة في آخر سطر: سطر واحد جديد بس
+  function onRowKey(e: KeyboardEvent<HTMLDivElement>, i: number) {
+    if (e.key !== 'Enter' || e.defaultPrevented || i !== rows.length - 1) return;
+    const fields = [...e.currentTarget.querySelectorAll<HTMLElement>('input, select')];
+    if (e.target !== fields[fields.length - 1]) return;
+    e.preventDefault();
+    setRows((cur) => [...cur, blank()]);
+    requestAnimationFrame(() => {
+      const next = box.current?.querySelectorAll(`[data-testid="opening-${kind}-row"]`)[i + 1];
+      (next?.querySelector('input') as HTMLInputElement | null)?.focus();
+    });
+  }
+
   async function save() {
     setErr(null);
     const ready: { k: string; name: string; phone: string | null; amount: number }[] = [];
@@ -438,15 +451,7 @@ function PartyStep({ kind, onSaved }: { kind: 'customer' | 'supplier'; onSaved: 
             key={r.k}
             className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 sm:grid-cols-[auto_minmax(0,1.4fr)_minmax(0,1fr)_120px_minmax(0,1fr)_auto]"
             data-testid={`opening-${kind}-row`}
-            // Enter في آخر خانة في آخر سطر: سطر واحد جديد بس
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter' || e.defaultPrevented || i !== rows.length - 1) return;
-              const fields = [...e.currentTarget.querySelectorAll<HTMLElement>('input, select')];
-              if (e.target !== fields[fields.length - 1]) return;
-              e.preventDefault();
-              setRows((cur) => [...cur, blank()]);
-              requestAnimationFrame(() => box.current?.querySelectorAll<HTMLElement>(`[data-testid="opening-${kind}-row"]`)[i + 1]?.querySelector('input')?.focus());
-            }}
+            onKeyDown={(e) => onRowKey(e, i)}
           >
             <input
               type="checkbox"
