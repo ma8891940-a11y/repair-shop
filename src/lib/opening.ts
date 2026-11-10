@@ -45,6 +45,8 @@ export function pasteIntoGrid<T extends object>(rows: T[], row: number, col: num
 
 export interface StockRowIn {
   name: string;
+  /** الماركة (اختياري، من قايمة الماركات) */
+  brand?: string;
   kind: string;
   qty: string;
   cost: string;
@@ -57,11 +59,12 @@ export interface StockLineOk {
   qty: number;
   unitCost: number;
   salePrice: number | null;
+  brand: string | null;
 }
 /** سطور الجدول: الفاضي بيتجاهل، والغلط بيرجع برقمه والعمود. التكلفة بالقروش أعداد صحيحة */
 /** سطر فاضي: ما بيتحسبش ولا بيتحفظ، ومن غير أي خطأ (النوع لوحده مش بيانات) */
 export function isBlankStock(r: StockRowIn): boolean {
-  return !r.name.trim() && !r.qty.trim() && !r.cost.trim() && !r.price.trim();
+  return !r.name.trim() && !r.qty.trim() && !r.cost.trim() && !r.price.trim() && !(r.brand ?? '').trim();
 }
 
 export function checkStockRows(rows: StockRowIn[]): { lines: StockLineOk[]; errors: { index: number; col: keyof StockRowIn }[] } {
@@ -76,7 +79,7 @@ export function checkStockRows(rows: StockRowIn[]): { lines: StockLineOk[]; erro
     if (unitCost == null) return errors.push({ index, col: 'cost' });
     const salePrice = r.price.trim() ? parsePounds(r.price) : null;
     if (r.price.trim() && salePrice == null) return errors.push({ index, col: 'price' });
-    lines.push({ index, name: r.name.trim(), kind: r.kind === 'accessory' ? 'accessory' : 'part', qty, unitCost, salePrice });
+    lines.push({ index, name: r.name.trim(), kind: r.kind === 'accessory' ? 'accessory' : 'part', qty, unitCost, salePrice, brand: (r.brand ?? '').trim() || null });
   });
   return { lines, errors };
 }

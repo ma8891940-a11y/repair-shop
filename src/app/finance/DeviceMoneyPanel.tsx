@@ -8,6 +8,7 @@ import { useLoad } from '../useLoad';
 import { useMe } from '../auth';
 import { cashboxesFor, loadCashboxes, opId, rpc, useAccountName, type DeviceMoney, type StockRow } from '../ledgerApi';
 import { getBranchHeader } from '../../lib/branchHeader';
+import { ListCombo } from '../ListCombo';
 import { readExtras } from '../../lib/extras';
 import { OpDialog, warmOpLists } from './OpDialog';
 import { supabase } from '../../lib/supabase';
@@ -298,7 +299,7 @@ function ManualPartPanel({ deviceId, status, onChanged }: { deviceId: string; st
       <p className="px-4 pt-3 text-2xs text-fg-3">{t('parts.manualHint')}</p>
       <div className="grid grid-cols-2 items-end gap-2 p-4 sm:grid-cols-[minmax(0,1fr)_110px_minmax(0,1fr)_auto]">
         <Field label={t('parts.manualName')}>
-          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-testid="manual-part-name" />
+          <ListCombo list="parts" value={name} onChange={setName} maxLength={120} testid="manual-part-name" />
         </Field>
         <Field label={t('parts.manualCost')}>
           <Input mono inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} suffix={f.currency()} data-testid="manual-part-cost" />

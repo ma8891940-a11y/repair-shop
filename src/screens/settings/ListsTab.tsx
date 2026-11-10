@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
-import { LIST_KEYS, useListLabel, useShopList, type ListKey } from '../../app/lists';
+import { LIST_KEYS, readListsEdit, useListLabel, useShopList, type ListKey } from '../../app/lists';
+import { useMe } from '../../app/auth';
+import { supabase } from '../../lib/supabase';
+import { errorMessage } from '../../lib/errors';
+import { Checkbox } from '../../ui/Checkbox';
+import { useToast } from '../../ui/Toast';
 import { STATUSES } from '../../lib/status';
 import { Panel, PanelHeader } from '../../ui/Panel';
 import { Button } from '../../ui/Button';
@@ -17,6 +22,7 @@ export function ListsTab() {
     <div className="flex flex-col gap-4">
       <p className="text-sm text-fg-2">{t('lists.sub')}</p>
       <p className="text-xs text-fg-3">{t('lists.elsewhere')}</p>
+      <ListsPermission />
       {LIST_KEYS.filter((k) => k !== 'sub_statuses').map((k) => (
         <ListEditor key={k} list={k} />
       ))}
@@ -83,5 +89,34 @@ function Chips({ list, parent = null }: { list: ListKey; parent?: string | null 
         </Button>
       </form>
     </div>
+  );
+}
+
+/** مين يقدر يضيف ويشيل من القوايم من أي شاشة (صاحب المحل دايمًا). بيتطبق على طول، ومتسجل في سجل النشاط */
+function ListsPermission() {
+  const { t } = useTranslation();
+  const { shop, refresh } = useMe();
+  const toast = useToast();
+  const roles = readListsEdit(shop.extras);
+  async function set(role: string, on: boolean) {
+    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
+    const next = on ? [...new Set([...roles, role])] : roles.filter((r) => r !== role);
+    const { error } = await supabase.from('shops').update({ extras: { ...ex, lists_edit: next } }).eq('id', shop.id);
+    if (error) return toast({ tone: 'danger', title: errorMessage(error) });
+    await refresh();
+    toast({ tone: 'ok', title: t('settings.saved') });
+  }
+  return (
+    <Panel data-testid="lists-permission">
+      <PanelHeader title={t('lists.permTitle')} />
+      <div className="flex flex-col gap-2 p-4">
+        <p className="text-xs text-fg-3">{t('lists.permHint')}</p>
+        <div className="flex flex-wrap gap-4">
+          {(['reception', 'technician'] as const).map((r) => (
+            <Checkbox key={r} checked={roles.includes(r)} onChange={(v) => void set(r, v)} label={t(`roles.${r}`)} />
+          ))}
+        </div>
+      </div>
+    </Panel>
   );
 }

@@ -7,7 +7,7 @@ import Dexie, { type Table } from 'dexie';
  * - blobs: صور الاستلام اللي لسه ما اترفعتش.
  */
 // البند 14: الشغل اليومي كله من غير نت: + التكلفة، والملاحظة الداخلية، والفحص السريع، والبيع
-export type OpKind = 'intake' | 'status' | 'payment' | 'photo' | 'cost' | 'note' | 'check' | 'sale';
+export type OpKind = 'intake' | 'status' | 'payment' | 'photo' | 'cost' | 'note' | 'check' | 'sale' | 'list';
 export interface OutboxItem {
   id: string; // نفس id العملية (للمنع من التكرار)
   seq: number; // ترتيب الإرسال

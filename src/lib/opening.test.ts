@@ -30,8 +30,8 @@ describe('جرد المحل أول مرة', () => {
       { name: 'جراب', kind: 'accessory', qty: '2', cost: '0', price: '30' },
     ]);
     expect(r.lines).toEqual([
-      { index: 0, name: 'شاشة', kind: 'part', qty: 5, unitCost: 10050, salePrice: null },
-      { index: 5, name: 'جراب', kind: 'accessory', qty: 2, unitCost: 0, salePrice: 3000 },
+      { index: 0, name: 'شاشة', kind: 'part', qty: 5, unitCost: 10050, salePrice: null, brand: null },
+      { index: 5, name: 'جراب', kind: 'accessory', qty: 2, unitCost: 0, salePrice: 3000, brand: null },
     ]);
     expect(r.errors).toEqual([
       { index: 2, col: 'name' },

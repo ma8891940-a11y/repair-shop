@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Check, Trash2 } from 'lucide-react';
 import { RowsBar } from '../../app/RowsBar';
+import { ListCombo } from '../../app/ListCombo';
 import { addRows, newKey, removeBlankRows, removeRows } from '../../lib/gridRows';
 import { PageHeader } from '../../app/AppShell';
 import { useMe } from '../../app/auth';
@@ -88,9 +89,10 @@ export function OpeningScreen() {
   );
 }
 
-const STOCK_COLS: (keyof StockRowIn)[] = ['name', 'kind', 'qty', 'cost', 'price'];
+// الماركة آخر عمود: عشان اللصق من Excel بنفس الترتيب القديم يفضل شغال
+const STOCK_COLS: (keyof StockRowIn)[] = ['name', 'kind', 'qty', 'cost', 'price', 'brand'];
 type StockRowK = StockRowIn & { k: string };
-const blankStock = (): StockRowK => ({ k: newKey(), name: '', kind: 'part', qty: '', cost: '', price: '' });
+const blankStock = (): StockRowK => ({ k: newKey(), name: '', brand: '', kind: 'part', qty: '', cost: '', price: '' });
 
 /** تنقّل زي Excel: الأسهم فوق وتحت، وEnter للسطر اللي تحته (وفي آخر سطر بيزوّد سطر واحد بس) */
 function gridKeys(e: KeyboardEvent<HTMLElement>, row: number, col: number, focus: (r: number, c: number, grow?: boolean) => void) {
@@ -171,7 +173,7 @@ function StockStep({ onSaved }: { onSaved: () => void }) {
       if (fresh.length) {
         const { error } = await supabase
           .from('items')
-          .upsert(fresh.map((l) => ({ id: itemIds.current.get(keyOf(l)), shop_id: crypto.randomUUID(), kind: l.kind, name: l.name, sale_price: l.salePrice })), { onConflict: 'id', ignoreDuplicates: true });
+          .upsert(fresh.map((l) => ({ id: itemIds.current.get(keyOf(l)), shop_id: crypto.randomUUID(), kind: l.kind, name: l.name, sale_price: l.salePrice, brand: l.brand })), { onConflict: 'id', ignoreDuplicates: true });
         if (error) throw error;
       }
       const lines = check.lines.map((l) => ({ item: byName.get(l.name) ?? itemIds.current.get(keyOf(l)), qty: l.qty, unit_cost: l.unitCost }));
@@ -214,6 +216,7 @@ function StockStep({ onSaved }: { onSaved: () => void }) {
                 <th className="w-24">{t('inv.cols.qty')}</th>
                 <th className="w-28">{t('opening.unitCost')}</th>
                 <th className="w-28">{t('inv.cols.price')}</th>
+                <th className="w-36">{t('inv.brand')}</th>
                 <th className="w-9">
                   <span className="sr-only">{t('rows.deleteRow', { n: '' })}</span>
                 </th>
@@ -235,7 +238,20 @@ function StockStep({ onSaved }: { onSaved: () => void }) {
                   <td className="num px-2 text-center text-2xs text-fg-3">{i + 1}</td>
                   {STOCK_COLS.map((c, j) => (
                     <td key={c} className={cn(bad.has(`${i}-${c}`) && 'bg-danger-soft')}>
-                      {c === 'kind' ? (
+                      {c === 'brand' ? (
+                        <ListCombo
+                          list="brands"
+                          data-cell={`${i}-${j}`}
+                          value={r.brand ?? ''}
+                          onChange={(v) => set(i, 'brand', v)}
+                          onPaste={(e) => onPaste(e, i, j)}
+                          maxLength={60}
+                          dir="auto"
+                          aria-label={`${t('inv.brand')} ${i + 1}`}
+                          className="h-8 rounded-none border-0 bg-transparent px-2 text-sm"
+                          testid="opening-brand"
+                        />
+                      ) : c === 'kind' ? (
                         <select
                           data-cell={`${i}-${j}`}
                           value={r.kind}
@@ -250,7 +266,7 @@ function StockStep({ onSaved }: { onSaved: () => void }) {
                       ) : (
                         <input
                           data-cell={`${i}-${j}`}
-                          value={r[c]}
+                          value={r[c] ?? ''}
                           onChange={(e) => set(i, c, e.target.value)}
                           onKeyDown={(e) => gridKeys(e, i, j, focus)}
                           onPaste={(e) => onPaste(e, i, j)}

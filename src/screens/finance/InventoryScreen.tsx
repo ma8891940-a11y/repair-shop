@@ -23,7 +23,8 @@ import { Alert, EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 import { DeleteDialog } from '../../app/DeleteDialog';
-import { InlineAdd, ListOptions } from '../../app/lists';
+import { useShopList } from '../../app/lists';
+import { ListCombo } from '../../app/ListCombo';
 import { BulkEditDialog, ImportDialog, InvOpDialog, ItemMoves, ScanDialog, type InvOp, type InvSummary } from './InventoryOps';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { newInternalEan13 } from '../../lib/barcode';
@@ -50,6 +51,7 @@ export function InventoryScreen() {
   const [tab, setTab] = useState<'items' | 'suppliers' | 'summary'>('items');
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('');
+  const [brandF, setBrandF] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState<string[] | null>(null);
   const [invOp, setInvOp] = useState<InvOp | null>(null);
@@ -89,9 +91,12 @@ export function InventoryScreen() {
   const shortCount = (data?.items ?? []).filter((i) => i.short).length;
   const orders = useMemo(() => (data ? shortageOrders(data.items, data.suppliers) : []), [data]);
   const cats = useMemo(() => [...new Set((data?.items ?? []).map((i) => i.category).filter((c): c is string => !!c))].sort(), [data]);
+  // الماركات: من قايمة الماركات (نفس اللي في الاستلام) + اللي على الأصناف فعلًا
+  const brandList = useShopList('brands').items;
+  const brands = useMemo(() => [...new Set([...brandList.map((b) => b.value), ...(data?.items ?? []).map((i) => i.brand).filter((b): b is string => !!b)])].sort(), [brandList, data]);
   const needle = toLatinDigits(q.trim()).toLowerCase();
   const shown = (data?.items ?? []).filter(
-    (i) => (!onlyShort || i.short) && (!cat || i.category === cat) && (!needle || [i.name, i.sku, i.barcode, i.category].some((x) => x && toLatinDigits(x).toLowerCase().includes(needle))),
+    (i) => (!onlyShort || i.short) && (!cat || i.category === cat) && (!brandF || i.brand === brandF) && (!needle || [i.name, i.sku, i.barcode, i.category, i.brand].some((x) => x && toLatinDigits(x).toLowerCase().includes(needle))),
   );
   /** قارئ الباركود بيكتب الرقم ويدوس Enter: لو مطابق لصنف، بيفتح تفاصيله على طول */
   function onCode(code: string) {
@@ -266,6 +271,14 @@ export function InventoryScreen() {
               ))}
             </Select>
           )}
+          <Select value={brandF} onChange={(e) => setBrandF(e.target.value)} aria-label={t('inv.brand')} className="h-8 w-auto" data-testid="inv-brand-filter">
+            <option value="">{t('inv.allBrands')}</option>
+            {brands.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </Select>
           <Button size="sm" variant="ghost" icon={<Camera className="size-4" />} onClick={() => setScan(true)}>
             {t('scan.title')}
           </Button>
@@ -446,6 +459,8 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
   const [kind, setKind] = useState<'part' | 'accessory'>('part');
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
+  const [newBrand, setNewBrand] = useState('');
+  const [newCat, setNewCat] = useState('');
   const [price, setPrice] = useState('');
   const [minQty, setMinQty] = useState('0');
   const [supplier, setSupplier] = useState('');
@@ -455,6 +470,8 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
     if (open) {
       setName('');
       setSku('');
+      setNewBrand('');
+      setNewCat('');
       setPrice('');
       setMinQty('0');
       setSupplier('');
@@ -468,7 +485,7 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
     const mq = Number(toLatinDigits(minQty.trim() || '0'));
     if (!Number.isInteger(mq) || mq < 0) return setErr(t('inv.errMin'));
     setBusy(true);
-    const { error } = await supabase.from('items').insert({ id: crypto.randomUUID(), shop_id: shop.id, kind, name: name.trim(), sku: toLatinDigits(sku.trim()) || null, sale_price: p, min_qty: mq, supplier_id: supplier || null });
+    const { error } = await supabase.from('items').insert({ id: crypto.randomUUID(), shop_id: shop.id, kind, name: name.trim(), sku: toLatinDigits(sku.trim()) || null, sale_price: p, min_qty: mq, supplier_id: supplier || null, brand: newBrand.trim() || null, category: newCat.trim() || null });
     setBusy(false);
     if (error) return setErr(errorMessage(error));
     toast({ tone: 'ok', title: t('inv.itemAdded') });
@@ -501,6 +518,14 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
         <Field label={t('inv.cols.name')} required>
           <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={160} />
         </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t('inv.brand')}>
+            <ListCombo list="brands" value={newBrand} onChange={setNewBrand} maxLength={60} dir="auto" testid="new-item-brand" />
+          </Field>
+          <Field label={t('inv.category')}>
+            <ListCombo list="item_categories" value={newCat} onChange={setNewCat} maxLength={60} testid="new-item-category" />
+          </Field>
+        </div>
         <Field label={t('inv.sku')}>
           <Input dir="ltr" mono value={sku} onChange={(e) => setSku(e.target.value)} />
         </Field>
@@ -806,6 +831,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
   const [price, setPrice] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [brand, setBrand] = useState('');
   const [barcode, setBarcode] = useState('');
   const [img, setImg] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -821,6 +847,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     setSupplier(item.supplier_id ?? '');
     setName(item.name);
     setCategory(item.category ?? '');
+    setBrand(item.brand ?? '');
     setBarcode(item.barcode ?? '');
     setImg(null);
     if (item.image_path) void supabase.storage.from('item-images').createSignedUrl(item.image_path, 3600).then((r) => setImg(r.data?.signedUrl ?? null));
@@ -836,7 +863,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     if (!name.trim()) return setErr(t('common.required'));
     const bc = toLatinDigits(barcode.trim()) || null;
     if (bc && !/^[0-9A-Za-z-]{4,32}$/.test(bc)) return setErr(t('barcode.bad'));
-    const { error } = await supabase.from('items').update({ name: name.trim(), category: category.trim() || null, barcode: bc, min_qty: mq, supplier_id: supplier || null, sale_price: p }).eq('id', item.id);
+    const { error } = await supabase.from('items').update({ name: name.trim(), category: category.trim() || null, brand: brand.trim() || null, barcode: bc, min_qty: mq, supplier_id: supplier || null, sale_price: p }).eq('id', item.id);
     if (error) return setErr(/items_barcode_unique/.test(error.message) ? t('barcode.dup') : errorMessage(error));
     toast({ tone: 'ok', title: t('settings.saved') });
     onOpenChange(false);
@@ -912,13 +939,12 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
             <Field label={t('inv.name')}>
               <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-testid="item-name" />
             </Field>
-            <div>
-              <Field label={t('inv.category')}>
-                <Input value={category} onChange={(e) => setCategory(e.target.value)} maxLength={60} list="list-item-categories" data-testid="item-category" />
-              </Field>
-              <ListOptions id="list-item-categories" list="item_categories" />
-              <InlineAdd list="item_categories" value={category} />
-            </div>
+            <Field label={t('inv.category')}>
+              <ListCombo list="item_categories" value={category} onChange={setCategory} maxLength={60} testid="item-category" />
+            </Field>
+            <Field label={t('inv.brand')}>
+              <ListCombo list="brands" value={brand} onChange={setBrand} maxLength={60} dir="auto" testid="item-brand" />
+            </Field>
           </div>
         </div>
         <Field label={t('barcode.code')} hint={t('barcode.hint')}>

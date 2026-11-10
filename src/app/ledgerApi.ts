@@ -87,6 +87,7 @@ export interface StockRow {
   short?: boolean;
   category?: string | null;
   barcode?: string | null;
+  brand?: string | null;
   image_path?: string | null;
 }
 export interface DeviceMoney {

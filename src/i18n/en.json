@@ -390,7 +390,8 @@
     "saved": "Device checked in",
     "savedText": "Print the receipt and hand it to the customer.",
     "another": "Check in another",
-    "open": "Open device"
+    "open": "Open device",
+    "deviceType": "Device type"
   },
   "device": {
     "back": "Back",
@@ -1384,7 +1385,9 @@
     "category": "Category",
     "image": "Photo",
     "buyShort": "Buy shortages from {{s}}",
-    "errCustomer": "No customer with this phone"
+    "errCustomer": "No customer with this phone",
+    "brand": "Brand",
+    "allBrands": "All brands"
   },
   "ledgerSettings": {
     "cashboxes": "Cashboxes",
@@ -2319,7 +2322,11 @@
       "write_off_reasons": "Write-off reasons",
       "sub_statuses": "Sub-statuses",
       "models": "Models",
-      "conditions": "Cosmetic condition"
+      "conditions": "Cosmetic condition",
+      "device_types": "Device types",
+      "parts": "Spare parts",
+      "return_reasons": "Return reasons",
+      "issues": "Faults (the \"+ fault\" buttons in intake)"
     },
     "subStatusesHint": "Core statuses are fixed. Add details under each one (e.g. under \"Awaiting part\": \"Ordered\" or \"On the way\"). When the core status changes, the sub-status is cleared.",
     "empty": "Empty",
@@ -2360,9 +2367,43 @@
         "dented": "Dented",
         "bent": "Bent",
         "clean": "Clean"
+      },
+      "device_types": {
+        "phone": "Phone",
+        "tablet": "Tablet",
+        "watch": "Watch",
+        "laptop": "Laptop",
+        "other": "Other"
+      },
+      "parts": {
+        "screen": "Screen",
+        "battery": "Battery",
+        "charging_port": "Charging port",
+        "back_glass": "Back glass",
+        "camera": "Camera",
+        "speaker": "Speaker",
+        "mic": "Mic"
+      },
+      "return_reasons": {
+        "changed_mind": "Changed mind",
+        "defective": "Defective",
+        "wrong_item": "Wrong item",
+        "duplicate": "Sold twice"
       }
     },
-    "elsewhere": "Ready-made faults are in ← Extras, expense items in ← Cashboxes & expenses, and payment methods in ← Payment methods."
+    "elsewhere": "Preset faults are managed from the fault buttons in intake (or ← Extras). Expense items in ← Cashboxes & expenses, payment methods in ← Payment methods (each method has a cashbox in the ledger).",
+    "removeAsk": "Remove «{{v}}» from the list? Old records with this value stay as they are.",
+    "removeYes": "Remove",
+    "removeNo": "No",
+    "removed": "«{{v}}» removed from the list",
+    "pick": "Pick from the list",
+    "noMatch": "Not in the list",
+    "queued": "Saved on this device; it will sync when back online",
+    "permTitle": "Who can add to and remove from lists",
+    "permHint": "The owner always can. Adding and removing are recorded in the activity log.",
+    "addIssue": "New fault",
+    "removeIssue": "Remove «{{v}}» from faults",
+    "removeConfirm": "Remove?"
   },
   "navGroups": {
     "favorites": "Favorites",

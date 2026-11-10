@@ -34,7 +34,9 @@ import type { CheckItems } from '../lib/checks';
 import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
-import { InlineAdd, ListOptions, useListLabel, useShopList } from '../app/lists';
+import { useListLabel, useShopList } from '../app/lists';
+import { ListCombo } from '../app/ListCombo';
+import { ChipAdd, ChipRemove } from '../app/ChipEdit';
 import { PrintSendPanel } from '../app/print/PrintSendPanel';
 import { IntakeAssist } from '../app/assist/IntakeAssist';
 import { useSensitiveNames } from '../app/assist';
@@ -43,7 +45,6 @@ import { useLeaveGuard } from '../app/leaveGuard';
 import { hasContent } from '../lib/draft';
 
 // الماركات والملحقات والألوان من القوايم اللي بيديرها صاحب المحل (الإعدادات ← القوائم). الافتراضي في src/app/lists.tsx
-const QUICK_ISSUES = ['screen', 'battery', 'charging', 'software', 'water', 'speaker', 'mic', 'camera', 'dead'] as const;
 
 type Lookup = { state: 'idle' } | { state: 'loading' } | { state: 'found'; customer: Customer; devices: number } | { state: 'new' };
 interface Prev {
@@ -65,6 +66,7 @@ export function IntakeScreen() {
   const formRef = useRef<HTMLFormElement>(null);
   const brands = useShopList('brands').items;
   const accList = useShopList('accessories').items;
+  const issueList = useShopList('issues').items;
   const listLabel = useListLabel();
 
   const [phone, setPhone] = useState('');
@@ -75,6 +77,7 @@ export function IntakeScreen() {
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
+  const [deviceType, setDeviceType] = useState('');
   const [imei, setImei] = useState('');
   const [prev, setPrev] = useState<Prev[]>([]);
   const [lockType, setLockType] = useState<'none' | 'pin' | 'pattern'>('none');
@@ -218,7 +221,7 @@ export function IntakeScreen() {
     const customerIdPlanned = lookup.state === 'found' ? lookup.customer.id : newCustomer!.id;
     const payload = {
       customer: newCustomer,
-      device: { id, shop_id: profile.shop_id, customer_id: customerIdPlanned, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature, priority: routing.priority, est_minutes: routing.estMinutes },
+      device: { id, shop_id: profile.shop_id, customer_id: customerIdPlanned, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, device_type: deviceType.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature, priority: routing.priority, est_minutes: routing.estMinutes },
       cost: { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor },
       check: Object.keys(check).length > 0 ? { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check } : null,
       route: routeId,
@@ -296,6 +299,7 @@ export function IntakeScreen() {
     setBrand('');
     setModel('');
     setColor('');
+    setDeviceType('');
     setImei('');
     setLockType('none');
     setLockValue('');
@@ -433,34 +437,30 @@ export function IntakeScreen() {
             <PanelHeader index="02" title={t('intake.device')} />
             <div className="flex flex-col gap-3 p-4">
               <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('intake.brandQuick')}>
-                {brands.map(({ value: b }) => (
-                  <ChipToggle key={b} pressed={brand === b} onChange={(v) => setBrand(v ? b : '')}>
-                    <span dir="ltr">{b}</span>
-                  </ChipToggle>
+                {brands.map((it) => (
+                  <span key={it.value} className="inline-flex items-center gap-0.5">
+                    <ChipToggle pressed={brand === it.value} onChange={(v) => setBrand(v ? it.value : '')}>
+                      <span dir="ltr">{it.value}</span>
+                    </ChipToggle>
+                    <ChipRemove list="brands" item={it} />
+                  </span>
                 ))}
+                <ChipAdd list="brands" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <Field label={t('intake.brand')} required error={errors.brand}>
-                    <Input value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={60} dir="auto" list="list-brands" />
-                  </Field>
-                  <ListOptions id="list-brands" list="brands" />
-                  <InlineAdd list="brands" value={brand} />
-                </div>
-                <div>
-                  <Field label={t('intake.model')} required error={errors.model}>
-                    <Input value={model} onChange={(e) => setModel(e.target.value)} maxLength={80} dir="auto" placeholder={t('intake.modelPh')} list="list-models" />
-                  </Field>
-                  <ListOptions id="list-models" list="models" />
-                  <InlineAdd list="models" value={model} />
-                </div>
-                <div>
-                  <Field label={t('intake.color')}>
-                    <Input value={color} onChange={(e) => setColor(e.target.value)} list="list-colors" maxLength={40} />
-                  </Field>
-                  <ListOptions id="list-colors" list="colors" />
-                  <InlineAdd list="colors" value={color} />
-                </div>
+              {/* قوايم الملء السريع: الاختيار والإضافة والحذف من نفس الخانة (والقايمة واحدة للبرنامج كله) */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Field label={t('intake.brand')} required error={errors.brand}>
+                  <ListCombo list="brands" value={brand} onChange={setBrand} maxLength={60} dir="auto" testid="intake-brand" />
+                </Field>
+                <Field label={t('intake.model')} required error={errors.model}>
+                  <ListCombo list="models" value={model} onChange={setModel} maxLength={80} dir="auto" placeholder={t('intake.modelPh')} testid="intake-model" />
+                </Field>
+                <Field label={t('intake.deviceType')}>
+                  <ListCombo list="device_types" value={deviceType} onChange={setDeviceType} maxLength={60} testid="intake-device-type" />
+                </Field>
+                <Field label={t('intake.color')}>
+                  <ListCombo list="colors" value={color} onChange={setColor} maxLength={40} testid="intake-color" />
+                </Field>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field
@@ -548,11 +548,15 @@ export function IntakeScreen() {
               <div>
                 <div className="mb-1.5 text-sm font-medium text-fg-2">{t('intake.accessories')}</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {accList.map(({ value: a }) => (
-                    <ChipToggle key={a} pressed={accessories.includes(a)} onChange={(v) => setAccessories((c) => (v ? [...c, a] : c.filter((x) => x !== a)))}>
-                      {listLabel('accessories', a)}
-                    </ChipToggle>
+                  {accList.map((it) => (
+                    <span key={it.value} className="inline-flex items-center gap-0.5">
+                      <ChipToggle pressed={accessories.includes(it.value)} onChange={(v) => setAccessories((c) => (v ? [...c, it.value] : c.filter((x) => x !== it.value)))}>
+                        {listLabel('accessories', it.value)}
+                      </ChipToggle>
+                      <ChipRemove list="accessories" item={it} />
+                    </span>
                   ))}
+                  <ChipAdd list="accessories" />
                 </div>
               </div>
             </div>
@@ -569,8 +573,8 @@ export function IntakeScreen() {
                 {extras.quick_issues && presets.length > 0 && (
                   <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('extras.presets')} data-testid="intake-presets">
                     {presets.map((p) => (
+                      <span key={p.id} className="inline-flex items-center gap-0.5">
                       <button
-                        key={p.id}
                         type="button"
                         onClick={() => {
                           setIssue(p.issue);
@@ -581,23 +585,38 @@ export function IntakeScreen() {
                         {p.label}
                         {p.est_cost != null && <span className="num ms-1.5 text-fg-3">{f.money(p.est_cost)}</span>}
                       </button>
+                      <ChipRemove
+                        label={p.label}
+                        onRemove={async () => {
+                          const { error } = await supabase.from('issue_presets').update({ deleted_at: new Date().toISOString() }).eq('id', p.id);
+                          if (error) return false;
+                          setPresets((c) => c.filter((x) => x.id !== p.id));
+                          return true;
+                        }}
+                      />
+                      </span>
                     ))}
+
                   </div>
                 )}
-                <div className="flex flex-wrap gap-1.5">
-                  {QUICK_ISSUES.map((q) => {
-                    const label = t(`intake.quick.${q}`);
+                {/* الأعطال السريعة: قايمة من القوايم (تضيف وتشيل من هنا) */}
+                <div className="flex flex-wrap items-center gap-1.5" data-testid="quick-issues">
+                  {issueList.map((it) => {
+                    const label = listLabel('issues', it.value);
                     return (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => setIssue((c) => (c.includes(label) ? c : c ? `${c}${t('common.sep')}${label}` : label))}
-                        className="h-6 rounded-sm border border-dashed border-line-strong px-2 text-xs text-fg-2 transition-[border-color,color,transform] active:scale-95 hover:border-accent hover:text-accent"
-                      >
-                        + {label}
-                      </button>
+                      <span key={it.value} className="inline-flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setIssue((c) => (c.includes(label) ? c : c ? `${c}${t('common.sep')}${label}` : label))}
+                          className="h-6 rounded-sm border border-dashed border-line-strong px-2 text-xs text-fg-2 transition-[border-color,color,transform] active:scale-95 hover:border-accent hover:text-accent"
+                        >
+                          + {label}
+                        </button>
+                        <ChipRemove list="issues" item={it} />
+                      </span>
                     );
                   })}
+                  <ChipAdd list="issues" placeholder={t('lists.addIssue')} />
                 </div>
               </div>
               <div className="sm:col-span-2">
@@ -618,7 +637,6 @@ export function IntakeScreen() {
                 <Field label={t('intake.condition')} hint={t('intake.conditionHint')}>
                 <Textarea rows={2} value={condition} onChange={(e) => setCondition(e.target.value)} />
               </Field>
-                <InlineAdd list="conditions" value={condition} />
               </div>
               <Field label={t('intake.estimate')} error={errors.estimate} hint={t('intake.estimateHint')}>
                 <Input dir="ltr" inputMode="decimal" mono value={estimate} onChange={(e) => setEstimate(e.target.value)} placeholder="0" suffix={cur} className="text-start text-md" />
@@ -847,11 +865,15 @@ function ConditionChips({ value, onPick }: { value: string; onPick: (v: string) 
         const l = label('conditions', i.value);
         const on = parts.includes(l);
         return (
-          <ChipToggle key={i.value} pressed={on} onChange={(v) => onPick((v ? [...parts, l] : parts.filter((x) => x !== l)).join(t('common.sep')))}>
-            {l}
-          </ChipToggle>
+          <span key={i.value} className="inline-flex items-center gap-0.5">
+            <ChipToggle pressed={on} onChange={(v) => onPick((v ? [...parts, l] : parts.filter((x) => x !== l)).join(t('common.sep')))}>
+              {l}
+            </ChipToggle>
+            <ChipRemove list="conditions" item={i} />
+          </span>
         );
       })}
+      <ChipAdd list="conditions" />
     </div>
   );
 }

@@ -120,6 +120,27 @@ export async function runItem(item: OutboxItem): Promise<RunResult> {
       if (error) throw error;
       return { ok: true };
     }
+    if (item.kind === 'list') {
+      // إضافة أو حذف من قايمة اتعمل من غير نت: لو القايمة لسه على الافتراضي، بتتنسخ للمحل الأول
+      const seed = (p.seed as Record<string, unknown>[] | undefined) ?? [];
+      const listName = (p.op === 'add' ? (p.row as { list: string }).list : p.list) as string;
+      if (seed.length) {
+        const { count } = await supabase.from('shop_lists').select('id', { count: 'exact', head: true }).eq('list', listName);
+        if (!count) {
+          const { error } = await supabase.from('shop_lists').insert(seed);
+          if (error && !isDuplicate(error)) throw error;
+        }
+      }
+      if (p.op === 'add') {
+        await insertOnce('shop_lists', p.row as Record<string, unknown>, item.branch);
+      } else {
+        let q = supabase.from('shop_lists').update({ deleted_at: new Date(item.createdAt).toISOString() }).eq('list', listName).eq('value', p.value as string).is('deleted_at', null);
+        q = p.parent ? q.eq('parent', p.parent as string) : q.is('parent', null);
+        const { error } = await q;
+        if (error) throw error;
+      }
+      return { ok: true };
+    }
     return { ok: false, network: false, error: 'E_UNKNOWN_OP' };
   } catch (e) {
     return res(e);
