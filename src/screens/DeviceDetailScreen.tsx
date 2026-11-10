@@ -9,6 +9,7 @@ import { ChipToggle } from '../ui/Checkbox';
 import { readExtras } from '../lib/extras';
 import { readPrint } from '../lib/printPlan';
 import { PrintSendPanel } from '../app/print/PrintSendPanel';
+import { DeviceBranchPanel } from '../app/DeviceBranchPanel';
 import { useCanCorrect } from '../app/correct';
 import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
@@ -365,9 +366,11 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                   status={d.status}
                   finalCost={data.cost?.final_cost}
                   version={moneyVer}
+                  branchId={d.branch_id}
                   onChanged={reload}
                 />
               )}
+              {front && <DeviceBranchPanel device={d} onChanged={reload} />}
               {/* "طباعة وإرسال": نفس أزرار شاشة الاستلام، عشان تطبع أو تبعت تاني بعدين */}
               {front && (
                 <Panel className="p-4">

@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useLayoutEffect, useState, type FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { MailPlus, UserCheck, UserX, X } from 'lucide-react';
+import { Building2, MailPlus, UserCheck, UserX, X } from 'lucide-react';
 import { useMe } from '../app/auth';
+import { useBranch } from '../app/branch';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader } from '../app/AppShell';
 import { supabase } from '../lib/supabase';
@@ -39,13 +40,19 @@ export function TeamScreen() {
   const [err, setErr] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const [suspend, setSuspend] = useState<Profile | null>(null);
+  // B: الفروع (بتظهر بس لو المحل فيه أكتر من فرع)
+  const br = useBranch();
+  const [invBranches, setInvBranches] = useState<string[]>([]);
+  const [branchesOf, setBranchesOf] = useState<Profile | null>(null);
 
   const { data, error, loading, reload } = useLoad(async () => {
-    const [u, i] = await Promise.all([
+    const [u, i, s] = await Promise.all([
       supabase.from('profiles').select('id, shop_id, full_name, email, role, deleted_at, can_correct').order('created_at'),
-      supabase.from('staff_invites').select('id, email, full_name, role, created_at').is('accepted_at', null).is('deleted_at', null).order('created_at'),
+      supabase.from('staff_invites').select('id, email, full_name, role, created_at, branch_ids').is('accepted_at', null).is('deleted_at', null).order('created_at'),
+      supabase.from('staff_branches').select('profile_id, branch_id').is('deleted_at', null),
     ]);
-    return { users: must(u) as Profile[], invites: must(i) as Invite[] };
+    const sb = (must(s) as { profile_id: string; branch_id: string }[]).reduce<Record<string, string[]>>((a, r) => ((a[r.profile_id] ??= []).push(r.branch_id), a), {});
+    return { users: must(u) as Profile[], invites: must(i) as Invite[], branches: sb };
   }, []);
 
   async function invite(e: FormEvent) {
@@ -56,7 +63,8 @@ export function TeamScreen() {
     if (!isEmail(email)) return setErr(t('register.emailInvalid'));
     setBusy(true);
     const em = email.trim().toLowerCase();
-    const { error: ie } = await supabase.from('staff_invites').insert({ id: crypto.randomUUID(), shop_id: me.shop_id, email: em, full_name: name.trim(), role });
+    const branchIds = br.multi ? (invBranches.length ? invBranches : br.working ? [br.working.id] : []) : [];
+    const { error: ie } = await supabase.from('staff_invites').insert({ id: crypto.randomUUID(), shop_id: me.shop_id, email: em, full_name: name.trim(), role, branch_ids: branchIds });
     setBusy(false);
     if (ie) return setErr(/staff_invites_open/.test(ie.message) ? t('team.dupInvite') : errorMessage(ie));
     setSent(t('team.sentText', { name: name.trim(), email: em }));
@@ -107,6 +115,13 @@ export function TeamScreen() {
                 <option value="marketing">{t('roles.marketing')}</option>
               </Select>
             </Field>
+            {br.multi && (
+              <fieldset className="flex flex-col gap-1.5" data-testid="invite-branches">
+                <legend className="mb-1 text-sm text-fg-2">{t('branch.staff')}</legend>
+                <BranchChecks value={invBranches.length ? invBranches : br.working ? [br.working.id] : []} onChange={setInvBranches} />
+                <p className="text-2xs text-fg-3">{t('branch.staffHint')}</p>
+              </fieldset>
+            )}
             {err && <Alert tone="danger">{err}</Alert>}
             {sent && (
               <Alert tone="ok" title={t('team.sent')}>
@@ -170,7 +185,17 @@ export function TeamScreen() {
                         <div className="num truncate text-2xs text-fg-3" dir="ltr">
                           {u.email}
                         </div>
+                        {br.multi && (
+                          <div className="mt-0.5 truncate text-2xs text-fg-3" data-testid="member-branches">
+                            {u.role === 'owner' ? t('branch.staffAll') : (data!.branches[u.id]?.length ? data!.branches[u.id] : br.all.filter((x) => x.is_main).map((x) => x.id)).map((x) => br.name(x)).join(t('branch.sep'))}
+                          </div>
+                        )}
                       </div>
+                      {br.multi && u.role !== 'owner' && !u.deleted_at && (
+                        <Button size="sm" variant="ghost" icon={<Building2 className="size-3.5" />} needsNet onClick={() => setBranchesOf(u)} data-testid="member-branches-edit">
+                          {t('branch.staff')}
+                        </Button>
+                      )}
                       <span className="text-xs text-fg-2">{t(`roles.${u.role}`)}</span>
                       {u.role === 'reception' && !u.deleted_at && (
                         <span title={t('team.canCorrectHint')} data-testid="can-correct">
@@ -198,6 +223,12 @@ export function TeamScreen() {
           )}
         </div>
       </div>
+      <StaffBranchesDialog
+        user={branchesOf}
+        current={branchesOf ? (data?.branches[branchesOf.id]?.length ? data.branches[branchesOf.id] : br.all.filter((x) => x.is_main).map((x) => x.id)) : []}
+        onOpenChange={(v) => !v && setBranchesOf(null)}
+        onDone={reload}
+      />
       <Dialog
         open={!!suspend}
         onOpenChange={(v) => !v && setSuspend(null)}
@@ -215,5 +246,70 @@ export function TeamScreen() {
         }
       />
     </div>
+  );
+}
+
+/** اختيار فرع أو أكتر */
+function BranchChecks({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const br = useBranch();
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+      {br.all.map((b) => (
+        <Checkbox
+          key={b.id}
+          checked={value.includes(b.id)}
+          onChange={(on) => onChange(on ? [...value.filter((x) => x !== b.id), b.id] : value.filter((x) => x !== b.id))}
+          label={<span className="text-sm text-fg-2">{b.name}</span>}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** فروع موظف: بيتطبق على طول (من غير خروج ودخول)، وبيتسجل في سجل النشاط */
+function StaffBranchesDialog({ user, current, onOpenChange, onDone }: { user: Profile | null; current: string[]; onOpenChange: (v: boolean) => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const [v, setV] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    setV(current);
+    setErr(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+  async function save() {
+    if (!user) return;
+    if (!v.length) return setErr(t('branch.pickOne'));
+    setBusy(true);
+    const { error: e } = await supabase.rpc('set_staff_branches', { p_profile: user.id, p_branches: v });
+    setBusy(false);
+    if (e) return setErr(errorMessage(e));
+    toast({ tone: 'ok', title: t('branch.staffSaved', { name: user.full_name }) });
+    onOpenChange(false);
+    onDone();
+  }
+  return (
+    <Dialog
+      open={!!user}
+      onOpenChange={onOpenChange}
+      title={user ? `${t('branch.staff')} · ${user.full_name}` : ''}
+      description={t('branch.staffHint')}
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="primary" loading={busy} needsNet onClick={() => void save()} data-testid="member-branches-save">
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <BranchChecks value={v} onChange={setV} />
+        {err && <Alert tone="danger">{err}</Alert>}
+      </div>
+    </Dialog>
   );
 }

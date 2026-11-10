@@ -44,6 +44,9 @@ export interface Customer {
 export interface Device {
   id: string;
   shop_id: string;
+  branch_id?: string;
+  transfer_to?: string | null;
+  transfer_at?: string | null;
   customer_id: string;
   order_no: string;
   brand: string;
@@ -86,6 +89,9 @@ export interface DeviceListRow {
   estimated_cost: number | null;
   final_cost: number | null;
   warranty_until?: string | null;
+  /** B: الفرع، والفرع اللي الجهاز في الطريق له */
+  branch_id?: string;
+  transfer_to?: string | null;
 }
 
 export interface DeviceCost {

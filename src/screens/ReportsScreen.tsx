@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { useLoad } from '../app/useLoad';
 import { useMe } from '../app/auth';
+import { useBranch } from '../app/branch';
 import { rpc, type StockRow } from '../app/ledgerApi';
 import { PeriodFilter, usePeriod } from '../app/finance/PeriodFilter';
 import { useDuration, useRouteName } from '../app/tech/names';
@@ -50,20 +51,23 @@ export function ReportsScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
+  const br = useBranch();
   const routeName = useRouteName();
   const dur = useDuration();
   const { period, range, set } = usePeriod();
   const args = { p_from: range.from.toISOString(), p_to: range.to.toISOString() };
+  // B: فلتر الفرع (null = كل الفروع)
+  const bargs = { ...args, p_branch: br.filter };
   const { data, error, loading, reload } = useLoad(async () => {
     const [tech, issue, models, items] = await Promise.all([
       rpc<TechRow[]>('tech_report', args),
-      rpc<IssueRow[]>('issue_report', args),
-      rpc<{ kind: 'model' | 'route'; label: string; devices: number }[]>('models_report', args),
-      rpc<StockRow[]>('items_stock'),
+      rpc<IssueRow[]>('issue_report', bargs),
+      rpc<{ kind: 'model' | 'route'; label: string; devices: number }[]>('models_report', bargs),
+      rpc<StockRow[]>('items_stock', br.multi && br.view === 'all' ? { p_all: true } : {}),
     ]);
     return { tech, issue: issue.map((r) => ({ ...r, revenue: Number(r.revenue), parts: Number(r.parts), profit: Number(r.profit) })), models, short: items.filter((i) => i.short) };
      
-  }, [range.from.getTime(), range.to.getTime()]);
+  }, [range.from.getTime(), range.to.getTime(), br.filter]);
   useLiveRefresh(reload);
   const span = `${range.days[0]}_${range.days.at(-1)}`;
   const cur = f.currency(shop.currency);

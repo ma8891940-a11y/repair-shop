@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send } from 'lucide-react';
 import { useMe } from './auth';
+import { useBranch } from './branch';
 import { rpc, type Position } from './ledgerApi';
 import { supabase } from '../lib/supabase';
 import { cairoDay, cairoDayEnd, cairoDayStart } from '../lib/dates';
@@ -19,6 +20,7 @@ export function DaySummaryButton() {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile, shop } = useMe();
+  const br = useBranch();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   if (profile.role !== 'owner' || !readExtras(shop.extras).day_summary) return null;
@@ -34,10 +36,17 @@ export function DaySummaryButton() {
         if (r.error) throw r.error;
         return r.count ?? 0;
       };
+      // B: الفرع المختار بس (أو كل الفروع)
+      let recQ = supabase.from('devices').select('id', { count: 'exact', head: true }).is('deleted_at', null).gte('received_at', from).lt('received_at', to);
+      let readyQ = supabase.from('devices').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'ready');
+      if (br.filter) {
+        recQ = recQ.eq('branch_id', br.filter);
+        readyQ = readyQ.eq('branch_id', br.filter);
+      }
       const [p, received, ready] = await Promise.all([
-        rpc<Position>('financial_position', { p_from: from, p_to: to }),
-        count(supabase.from('devices').select('id', { count: 'exact', head: true }).is('deleted_at', null).gte('received_at', from).lt('received_at', to)),
-        count(supabase.from('devices').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'ready')),
+        rpc<Position>('financial_position', { p_from: from, p_to: to, p_branch: br.filter }),
+        count(recQ),
+        count(readyQ),
       ]);
       const text = daySummaryText(
         shop.name,

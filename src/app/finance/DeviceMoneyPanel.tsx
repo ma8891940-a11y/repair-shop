@@ -6,7 +6,8 @@ import { ReverseDialog } from './ReverseDialog';
 import { EditEntryDialog } from './EditEntryDialog';
 import { useLoad } from '../useLoad';
 import { useMe } from '../auth';
-import { loadCashboxes, opId, rpc, useAccountName, type DeviceMoney, type StockRow } from '../ledgerApi';
+import { cashboxesFor, loadCashboxes, opId, rpc, useAccountName, type DeviceMoney, type StockRow } from '../ledgerApi';
+import { getBranchHeader } from '../../lib/branchHeader';
 import { readExtras } from '../../lib/extras';
 import { OpDialog, warmOpLists } from './OpDialog';
 import { supabase } from '../../lib/supabase';
@@ -24,7 +25,7 @@ import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 
 /** فلوس الجهاز (صاحب المحل والاستقبال): التكلفة، والمدفوع، والباقي، والدفعات، والتسليم بالآجل */
-export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCost, version = 0, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; finalCost: number | null | undefined; version?: number; onChanged: () => void }) {
+export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCost, version = 0, branchId, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; finalCost: number | null | undefined; version?: number; branchId?: string; onChanged: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile, shop } = useMe();
@@ -167,7 +168,7 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
       <EditEntryDialog entry={fix?.mode === 'edit' ? fix : null} onOpenChange={(v) => !v && setFix(null)} onDone={done} />
       <ReverseDialog move={fix?.mode === 'cancel' ? { ...fix, source_type: 'payment' } : null} onOpenChange={(v) => !v && setFix(null)} onDone={done} />
       {/* نافذة الدفعة بتفضل موجودة بعد أول مرة يبان العميل (عشان أي تحديث ما يقفلهاش ويفتحها تاني باللي اتكتب ضايع) */}
-      {payCustomer && <OpDialog op="payment" open={pay} onOpenChange={setPay} fixed={{ customer: payCustomer, device: { id: deviceId, label: orderNo }, amount: data && Number(data.due) > 0 ? Number(data.due) : undefined }} onDone={done} />}
+      {payCustomer && <OpDialog op="payment" open={pay} onOpenChange={setPay} fixed={{ customer: payCustomer, device: { id: deviceId, label: orderNo, branch: branchId }, amount: data && Number(data.due) > 0 ? Number(data.due) : undefined }} onDone={done} />}
     </Panel>
   );
 }
@@ -259,7 +260,8 @@ function ManualPartPanel({ deviceId, status, onChanged }: { deviceId: string; st
   const [cashbox, setCashbox] = useState('');
   const [busy, setBusy] = useState(false);
   const [id, setId] = useState(opId);
-  const cbs = useLoad(async () => (profile.role === 'technician' ? [] : loadCashboxes()), [profile.role]);
+  // B: خزن الفرع الشغال
+  const cbs = useLoad(async () => (profile.role === 'technician' ? [] : cashboxesFor(await loadCashboxes(), getBranchHeader())), [profile.role]);
   useEffect(() => {
     if (!cashbox && cbs.data?.length) setCashbox(cbs.data[0].id);
   }, [cbs.data, cashbox]);

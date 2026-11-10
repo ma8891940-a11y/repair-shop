@@ -16,6 +16,18 @@ describe('طابور العمليات بدون نت (outbox)', () => {
     expect(await pendingCount(db)).toBe(1);
   });
 
+  it('B: كل عملية بتفتكر فرعها، فبتتسجل فيه حتى لو المستخدم بدّل الفرع قبل ما النت يرجع', async () => {
+    await enqueue(db, 'sale', 's-a', { p_id: 's-a' }, 1000, 'branch-a');
+    await enqueue(db, 'sale', 's-b', { p_id: 's-b' }, 1001, 'branch-b');
+    await enqueue(db, 'note', 'n-0', {}, 1002);
+    const seen: [string, string | null | undefined][] = [];
+    await flush(db, async (i) => {
+      seen.push([i.id, i.branch]);
+      return { ok: true };
+    });
+    expect(seen).toEqual([['s-a', 'branch-a'], ['s-b', 'branch-b'], ['n-0', undefined]]);
+  });
+
   it('بيتبعت بنفس ترتيب الإضافة، وبيتشال من الطابور بعد ما يوصل', async () => {
     await enqueue(db, 'intake', 'd1', {}, 1000);
     await enqueue(db, 'status', 's1', {}, 1000);

@@ -5,6 +5,7 @@ import { ArrowDownToLine, ArrowUpFromLine, FileText, Pencil, PieChart, Plus } fr
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
+import { useBranch } from '../../app/branch';
 import { loadCashboxes, opId, rpc, useAccountName, type Cashbox } from '../../app/ledgerApi';
 import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
@@ -32,6 +33,8 @@ export interface PartnerRow {
   capital: number;
   current: number;
   total: number;
+  /** B: شريك على فرع (null = المحل كله) */
+  branch_id?: string | null;
 }
 
 /**
@@ -42,6 +45,7 @@ export function PartnersScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
+  const br = useBranch();
   const [edit, setEdit] = useState<PartnerRow | 'new' | null>(null);
   const [money, setMoney] = useState<{ p: PartnerRow; kind: 'deposit' | 'withdraw' } | null>(null);
   const [dist, setDist] = useState(false);
@@ -125,6 +129,7 @@ export function PartnersScreen() {
                     <td>
                       <div className="text-fg">{p.name}</div>
                       <div className="text-2xs text-fg-3">{t('partners.since', { d: f.date(p.joined_on) })}</div>
+                      {br.multi && <div className="text-2xs text-fg-3" data-testid="partner-scope">{p.branch_id ? br.name(p.branch_id) : t('partners.wholeShop')}</div>}
                     </td>
                     <td className="num text-end text-fg" data-testid="partner-share">
                       {f.percentBp(p.share_bp)}
@@ -181,6 +186,8 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
   const { t } = useTranslation();
   const f = useFormat();
   const toast = useToast();
+  const br = useBranch();
+  const [scope, setScope] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [share, setShare] = useState('');
@@ -211,6 +218,7 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
     setPhone(p?.phone ?? '');
     setShare(p ? String(p.share_bp / 100) : '');
     setJoined(p?.joined_on ?? cairoDay(new Date()));
+    setScope(p?.branch_id ?? '');
     setCapKind('cash');
     setCapAmount('');
     setCapDate(cairoDay(new Date()));
@@ -229,7 +237,7 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
     const cap = hasCap ? capitalArgs(capKind, capAmount, lines) : null;
     if (typeof cap === 'string') return setErr(t(cap));
     setBusy(true);
-    const row = { name: name.trim(), phone: phone.trim() || null, share_bp: bp, joined_on: joined };
+    const row = { name: name.trim(), phone: phone.trim() || null, share_bp: bp, joined_on: joined, branch_id: scope || null };
     const pid = isNew ? ids!.partner : (partner as PartnerRow).id;
     const { error } = isNew
       ? await supabase.from('partners').upsert({ id: pid, shop_id: crypto.randomUUID(), ...row }, { onConflict: 'id', ignoreDuplicates: true })
@@ -282,6 +290,18 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
         <Field label={t('partners.joined')}>
           <Input type="date" dir="ltr" value={joined} onChange={(e) => setJoined(e.target.value)} />
         </Field>
+        {br.multi && (
+          <Field label={t('partners.scope')} hint={t('partners.scopeHint')}>
+            <Select value={scope} onChange={(e) => setScope(e.target.value)} data-testid="partner-scope-select">
+              <option value="">{t('partners.wholeShop')}</option>
+              {br.all.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
       </div>
       {isNew && (
         <div className="mt-4 border-t border-glass-border pt-3" data-testid="new-partner-capital">

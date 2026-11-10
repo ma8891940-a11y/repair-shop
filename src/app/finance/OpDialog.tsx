@@ -7,7 +7,8 @@ import { errorMessage } from '../../lib/errors';
 import { useFormat } from '../../i18n/format';
 import { useMe } from '../auth';
 import { useLoad } from '../useLoad';
-import { loadCashboxes, opId, rpc, useAccountName, type Account, type Cashbox } from '../ledgerApi';
+import { cashboxesFor, loadCashboxes, opId, rpc, useAccountName, type Account, type Cashbox } from '../ledgerApi';
+import { getBranchHeader } from '../../lib/branchHeader';
 import { Button } from '../../ui/Button';
 import { Dialog } from '../../ui/Dialog';
 import { Field, Input, Select, Textarea } from '../../ui/Field';
@@ -37,7 +38,7 @@ export interface OpFixed {
   customer?: { id: string; name: string };
   supplier?: { id: string; name: string };
   employee?: { id: string; name: string };
-  device?: { id: string; label: string };
+  device?: { id: string; label: string; branch?: string };
   cashbox?: string;
   amount?: number;
 }
@@ -102,12 +103,15 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
     setCashbox(fixed.cashbox ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, op]);
+  // B: خزن فرع الجهاز (أو الفرع الشغال). التحويل بين الخزن: "إلى" ممكن تكون في أي فرع
+  const opBranch = fixed.device?.branch ?? getBranchHeader();
+  const myCbs = useMemo(() => cashboxesFor(lists.data?.cbs ?? [], opBranch), [lists.data, opBranch]);
   useEffect(() => {
     const l = lists.data;
     if (!l) return;
-    if (!cashbox && l.cbs.length) setCashbox(fixed.cashbox ?? l.cbs[0].id);
+    if (!cashbox && myCbs.length) setCashbox(fixed.cashbox ?? myCbs[0].id);
     if (!expense && l.exp.length) setExpense(l.exp[0].id);
-  }, [lists.data, cashbox, expense, fixed.cashbox]);
+  }, [lists.data, myCbs, cashbox, expense, fixed.cashbox]);
 
   const amountMinor = useMemo(() => parsePounds(amount), [amount]);
   const partyId = fixed.customer?.id ?? fixed.supplier?.id ?? fixed.employee?.id ?? party;
@@ -163,11 +167,11 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
   }
 
   const l = lists.data;
-  const cashboxSelect = (value: string, set: (v: string) => void, label: string, exclude?: string) => (
+  const cashboxSelect = (value: string, set: (v: string) => void, label: string, exclude?: string, anyBranch = false) => (
     <Field label={label}>
       <Select value={value} onChange={(e) => set(e.target.value)} disabled={!!fixed.cashbox && set === setCashbox}>
         {!value && <option value="">{t('fin.pick')}</option>}
-        {(l?.cbs ?? [])
+        {(anyBranch ? (l?.cbs ?? []) : myCbs)
           .filter((c) => c.id !== exclude)
           .map((c) => (
             <option key={c.id} value={c.id}>
@@ -244,7 +248,7 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
           </Field>
         )}
         {needs.includes('cashbox') && cashboxSelect(cashbox, setCashbox, needs.includes('to') ? t('fin.from') : t('fin.cashbox'))}
-        {needs.includes('to') && cashboxSelect(to, setTo, t('fin.to'), cashbox)}
+        {needs.includes('to') && cashboxSelect(to, setTo, t('fin.to'), cashbox, true)}
         <Field label={t('fin.amount')}>
           <Input autoFocus dir="ltr" inputMode="decimal" mono value={amount} onChange={(e) => {
             typedAmount.current = true;

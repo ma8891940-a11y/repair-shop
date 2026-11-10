@@ -5,6 +5,8 @@ import { AlertTriangle, Barcode as BarcodeIcon, Camera, FileUp, MessageCircle, P
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
+import { useBranch } from '../../app/branch';
+import { BranchStock } from '../../app/finance/BranchStock';
 import { loadCashboxes, opId, rpc, useAccountName, type Cashbox, type StockRow } from '../../app/ledgerApi';
 import { supabase } from '../../lib/supabase';
 import { parsePounds } from '../../lib/money';
@@ -72,13 +74,15 @@ export function InventoryScreen() {
   const [dlg, setDlg] = useState<'item' | 'purchase' | 'sale' | 'supplier' | null>(null);
   const [onlyShort, setOnlyShort] = useState(false);
   const [detail, setDetail] = useState<StockRow | null>(null);
+  const br = useBranch();
   const { data, error, loading, reload } = useLoad(async () => {
-    const items = await rpc<StockRow[]>('items_stock');
+    // B: الفرع الشغال، أو كل الفروع لو العرض "كل الفروع"
+    const items = await rpc<StockRow[]>('items_stock', br.view === 'all' && br.multi ? { p_all: true } : {});
     const suppliers = owner ? (must(await supabase.from('suppliers').select('id, name, phone').is('deleted_at', null).order('name')) as Supplier[]) : [];
     const bal = owner ? await rpc<{ party_id: string; balance: number }[]>('party_balances', { p_kind: 'suppliers' }) : [];
     return { items: items.map((i) => ({ ...i, qty: Number(i.qty), avg_cost: i.avg_cost == null ? null : Number(i.avg_cost), value: i.value == null ? null : Number(i.value) })), suppliers, bal: new Map(bal.map((b) => [b.party_id, Number(b.balance)])) };
     // البند 14: آخر نسخة بتتحفظ على الجهاز، فالمخزون والبيع بيفتحوا من غير نت
-  }, [owner], { cacheKey: `inventory:${profile.id}` });
+  }, [owner, br.view], { cacheKey: `inventory:${profile.id}:${br.view}` });
   useLiveRefresh(reload);
   const cur = f.currency(shop.currency);
   const totalValue = (data?.items ?? []).reduce((a, i) => a + (i.value ?? 0), 0);
@@ -898,6 +902,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
         }}
       />
       <div className="flex flex-col gap-3">
+        {item && <BranchStock item={item} onDone={onDone} />}
         <div className="flex gap-3">
           <label className="group relative grid size-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md border border-dashed border-line bg-sunken/50 text-2xs text-fg-3 hover:border-accent" title={t('inv.image')}>
             {img ? <img src={img} alt={item?.name ?? ''} className="size-full object-cover" /> : uploading ? t('common.loading') : t('inv.image')}
@@ -993,15 +998,16 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
 function InventorySummary() {
   const { t } = useTranslation();
   const f = useFormat();
+  const br = useBranch();
   const { shop } = useMe();
   const { period, range, set } = usePeriod();
   const { data, error, reload } = useLoad(
     async () => {
-      const r = await rpc<InvSummary>('inventory_summary', { p_from: range.from.toISOString(), p_to: range.to.toISOString() });
+      const r = await rpc<InvSummary>('inventory_summary', { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter });
       const n = (k: keyof InvSummary) => Number(r[k] ?? 0);
       return { ...r, sales: n('sales'), sales_cost: n('sales_cost'), wastage: n('wastage'), return_diff: n('return_diff'), cost_adjust: n('cost_adjust'), parts_used: n('parts_used'), purchases: n('purchases'), stock_value: n('stock_value'), stock_qty: n('stock_qty'), profit: n('profit') };
     },
-    [range.from.getTime(), range.to.getTime()],
+    [range.from.getTime(), range.to.getTime(), br.filter],
   );
   useLiveRefresh(reload);
   const cur = f.currency(shop.currency);

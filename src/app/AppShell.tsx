@@ -23,6 +23,7 @@ import { useBackground } from './stage';
 import { useToast } from '../ui/Toast';
 import { Dialog } from '../ui/Dialog';
 import { ConnectionBadge } from './ConnectionBadge';
+import { BranchSwitcher } from './BranchSwitcher';
 import { supabase } from '../lib/supabase';
 import { cn } from '../ui/cn';
 
@@ -227,6 +228,7 @@ export function AppShell() {
               </span>
             </button>
             <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
+              <BranchSwitcher />
               <ConnectionBadge live={live} />
               <div className="flex items-center md:hidden">
                 {profile.role !== 'marketing' && <ScreenAssist placement="header" />}

@@ -4,6 +4,8 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { PackagePlus, Search, X } from 'lucide-react';
 import { useMe } from '../app/auth';
+import { useBranch } from '../app/branch';
+import { BranchTag } from '../app/BranchSwitcher';
 import { StaleNote } from '../ui/StaleNote';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
@@ -55,7 +57,9 @@ export function DevicesScreen() {
   useLiveRefresh(reload);
 
   const now = new Date();
-  const all = useMemo(() => data ?? [], [data]);
+  const br = useBranch();
+  // B: الفرع المختار (والجهاز اللي في الطريق له)
+  const all = useMemo(() => (data ?? []).filter((d) => !br.filter || d.branch_id === br.filter || d.transfer_to === br.filter), [data, br.filter]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: all.length };
     for (const s of STATUSES) c[s] = 0;
@@ -271,6 +275,7 @@ export function DevicesScreen() {
                         <Link to={`/devices/${d.id}`} state={{ bg: location }} className="num text-fg" dir="ltr" onClick={(e) => e.stopPropagation()}>
                           {d.order_no}
                         </Link>
+                        <DeviceBranchNote d={d} />
                       </td>
                       {front && (
                         <td className="px-3 py-2.5">
@@ -308,6 +313,7 @@ export function DevicesScreen() {
                     </span>
                     <StatusBadge status={d.status as DeviceStatus} size="sm" />
                   </div>
+                  <DeviceBranchNote d={d} />
                   <div className="mt-1.5 truncate text-sm text-fg">
                     {d.brand} {d.model}
                     {front && d.customer_name && (
@@ -323,6 +329,23 @@ export function DevicesScreen() {
             ))}
           </ul>
         </>
+      )}
+    </div>
+  );
+}
+
+/** B: فرع الجهاز (لما العرض "كل الفروع")، و"في الطريق لـ ..." */
+function DeviceBranchNote({ d }: { d: { branch_id?: string; transfer_to?: string | null } }) {
+  const { t } = useTranslation();
+  const br = useBranch();
+  if (!br.multi) return null;
+  return (
+    <div className="mt-0.5 flex flex-wrap gap-1">
+      {br.view === 'all' && <BranchTag id={d.branch_id} />}
+      {d.transfer_to && (
+        <span className="rounded-sm border border-[color-mix(in_srgb,var(--warn)_40%,transparent)] px-1.5 py-px text-2xs text-warn" data-testid="device-in-transit">
+          {t('branch.inTransit', { name: br.name(d.transfer_to) })}
+        </span>
       )}
     </div>
   );

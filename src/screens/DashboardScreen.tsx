@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { AlarmClock, ArrowRight, CheckCheck, Inbox, PackagePlus, TrendingUp, Wallet, Wrench, type LucideIcon } from 'lucide-react';
 import { useMe } from '../app/auth';
+import { useBranch } from '../app/branch';
 import { StaleNote } from '../ui/StaleNote';
 import { useLoad, must } from '../app/useLoad';
 import { PageHeader, useLiveRefresh } from '../app/AppShell';
@@ -33,6 +34,7 @@ export function DashboardScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile, shop } = useMe();
+  const br = useBranch();
   const navigate = useNavigate();
   const owner = profile.role === 'owner';
   const front = (profile.role === 'owner' || profile.role === 'reception');
@@ -41,8 +43,8 @@ export function DashboardScreen() {
   const profit = useLoad(async () => {
     if (profile.role !== 'owner') return null;
     const day = cairoDay(new Date());
-    return rpc<Position>('financial_position', { p_from: cairoDayStart(day).toISOString(), p_to: cairoDayEnd(day).toISOString() });
-  }, [profile.role]);
+    return rpc<Position>('financial_position', { p_from: cairoDayStart(day).toISOString(), p_to: cairoDayEnd(day).toISOString(), p_branch: br.filter });
+  }, [profile.role, br.filter]);
   const { data, error, loading, reload, stale } = useLoad(
     async () => {
       const since = new Date(Date.now() - 14 * 86_400_000).toISOString();

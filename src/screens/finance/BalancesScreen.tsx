@@ -8,6 +8,7 @@ import { daysSince } from '../../lib/dates';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
+import { useBranch } from '../../app/branch';
 import { rpc, useAccountName } from '../../app/ledgerApi';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { useFormat } from '../../i18n/format';
@@ -150,10 +151,11 @@ export function ProfitScreen() {
   const f = useFormat();
   const { shop } = useMe();
   const accName = useAccountName();
+  const br = useBranch();
   const { period, range, set } = usePeriod();
   const { data, error, loading, reload } = useLoad(
-    () => rpc<{ account_id: string; code: string | null; name: string | null; type: 'revenue' | 'expense'; amount: number }[]>('pl_breakdown', { p_from: range.from.toISOString(), p_to: range.to.toISOString() }),
-    [range.from.getTime(), range.to.getTime()],
+    () => rpc<{ account_id: string; code: string | null; name: string | null; type: 'revenue' | 'expense'; amount: number }[]>('pl_breakdown', { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter }),
+    [range.from.getTime(), range.to.getTime(), br.filter],
   );
   useLiveRefresh(reload);
   const rows = (data ?? []).map((r) => ({ ...r, amount: Number(r.amount) }));

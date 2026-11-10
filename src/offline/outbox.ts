@@ -17,6 +17,8 @@ export interface OutboxItem {
   tries: number;
   status: 'pending' | 'failed';
   lastError?: string;
+  /** B: الفرع اللي العملية اتعملت فيه */
+  branch?: string | null;
 }
 export interface CacheItem {
   key: string;
@@ -47,11 +49,11 @@ export const localDb = () => (shared ??= new LocalDB());
 
 let counter = 0;
 /** يضيف عملية للطابور. لو نفس الـ id موجود، ما بيتضافش تاني */
-export async function enqueue(db: LocalDB, kind: OpKind, id: string, payload: Record<string, unknown>, now = Date.now()): Promise<boolean> {
+export async function enqueue(db: LocalDB, kind: OpKind, id: string, payload: Record<string, unknown>, now = Date.now(), branch: string | null = null): Promise<boolean> {
   return db.transaction('rw', db.outbox, async () => {
     if (await db.outbox.get(id)) return false;
     counter = (counter + 1) % 1000;
-    await db.outbox.add({ id, seq: now * 1000 + counter, kind, payload, createdAt: now, tries: 0, status: 'pending' });
+    await db.outbox.add({ id, seq: now * 1000 + counter, kind, payload, createdAt: now, tries: 0, status: 'pending', ...(branch ? { branch } : {}) });
     return true;
   });
 }

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { uploadDevicePhoto } from '../lib/photos';
+import { BRANCH_HEADER, getBranchHeader } from '../lib/branchHeader';
 import { enqueue, failedItems, flush, isDuplicate, isNetworkError, localDb, pendingCount, retryFailed, type OpKind, type OutboxItem, type RunResult } from './outbox';
 
 /**
@@ -30,24 +31,32 @@ const Ctx = createContext<SyncState>({
 });
 export const useSync = () => useContext(Ctx);
 
+type Branchable = { setHeader: (name: string, value: string) => unknown };
+/** هيدر الفرع على طلب واحد بس (مش على كل الطلبات اللي شغالة في نفس الوقت) */
+function withBranch<Q extends Branchable>(q: Q, branch?: string | null): Q {
+  return branch ? (q.setHeader(BRANCH_HEADER, branch) as Q) : q;
+}
+
 const res = (error: unknown): RunResult => (isNetworkError(error) ? { ok: false, network: true, error: String((error as Error)?.message ?? error) } : { ok: false, network: false, error: String((error as { message?: string })?.message ?? error) });
 /** إضافة صف ممكن تكون وصلت في محاولة قبل كده: التكرار = تمت */
-async function insertOnce(table: string, row: Record<string, unknown>) {
-  const { error } = await supabase.from(table).insert(row);
+async function insertOnce(table: string, row: Record<string, unknown>, branch?: string | null) {
+  const { error } = await withBranch(supabase.from(table).insert(row), branch);
   if (error && !isDuplicate(error)) throw error;
 }
 
 /** تنفيذ عملية من الطابور على السيرفر */
 export async function runItem(item: OutboxItem): Promise<RunResult> {
   const p = item.payload;
+  // B: العملية بتتسجل في الفرع اللي اتعملت فيه (حتى لو المستخدم بدّل الفرع بعدها)
+  const H = <Q extends Branchable>(q: Q): Q => withBranch(q, item.branch);
   try {
     if (item.kind === 'status') {
-      const { data, error } = await supabase.rpc('apply_status_lww', { p_device: p.device, p_status: p.status, p_client_ts: new Date(item.createdAt).toISOString() });
+      const { data, error } = await H(supabase.rpc('apply_status_lww', { p_device: p.device, p_status: p.status, p_client_ts: new Date(item.createdAt).toISOString() }));
       if (error) throw error;
       return { ok: true, ...(data as object) } as RunResult;
     }
     if (item.kind === 'payment') {
-      const { error } = await supabase.rpc('record_payment', p);
+      const { error } = await H(supabase.rpc('record_payment', p));
       if (error) throw error;
       return { ok: true };
     }
@@ -55,27 +64,27 @@ export async function runItem(item: OutboxItem): Promise<RunResult> {
       const device = { ...(p.device as Record<string, unknown>) };
       if (p.customer) {
         const c = p.customer as { id: string; phone: string };
-        const { error } = await supabase.from('customers').insert(c);
+        const { error } = await H(supabase.from('customers').insert(c));
         if (error && isDuplicate(error)) {
           // الرقم متسجل قبل كده (اتضاف من جهاز تاني وانت بدون نت): الجهاز بيتربط بالعميل الموجود
           const { data: ex } = await supabase.from('customers').select('id').eq('phone', c.phone).is('deleted_at', null).maybeSingle();
           if (ex && ex.id !== c.id) device.customer_id = ex.id;
         } else if (error) throw error;
       }
-      await insertOnce('devices', device);
-      await insertOnce('device_costs', p.cost as Record<string, unknown>);
-      if (p.check) await insertOnce('device_checks', p.check as Record<string, unknown>);
+      await insertOnce('devices', device, item.branch);
+      await insertOnce('device_costs', p.cost as Record<string, unknown>, item.branch);
+      if (p.check) await insertOnce('device_checks', p.check as Record<string, unknown>, item.branch);
       const dev = p.device as { id: string };
       if (p.route) {
         // المسار مرة واحدة بس (لو الجهاز ملوش خطوات)
         const { count } = await supabase.from('repair_steps').select('id', { count: 'exact', head: true }).eq('device_id', dev.id);
         if (!count) {
-          const { error } = await supabase.rpc('set_route', { p_device: dev.id, p_route: p.route });
+          const { error } = await H(supabase.rpc('set_route', { p_device: dev.id, p_route: p.route }));
           if (error) throw error;
         }
       }
       if (p.lock) {
-        const { error } = await supabase.rpc('set_device_passcode', { p_device_id: dev.id, ...(p.lock as object) });
+        const { error } = await H(supabase.rpc('set_device_passcode', { p_device_id: dev.id, ...(p.lock as object) }));
         if (error) throw error;
       }
       return { ok: true };
@@ -97,17 +106,17 @@ export async function runItem(item: OutboxItem): Promise<RunResult> {
       return { ok: true };
     }
     if (item.kind === 'note') {
-      await insertOnce('device_notes', p);
+      await insertOnce('device_notes', p, item.branch);
       return { ok: true };
     }
     if (item.kind === 'check') {
-      const { error } = await supabase.from('device_checks').upsert(p);
+      const { error } = await H(supabase.from('device_checks').upsert(p));
       if (error) throw error;
       return { ok: true };
     }
     if (item.kind === 'sale') {
       // record_sale بـ p_id: لو وصلت قبل كده ما بتتكررش
-      const { error } = await supabase.rpc('record_sale', p);
+      const { error } = await H(supabase.rpc('record_sale', p));
       if (error) throw error;
       return { ok: true };
     }
@@ -148,7 +157,7 @@ export function SyncProvider({ children, run = runItem }: { children: ReactNode;
 
   const queue = useCallback(
     async (kind: OpKind, id: string, payload: Record<string, unknown>) => {
-      await enqueue(localDb(), kind, id, payload);
+      await enqueue(localDb(), kind, id, payload, Date.now(), getBranchHeader());
       await refresh();
       void syncNow();
     },

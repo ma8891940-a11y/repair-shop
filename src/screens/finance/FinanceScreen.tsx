@@ -13,6 +13,8 @@ import { previousRange, resultSentence } from '../../lib/financeSummary';
 import { ReadyReports } from '../../app/finance/ReadyReports';
 import type { ExportTable } from '../../lib/xlsx';
 import { useMe } from '../../app/auth';
+import { useBranch } from '../../app/branch';
+import { BranchCompare } from '../../app/finance/BranchCompare';
 import { rpc, sortCashboxes, useAccountName, type Position } from '../../app/ledgerApi';
 import { OpDialog, type Op } from '../../app/finance/OpDialog';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
@@ -41,6 +43,7 @@ export function FinanceScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
+  const br = useBranch();
   const accName = useAccountName();
   const { period, range, set, query } = usePeriod();
   const [op, setOp] = useState<Op | null>(null);
@@ -55,16 +58,18 @@ export function FinanceScreen() {
   const cur = f.currency(shop.currency);
 
   const { data, error, loading, reload } = useLoad(async () => {
-    const args = { p_from: range.from.toISOString(), p_to: range.to.toISOString() };
+    // B: فلتر الفرع (null = كل الفروع)
+    const args = { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter };
     // الفترة اللي قبلها (للمقارنة في جملة النتيجة)
     const prev = previousRange(period, new Date());
     const [p, daily, pp] = await Promise.all([
       rpc<Position>('financial_position', args),
-      rpc<{ cashbox: string; day: string; net: number }[]>('cashbox_daily', args),
-      rpc<Position>('financial_position', { p_from: prev.from.toISOString(), p_to: prev.to.toISOString() }).catch(() => null),
+      rpc<{ cashbox: string; day: string; net: number }[]>('cashbox_daily', { p_from: args.p_from, p_to: args.p_to }),
+      rpc<Position>('financial_position', { p_from: prev.from.toISOString(), p_to: prev.to.toISOString(), p_branch: br.filter }).catch(() => null),
     ]);
-    return { p, daily, prev: pp };
-  }, [range.from.getTime(), range.to.getTime()]);
+    const mine = new Set(p.cashboxes.map((c) => c.id));
+    return { p, daily: br.filter ? daily.filter((d) => mine.has(d.cashbox)) : daily, prev: pp };
+  }, [range.from.getTime(), range.to.getTime(), br.filter]);
   useLiveRefresh(reload);
 
   const p = data?.p;
@@ -212,6 +217,7 @@ export function FinanceScreen() {
 
           {/* حقوق الملكية: رأس مال صاحب المحل والشركاء والأرباح المحتجزة والسحوبات. دي مش ديون على المحل */}
           {p?.equity_parts && <EquityPanel p={p} money={money} cur={cur} />}
+          <BranchCompare from={range.from} to={range.to} />
 
           <ReadyReports query={query} lastDay={range.days.at(-1)!} />
           <FinanceAssist p={p} period={periodLine} />

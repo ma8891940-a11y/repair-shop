@@ -18,6 +18,27 @@ export async function prefs(page: Page, info: TestInfo, o: { lang?: 'ar' | 'en';
     },
     [theme, o.lang ?? 'ar', o.effects ? '1' : '0'] as const,
   );
+  watchNetwork(page, info);
+}
+
+/**
+ * تشخيص: الطلبات اللي فشلت أو رجعت خطأ من السيرفر، وأخطاء الكونسول. بتتطبع بس لو الاختبار فشل،
+ * عشان لو حاجة فشلت تحت ضغط التشغيل الكامل يبان السبب بالظبط (من غير ما نعيد التشغيل).
+ */
+function watchNetwork(page: Page, info: TestInfo) {
+  const log: string[] = [];
+  const at = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
+  const t0 = Date.now();
+  const short = (u: string) => u.replace(/^https?:\/\/[^/]+/, '').slice(0, 140);
+  page.on('requestfailed', (r) => log.push(`${at()} FAILED ${r.method()} ${short(r.url())} ${r.failure()?.errorText ?? ''}`));
+  page.on('response', (r) => {
+    if (r.status() >= 500 || (r.status() >= 400 && r.url().includes('/rest/v1/'))) log.push(`${at()} HTTP ${r.status()} ${r.request().method()} ${short(r.url())}`);
+  });
+  page.on('console', (m) => m.type() === 'error' && log.push(`${at()} CONSOLE ${m.text().slice(0, 200)}`));
+  page.on('pageerror', (e) => log.push(`${at()} PAGEERROR ${String(e).slice(0, 200)}`));
+  page.on('close', () => {
+    if (info.status !== info.expectedStatus && log.length) console.log(`--- network/console (${info.title}) ---\n${log.slice(-60).join('\n')}`);
+  });
 }
 
 /** يستنى الشاشة الافتتاحية تختفي */

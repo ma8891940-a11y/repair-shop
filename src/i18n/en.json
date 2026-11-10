@@ -485,7 +485,16 @@
       "E_PERIOD_DISTRIBUTED": "This period (or part of it) was already distributed. Reverse the old distribution first if it was wrong.",
       "E_NOTHING_TO_DISTRIBUTE": "Nothing to distribute: profit is zero or no partners in this period",
       "E_ALREADY_LINKED": "This customer or supplier is already linked. Unlink first",
-      "E_NETTING_LIMIT": "Netting can’t exceed the smaller balance (nothing to net if either is zero)"
+      "E_NETTING_LIMIT": "Netting can’t exceed the smaller balance (nothing to net if either is zero)",
+      "E_DUP_PREFIX": "This prefix is used by another branch",
+      "E_DUP_NAME": "A branch with this name already exists",
+      "E_BAD_PREFIX": "Prefix: 1 to 4 capital letters or digits (like B2)",
+      "E_MAIN_BRANCH": "The main branch can't be closed",
+      "E_BAD_BRANCH": "This branch isn't available",
+      "E_BRANCH_CASHBOX": "This cashbox belongs to another branch. Pick one from the same branch",
+      "E_BRANCH_MOVE": "A device changes branch only through \"Send to branch\"",
+      "E_IN_TRANSIT": "The device is already on its way to another branch",
+      "E_HAS_BALANCE_BRANCH": "This branch's cashboxes hold money. Transfer it first"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -694,7 +703,9 @@
       "plans": "plan",
       "platform_admins": "admin",
       "audit_log": "activity log",
-      "_other": "record"
+      "_other": "record",
+      "branches": "Branch",
+      "staff_branches": "Employee branches"
     },
     "actions": {
       "insert": "add",
@@ -789,7 +800,13 @@
       "type": "type",
       "entry_no": "entry no.",
       "source_type": "source",
-      "order_no": "order no."
+      "order_no": "order no.",
+      "prefix": "Order number prefix",
+      "is_main": "Main branch",
+      "branch_ids": "Branches",
+      "branch_id": "Branch",
+      "transfer_to": "On the way to branch",
+      "transfer_at": "Sent at"
     },
     "sentence": {
       "insert": "{{who}} added the {{target}}",
@@ -813,7 +830,12 @@
       "reverse_entry": "{{who}} reversed the {{target}}",
       "set_can_correct": "{{who}} changed correction permission for the {{target}}",
       "sync_conflict": "Sync conflict on the {{target}} (latest edit kept)",
-      "_other": "{{who}}: {{action}} on the {{target}}"
+      "_other": "{{who}}: {{action}} on the {{target}}",
+      "staff_branches": "{{who}} changed {{target}}'s branches",
+      "device_send": "{{who}} sent {{target}} to another branch",
+      "device_receive": "{{who}} received {{target}} at the branch",
+      "device_transfer_cancel": "{{who}} cancelled sending {{target}} to another branch",
+      "stock_transfer": "{{who}} transferred {{target}} between branches"
     },
     "otherChanges": "and other data ({{n}})",
     "yes": "yes",
@@ -861,7 +883,8 @@
       "extras": "Extras",
       "lists": "Lists",
       "print": "Printing",
-      "assistant": "Assistant"
+      "assistant": "Assistant",
+      "branches": "Branches"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -2243,7 +2266,10 @@
         "title": "Earlier capital",
         "hint": "Before using the app; cashboxes untouched"
       }
-    }
+    },
+    "wholeShop": "Whole shop",
+    "scope": "Partner in",
+    "scopeHint": "A branch partner's share comes from that branch's profit only"
   },
   "link": {
     "withSupplier": "Linked to supplier “{{name}}”",
@@ -2682,5 +2708,65 @@
     "copied": "Copied",
     "useOnSticker": "Print it on the sticker",
     "lastAt": "Last sticker printed at {{at}}"
+  },
+  "branch": {
+    "switcher": "Branch",
+    "all": "All branches",
+    "workingOn": "Operations are recorded on: {{name}}",
+    "main": "Main",
+    "title": "Branches",
+    "hint": "Each branch has its own cashboxes, stock, devices and staff, and its order numbers carry a prefix. One ledger for the whole shop.",
+    "add": "New branch",
+    "edit": "Edit branch",
+    "name": "Branch name",
+    "prefix": "Order number prefix",
+    "prefixHint": "1 to 4 letters or digits. Order numbers will look like {{sample}}",
+    "mainPrefix": "The main branch has no prefix (its numbers stay as they are)",
+    "phone": "Branch phone",
+    "address": "Branch address",
+    "saved": "Branch saved",
+    "archive": "Close branch",
+    "archiveConfirm": "Close \"{{name}}\"? Its cashboxes are closed and its staff removed from it. Its data and entries stay in the ledger.",
+    "archived": "Branch closed",
+    "single": "The shop has one branch now. Add another and the branch switcher appears at the top.",
+    "cashboxes": "{{n}} cashboxes",
+    "devicesOpen": "{{n}} open devices",
+    "staff": "Branches",
+    "staffHint": "The employee sees and works in these branches only",
+    "staffSaved": "{{name}}'s branches saved",
+    "staffAll": "All branches (owner)",
+    "pickOne": "Pick at least one branch",
+    "column": "Branch",
+    "inTransit": "On the way to {{name}}",
+    "send": "Send to branch",
+    "sendTo": "Send the device to a branch",
+    "sendHint": "The device stays in its branch until the other branch receives it.",
+    "sent": "Device on its way to {{name}}",
+    "receive": "Receive at this branch",
+    "received": "Device received at {{name}}",
+    "cancelTransfer": "Cancel sending",
+    "cancelled": "Sending cancelled",
+    "stock": "Stock per branch",
+    "transfer": "Transfer to branch",
+    "transferTitle": "Transfer stock between branches",
+    "transferHint": "The quantity leaves one branch at its average cost and enters the other at the same value. The inventory account doesn't change.",
+    "from": "From branch",
+    "to": "To branch",
+    "qty": "Quantity",
+    "available": "Available: {{n}}",
+    "transferred": "Transferred {{qty}} of {{item}} to {{to}}",
+    "intakeBranch": "Intake branch",
+    "compare": "Compare branches",
+    "compareHint": "Same period. One ledger for the shop; every entry belongs to a branch.",
+    "cols": {
+      "branch": "Branch",
+      "revenue": "Revenue",
+      "expenses": "Expenses",
+      "profit": "Profit",
+      "cash": "In cashboxes",
+      "inventory": "Stock",
+      "delivered": "Delivered"
+    },
+    "sep": ", "
   }
 }

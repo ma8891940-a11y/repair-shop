@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { cacheGet, cacheSet, localDb } from '../offline/outbox';
 import { supabase } from '../lib/supabase';
+import { BRANCH_HEADER, getBranchHeader } from '../lib/branchHeader';
 import type { SourceType } from '../lib/ledger';
+import { useBranch } from './branch';
 
 export interface Cashbox {
   id: string;
@@ -11,6 +13,8 @@ export interface Cashbox {
   holder_id?: string | null;
   active?: boolean;
   balance?: number;
+  /** B: الفرع اللي الخزنة فيه */
+  branch_id?: string | null;
 }
 export interface Account {
   id: string;
@@ -94,9 +98,18 @@ export interface DeviceMoney {
 }
 export type StatementKind = 'cashbox' | 'customer' | 'supplier' | 'employee' | 'partner' | 'linked';
 
-/** بينادي دالة في قاعدة البيانات وبيرمي الخطأ لو فشلت */
-export async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
-  const { data, error } = await supabase.rpc(fn, args);
+/** فرع كل خزنة (من آخر قايمة خزن اتحمّلت) */
+const cashboxBranch = new Map<string, string>();
+
+/**
+ * بينادي دالة في قاعدة البيانات وبيرمي الخطأ لو فشلت.
+ * B: لو العملية على خزنة، بتتسجل في فرع الخزنة دي (مش لازم يكون الفرع المعروض)، و branch بيحدد الفرع صراحة.
+ */
+export async function rpc<T>(fn: string, args: Record<string, unknown> = {}, o: { branch?: string | null } = {}): Promise<T> {
+  const b = o.branch ?? (typeof args.p_cashbox === 'string' ? cashboxBranch.get(args.p_cashbox) : undefined);
+  let q = supabase.rpc(fn, args);
+  if (b && getBranchHeader()) q = q.setHeader(BRANCH_HEADER, b);
+  const { data, error } = await q;
   if (error) throw error;
   return data as T;
 }
@@ -104,24 +117,42 @@ export async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Pr
 /** id جديد لكل عملية من التطبيق (نفس العملية لو اتبعتت مرتين ما تتسجلش مرتين) */
 export const opId = () => crypto.randomUUID();
 
-/** اسم الحساب: المضاف بالاسم اللي اتكتب، والأساسي مترجم */
+/** اسم الحساب: المضاف بالاسم اللي اتكتب، والأساسي مترجم. ولو المحل فيه فروع: الخزنة باسم فرعها */
 export function useAccountName() {
   const { t } = useTranslation();
-  return (a: { code: string | null; name: string | null } | null | undefined) => (!a ? '' : a.name || t(`ledger.acc.${a.code}`, { defaultValue: a.code ?? '' }));
+  const br = useBranch();
+  return (a: { code: string | null; name: string | null; method?: string | null; branch_id?: string | null } | null | undefined) => {
+    if (!a) return '';
+    const bn = br.multi && a.branch_id ? br.name(a.branch_id) : '';
+    // خزنة اتعملت مع فرع جديد: اسمها اسم الفرع، فبتتعرض بطريقة الدفع + الفرع
+    if (bn && a.name === bn && a.method) return `${t(`payments.${a.method}`, { defaultValue: a.method })} · ${bn}`;
+    const base = a.name || t(`ledger.acc.${a.code}`, { defaultValue: a.code ?? '' });
+    return bn ? `${base} · ${bn}` : base;
+  };
+}
+
+/** خزن فرع معيّن (null = كل الخزن: محل بفرع واحد، أو تحويل بين الفروع) */
+export function cashboxesFor<T extends { branch_id?: string | null }>(list: T[], branch: string | null | undefined): T[] {
+  if (!branch) return list;
+  return list.filter((c) => !c.branch_id || c.branch_id === branch);
 }
 
 /** الخزن اللي ينفع تستقبل فلوس (لصاحب المحل والاستقبال) */
 export async function loadCashboxes(): Promise<Cashbox[]> {
   // البند 14: آخر قايمة خزن بتتحفظ على الجهاز، فالبيع والدفعة من غير نت بيتسجلوا على خزنة صح
   try {
-    const { data, error } = await supabase.from('accounts').select('id, code, name, method, holder_id, active').eq('kind', 'cash').eq('active', true).is('deleted_at', null).order('created_at');
+    const { data, error } = await supabase.from('accounts').select('id, code, name, method, holder_id, active, branch_id').eq('kind', 'cash').eq('active', true).is('deleted_at', null).order('created_at');
     if (error) throw error;
     const list = sortCashboxes((data ?? []) as Cashbox[]);
+    for (const c of list) if (c.branch_id) cashboxBranch.set(c.id, c.branch_id);
     void cacheSet(localDb(), 'cashboxes', list).catch(() => undefined);
     return list;
   } catch (e) {
     const c = await cacheGet<Cashbox[]>(localDb(), 'cashboxes').catch(() => null);
-    if (c) return c.value;
+    if (c) {
+      for (const x of c.value) if (x.branch_id) cashboxBranch.set(x.id, x.branch_id);
+      return c.value;
+    }
     throw e;
   }
 }

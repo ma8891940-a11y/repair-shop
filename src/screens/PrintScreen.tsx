@@ -8,6 +8,7 @@ import { pageSize, readPrint, type PrintDoc } from '../lib/printPlan';
 import { StickerLabel, StickerTest } from '../app/print/StickerLabel';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../app/auth';
+import { useBranch } from '../app/branch';
 import { useLoad, must } from '../app/useLoad';
 import { supabase } from '../lib/supabase';
 import type { Customer, Device, DeviceCost } from '../lib/types';
@@ -27,6 +28,8 @@ export function PrintScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
+  const shopRow = shop;
+  const br = useBranch();
   const navigate = useNavigate();
   const isLabel = kind === 'label';
   const isSticker = kind === 'sticker';
@@ -69,6 +72,10 @@ export function PrintScreen() {
     void QRCode.toDataURL(trackingUrl(appBase(shop.extras, window.location.href), data.d.tracking_token), { margin: 0, width: 360, errorCorrectionLevel: 'M' }).then(setQr);
   }, [data, isLabel, isReceipt, shop.extras]);
 
+  // B: تليفون وعنوان فرع الجهاز على الإيصال والفاتورة (لو اتكتبوا)، واسم المحل ولوجوه زي ما هم
+  const dev = data?.d as { branch_id?: string } | undefined;
+  const branchRow = br.multi ? br.all.find((x) => x.id === dev?.branch_id) : undefined;
+  const shopFor = branchRow ? { ...shopRow, phone: branchRow.phone || shopRow.phone, address: branchRow.address || shopRow.address } : shopRow;
   const ready = isTest || (!!data && !branding.loading && (!(isLabel || isReceipt) || !!qr));
   useEffect(() => {
     if (!ready) return;
@@ -184,14 +191,14 @@ export function PrintScreen() {
         <article className={thermal ? 'mx-auto w-[76mm] p-[2mm] text-[12px] print:w-full print:p-0' : 'mx-auto max-w-[190mm] p-[10mm] text-[14px] print:max-w-none print:p-0'} data-testid={`print-${kind}`}>
           {thermal ? (
             <header className="border-b border-dashed border-black pb-2 text-center">
-              <ThermalHeader shop={shop} b={b} />
+              <ThermalHeader shop={shopFor} b={b} />
               <div className="mt-1 font-semibold">{t('print.receipt')}</div>
               <div className="font-mono text-[20px] font-bold tracking-wide" dir="ltr">
                 {data.d.order_no}
               </div>
             </header>
           ) : (
-            <ColorHeader shop={shop} b={b} title={isPaperReceipt ? t('print.receiptA4') : t('print.invoice')} sub={data.d.order_no} />
+            <ColorHeader shop={shopFor} b={b} title={isPaperReceipt ? t('print.receiptA4') : t('print.invoice')} sub={data.d.order_no} />
           )}
 
           <table className={thermal ? 'mt-2 w-full' : 'mt-6 w-full'}>

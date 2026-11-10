@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle2, ImagePlus, KeyRound, Phone, ShieldAlert, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { useMe } from '../app/auth';
+import { useBranch } from '../app/branch';
 import { PageHeader } from '../app/AppShell';
 import { useShortcuts } from '../app/shortcuts';
 import { supabase } from '../lib/supabase';
@@ -58,6 +59,7 @@ export function IntakeScreen() {
   const { t } = useTranslation();
   const f = useFormat();
   const { profile, shop } = useMe();
+  const br = useBranch();
   const navigate = useNavigate();
   const toast = useToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -336,6 +338,23 @@ export function IntakeScreen() {
         }
       />
       {draft.pending && <DraftBanner at={draft.pending.at} onRestore={restoreDraft} onDiscard={draft.discard} />}
+      {/* B: فرع الاستلام (الجهاز ورقمه بيتسجلوا في الفرع ده) */}
+      {br.multi && br.working && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-fg-2" data-testid="intake-branch">
+          <span>{t('branch.intakeBranch')}:</span>
+          {br.mine.length > 1 ? (
+            <select value={br.working.id} onChange={(e) => br.setView(e.target.value)} className="h-8 rounded-md border border-line bg-sunken/60 px-2 text-sm text-fg" aria-label={t('branch.intakeBranch')} data-testid="intake-branch-select">
+              {br.mine.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="font-medium text-fg">{br.working.name}</span>
+          )}
+        </div>
+      )}
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
         <div className="flex min-w-0 flex-col gap-4">

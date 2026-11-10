@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes, useLocation, type Location } from 
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './app/auth';
+import { BranchProvider } from './app/branch';
 import { SyncProvider } from './offline/sync';
 import { PrefsProvider, usePrefs } from './app/prefs';
 import { EffectsGuard } from './app/EffectsGuard';
@@ -143,7 +144,11 @@ function Gate() {
   if (profile && !profile.deleted_at && shop && suspended && !isAdmin) return <Suspended />;
   if (!profile || profile.deleted_at || !shop) return <JoinScreen blocked={Boolean(profile?.deleted_at)} />;
   if (profile.role === 'marketing') return <MarketingRoutes />;
-  return <AppRoutes role={profile.role} admin={isAdmin} />;
+  return (
+    <BranchProvider>
+      <AppRoutes role={profile.role} admin={isAdmin} />
+    </BranchProvider>
+  );
 }
 
 /**
