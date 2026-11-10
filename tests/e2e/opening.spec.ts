@@ -12,22 +12,56 @@ test('جرد المحل أول مرة: لصق من Excel ← خزن ← ديون
   await page.getByTestId('opening-card').click();
   await expect(page.getByRole('heading', { name: 'جرد المحل أول مرة' })).toBeVisible();
 
-  // لصق صنفين من Excel مرة واحدة (أعمدة بـ Tab)
+  // السطور: سطر واحد في الأول، و"عدد السطور" بيزوّد العدد المكتوب بالظبط
+  const rowsOf = page.getByTestId('opening-grid').getByTestId('opening-row');
+  await expect(rowsOf).toHaveCount(1);
+  await page.getByTestId('opening-rows-add').click();
+  await expect(rowsOf).toHaveCount(2);
+  await page.getByTestId('opening-rows-count').fill('3');
+  await page.getByTestId('opening-rows-add').click();
+  await expect(rowsOf).toHaveCount(5);
+  // حذف سطر، وتحديد سطرين وحذفهم مرة واحدة
+  await rowsOf.nth(4).getByTestId('opening-row-delete').click();
+  await expect(rowsOf).toHaveCount(4);
+  await rowsOf.nth(2).getByTestId('opening-row-select').check();
+  await rowsOf.nth(3).getByTestId('opening-row-select').check();
+  await page.getByTestId('opening-rows-delete-selected').click();
+  await expect(rowsOf).toHaveCount(2);
+  // "حذف السطور الفاضية" ← بيفضل سطر واحد
+  await page.getByTestId('opening-rows-delete-blank').click();
+  await expect(rowsOf).toHaveCount(1);
+  // سطر فاضي ما بيتحسبش ولا بيطلع خطأ أحمر لو حفظت
+  await page.getByTestId('opening-rows-count').fill('2');
+  await page.getByTestId('opening-rows-add').click();
+  await expect(rowsOf).toHaveCount(3);
+
+  // لصق صنفين من Excel مرة واحدة (أعمدة بـ Tab، وExcel بيزوّد سطر فاضي في الآخر)
   const first = page.getByLabel('الصنف 1', { exact: true });
   await first.focus();
   await page.evaluate(() => {
     const el = document.activeElement as HTMLElement;
     const dt = new DataTransfer();
-    dt.setData('text/plain', 'شاشة A05\tقطعة غيار\t٥\t100\t250\nشاحن سريع\tإكسسوار\t3\t25.50\t60');
+    dt.setData('text/plain', 'شاشة A05\tقطعة غيار\t٥\t100\t250\nشاحن سريع\tإكسسوار\t3\t25.50\t60\n');
     el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
   });
   await expect(page.getByLabel('الصنف 2', { exact: true })).toHaveValue('شاحن سريع');
   await expect(page.getByLabel('النوع 2', { exact: true })).toHaveValue('accessory');
   // 5 × 100 + 3 × 25.50 = 576.50
   await expect(page.getByTestId('opening-stock-total')).toContainText('576.50');
-  // Enter بينزل للسطر اللي تحته
+  // اللصق ملى السطرين الأولين من غير ما يزوّد سطور (الجدول فيه 3)
+  await expect(rowsOf).toHaveCount(3);
+  // Enter بينزل للسطر اللي تحته، وفي آخر سطر بيزوّد سطر واحد بس
   await page.getByLabel('الكمية 2', { exact: true }).press('Enter');
   await expect(page.getByLabel('الكمية 3', { exact: true })).toBeFocused();
+  await page.getByLabel('الكمية 3', { exact: true }).press('Enter');
+  await expect(rowsOf).toHaveCount(4);
+  await expect(page.getByLabel('الكمية 4', { exact: true })).toBeFocused();
+  // السهم لتحت في آخر سطر ما بيزوّدش
+  await page.getByLabel('الكمية 4', { exact: true }).press('ArrowDown');
+  await expect(rowsOf).toHaveCount(4);
+  // السطرين الفاضيين ما بيتحسبوش، ومفيش خطأ أحمر
+  await expect(page.getByTestId('opening-stock-total')).toContainText('576.50');
+  await expect(page.getByTestId('opening-grid').locator('.bg-danger-soft')).toHaveCount(0);
   await noHorizontalScroll(page);
   await page.getByTestId('opening-save').click();
   await expect(page.getByText('اتسجل المخزون الافتتاحي (2 صنف)')).toBeVisible();
@@ -42,6 +76,9 @@ test('جرد المحل أول مرة: لصق من Excel ← خزن ← ديون
   await page.getByLabel('الاسم 1', { exact: true }).fill('عميل مديون');
   await page.getByLabel('التليفون 1', { exact: true }).fill(`010${String(Date.now()).slice(-8)}`);
   await page.getByLabel('المبلغ 1', { exact: true }).fill('300');
+  // Enter في آخر خانة في آخر سطر ← سطر واحد جديد
+  await page.getByLabel('الاتجاه 1', { exact: true }).press('Enter');
+  await expect(page.getByTestId('opening-customer-row')).toHaveCount(2);
   await page.getByLabel('الاسم 2', { exact: true }).fill('عميل عربون');
   await page.getByLabel('التليفون 2', { exact: true }).fill(`012${String(Date.now()).slice(-8)}`);
   await page.getByLabel('المبلغ 2', { exact: true }).fill('50');

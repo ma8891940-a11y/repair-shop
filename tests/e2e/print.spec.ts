@@ -93,7 +93,8 @@ test('طباعة وإرسال في شاشة الاستلام: التلقائي �
   await page.getByLabel('الموديل').fill('A35');
   await page.getByLabel('العطل زي ما العميل وصفه').fill('شاشة مكسورة');
   await page.getByLabel('التكلفة التقديرية').fill('500');
-  await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
+  // Enter في آخر خانة بيحفظ، و"طباعة وإرسال" بيظهر على طول في نفس الشاشة
+  await page.getByLabel('التكلفة التقديرية').press('Enter');
   const panel = page.getByTestId('print-send');
   await expect(panel).toBeVisible();
   // اللي متعلّم تلقائي اتعمل من نفس الشاشة، والباقي لسه

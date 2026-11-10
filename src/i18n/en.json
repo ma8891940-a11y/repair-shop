@@ -2158,7 +2158,7 @@
     },
     "stockHint": "Enter each item, its quantity and your unit cost. You can copy the table from Excel and paste it here at once; arrows and Enter move between rows.",
     "unitCost": "Unit cost",
-    "addRows": "More rows",
+    "addRows": "Add rows",
     "stockTotal": "{{n}} item(s), worth {{v}}",
     "errRows": "{{n}} invalid cell(s) (marked in red)",
     "savedStock": "Opening stock recorded ({{n}} item(s))",
@@ -2768,5 +2768,13 @@
       "delivered": "Delivered"
     },
     "sep": ", "
+  },
+  "rows": {
+    "count": "Rows",
+    "deleteSelected": "Delete selected ({{n}})",
+    "deleteBlank": "Delete empty rows",
+    "deleteRow": "Delete row {{n}}",
+    "selectRow": "Select row {{n}}",
+    "selectAll": "Select all rows"
   }
 }

@@ -2,6 +2,7 @@
 import { parseCsv } from './csv';
 import { toLatinDigits } from './digits';
 import { parsePounds } from './money';
+import { pastedRows } from './gridRows';
 
 export const OPENING_STEPS = ['stock', 'cash', 'customers', 'suppliers', 'partners'] as const;
 export type OpeningStep = (typeof OPENING_STEPS)[number];
@@ -27,7 +28,9 @@ export function openingProgress(extras: unknown): OpeningProgress {
  * وبيزوّد سطور لو محتاج. الأعمدة الزيادة عن الجدول بتتجاهل.
  */
 export function pasteIntoGrid<T extends object>(rows: T[], row: number, col: number, text: string, cols: (keyof T)[], blank: () => T): T[] {
-  const grid = parseCsv(text.includes('\t') ? text : text.replace(/,/g, '\t'));
+  // السطور الفاضية في آخر اللصق (Excel بيزوّد سطر فاضي) ما بتزوّدش سطور في الجدول
+  const clean = pastedRows(text).join('\n');
+  const grid = parseCsv(clean.includes('\t') ? clean : clean.replace(/,/g, '\t'));
   const out = rows.map((r) => ({ ...r }));
   grid.forEach((cells, i) => {
     const ri = row + i;
@@ -56,11 +59,16 @@ export interface StockLineOk {
   salePrice: number | null;
 }
 /** سطور الجدول: الفاضي بيتجاهل، والغلط بيرجع برقمه والعمود. التكلفة بالقروش أعداد صحيحة */
+/** سطر فاضي: ما بيتحسبش ولا بيتحفظ، ومن غير أي خطأ (النوع لوحده مش بيانات) */
+export function isBlankStock(r: StockRowIn): boolean {
+  return !r.name.trim() && !r.qty.trim() && !r.cost.trim() && !r.price.trim();
+}
+
 export function checkStockRows(rows: StockRowIn[]): { lines: StockLineOk[]; errors: { index: number; col: keyof StockRowIn }[] } {
   const lines: StockLineOk[] = [];
   const errors: { index: number; col: keyof StockRowIn }[] = [];
   rows.forEach((r, index) => {
-    if (!r.name.trim() && !r.qty.trim() && !r.cost.trim() && !r.price.trim()) return;
+    if (isBlankStock(r)) return;
     if (!r.name.trim()) return errors.push({ index, col: 'name' });
     const qty = Number(toLatinDigits(r.qty.trim()));
     if (!Number.isInteger(qty) || qty <= 0 || qty > 100000) return errors.push({ index, col: 'qty' });
