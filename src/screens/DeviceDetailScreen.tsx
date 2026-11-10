@@ -90,6 +90,9 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   const [localStatus, setLocalStatus] = useState<DeviceStatus | null>(null);
   const sync = useSync();
 
+  // آخر قيم سليمة: لو استعلام العميل أو التكلفة فشل لحظة وقت تحديث (ضغط أو نت مهزوز)، الصفحة بتفضل بالقيمة اللي كانت
+  // بدل ما تبقى "مفيش عميل" لحظة (كان ده بيقفل نافذة الدفعة ويفتحها تاني بالمبلغ المستحق بدل اللي اتكتب)
+  const lastGood = useRef<{ customer: Customer | null; cost: DeviceCost | null } | null>(null);
   const { data, error, loading, reload, stale } = useLoad(async () => {
     const d = must(await supabase.from('devices').select('*').eq('id', id).is('deleted_at', null).maybeSingle()) as Device | null;
     if (!d) return null;
@@ -109,10 +112,13 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
     } catch {
       /* الصور مش ضرورية لعرض الصفحة */
     }
+    const customer = c.error ? (lastGood.current?.customer ?? null) : ((c.data as Customer | null) ?? null);
+    const cost = k.error ? (lastGood.current?.cost ?? null) : ((k.data as DeviceCost | null) ?? null);
+    if (!c.error && !k.error) lastGood.current = { customer, cost };
     return {
       device: d,
-      customer: (c.data as Customer | null) ?? null,
-      cost: (k.data as DeviceCost | null) ?? null,
+      customer,
+      cost,
       log: (must(l) ?? []) as unknown as LogRow[],
       notes: (must(n) ?? []) as unknown as NoteRow[],
       photos,

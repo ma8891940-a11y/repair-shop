@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { parsePounds } from '../../lib/money';
 import { errorMessage } from '../../lib/errors';
@@ -26,7 +26,8 @@ export function CloseDrawerDialog({ open, onOpenChange, cashboxId, name, onDone 
   const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<{ expected: number; counted: number; diff: number } | null>(null);
   const [id, setId] = useState(opId);
-  useEffect(() => {
+  // تهيئة النافذة قبل ما تترسم: اللي بيتكتب أول ما تفتح ما يتمسحش
+  useLayoutEffect(() => {
     if (open) {
       setId(opId());
       setCounted('');

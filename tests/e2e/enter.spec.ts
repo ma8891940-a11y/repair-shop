@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, prefs, quickIntake, registerShop, uniq } from './helpers';
+import { afterSplash, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 
 // البند 10: Enter بينقل للخانة اللي بعدها، والحفظ في الآخر، وCtrl+Enter في الكتابة الكبيرة
 test('Enter: الخانة اللي بعدها من غير ما يحفظ بدري، وفي الكتابة الكبيرة سطر جديد، وCtrl+Enter بيحفظ مرة واحدة', async ({ page }, info) => {
@@ -34,7 +34,7 @@ test('Enter: الخانة اللي بعدها من غير ما يحفظ بدري
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   const dlg = page.getByRole('dialog');
-  await dlg.getByLabel('المبلغ').fill('200');
+  await fillAmount(dlg, '200');
   await dlg.getByLabel('المبلغ').press('Enter');
   const note = dlg.getByLabel('البيان (اختياري)');
   await expect(note).toBeFocused();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useLayoutEffect } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownToLine, ArrowUpFromLine, FileText, Pencil, PieChart, Plus } from 'lucide-react';
@@ -203,7 +203,8 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
   useEffect(() => {
     if (!cashbox && lists.data?.cbs.length) setCashbox(lists.data.cbs[0].id);
   }, [lists.data, cashbox]);
-  useEffect(() => {
+  // تهيئة النافذة قبل ما تترسم: اللي بيتكتب أول ما تفتح ما يتمسحش
+  useLayoutEffect(() => {
     if (!partner) return;
     const p = partner === 'new' ? null : partner;
     setName(p?.name ?? '');
@@ -413,7 +414,8 @@ function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow
     const [cbs, items] = await Promise.all([loadCashboxes(), rpc<{ id: string; name: string }[]>('items_stock')]);
     return { cbs, items };
   }, [!!target]);
-  useEffect(() => {
+  // تهيئة النافذة قبل ما تترسم: اللي بيتكتب أول ما تفتح ما يتمسحش
+  useLayoutEffect(() => {
     setKind('cash');
     setAmount('');
     setDate(cairoDay(new Date()));

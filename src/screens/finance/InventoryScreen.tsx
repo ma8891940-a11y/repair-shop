@@ -531,7 +531,8 @@ function SupplierDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenC
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [err, setErr] = useState<string | null>(null);
-  useEffect(() => {
+  // تهيئة النافذة قبل ما تترسم: اللي بيتكتب أول ما تفتح ما يتمسحش
+  useLayoutEffect(() => {
     if (open) {
       setName('');
       setPhone('');

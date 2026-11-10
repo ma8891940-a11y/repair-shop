@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { activateInvite, prefs, quickIntake, registerShop, uniq } from './helpers';
+import { activateInvite, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 import { dataRows, readXlsx } from './xlsxRead';
 
 // S4: التصدير Excel (xlsx حقيقي) وPDF بنفس الفلتر والترتيب اللي على الشاشة
@@ -21,7 +21,7 @@ test('التصدير: الأجهزة والعملاء وكشف الحساب بن
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('1,000.25');
+  await fillAmount(page.getByRole('dialog'), '1,000.25');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
   // الجهاز الأول دخل الفحص (عشان فلتر الحالة على الشاشة يفرّق بينهم)

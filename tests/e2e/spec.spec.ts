@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount } from './helpers';
 
 test('استكمال المواصفات: أجرة العطل والسعر المقترح، النواقص والباركود، التوقيع على الإيصال، والمتبقي في صفحة التتبع', async ({ page, browser }, info) => {
   test.setTimeout(180_000);
@@ -84,7 +84,7 @@ test('استكمال المواصفات: أجرة العطل والسعر الم
   await expect(page.getByTestId('device-due')).toHaveText('750');
   // دفعة جزئية 200 ← المتبقي 550
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('200');
+  await fillAmount(page.getByRole('dialog'), '200');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByTestId('device-due')).toHaveText('550');
 

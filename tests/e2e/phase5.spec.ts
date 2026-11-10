@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount } from './helpers';
 
 test('المرحلة 5: النت فصل ← تغيير حالة واستلام جهاز بيتسجلوا على الجهاز ← النت رجع ← المزامنة بالترتيب ← نسخة احتياطية مشفّرة', async ({ page, context }, info) => {
   test.setTimeout(240_000);
@@ -84,7 +84,7 @@ test('الاسترجاع: نسخة من محل فيه شغل ← محل جديد
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('250');
+  await fillAmount(page.getByRole('dialog'), '250');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
   await expect(page.getByTestId('device-due')).toHaveText('450');

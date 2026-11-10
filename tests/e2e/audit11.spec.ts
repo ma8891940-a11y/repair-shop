@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync, readdirSync } from 'node:fs';
-import { prefs, quickIntake, registerShop, uniq } from './helpers';
+import { prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 
 // البند 11: سجل النشاط بجمل عربي مفهومة برابط، ومفيش أي اسم جدول أو عمود أو إنجليزي في الواجهة العربي
 const sql = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).map((f) => readFileSync(`supabase/migrations/${f}`, 'utf8')).join('\n');
@@ -17,7 +17,7 @@ test('سجل النشاط: جمل عربي، ورابط بيفتح الجهاز�
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('200');
+  await fillAmount(page.getByRole('dialog'), '200');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
 

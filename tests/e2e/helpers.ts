@@ -1,4 +1,4 @@
-import { expect, type Browser, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 /** يظبط اللغة والوضع والمؤثرات قبل ما الصفحة تفتح */
 export async function prefs(page: Page, info: TestInfo, o: { lang?: 'ar' | 'en'; effects?: boolean } = {}) {
@@ -155,4 +155,18 @@ export async function quickIntake(page: Page, phone: string, name = 'عميل') 
   await page.getByRole('button', { name: 'فتح الجهاز' }).click();
   await expect(page.getByRole('button', { name: 'جاري الفحص', exact: true })).toBeVisible();
   return page.url().replace(/^.*#/, '/#');
+}
+
+/**
+ * كتابة المبلغ في نافذة فلوس: بيستنى النافذة تبقى جاهزة الأول (القوايم وصلت والمبلغ المستحق اتحط)،
+ * لأن الكتابة في أول جزء من الثانية بعد الفتح (تحت ضغط) كانت ممكن تضيع والمستحق يتسجل بدالها.
+ * وبيتأكد إن المبلغ اتكتب فعلًا.
+ */
+export async function fillAmount(dlg: Locator, value: string) {
+  const form = dlg.locator('form[data-ready]');
+  if (await form.count()) await expect(form.first()).toHaveAttribute('data-ready', 'true', { timeout: 15_000 });
+  const input = dlg.getByLabel('المبلغ');
+  await expect(input).toBeEditable();
+  await input.fill(value);
+  await expect(input).toHaveValue(value);
 }

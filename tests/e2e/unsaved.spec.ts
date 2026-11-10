@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, prefs, quickIntake, registerShop, uniq } from './helpers';
+import { afterSplash, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 
 // البند 9: الفحص السريع بتلات اختيارات وحفظ تلقائي، وتنبيه قبل الخروج من غير حفظ، والمسودات في كل الفورمات
 test('من غير حفظ: الاستلام بيسأل قبل الخروج ومسودته بترجع، والنوافذ بتسأل قبل ما تتقفل، والفحص بيرجع زي ما سبته', async ({ page }, info) => {
@@ -68,7 +68,7 @@ test('من غير حفظ: الاستلام بيسأل قبل الخروج ومس
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   const dlg = page.getByRole('dialog');
-  await dlg.getByLabel('المبلغ').fill('150');
+  await fillAmount(dlg, '150');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('dialog-unsaved')).toBeVisible();
   await page.getByTestId('dialog-unsaved-stay').click();

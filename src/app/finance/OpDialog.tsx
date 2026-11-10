@@ -196,6 +196,8 @@ export function OpDialog({ op, open, onOpenChange, fixed = {}, onDone }: { op: O
       }
     >
       <form
+        // جاهزة: القوايم وصلت والقيم الأولية اتحطت (الاختبارات بتستنى ده قبل ما تكتب)
+        data-ready={lists.data ? 'true' : 'false'}
         className="flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault();

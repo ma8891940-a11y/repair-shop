@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { prefs, quickIntake, registerShop, uniq } from './helpers';
+import { prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 import { dataRows, readXlsx } from './xlsxRead';
 
 // البند 8: جملة النتيجة بالفصحى والمقارنة، وكل كارت بيفتح تفاصيله في لوح جانبي (بحث، وفلتر، وترتيب، وتصدير)، وتقارير جاهزة
@@ -12,7 +12,7 @@ test('الوضع المالي: جملة النتيجة، ولوح التفاصي
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('1,000.25');
+  await fillAmount(page.getByRole('dialog'), '1,000.25');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
 

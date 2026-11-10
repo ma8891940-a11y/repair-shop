@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
-import { activateInvite, afterSplash, noHorizontalScroll, prefs, registerShop, uniq } from './helpers';
+import { activateInvite, afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount } from './helpers';
 
 const DB = process.env.E2E_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
@@ -9,7 +9,7 @@ async function op(page: Page, name: string, fill: { amount: string; selects?: Re
   await page.getByRole('button', { name, exact: true }).click();
   const dlg = page.getByRole('dialog');
   for (const [label, value] of Object.entries(fill.selects ?? {})) await dlg.getByLabel(label).selectOption({ label: value });
-  await dlg.getByLabel('المبلغ').fill(fill.amount);
+  await fillAmount(dlg, fill.amount);
   if (fill.note) await dlg.getByLabel('البيان (اختياري)').fill(fill.note);
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية').first()).toBeVisible();

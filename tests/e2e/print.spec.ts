@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, prefs, registerShop, uniq } from './helpers';
+import { afterSplash, prefs, registerShop, uniq, fillAmount } from './helpers';
 
 // S5 الطباعة: الإعدادات لكل خطوة، والاستيكر الحراري فيه كل البيانات بالـ 3 مقاسات، وإيصال A4، وفاتورة التسليم
 test('الطباعة: الافتراضي صح، والاستيكر كامل بكل مقاس، والطباعة التلقائية بالترتيب، وفاتورة التسليم فيها المدفوع والفاضل والضمان', async ({ page }, info) => {
@@ -73,7 +73,7 @@ test('الطباعة: الافتراضي صح، والاستيكر كامل بك
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('200');
+  await fillAmount(page.getByRole('dialog'), '200');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
   await page.getByTestId('print-sticker-link').click();
@@ -84,7 +84,7 @@ test('الطباعة: الافتراضي صح، والاستيكر كامل بك
   await page.goto(`/#/devices/${id}`);
   await afterSplash(page);
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('300');
+  await fillAmount(page.getByRole('dialog'), '300');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية').first()).toBeVisible();
   for (const s of ['جاري الفحص', 'جاري الصيانة', 'تم الإصلاح', 'جاهز للاستلام']) {

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount } from './helpers';
 
 // البند 5: الشركاء: النسب لحد 100%، ورأس المال، وتوزيع الأرباح، والسحب مش مصروف، وكشف حساب الشريك
 test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزيع ← سحب (الربح زي ما هو) ← كشف حساب', async ({ page }, info) => {
@@ -29,7 +29,7 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
 
   // إيداع رأس مال لأحمد 5000
   await page.getByTestId('partner-row').filter({ hasText: 'أحمد' }).getByTestId('partner-deposit').click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('5000');
+  await fillAmount(page.getByRole('dialog'), '5000');
   await page.getByRole('dialog').getByTestId('partner-money-save').click();
   await expect(page.getByText('اتسجل إيداع أحمد')).toBeVisible();
   await expect(page.getByTestId('partner-row').filter({ hasText: 'أحمد' }).getByTestId('partner-capital')).toContainText('5,000');
@@ -81,7 +81,7 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
 
   // سحب سامي 50: جاريه 40، وصافي الربح في الوضع المالي لسه 300
   await page.getByTestId('partner-row').filter({ hasText: 'سامي' }).getByTestId('partner-withdraw').click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('50');
+  await fillAmount(page.getByRole('dialog'), '50');
   await page.getByRole('dialog').getByTestId('partner-money-save').click();
   await expect(page.getByText('اتسجل سحب سامي')).toBeVisible();
   await expect(page.getByTestId('partner-row').filter({ hasText: 'سامي' }).getByTestId('partner-current')).toContainText('40');

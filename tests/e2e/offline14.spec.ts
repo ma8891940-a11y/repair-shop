@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, prefs, quickIntake, registerShop, uniq } from './helpers';
+import { afterSplash, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 
 // البند 14: الشغل اليومي كله من غير نت، وكل اللي محتاج نت مقفول بهدوء وبيتفتح لوحده.
 // بيشتغل على سيرفر التطوير، وعلى نسخة الإنتاج كمان (E2E_PROD=1) بنفس الخطوات.
@@ -46,7 +46,7 @@ test('من غير نت: التكلفة والملاحظة والفحص والد�
   await page.getByRole('button', { name: 'حفظ الفحص' }).click();
   // دفعة
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('100');
+  await fillAmount(page.getByRole('dialog'), '100');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // بيع من المخزون

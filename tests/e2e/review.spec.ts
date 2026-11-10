@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { activateInvite, prefs, quickIntake, registerShop, uniq } from './helpers';
+import { activateInvite, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 
 // المراجعة الشاملة: اللغتين، ومفيش أخطاء في الـ console، ومفيش نصوص مش مترجمة، والحالات الغلط
 
@@ -166,7 +166,7 @@ test('الدفعة: "سجّل" على طول بعد فتح الفورم ما ب�
   await expect(page.getByTestId('connection')).toHaveAttribute('data-state', 'offline');
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   const dlg = page.getByRole('dialog');
-  await dlg.getByLabel('المبلغ').fill('400');
+  await fillAmount(dlg, '400');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل على الجهاز، وهيتبعت أول ما النت يرجع').first()).toBeVisible();
   await expect(dlg).toHaveCount(0);

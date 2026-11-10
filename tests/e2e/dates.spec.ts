@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { afterSplash, prefs, quickIntake, registerShop, uniq } from './helpers';
+import { afterSplash, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
 import { readFileSync } from 'node:fs';
 
 // التواريخ: يوم/شهر/سنة في العربي (07/11/2026 أو 7 نوفمبر 2026)، و7 Nov 2026 في الإنجليزي،
@@ -67,7 +67,7 @@ test('التواريخ في العربي (الشاشات، والإيصال، و
   await page.getByRole('button', { name: 'حفظ التكلفة' }).click();
   await expect(page.getByText('اتحفظت التكلفة')).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await page.getByRole('dialog').getByLabel('المبلغ').fill('100');
+  await fillAmount(page.getByRole('dialog'), '100');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجلت العملية')).toBeVisible();
 

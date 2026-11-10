@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Calculator, HandCoins, PackageMinus, Pencil, Truck, Undo2 } from 'lucide-react';
 import { useCanCorrect } from '../correct';
@@ -31,6 +31,9 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
   const toast = useToast();
   const owner = profile.role === 'owner';
   const [pay, setPay] = useState(false);
+  const stickyCustomer = useRef(customer);
+  if (customer && (!stickyCustomer.current || stickyCustomer.current.id !== customer.id || stickyCustomer.current.name !== customer.name)) stickyCustomer.current = customer;
+  const payCustomer = customer ?? stickyCustomer.current;
   const [calc, setCalc] = useState(false);
   const canCorrect = useCanCorrect();
   const [fix, setFix] = useState<{ mode: 'edit' | 'cancel'; entry_id: string; entry_no: number; amount: number } | null>(null);
@@ -163,7 +166,8 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
       )}
       <EditEntryDialog entry={fix?.mode === 'edit' ? fix : null} onOpenChange={(v) => !v && setFix(null)} onDone={done} />
       <ReverseDialog move={fix?.mode === 'cancel' ? { ...fix, source_type: 'payment' } : null} onOpenChange={(v) => !v && setFix(null)} onDone={done} />
-      {customer && <OpDialog op="payment" open={pay} onOpenChange={setPay} fixed={{ customer, device: { id: deviceId, label: orderNo }, amount: data && Number(data.due) > 0 ? Number(data.due) : undefined }} onDone={done} />}
+      {/* نافذة الدفعة بتفضل موجودة بعد أول مرة يبان العميل (عشان أي تحديث ما يقفلهاش ويفتحها تاني باللي اتكتب ضايع) */}
+      {payCustomer && <OpDialog op="payment" open={pay} onOpenChange={setPay} fixed={{ customer: payCustomer, device: { id: deviceId, label: orderNo }, amount: data && Number(data.due) > 0 ? Number(data.due) : undefined }} onDone={done} />}
     </Panel>
   );
 }
