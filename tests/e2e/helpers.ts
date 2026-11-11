@@ -220,7 +220,14 @@ export async function withMotionDiag<T>(page: Page, what: string, fn: () => Prom
     const d = await page
       .evaluate(() => {
         const m = (window as unknown as { __motionDiag?: { log: unknown[] } & Record<string, unknown> }).__motionDiag;
-        return m ? JSON.stringify({ ...m, log: m.log.slice(-25) }) : 'no __motionDiag';
+        // قراءات لحظة الوقوف (محفوظة على الجهاز، فبتفضل حتى بعد إعادة تحميل الصفحة)
+        let why: string | null = null;
+        try {
+          why = localStorage.getItem('bg-still-why');
+        } catch {
+          why = null;
+        }
+        return (m ? JSON.stringify({ ...m, log: m.log.slice(-25) }) : 'no __motionDiag') + `\nlast trip: ${why ?? 'none'}`;
       })
       .catch((x) => `diag failed: ${String(x)}`);
     console.log(`--- motion diag (${what}) ---\n${d}`);

@@ -39,10 +39,10 @@ test('الأدوار والصلاحيات: الأدوار الجاهزة ← ك�
   // الكاشير: من غير أجهزة ولا استلام ولا فنيين في القايمة، وبيشوف البيع والمخزون (بيتطبق على طول)
   await c.reload();
   await afterSplash(c);
-  const nav = c.locator('aside nav, nav').first();
   await expect(c.getByRole('link', { name: 'الأجهزة' })).toHaveCount(0);
   await expect(c.getByRole('link', { name: 'استلام جهاز' })).toHaveCount(0);
-  await expect(nav).toBeVisible();
+  // ولا في الشريط السفلي على الموبايل
+  await expect(c.locator('nav[aria-label]').getByText('الأجهزة', { exact: true })).toHaveCount(0);
   await expect(c.getByTestId('dashboard-sales-only')).toBeVisible();
   // ولا حتى بالرابط
   await c.goto('/#/devices');

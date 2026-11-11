@@ -109,6 +109,12 @@ export function StageProvider({ phase, children }: { phase: SplashPhase; childre
         }
       }
       if (tripped) {
+        // آخر قراءات الإطارات لحظة الوقوف (أرقام بس، من غير أي بيانات): بتبان في شاشة التشخيص وفي الاختبار حتى بعد إعادة التحميل
+        try {
+          localStorage.setItem('bg-still-why', JSON.stringify({ at: Date.now(), log: motionDiag.log.slice(-12) }));
+        } catch {
+          /* التخزين مقفول */
+        }
         setBgStillSaved(true);
         return;
       }
