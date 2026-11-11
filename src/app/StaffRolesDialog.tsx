@@ -113,6 +113,7 @@ export function StaffRolesDialog({ user, onOpenChange, onDone }: { user: Profile
             value={fromRoles}
             onToggle={cycle}
             testid="staff-grid"
+            base={user?.role === 'technician' ? 'technician' : 'reception'}
             cell={(s, o) => {
               const k = `${s}:${o}`;
               if (k in ov) return { label: `${t('perm.exception')}: ${t(ov[k] ? 'perm.allow' : 'perm.deny')}`, tone: ov[k] ? 'allow' : 'deny' };

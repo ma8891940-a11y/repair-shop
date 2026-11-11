@@ -2866,7 +2866,7 @@
     },
     "title": "Roles & permissions",
     "hint": "Roles with your own names, each with a permissions table. The owner always has every permission. Changes apply to staff right away and are recorded in the activity log.",
-    "stage": "This stage removes permissions only: things the employee couldn't do before (like the financial position and profits) open in the next stage.",
+    "stage": "The owner can give staff things they couldn't do before: purchases, the financial overview, reports, cash transfers, write-offs, expenses, and the activity log. Partners, salaries and settings stay owner-only. Roles based on \"technician\" never see prices or profits.",
     "newRole": "New role",
     "roleName": "Role name",
     "base": "Based on",
@@ -2898,7 +2898,11 @@
     },
     "kindHint": "Unrelated sections disappear. Changing the type deletes no data.",
     "kindSaved": "Branch type changed",
-    "ownerAll": "Owner: every permission"
+    "ownerAll": "Owner: every permission",
+    "locked": {
+      "owner": "Owner only",
+      "tech": "Technicians never see prices or profits"
+    }
   },
   "picker": {
     "placeholder": "Type the item name, type, model or barcode",

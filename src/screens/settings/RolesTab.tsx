@@ -16,6 +16,16 @@ import { cn } from '../../ui/cn';
 export const SECTIONS = ['devices', 'intake', 'customers', 'technicians', 'inventory', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'audit'] as const;
 export const OPS = ['view', 'add', 'edit', 'delete', 'amounts', 'export'] as const;
 export type PermMap = Record<string, string[]>;
+
+/** لصاحب المحل بس (مش بتتدي لحد): الشركاء، والمرتبات والفريق، والإعدادات */
+export const OWNER_ONLY = ['partners', 'staff', 'settings'];
+/** الدور المبني على "فني": ما يشوفش أسعار ولا أرباح ولا بيبيع ولا بيشتري (نفس القاعدة في قاعدة البيانات) */
+const TECH_LOCKED = ['sales', 'purchases', 'cashbox', 'expenses', 'finance', 'reports', 'audit', 'customers'];
+export function permLocked(base: 'reception' | 'technician', section: string, op: string): 'owner' | 'tech' | null {
+  if (OWNER_ONLY.includes(section)) return 'owner';
+  if (base === 'technician' && (TECH_LOCKED.includes(section) || op === 'amounts')) return 'tech';
+  return null;
+}
 export interface Role {
   id: string;
   name: string;
@@ -25,9 +35,11 @@ export interface Role {
 }
 
 /** جدول الصلاحيات: الأقسام في الصفوف والعمليات في الأعمدة */
-export function PermGrid({ value, onToggle, cell, testid }: {
+export function PermGrid({ value, onToggle, cell, testid, base = 'reception' }: {
   value: PermMap;
   onToggle: (section: string, op: string) => void;
+  /** الدور الأساسي: بيقفل الخانات اللي عمرها ما بتتفتح ليه */
+  base?: 'reception' | 'technician';
   /** شكل مخصص للخانة (للاستثناءات) */
   cell?: (section: string, op: string) => { label: string; tone: 'on' | 'off' | 'allow' | 'deny' } | null;
   testid?: string;
@@ -53,19 +65,22 @@ export function PermGrid({ value, onToggle, cell, testid }: {
                 {t(`perm.sections.${s}`)}
               </th>
               {OPS.map((o) => {
-                const c = cell?.(s, o);
-                const on = c ? c.tone === 'on' || c.tone === 'allow' : (value[s] ?? []).includes(o);
+                const lock = permLocked(base, s, o);
+                const c = lock ? null : cell?.(s, o);
+                const on = !lock && (c ? c.tone === 'on' || c.tone === 'allow' : (value[s] ?? []).includes(o));
                 return (
                   <td key={o} className="px-2 py-1 text-center">
                     <button
                       type="button"
                       role="checkbox"
                       aria-checked={on}
-                      aria-label={`${t(`perm.sections.${s}`)}: ${t(`perm.ops.${o}`)}${c ? ` (${c.label})` : ''}`}
-                      title={c?.label}
+                      aria-label={`${t(`perm.sections.${s}`)}: ${t(`perm.ops.${o}`)}${lock ? ` (${t(`perm.locked.${lock}`)})` : c ? ` (${c.label})` : ''}`}
+                      title={lock ? t(`perm.locked.${lock}`) : c?.label}
+                      disabled={!!lock}
+                      aria-disabled={!!lock || undefined}
                       onClick={() => onToggle(s, o)}
                       className={cn(
-                        'grid size-6 place-items-center rounded-sm border text-2xs transition-colors',
+                        'grid size-6 place-items-center rounded-sm border text-2xs transition-colors disabled:cursor-not-allowed disabled:border-dashed disabled:opacity-40',
                         c?.tone === 'allow' ? 'border-ok bg-ok/15 text-ok' : c?.tone === 'deny' ? 'border-danger bg-danger-soft text-danger' : on ? 'border-accent bg-accent-soft text-accent' : 'border-line text-fg-3 hover:border-line-strong',
                       )}
                       data-testid={`perm-${s}-${o}`}
@@ -189,7 +204,7 @@ export function RolesTab() {
             </Field>
           </div>
           <div className="px-2 pb-2">
-            <PermGrid value={perms} onToggle={toggle} testid="role-grid" />
+            <PermGrid value={perms} onToggle={toggle} testid="role-grid" base={base} />
           </div>
           {err && (
             <div className="px-4 pb-2">

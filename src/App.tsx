@@ -185,16 +185,16 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
   const owner = role === 'owner';
   const front = role === 'owner' || role === 'reception';
   // P: الشاشة نفسها بتختفي لو مفيش صلاحية (حتى لو اتفتحت باختصار أو رابط)، والحماية الحقيقية في قاعدة البيانات
-  const { can: may } = usePerms();
+  const { can: may, grant, loaded } = usePerms();
   const location = useLocation();
   // لو الجهاز اتفتح من كارت، الشاشة اللي ورا بتفضل ظاهرة والتفاصيل تطلع فوقها
   const bg = (location.state as { bg?: Location } | null)?.bg;
   return (
     <>
       <Routes location={bg ?? location}>
-        {owner && <Route path="print/statement/:kind/:id" element={<StatementPrint />} />}
+        {grant('finance') && <Route path="print/statement/:kind/:id" element={<StatementPrint />} />}
         <Route path="print/table" element={<TablePrint />} />
-        {owner && <Route path="print/day/:day" element={<DayReportPrint />} />}
+        {grant('finance') && <Route path="print/day/:day" element={<DayReportPrint />} />}
         {front && <Route path="print/barcode/:id" element={<BarcodePrint />} />}
         {front && <Route path="print/:kind/:id" element={<PrintScreen />} />}
         <Route element={<AppShell />}>
@@ -204,25 +204,26 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
           {may('devices') && <Route path="devices/:id" element={<DeviceDetailScreen />} />}
           {front && may('customers') && <Route path="customers" element={<CustomersScreen />} />}
           {front && may('customers') && <Route path="customers/:id" element={<CustomerProfileScreen />} />}
-          {owner && <Route path="finance" element={<FinanceScreen />} />}
-          {owner && <Route path="finance/pl" element={<ProfitScreen />} />}
-          {owner && <Route path="finance/balances/:kind" element={<BalancesScreen />} />}
+          {grant('finance') && <Route path="finance" element={<FinanceScreen />} />}
+          {grant('finance') && <Route path="finance/pl" element={<ProfitScreen />} />}
+          {grant('finance') && <Route path="finance/balances/:kind" element={<BalancesScreen />} />}
           {owner && <Route path="opening" element={<OpeningScreen />} />}
           {owner && <Route path="partners" element={<PartnersScreen />} />}
           {(owner || role === 'technician') && <Route path="assistant" element={<AssistantScreen />} />}
-          {owner && <Route path="finance/entry/:id" element={<EntryScreen />} />}
-          {owner && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
+          {grant('finance') && <Route path="finance/entry/:id" element={<EntryScreen />} />}
+          {grant('finance') && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
           {(may('inventory') || may('sales')) && <Route path="inventory" element={<InventoryScreen />} />}
           <Route path="work" element={<WorkScreen />} />
-          {owner && <Route path="reports" element={<ReportsScreen />} />}
+          {grant('reports') && <Route path="reports" element={<ReportsScreen />} />}
           {front && may('cashbox') && <Route path="drawer" element={<DrawerScreen />} />}
           {owner && <Route path="users" element={<TeamScreen />} />}
-          {owner && <Route path="audit" element={<AuditScreen />} />}
+          {grant('audit') && <Route path="audit" element={<AuditScreen />} />}
           <Route path="settings" element={<SettingsScreen />} />
           {role !== 'reception' && <Route path="videos" element={<VideosScreen />} />}
           <Route path="community" element={<CommunityScreen />} />
           {admin && <Route path="admin" element={<AdminScreen />} />}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* لحد ما الصلاحيات توصل: الرابط ما يترجعش للرئيسية (ممكن يكون لشاشة متاحة بصلاحية زيادة) */}
+          <Route path="*" element={loaded ? <Navigate to="/" replace /> : null} />
         </Route>
       </Routes>
       <AnimatePresence>

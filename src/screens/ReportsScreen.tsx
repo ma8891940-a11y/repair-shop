@@ -50,7 +50,7 @@ function download(name: string, rows: (string | number | null)[][]) {
 export function ReportsScreen() {
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop } = useMe();
+  const { shop, profile } = useMe();
   const br = useBranch();
   const routeName = useRouteName();
   const dur = useDuration();
@@ -60,7 +60,11 @@ export function ReportsScreen() {
   const bargs = { ...args, p_branch: br.filter };
   const { data, error, loading, reload } = useLoad(async () => {
     const [tech, issue, models, items] = await Promise.all([
-      rpc<TechRow[]>('tech_report', args),
+      // الموظف اللي مش معاه كل الفروع: تقرير الفنيين على مستوى المحل كله مش ليه (الباقي بفرعه)
+      rpc<TechRow[]>('tech_report', args).catch((e) => {
+        if (profile.role === 'owner') throw e;
+        return [] as TechRow[];
+      }),
       rpc<IssueRow[]>('issue_report', bargs),
       rpc<{ kind: 'model' | 'route'; label: string; devices: number }[]>('models_report', bargs),
       rpc<StockRow[]>('items_stock', br.multi && br.view === 'all' ? { p_all: true } : {}),

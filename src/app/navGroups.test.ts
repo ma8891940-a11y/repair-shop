@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { favoriteEntries, groupOf, isActiveEntry, navGroups } from './navGroups';
+import { favoriteEntries, granted, groupOf, isActiveEntry, navGroups } from './navGroups';
 
 const keys = (r: Parameters<typeof navGroups>[0]) => navGroups(r).flatMap((g) => g.items.map((i) => i.key));
 
@@ -51,5 +51,23 @@ describe('القايمة الجانبية في مجموعات بالصلاحيا
     expect(groupOf(g, '/intake', '')).toBe('repair');
     const rec = navGroups({ role: 'reception', isAdmin: false });
     expect(favoriteEntries(rec, ['finance', 'intake']).map((i) => i.key)).toEqual(['intake']);
+  });
+  it('P المرحلة التانية: صاحب المحل بيدي الاستقبال الوضع المالي والمشتريات، والفني عمره ما بياخدهم', () => {
+    const base = { devices: ['view'], sales: ['view', 'add'], inventory: ['view'] };
+    const rec = keys({ role: 'reception', isAdmin: false, perms: base });
+    expect(rec).not.toContain('finance');
+    expect(rec).not.toContain('purchases');
+    const more = { ...base, finance: ['view'], purchases: ['view', 'add'], reports: ['view'], audit: ['view'] };
+    const rec2 = keys({ role: 'reception', isAdmin: false, perms: more });
+    expect(rec2).toEqual(expect.arrayContaining(['finance', 'cashboxes', 'purchases', 'suppliers', 'reports', 'audit']));
+    expect(rec2).not.toContain('expenses');
+    expect(rec2).not.toContain('partners');
+    // الفني: حتى لو متعلّم
+    const tech = keys({ role: 'technician', isAdmin: false, perms: { ...more, devices: ['view', 'edit'] } });
+    expect(tech).not.toContain('finance');
+    expect(tech).not.toContain('purchases');
+    // لسه الجدول ما وصلش: مفيش حاجة زيادة
+    expect(granted('reception', null, 'finance')).toBe(false);
+    expect(granted('owner', null, 'finance')).toBe(true);
   });
 });

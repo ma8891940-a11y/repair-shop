@@ -17,6 +17,7 @@ import { useBranch } from '../../app/branch';
 import { BranchCompare } from '../../app/finance/BranchCompare';
 import { rpc, sortCashboxes, useAccountName, type Position } from '../../app/ledgerApi';
 import { OpDialog, type Op } from '../../app/finance/OpDialog';
+import { usePerms } from '../../app/perms';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { fillDaily } from '../../lib/ledger';
 import { useFormat } from '../../i18n/format';
@@ -28,21 +29,25 @@ import { Button } from '../../ui/Button';
 import { IntegrityAlert } from '../../app/IntegrityAlert';
 import { cn } from '../../ui/cn';
 
-const QUICK_OPS: { op: Op; icon: LucideIcon }[] = [
-  { op: 'expense', icon: Receipt },
-  { op: 'transfer', icon: ArrowDownUp },
-  { op: 'salary', icon: Users },
-  { op: 'salary_payment', icon: HandCoins },
-  { op: 'advance', icon: Wallet },
-  { op: 'capital', icon: PiggyBank },
-  { op: 'drawing', icon: Banknote },
+// [العملية، الصلاحية اللي بتحتاجها للموظف] (null = لصاحب المحل بس)
+const QUICK_OPS: { op: Op; icon: LucideIcon; need: [string, string] | null }[] = [
+  { op: 'expense', icon: Receipt, need: ['expenses', 'add'] },
+  { op: 'transfer', icon: ArrowDownUp, need: ['cashbox', 'edit'] },
+  { op: 'salary', icon: Users, need: null },
+  { op: 'salary_payment', icon: HandCoins, need: null },
+  { op: 'advance', icon: Wallet, need: null },
+  { op: 'capital', icon: PiggyBank, need: null },
+  { op: 'drawing', icon: Banknote, need: null },
 ];
 
-/** الوضع المالي (صاحب المحل بس): كل رقم بيتحسب من القيود وبيتفتح لتفاصيله */
+/** الوضع المالي (صاحب المحل، أو الموظف اللي اداله الصلاحية): كل رقم بيتحسب من القيود وبيتفتح لتفاصيله */
 export function FinanceScreen() {
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop } = useMe();
+  const { shop, profile } = useMe();
+  const owner = profile.role === 'owner';
+  const { grant } = usePerms();
+  const ops = QUICK_OPS.filter((o) => owner || (o.need && grant(o.need[0], o.need[1])));
   const br = useBranch();
   const accName = useAccountName();
   const { period, range, set, query } = usePeriod();
@@ -53,8 +58,8 @@ export function FinanceScreen() {
   const wantOp = params.get('do');
   const focus = params.get('focus');
   useEffect(() => {
-    if (wantOp === 'expense') setOp('expense');
-  }, [wantOp]);
+    if (wantOp === 'expense' && (owner || grant('expenses', 'add'))) setOp('expense');
+  }, [wantOp]); // eslint-disable-line react-hooks/exhaustive-deps
   const cur = f.currency(shop.currency);
 
   const { data, error, loading, reload } = useLoad(async () => {
@@ -64,7 +69,11 @@ export function FinanceScreen() {
     const prev = previousRange(period, new Date());
     const [p, daily, pp] = await Promise.all([
       rpc<Position>('financial_position', args),
-      rpc<{ cashbox: string; day: string; net: number }[]>('cashbox_daily', { p_from: args.p_from, p_to: args.p_to }),
+      // الموظف اللي مش معاه كل الفروع: مفيش حركة يومية للمحل كله (الخطوط الصغيرة بس اللي بتختفي)
+      rpc<{ cashbox: string; day: string; net: number }[]>('cashbox_daily', { p_from: args.p_from, p_to: args.p_to }).catch((e) => {
+        if (owner) throw e;
+        return [];
+      }),
       rpc<Position>('financial_position', { p_from: prev.from.toISOString(), p_to: prev.to.toISOString(), p_branch: br.filter }).catch(() => null),
     ]);
     const mine = new Set(p.cashboxes.map((c) => c.id));
@@ -216,15 +225,16 @@ export function FinanceScreen() {
           </Panel>
 
           {/* حقوق الملكية: رأس مال صاحب المحل والشركاء والأرباح المحتجزة والسحوبات. دي مش ديون على المحل */}
-          {p?.equity_parts && <EquityPanel p={p} money={money} cur={cur} />}
-          <BranchCompare from={range.from} to={range.to} />
+          {/* حقوق الملكية والشركاء ومقارنة الفروع والمساعد: لصاحب المحل بس */}
+          {owner && p?.equity_parts && <EquityPanel p={p} money={money} cur={cur} />}
+          {owner && <BranchCompare from={range.from} to={range.to} />}
 
           <ReadyReports query={query} lastDay={range.days.at(-1)!} />
-          <FinanceAssist p={p} period={periodLine} />
+          {owner && <FinanceAssist p={p} period={periodLine} />}
 
           {/* عمليات سريعة */}
           <div className="mt-4 flex flex-wrap gap-2">
-            {QUICK_OPS.map(({ op: o, icon: I }) => (
+            {ops.map(({ op: o, icon: I }) => (
               <Button key={o} size="sm" icon={<I className="size-4" />} onClick={() => setOp(o)}>
                 {t(`fin.ops.${o}`)}
               </Button>

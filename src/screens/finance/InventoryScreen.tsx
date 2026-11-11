@@ -35,6 +35,7 @@ import { PurchaseAssist } from '../../app/assist/PurchaseAssist';
 import type { ExportTable } from '../../lib/xlsx';
 import { Checkbox } from '../../ui/Checkbox';
 import { ItemPicker } from '../../app/ItemPicker';
+import { usePerms } from '../../app/perms';
 import { ItemDetailFields, NewItemInline, StockInInline, emptyDetails, type ItemDetails } from '../../app/NewItemInline';
 import { composeItemName, matches } from '../../lib/itemSearch';
 import { readAllowNegative } from '../../lib/extras';
@@ -52,6 +53,14 @@ export function InventoryScreen() {
   const f = useFormat();
   const { profile, shop } = useMe();
   const owner = profile.role === 'owner';
+  // P (المرحلة التانية): اللي صاحب المحل اداه للموظف زيادة على دوره
+  const { grant } = usePerms();
+  const canBuy = grant('purchases', 'add');
+  const canSup = grant('purchases', 'view');
+  const canSupReturn = grant('purchases', 'edit');
+  const canWriteOff = grant('inventory', 'delete');
+  const amounts = grant('inventory', 'amounts');
+  const canReports = grant('reports');
   const [tab, setTab] = useState<'items' | 'suppliers' | 'summary'>('items');
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('');
@@ -72,13 +81,13 @@ export function InventoryScreen() {
   const want = params.get('do');
   const wantTab = params.get('tab');
   useEffect(() => {
-    if ((wantTab === 'suppliers' || wantTab === 'summary') && owner) setTab(wantTab);
+    if ((wantTab === 'suppliers' && canSup) || (wantTab === 'summary' && canReports)) setTab(wantTab);
     else if (!want) setTab((t0) => (t0 === 'suppliers' && !wantTab ? 'items' : t0));
     if (want === 'sale' && front) setDlg('sale');
-    else if (want === 'purchase' && owner) setDlg('purchase');
-    else if ((want === 'write_off' || want === 'supplier_return') && owner) setInvOp(want);
+    else if (want === 'purchase' && canBuy) setDlg('purchase');
+    else if ((want === 'write_off' && canWriteOff) || (want === 'supplier_return' && canSupReturn)) setInvOp(want);
     else if (want === 'sale_return' && front) setInvOp('sale_return');
-  }, [want, wantTab, owner, front]);
+  }, [want, wantTab, owner, front, canSup, canReports, canBuy, canWriteOff, canSupReturn]);
   // لما العملية تتقفل، الرابط يرجع للمخزون عادي (عشان "رجوع" ما يفتحهاش تاني)
   const clearDo = () => want && setParams({}, { replace: true });
   const [dlg, setDlg] = useState<'item' | 'purchase' | 'sale' | 'supplier' | null>(null);
@@ -88,11 +97,11 @@ export function InventoryScreen() {
   const { data, error, loading, reload } = useLoad(async () => {
     // B: الفرع الشغال، أو كل الفروع لو العرض "كل الفروع"
     const items = await rpc<StockRow[]>('items_stock', br.view === 'all' && br.multi ? { p_all: true } : {});
-    const suppliers = owner ? (must(await supabase.from('suppliers').select('id, name, phone').is('deleted_at', null).order('name')) as Supplier[]) : [];
-    const bal = owner ? await rpc<{ party_id: string; balance: number }[]>('party_balances', { p_kind: 'suppliers' }) : [];
+    const suppliers = canSup ? (must(await supabase.from('suppliers').select('id, name, phone').is('deleted_at', null).order('name')) as Supplier[]) : [];
+    const bal = canSup && grant('finance') ? await rpc<{ party_id: string; balance: number }[]>('party_balances', { p_kind: 'suppliers' }) : [];
     return { items: items.map((i) => ({ ...i, qty: Number(i.qty), avg_cost: i.avg_cost == null ? null : Number(i.avg_cost), value: i.value == null ? null : Number(i.value), unsettled: Number(i.unsettled ?? 0) })), suppliers, bal: new Map(bal.map((b) => [b.party_id, Number(b.balance)])) };
     // البند 14: آخر نسخة بتتحفظ على الجهاز، فالمخزون والبيع بيفتحوا من غير نت
-  }, [owner, br.view], { cacheKey: `inventory:${profile.id}:${br.view}` });
+  }, [owner, canSup, br.view], { cacheKey: `inventory:${profile.id}:${br.view}` });
   useLiveRefresh(reload);
   const cur = f.currency(shop.currency);
   const totalValue = (data?.items ?? []).reduce((a, i) => a + (i.value ?? 0), 0);
@@ -124,10 +133,10 @@ export function InventoryScreen() {
   function exportCsv() {
     if (!data) return;
     const head = [t('inv.cols.name'), t('inv.cols.kind'), t('inv.category'), t('barcode.code'), t('inv.cols.qty'), t('inv.minQty'), t('inv.cols.price')];
-    if (owner) head.push(t('inv.cols.avg'), t('inv.cols.value'));
+    if (amounts) head.push(t('inv.cols.avg'), t('inv.cols.value'));
     const rows = shown.map((i) => {
       const r: (string | number)[] = [i.name, t(`inv.kinds.${i.kind}`), i.category ?? '', i.barcode ?? '', i.qty, i.min_qty ?? 0, i.sale_price != null ? plainPounds(i.sale_price) : ''];
-      if (owner) r.push(i.avg_cost != null ? plainPounds(i.avg_cost) : '', plainPounds(i.value ?? 0));
+      if (amounts) r.push(i.avg_cost != null ? plainPounds(i.avg_cost) : '', plainPounds(i.value ?? 0));
       return r;
     });
     const blob = new Blob([toCsv([head, ...rows])], { type: 'text/csv;charset=utf-8' });
@@ -149,9 +158,9 @@ export function InventoryScreen() {
       { header: t('inv.cols.qty'), type: 'int', total: true },
       { header: t('inv.minQty'), type: 'int' },
       { header: t('inv.cols.price'), type: 'money' },
-      ...(owner ? [{ header: t('inv.cols.avg'), type: 'money' as const }, { header: t('inv.cols.value'), type: 'money' as const, total: true }] : []),
+      ...(amounts ? [{ header: t('inv.cols.avg'), type: 'money' as const }, { header: t('inv.cols.value'), type: 'money' as const, total: true }] : []),
     ],
-    rows: shown.map((i) => [i.name, t(`inv.kinds.${i.kind}`), i.category, i.barcode, i.qty, i.min_qty ?? 0, i.sale_price, ...(owner ? [i.avg_cost, i.value ?? 0] : [])]),
+    rows: shown.map((i) => [i.name, t(`inv.kinds.${i.kind}`), i.category, i.barcode, i.qty, i.min_qty ?? 0, i.sale_price, ...(amounts ? [i.avg_cost, i.value ?? 0] : [])]),
   });
   const suppliersTable = (): ExportTable | null | undefined =>
     data && {
@@ -171,7 +180,7 @@ export function InventoryScreen() {
     <div className="max-w-6xl">
       <PageHeader
         title={t('inv.title')}
-        sub={owner ? t('inv.subOwner', { v: `${f.money(totalValue)} ${cur}` }) : t('inv.sub')}
+        sub={amounts ? t('inv.subOwner', { v: `${f.money(totalValue)} ${cur}` }) : t('inv.sub')}
         actions={
           <div className="flex flex-wrap gap-2">
             {front && (
@@ -184,17 +193,23 @@ export function InventoryScreen() {
                 {t('invop.title.sale_return')}
               </Button>
             )}
-            {owner && (
+            {canWriteOff && (
+              <Button size="sm" variant="ghost" icon={<PackageMinus className="size-4" />} onClick={() => setInvOp('write_off')} data-testid="op-write_off">
+                {t('invop.title.write_off')}
+              </Button>
+            )}
+            {canSupReturn && (
+              <Button size="sm" variant="ghost" icon={<RotateCcw className="size-4" />} onClick={() => setInvOp('supplier_return')} data-testid="op-supplier_return">
+                {t('invop.title.supplier_return')}
+              </Button>
+            )}
+            {canBuy && (
+              <Button size="sm" icon={<Truck className="size-4" />} onClick={() => setDlg('purchase')}>
+                {t('inv.purchase')}
+              </Button>
+            )}
+            {(owner || (tab === 'suppliers' && grant('purchases', 'add'))) && (
               <>
-                <Button size="sm" variant="ghost" icon={<PackageMinus className="size-4" />} onClick={() => setInvOp('write_off')} data-testid="op-write_off">
-                  {t('invop.title.write_off')}
-                </Button>
-                <Button size="sm" variant="ghost" icon={<RotateCcw className="size-4" />} onClick={() => setInvOp('supplier_return')} data-testid="op-supplier_return">
-                  {t('invop.title.supplier_return')}
-                </Button>
-                <Button size="sm" icon={<Truck className="size-4" />} onClick={() => setDlg('purchase')}>
-                  {t('inv.purchase')}
-                </Button>
                 <Button size="sm" variant="primary" icon={<Plus className="size-4" />} onClick={() => setDlg(tab === 'items' ? 'item' : 'supplier')}>
                   {tab === 'items' ? t('inv.addItem') : t('inv.addSupplier')}
                 </Button>
@@ -203,9 +218,9 @@ export function InventoryScreen() {
           </div>
         }
       />
-      {owner && (
+      {(canSup || canReports) && (
         <div className="glass mb-3 inline-flex rounded-md p-1" role="tablist">
-          {(['items', 'suppliers', 'summary'] as const).map((k) => (
+          {(['items', 'suppliers', 'summary'] as const).filter((k) => k === 'items' || (k === 'suppliers' ? canSup : canReports)).map((k) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn('h-7 rounded-sm px-3 text-sm', tab === k ? 'bg-accent-soft text-fg' : 'text-fg-3 hover:text-fg')}>
               {t(`inv.tabs.${k}`)}
             </button>
@@ -241,7 +256,7 @@ export function InventoryScreen() {
             <button type="button" onClick={() => setOnlyShort((v) => !v)} aria-pressed={onlyShort} className={cn('h-7 rounded-sm px-2.5 text-xs', onlyShort ? 'bg-accent-soft text-fg' : 'text-fg-3 hover:text-fg')}>
               {t('inv.onlyShort')}
             </button>
-            {owner && (
+            {canBuy && (
               <div className="ms-auto flex flex-wrap gap-2">
                 {orders.map((o) => (
                   <Button key={`buy-${o.supplierId}`} size="sm" icon={<Truck className="size-3.5" />} onClick={() => { setPreset({ supplier: o.supplierId, lines: o.lines.map((l) => ({ item: l.itemId, qty: l.qty })) }); setDlg('purchase'); }} data-testid="buy-short">
@@ -349,8 +364,8 @@ export function InventoryScreen() {
                   <th>{t('inv.cols.name')}</th>
                   <th>{t('inv.cols.kind')}</th>
                   <th className="!text-end">{t('inv.cols.qty')}</th>
-                  {owner && <th className="!text-end">{t('inv.cols.avg')}</th>}
-                  {owner && <th className="!text-end">{t('inv.cols.value')}</th>}
+                  {amounts && <th className="!text-end">{t('inv.cols.avg')}</th>}
+                  {amounts && <th className="!text-end">{t('inv.cols.value')}</th>}
                   {(profile.role === 'owner' || profile.role === 'reception') && <th className="!text-end">{t('inv.cols.price')}</th>}
                 </tr>
               </thead>
@@ -387,8 +402,8 @@ export function InventoryScreen() {
                       {i.category && <div className="text-2xs text-fg-3">{i.category}</div>}
                     </td>
                     <td className={cn('num text-end', i.qty <= 0 ? 'text-danger' : 'text-fg')}>{f.number(i.qty)}</td>
-                    {owner && <td className="num text-end text-fg-2">{i.avg_cost != null ? f.money(i.avg_cost) : t('common.none')}</td>}
-                    {owner && <td className="num text-end text-fg">{f.money(i.value ?? 0)}</td>}
+                    {amounts && <td className="num text-end text-fg-2">{i.avg_cost != null ? f.money(i.avg_cost) : t('common.none')}</td>}
+                    {amounts && <td className="num text-end text-fg">{f.money(i.value ?? 0)}</td>}
                     {(profile.role === 'owner' || profile.role === 'reception') && <td className="num text-end text-fg-2">{i.sale_price != null ? f.money(i.sale_price) : t('common.none')}</td>}
                   </tr>
                 ))}

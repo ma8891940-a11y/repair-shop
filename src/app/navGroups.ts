@@ -42,6 +42,17 @@ export function branchHas(kind: BranchKind | undefined, section: string): boolea
   return true;
 }
 
+/**
+ * P (المرحلة التانية): صلاحية بيديها صاحب المحل للموظف زيادة على دوره (المشتريات، والوضع المالي، والتقارير...).
+ * صاحب المحل دايمًا. الموظف: لازم الجدول يكون وصل ومعلّم فيه، والفني عمره ما بياخدها (ما يشوفش أسعار ولا أرباح).
+ * نفس القاعدة في قاعدة البيانات (grant_require).
+ */
+export function granted(role: string, perms: Perms | null | undefined, section: string, op = 'view'): boolean {
+  if (role === 'owner') return true;
+  if (role !== 'reception' || !perms) return false;
+  return (perms[section] ?? []).includes(op);
+}
+
 // كل بند في القايمة ← القسم والعملية اللي بيحتاجها
 const NEEDS: Record<string, [string, string]> = {
   work: ['devices', 'view'],
@@ -60,6 +71,7 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
   const front = owner || role === 'reception';
   const tech = role === 'technician';
   const staff = role !== 'marketing';
+  const g = (section: string, op = 'view') => granted(role, perms, section, op);
   const e = (show: boolean, item: NavEntry) => {
     const need = NEEDS[item.key];
     // المخزون: بيظهر لو بيشوف المخزون أو بيبيع
@@ -92,17 +104,17 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
         ...e(front, { key: 'sale', to: '/inventory?do=sale', path: '/inventory?do=sale', icon: 'ShoppingCart' }),
         ...e(staff, { key: 'inventory', to: '/inventory', path: '/inventory', icon: 'Boxes', shortcut: 'nav.inventory' }),
         ...e(owner, { key: 'stocktake', to: '/opening', path: '/opening', icon: 'ClipboardCheck' }),
-        ...e(owner, { key: 'purchases', to: '/inventory?do=purchase', path: '/inventory?do=purchase', icon: 'Truck' }),
-        ...e(owner, { key: 'returns', to: '/inventory?do=write_off', path: '/inventory?do=write_off', icon: 'PackageMinus' }),
+        ...e(g('purchases', 'add'), { key: 'purchases', to: '/inventory?do=purchase', path: '/inventory?do=purchase', icon: 'Truck' }),
+        ...e(g('inventory', 'delete'), { key: 'returns', to: '/inventory?do=write_off', path: '/inventory?do=write_off', icon: 'PackageMinus' }),
       ],
     },
     {
       key: 'finance',
       items: [
-        ...e(owner, { key: 'finance', to: '/finance', path: '/finance', end: true, icon: 'Landmark', shortcut: 'nav.finance' }),
-        ...e(owner, { key: 'cashboxes', to: '/finance?focus=cashboxes', path: '/finance?focus=cashboxes', icon: 'Wallet' }),
+        ...e(g('finance'), { key: 'finance', to: '/finance', path: '/finance', end: true, icon: 'Landmark', shortcut: 'nav.finance' }),
+        ...e(g('finance'), { key: 'cashboxes', to: '/finance?focus=cashboxes', path: '/finance?focus=cashboxes', icon: 'Wallet' }),
         ...e(front && !owner, { key: 'drawer', to: '/drawer', path: '/drawer', icon: 'Wallet' }),
-        ...e(owner, { key: 'expenses', to: '/finance?do=expense', path: '/finance?do=expense', icon: 'Receipt' }),
+        ...e(g('expenses', 'add'), { key: 'expenses', to: '/finance?do=expense', path: '/finance?do=expense', icon: 'Receipt' }),
         ...e(owner, { key: 'partners', to: '/partners', path: '/partners', icon: 'Handshake' }),
       ],
     },
@@ -110,14 +122,14 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
       key: 'people',
       items: [
         ...e(front, { key: 'customers', to: '/customers', path: '/customers', icon: 'Contact', shortcut: 'nav.customers' }),
-        ...e(owner, { key: 'suppliers', to: '/inventory?tab=suppliers', path: '/inventory?tab=suppliers', icon: 'Store' }),
+        ...e(g('purchases'), { key: 'suppliers', to: '/inventory?tab=suppliers', path: '/inventory?tab=suppliers', icon: 'Store' }),
       ],
     },
     {
       key: 'reports',
       items: [
-        ...e(owner, { key: 'reports', to: '/reports', path: '/reports', icon: 'BarChart3' }),
-        ...e(owner, { key: 'audit', to: '/audit', path: '/audit', icon: 'History' }),
+        ...e(g('reports'), { key: 'reports', to: '/reports', path: '/reports', icon: 'BarChart3' }),
+        ...e(g('audit'), { key: 'audit', to: '/audit', path: '/audit', icon: 'History' }),
       ],
     },
     {

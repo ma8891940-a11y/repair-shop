@@ -111,7 +111,7 @@ export function AppShell() {
 
   // القايمة في مجموعات بالصلاحيات (src/app/navGroups.ts)
   // P: القايمة بالصلاحيات الفعلية ونوع الفرع الشغال ("كل الفروع" = كل الأقسام)
-  const { perms } = usePerms();
+  const { perms, grant } = usePerms();
   const br = useBranch();
   const branchKind = br.multi && br.view === 'all' ? 'both' : (br.working?.kind ?? 'both');
   const groups = useMemo(
@@ -152,7 +152,7 @@ export function AppShell() {
       'nav.intake': go('/intake', front),
       'nav.devices': go('/devices'),
       'nav.customers': go('/customers', front),
-      'nav.finance': go('/finance', owner),
+      'nav.finance': go('/finance', grant('finance')),
       'nav.inventory': go('/inventory'),
       palette: () => setPalette((v) => !v),
       theme: () => toggleTheme(),
@@ -163,7 +163,7 @@ export function AppShell() {
     return keys
       .filter((k) => k.id !== 'diag') // شاشة التشخيص ليها مستمع لوحدها (MotionDiagPanel)
       .flatMap((k) => k.combos.map((combo) => ({ combo, handler: run[k.id], allowInInputs: k.inInputs, outsideInputsOnly: !k.inInputs })));
-  }, [keys, navigate, front, owner, toggleTheme, toggleLang]);
+  }, [keys, navigate, front, grant, toggleTheme, toggleLang]);
   useShortcuts(shortcuts);
 
   return (
