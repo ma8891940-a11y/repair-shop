@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import { useMe } from './auth';
+import itemLists from '../data/itemLists.json';
 import { supabase } from '../lib/supabase';
 import { errorMessage } from '../lib/errors';
 import { cacheGet, cacheSet, enqueue, isNetworkError, localDb } from '../offline/outbox';
@@ -14,8 +15,13 @@ import { useToast } from '../ui/Toast';
  * - قبل أول تعديل: البرنامج بيستخدم القوايم الافتراضية. وأول تعديل بينسخها للمحل، فصاحب المحل يقدر يمسح منها كمان.
  * - القيم الافتراضية أكواد (زي "sim") ليها اسم مترجم. اللي صاحب المحل بيضيفه بيتعرض زي ما اتكتب.
  */
-export type ListKey = 'brands' | 'models' | 'device_types' | 'accessories' | 'colors' | 'conditions' | 'issues' | 'parts' | 'item_categories' | 'write_off_reasons' | 'return_reasons' | 'sub_statuses';
-export const LIST_KEYS: ListKey[] = ['brands', 'models', 'device_types', 'accessories', 'colors', 'conditions', 'issues', 'parts', 'item_categories', 'write_off_reasons', 'return_reasons', 'sub_statuses'];
+export type ListKey = 'brands' | 'models' | 'device_types' | 'accessories' | 'colors' | 'conditions' | 'issues' | 'parts' | 'item_types' | 'qualities' | 'item_categories' | 'write_off_reasons' | 'return_reasons' | 'sub_statuses';
+export const LIST_KEYS: ListKey[] = ['brands', 'models', 'device_types', 'accessories', 'colors', 'conditions', 'issues', 'parts', 'item_types', 'qualities', 'item_categories', 'write_off_reasons', 'return_reasons', 'sub_statuses'];
+
+/** أنواع الأصناف والجودة الافتراضية (من البحث في السوق المصري، docs/RESEARCH.md). بتتخزن نص زي ما هي */
+export const PART_TYPES: string[] = itemLists.part_types;
+export const ACCESSORY_TYPES: string[] = itemLists.accessory_types;
+export const QUALITIES: string[] = itemLists.qualities;
 
 export const LIST_DEFAULTS: Record<ListKey, string[]> = {
   brands: ['Samsung', 'iPhone', 'Xiaomi', 'Oppo', 'Realme', 'Infinix', 'Vivo', 'Honor', 'Huawei', 'Tecno'],
@@ -31,6 +37,8 @@ export const LIST_DEFAULTS: Record<ListKey, string[]> = {
   issues: ['screen', 'battery', 'charging', 'software', 'water', 'speaker', 'mic', 'camera', 'dead'],
   parts: ['screen', 'battery', 'charging_port', 'back_glass', 'camera', 'speaker', 'mic'],
   return_reasons: ['changed_mind', 'defective', 'wrong_item', 'duplicate'],
+  item_types: [...PART_TYPES, ...ACCESSORY_TYPES],
+  qualities: QUALITIES,
 };
 
 /** مين يقدر يضيف ويشيل من القوايم: صاحب المحل دايمًا، والأدوار اللي اختارها (shops.extras.lists_edit) */
@@ -52,7 +60,7 @@ export interface ListItem {
 export function useListLabel() {
   const { t } = useTranslation();
   return useCallback(
-    (list: ListKey, value: string) => (list === 'accessories' ? t(`intake.acc.${value}`, { defaultValue: value }) : list === 'issues' ? t(`intake.quick.${value}`, { defaultValue: value }) : list === 'brands' || list === 'models' ? value : t(`lists.values.${list}.${value}`, { defaultValue: value })),
+    (list: ListKey, value: string) => (list === 'accessories' ? t(`intake.acc.${value}`, { defaultValue: value }) : list === 'issues' ? t(`intake.quick.${value}`, { defaultValue: value }) : list === 'brands' || list === 'models' || list === 'item_types' || list === 'qualities' ? value : t(`lists.values.${list}.${value}`, { defaultValue: value })),
     [t],
   );
 }

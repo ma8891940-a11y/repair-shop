@@ -498,7 +498,8 @@
       "E_HAS_BALANCE_BRANCH": "This branch's cashboxes hold money. Transfer it first",
       "E_OWNER_PERMS": "The owner always has every permission; it can't be removed",
       "E_ROLE_IN_USE": "Staff have this role. Remove it from them first",
-      "E_BRANCH_KIND": "This section isn't part of this branch type"
+      "E_BRANCH_KIND": "This section isn't part of this branch type",
+      "E_SETTLED": "This sale was already settled (its cost was recorded after selling without stock), so it can't be reversed. Record a customer return instead"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -900,7 +901,8 @@
       "print": "Printing",
       "assistant": "Assistant",
       "branches": "Branches",
-      "roles": "Roles & permissions"
+      "roles": "Roles & permissions",
+      "inventory": "Inventory"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -2341,7 +2343,9 @@
       "device_types": "Device types",
       "parts": "Spare parts",
       "return_reasons": "Return reasons",
-      "issues": "Faults (the \"+ fault\" buttons in intake)"
+      "issues": "Faults (the \"+ fault\" buttons in intake)",
+      "item_types": "Item types (parts & accessories)",
+      "qualities": "Quality grades"
     },
     "subStatusesHint": "Core statuses are fixed. Add details under each one (e.g. under \"Awaiting part\": \"Ordered\" or \"On the way\"). When the core status changes, the sub-status is cleared.",
     "empty": "Empty",
@@ -2894,5 +2898,32 @@
     "kindHint": "Unrelated sections disappear. Changing the type deletes no data.",
     "kindSaved": "Branch type changed",
     "ownerAll": "Owner: every permission"
+  },
+  "picker": {
+    "placeholder": "Type the item name, type, model or barcode",
+    "qty": "{{n}} in stock",
+    "none": "No item matches",
+    "create": "Add new item «{{v}}»"
+  },
+  "item": {
+    "type": "Type",
+    "model": "Model",
+    "quality": "Quality",
+    "color": "Color",
+    "name": "Item name",
+    "nameHint": "Built from the fields; you can edit it",
+    "cost": "Unit cost",
+    "onHand": "Quantity on hand",
+    "needCost": "Enter the unit cost so the quantity is recorded",
+    "newTitle": "New item",
+    "saveAndPick": "Save & pick",
+    "created": "Item «{{name}}» added",
+    "noStock": "Not enough stock for this item ({{n}} available). Record the quantity and cost first:",
+    "stockIn": "Record quantity & cost",
+    "stockInDone": "Quantity recorded",
+    "unsettled": "Needs settlement ({{n}})",
+    "unsettledHint": "Sold without stock. When you record the quantity and cost, the accounts settle automatically",
+    "allowNegative": "Allow selling without stock",
+    "allowNegativeHint": "Off: record the quantity and cost before selling. On: the sale goes through and the item is marked \"needs settlement\" until you record the quantity and cost; then the accounts settle automatically."
   }
 }

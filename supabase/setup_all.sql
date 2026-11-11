@@ -9732,3 +9732,29 @@ begin
   values (s, me, 'backup_restore', 'shops', s, jsonb_build_object('from_shop', old_shop, 'generated_at', p_data->>'generated_at', 'counts', counts));
   return jsonb_build_object('restored', true, 'counts', counts);
 end $$;
+
+-- ---------- صنف جديد من أي نافذة (البيع، والشراء، والمرتجع، والهالك، والجرد، وقطع الجهاز) ----------
+-- بصلاحية "يضيف" في المخزون (جدول الصلاحيات). والكمية والتكلفة اللي عندي (اختياري) بتتسجل في نفس العملية
+create or replace function public.create_item(
+  p_id uuid, p_kind text, p_name text, p_item_type text default null, p_brand text default null, p_model text default null,
+  p_quality text default null, p_color text default null, p_sale_price integer default null, p_qty integer default null, p_unit_cost bigint default null,
+  p_stock_id uuid default null
+) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); nm text := trim(coalesce(p_name, ''));
+begin
+  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
+  perform public.perm_require('inventory', 'add');
+  if exists (select 1 from public.items where id = p_id and shop_id = s) then return p_id; end if;
+  if p_kind not in ('part', 'accessory') or nm = '' or length(nm) > 160 then raise exception 'E_BAD_INPUT'; end if;
+  if p_sale_price is not null and (p_sale_price < 0 or p_sale_price > 2000000000) then raise exception 'E_BAD_AMOUNT'; end if;
+  insert into public.items(id, shop_id, kind, name, item_type, brand, model, quality, color, sale_price)
+  values (p_id, s, p_kind, nm, nullif(trim(p_item_type), ''), nullif(trim(p_brand), ''), nullif(trim(p_model), ''), nullif(trim(p_quality), ''), nullif(trim(p_color), ''), p_sale_price);
+  if coalesce(p_qty, 0) > 0 then
+    if p_unit_cost is null or p_unit_cost <= 0 then raise exception 'E_BAD_AMOUNT'; end if;
+    perform public.stock_in(coalesce(p_stock_id, gen_random_uuid()), p_id, p_qty, p_unit_cost, 'stock');
+  end if;
+  return p_id;
+end $$;
+revoke execute on function public.create_item(uuid, text, text, text, text, text, text, text, integer, integer, bigint, uuid) from public, anon;
+grant execute on function public.create_item(uuid, text, text, text, text, text, text, text, integer, integer, bigint, uuid) to authenticated;

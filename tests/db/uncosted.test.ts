@@ -136,4 +136,24 @@ d('البيع من غير رصيد والتسوية', () => {
     await expect(as(O, `select write_off($1, $2, 1, 'اتكسر')`, [id(), it])).rejects.toThrow(/E_STOCK/);
     await allow(false);
   });
+
+  it('صنف جديد من نافذة البيع: بالتفاصيل والكمية والتكلفة في عملية واحدة، وبيتباع على طول، والحسابات صح', async () => {
+    const it = id();
+    await as(R, `select create_item($1, 'part', 'شاشة A52 - Incell', 'شاشة', 'Samsung', 'A52', 'Incell', null, 45000, 3, 25000)`, [it]);
+    expect(await stock(it)).toEqual({ q: 3, v: 75000 });
+    expect((await as(R, `select sale_price, quality from items_stock() where id = $1`, [it])).rows[0]).toEqual({ sale_price: 45000, quality: 'Incell' });
+    const cogs0 = await bal('cogs');
+    await sell(R, it, 1, 45000);
+    expect(await bal('cogs')).toBe(cogs0 + 25000);
+    expect(await stock(it)).toEqual({ q: 2, v: 50000 });
+    // نفس العملية مرتين (النت قطع ورجع): صنف واحد
+    await as(R, `select create_item($1, 'part', 'تاني', null, null, null, null, null, null, 0, null)`, [it]);
+    expect((await admin(`select name from items where id = $1`, [it])).rows[0].name).toBe('شاشة A52 - Incell');
+    // من غير صلاحية "يضيف" في المخزون: مرفوض
+    await as(O, `select set_staff_override($1, 'inventory', 'add', false)`, [R]);
+    await expect(as(R, `select create_item($1, 'part', 'x')`, [id()])).rejects.toThrow(/E_FORBIDDEN/);
+    await as(O, `select set_staff_override($1, 'inventory', 'add', null)`, [R]);
+    await clean();
+  });
 });
+
