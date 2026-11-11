@@ -43,3 +43,21 @@
 - **كل رقم في التقارير بيتفتح لحد العملية نفسها** (drill-down)، وده موجود جزئيًا ويتعمّم في البند 8.
 - **تنبيه النواقص بحد أدنى لكل صنف** (موجود) + "اشتري الناقص".
 - **الباركود:** توليد وطباعة ملصق ومسح بالكاميرا أو بالقارئ.
+
+## تفاصيل الصنف: أنواع قطع الغيار والإكسسوارات ودرجات الجودة (تعديل صاحب المشروع 2026-11-11)
+القوايم الافتراضية في البرنامج (كلها قوايم ملء سريع، وصاحب المحل يضيف ويشيل منها):
+
+- **أنواع قطع الغيار:** شاشة، بطارية، سوكت شحن، فلاتة شحن، باك كفر، فريم، كاميرا خلفية، كاميرا أمامية، عدسة كاميرا، سماعة داخلية، جرس (سماعة خارجية)، ميكروفون، هزاز، فلاتة باور، فلاتة صوت، فلاتة بصمة، زرار باور، زرار صوت، درج شريحة، IC شحن، IC باور، IC صوت، IC شبكة، بوردة، فلاتة شاشة، شاحن داخلي (لاسلكي)، إستيكر/لاصق.
+- **أنواع الإكسسوارات:** جراب، سكرينة حماية (زجاج)، سكرينة كاميرا، شاحن، كابل، شاحن عربية، سماعة سلك، سماعة بلوتوث، باور بانك، حامل موبايل، كارت ميموري، فلاشة OTG، قلم، ساعة ذكية، رينج لايت.
+- **درجات الجودة (من الأعلى للأقل):** أصلي (جديد من الشركة/Service Pack)، أصلي مستخرج (من جهاز مستعمل)، OLED (Soft)، OLED (Hard)، Incell، هاي كوبي، كوبي، تجاري.
+  - الترتيب ده متفق عليه في أدلة موردين القطع: الأصلي الجديد والمستخرج في الأول، وبعدين Soft OLED، وبعدين Hard OLED، وبعدين Incell (LCD).
+  - "هاي كوبي" و"كوبي" و"تجاري": المسميات المنتشرة في محلات القطع في مصر للقطع غير الأصلية بالدرجات.
+
+**المصادر:**
+- [Foneday: Quality guide](https://ws.foneday.shop/support/quality-guide) و[Original vs aftermarket parts](https://foneday.shop/en/blog/original-vs-aftermarket-parts): Service Pack وPulled/Refurbished.
+- [MO Phone Parts: The Complete Guide to the iPhone Screen Repair Aftermarket](https://mophoneparts.com/?p=3625): درجات الشاشات.
+- [Regeneration: OLED vs Incell vs Apple Genuine](https://regeneration.co.nz/blogs/repair-guides-1/oled-vs-incell-vs-apple-genuine-iphone-screen) و[iPace: In-cell vs OLED](https://ipace.tech/pages/in-cell-vs-oled-iphone-screen-comparison).
+- [موبايل مصر: أنواع شاشات الموبايل LCD وAMOLED وOLED](https://mobilemasr.com/blogs/تعرف-على-انواع-شاشات-الموبايل-lcd-amoled-oled).
+- [iFixit: Smartphone parts](https://eu-pro-store.ifixit.com/collections/smartphone-parts) و[Galaxus: Spare parts for mobile devices](https://www.galaxus.ch/en/s1/producttype/spare-parts-for-mobile-devices-2356): تصنيف القطع (شاشة، بطارية، سوكت، فلاتات، باك كفر، كاميرات، سماعة).
+- [بي تك: اكسسوارات الموبايل](https://btech.com/ar/c/mobiles-tablets/mobile-accessories) و[كارفور مصر: اكسسوارات الموبايل](https://www.carrefouregypt.com/mafegy/ar/c/NFEGY1210000) و[جوميا مصر](https://www.jumia.com.eg/mobile-phone-flip-cases/telesin/): أنواع الإكسسوارات في السوق المصري.
+- **ملاحظة صريحة:** البحث ما لقاش كتالوج مصري واحد فيه قايمة القطع كلها. القطع الصغيرة (IC، والجرس، والفلاتات) من خبرة محلات الصيانة الشائعة ومن تصنيف موردين القطع، وصاحب المحل يقدر يعدّلها.
