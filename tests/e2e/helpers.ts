@@ -210,6 +210,23 @@ export async function fillField(input: Locator, value: string) {
 }
 
 /**
+ * S6: خانة الصنف بحث وكتابة: بنكتب جزء من الاسم ونختار النتيجة (ولو query فاضي: أول صنف).
+ * qty (اختياري): الكمية المتاحة اللي لازم تبان جنب النتيجة.
+ */
+export async function pickItem(scope: Page | Locator, query: string | null, opts: { label?: string; name?: string; qty?: number } = {}) {
+  const page = 'page' in scope && typeof (scope as Locator).page === 'function' ? (scope as Locator).page() : (scope as Page);
+  const box = scope.getByRole('combobox', { name: opts.label ?? 'الصنف', exact: true });
+  await box.click();
+  if (query) await fillField(box, query);
+  let opt = page.getByTestId('picker-option');
+  if (opts.name) opt = opt.filter({ hasText: opts.name });
+  else if (query) opt = opt.filter({ hasText: query });
+  opt = opt.first();
+  if (opts.qty != null) await expect(opt.getByTestId('picker-qty')).toContainText(String(opts.qty));
+  await opt.click();
+}
+
+/**
  * تشخيص الخلفية المتحركة (قرار صاحب المشروع: لو اختبار الحركة فشل في تشغيل كامل، يبان السبب بالظبط):
  * بيطبع حالة الحارس وآخر قراءات الإطارات لو الشرط فشل، وبعدين بيرمي نفس الخطأ.
  */

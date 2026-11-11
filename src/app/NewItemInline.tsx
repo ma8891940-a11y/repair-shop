@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListCombo } from './ListCombo';
-import { ACCESSORY_TYPES } from './lists';
-import { opId, rpc } from './ledgerApi';
+import { ACCESSORY_TYPES, useListLabel } from './lists';
+import { opId, rpc, type StockRow } from './ledgerApi';
 import { composeItemName } from '../lib/itemSearch';
 import { parsePounds } from '../lib/money';
 import { toLatinDigits } from '../lib/digits';
@@ -57,7 +57,7 @@ export const emptyDetails = (): ItemDetails => ({ kind: 'part', item_type: '', b
  * "إضافة صنف جديد «...»" جوه نفس النافذة: الخانات، والاسم بيتكوّن لوحده (وتقدر تعدّله)، والتكلفة وسعر البيع والكمية اللي عندك.
  * بيتحفظ (create_item) ويتختار على طول عشان تكمّل البيع أو الشراء.
  */
-export function NewItemInline({ typed, withStock = true, onCreated, onCancel }: { typed: string; withStock?: boolean; onCreated: (id: string) => void; onCancel: () => void }) {
+export function NewItemInline({ typed, withStock = true, onCreated, onCancel }: { typed: string; withStock?: boolean; onCreated: (row: StockRow) => void; onCancel: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
   const [d, setD] = useState<ItemDetails>(emptyDetails);
@@ -69,7 +69,9 @@ export function NewItemInline({ typed, withStock = true, onCreated, onCancel }: 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ids] = useState(() => ({ item: opId(), stock: opId() }));
-  const composed = useMemo(() => composeItemName(d), [d]);
+  const label = useListLabel();
+  // اللون الافتراضي متخزن كود (black)، والاسم بياخد اسمه المعروض
+  const composed = useMemo(() => composeItemName({ ...d, color: d.color ? label('colors', d.color) : '' }), [d, label]);
   const shownName = nameEdited ? name : composed;
   const set = (p: Partial<ItemDetails>) => {
     setD((c) => ({ ...c, ...p }));
@@ -92,7 +94,10 @@ export function NewItemInline({ typed, withStock = true, onCreated, onCancel }: 
         p_id: ids.item, p_kind: d.kind, p_name: nm, p_item_type: d.item_type || null, p_brand: d.brand || null, p_model: d.model || null,
         p_quality: d.quality || null, p_color: d.color || null, p_sale_price: p, p_qty: q, p_unit_cost: c, p_stock_id: ids.stock,
       });
-      onCreated(ids.item);
+      onCreated({
+        id: ids.item, kind: d.kind, name: nm, sku: null, sale_price: p, qty: q, avg_cost: q > 0 ? c : null, value: q > 0 && c ? c * q : 0,
+        item_type: d.item_type || null, brand: d.brand || null, model: d.model || null, quality: d.quality || null, color: d.color || null, unsettled: 0,
+      });
     } catch (e) {
       setErr(errorMessage(e));
     } finally {
@@ -134,6 +139,53 @@ export function NewItemInline({ typed, withStock = true, onCreated, onCancel }: 
           {t('item.saveAndPick')}
         </Button>
       </div>
+    </section>
+  );
+}
+
+/**
+ * البيع بكمية أكتر من الرصيد و"السماح بالبيع بدون رصيد" مقفول: سجّل الكمية والتكلفة من نفس النافذة (stock_in)، وكمّل البيع.
+ */
+export function StockInInline({ item, need, onDone }: { item: StockRow; need: number; onDone: (qty: number) => void }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const [qty, setQty] = useState(String(need));
+  const [cost, setCost] = useState(item.avg_cost ? String(item.avg_cost / 100) : '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [id, setId] = useState(opId);
+  async function save() {
+    setErr(null);
+    const q = Number(toLatinDigits(qty.trim()));
+    if (!Number.isInteger(q) || q <= 0) return setErr(t('inv.errMin'));
+    const c = parsePounds(cost);
+    if (!c) return setErr(t('item.needCost'));
+    setBusy(true);
+    try {
+      await rpc('stock_in', { p_id: id, p_item: item.id, p_qty: q, p_unit_cost: c, p_note: null });
+      setId(opId());
+      onDone(q);
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="flex flex-col gap-2 rounded-md border border-[color-mix(in_srgb,var(--warn)_45%,transparent)] p-3" data-testid="stock-in-inline">
+      <p className="text-xs text-warn">{t('item.noStock', { n: f.number(Math.max(item.qty, 0)) })}</p>
+      <div className="grid grid-cols-[96px_minmax(0,1fr)_auto] items-end gap-2">
+        <Field label={t('inv.cols.qty')}>
+          <Input mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} data-testid="si-qty" />
+        </Field>
+        <Field label={t('item.cost')}>
+          <Input mono inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} suffix={f.currency()} data-testid="si-cost" />
+        </Field>
+        <Button size="sm" variant="primary" loading={busy} needsNet onClick={() => void save()} className="mb-0.5" data-testid="si-save">
+          {t('item.stockIn')}
+        </Button>
+      </div>
+      {err && <Alert tone="danger">{err}</Alert>}
     </section>
   );
 }

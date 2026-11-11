@@ -89,6 +89,13 @@ export interface StockRow {
   barcode?: string | null;
   brand?: string | null;
   image_path?: string | null;
+  /** S6: تفاصيل الصنف */
+  item_type?: string | null;
+  model?: string | null;
+  quality?: string | null;
+  color?: string | null;
+  /** S6: كمية اتباعت من غير رصيد ولسه محتاجة تسوية */
+  unsettled?: number;
 }
 export interface DeviceMoney {
   final: number | null;

@@ -713,7 +713,8 @@
       "staff_branches": "Employee branches",
       "roles": "Role",
       "staff_roles": "Employee roles",
-      "staff_overrides": "Permission exception"
+      "staff_overrides": "Permission exception",
+      "uncosted_sales": "Sale needing settlement"
     },
     "actions": {
       "insert": "add",
@@ -2906,7 +2907,7 @@
     "create": "Add new item «{{v}}»"
   },
   "item": {
-    "type": "Type",
+    "type": "Type (screen, battery, case…)",
     "model": "Model",
     "quality": "Quality",
     "color": "Color",
@@ -2924,6 +2925,12 @@
     "unsettled": "Needs settlement ({{n}})",
     "unsettledHint": "Sold without stock. When you record the quantity and cost, the accounts settle automatically",
     "allowNegative": "Allow selling without stock",
-    "allowNegativeHint": "Off: record the quantity and cost before selling. On: the sale goes through and the item is marked \"needs settlement\" until you record the quantity and cost; then the accounts settle automatically."
+    "allowNegativeHint": "Off: record the quantity and cost before selling. On: the sale goes through and the item is marked \"needs settlement\" until you record the quantity and cost; then the accounts settle automatically.",
+    "unsettledBanner": "{{n}} item(s) were sold without stock and need settlement. Record the quantity and cost (purchase or stock) and the accounts settle automatically.",
+    "allTypes": "All types",
+    "allModels": "All models",
+    "allQualities": "All qualities",
+    "filteredTitle": "Items matching the filter now",
+    "filteredItems": "Items"
   }
 }

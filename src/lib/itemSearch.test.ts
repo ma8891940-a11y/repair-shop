@@ -15,6 +15,12 @@ describe('البحث عن الصنف بالكتابة', () => {
     expect(ids('ايفون 13')).toEqual(['a']);
     expect(ids('iphone 13 pro')).toEqual(['a']);
   });
+  it('النوع بالإنجليزي بيلاقي الاسم العربي (والعكس)', () => {
+    expect(ids('screen 13 pro')).toEqual(['a']);
+    expect(ids('battery a52')).toEqual(['b']);
+    expect(ids('case')).toEqual(['c']);
+    expect(ids('بطاريه سامسونج')).toEqual(['b']);
+  });
   it('جزء من الكلمة، وبالنوع والماركة والموديل والجودة', () => {
     expect(ids('شاش')).toEqual(['a', 'd']);
     expect(ids('سامسونج')).toEqual(['b']);

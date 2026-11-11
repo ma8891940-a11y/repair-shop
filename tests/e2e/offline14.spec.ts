@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, prefs, quickIntake, registerShop, uniq, fillAmount } from './helpers';
+import { afterSplash, prefs, quickIntake, registerShop, uniq, fillAmount, pickItem } from './helpers';
 
 // البند 14: الشغل اليومي كله من غير نت، وكل اللي محتاج نت مقفول بهدوء وبيتفتح لوحده.
 // بيشتغل على سيرفر التطوير، وعلى نسخة الإنتاج كمان (E2E_PROD=1) بنفس الخطوات.
@@ -53,7 +53,7 @@ test('من غير نت: التكلفة والملاحظة والفحص والد�
   await page.goto('/#/inventory');
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   const sale = page.getByRole('dialog');
-  await sale.getByRole('combobox', { name: 'الصنف' }).selectOption({ label: 'جراب شفاف (5)' });
+  await pickItem(sale, 'جراب شفاف', { qty: 5 });
   await sale.getByRole('textbox', { name: 'سعر البيع', exact: true }).fill('50');
   await sale.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

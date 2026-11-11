@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Check, Trash2 } from 'lucide-react';
 import { RowsBar } from '../../app/RowsBar';
 import { ListCombo } from '../../app/ListCombo';
+import { NameSuggest } from '../../app/NameSuggest';
 import { addRows, newKey, removeBlankRows, removeRows } from '../../lib/gridRows';
 import { PageHeader } from '../../app/AppShell';
 import { useMe } from '../../app/auth';
@@ -263,6 +264,23 @@ function StockStep({ onSaved }: { onSaved: () => void }) {
                           <option value="part">{t('inv.kinds.part')}</option>
                           <option value="accessory">{t('inv.kinds.accessory')}</option>
                         </select>
+                      ) : c === 'name' ? (
+                        <NameSuggest
+                          items={existing.data ?? []}
+                          cell={`${i}-${j}`}
+                          value={r.name}
+                          onChange={(v) => set(i, 'name', v)}
+                          onPick={(it) => {
+                            set(i, 'name', it.name);
+                            set(i, 'kind', it.kind);
+                            if (it.brand) set(i, 'brand', it.brand);
+                            if (it.sale_price != null && !r.price) set(i, 'price', String(it.sale_price / 100));
+                          }}
+                          onKeyDown={(e) => gridKeys(e, i, j, focus)}
+                          onPaste={(e) => onPaste(e, i, j)}
+                          label={`${t('inv.cols.name')} ${i + 1}`}
+                          className="h-8 w-full bg-transparent px-2 text-sm text-fg focus:outline focus:outline-2 focus:outline-accent"
+                        />
                       ) : (
                         <input
                           data-cell={`${i}-${j}`}
@@ -270,10 +288,10 @@ function StockStep({ onSaved }: { onSaved: () => void }) {
                           onChange={(e) => set(i, c, e.target.value)}
                           onKeyDown={(e) => gridKeys(e, i, j, focus)}
                           onPaste={(e) => onPaste(e, i, j)}
-                          inputMode={c === 'name' ? undefined : c === 'qty' ? 'numeric' : 'decimal'}
-                          dir={c === 'name' ? undefined : 'ltr'}
+                          inputMode={c === 'qty' ? 'numeric' : 'decimal'}
+                          dir="ltr"
                           aria-label={`${c === 'cost' ? t('opening.unitCost') : t(`inv.cols.${c === 'price' ? 'price' : c}`)} ${i + 1}`}
-                          className={cn('h-8 w-full bg-transparent px-2 text-sm text-fg focus:outline focus:outline-2 focus:outline-accent', c !== 'name' && 'num text-start')}
+                          className={cn('h-8 w-full bg-transparent px-2 text-sm text-fg focus:outline focus:outline-2 focus:outline-accent', 'num text-start')}
                         />
                       )}
                     </td>

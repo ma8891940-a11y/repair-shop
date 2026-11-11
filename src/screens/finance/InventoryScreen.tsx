@@ -23,7 +23,7 @@ import { Alert, EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 import { DeleteDialog } from '../../app/DeleteDialog';
-import { useShopList } from '../../app/lists';
+import { useListLabel, useShopList } from '../../app/lists';
 import { ListCombo } from '../../app/ListCombo';
 import { BulkEditDialog, ImportDialog, InvOpDialog, ItemMoves, ScanDialog, type InvOp, type InvSummary } from './InventoryOps';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
@@ -34,6 +34,10 @@ import { shouldQueue, useSync } from '../../offline/sync';
 import { PurchaseAssist } from '../../app/assist/PurchaseAssist';
 import type { ExportTable } from '../../lib/xlsx';
 import { Checkbox } from '../../ui/Checkbox';
+import { ItemPicker } from '../../app/ItemPicker';
+import { ItemDetailFields, NewItemInline, StockInInline, emptyDetails, type ItemDetails } from '../../app/NewItemInline';
+import { composeItemName, matches } from '../../lib/itemSearch';
+import { readAllowNegative } from '../../lib/extras';
 import { logoUploadError, prepareLogoUpload } from '../../lib/brandImage';
 
 interface Supplier {
@@ -52,6 +56,10 @@ export function InventoryScreen() {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('');
   const [brandF, setBrandF] = useState('');
+  // S6: فلاتر بالنوع والموديل والجودة
+  const [typeF, setTypeF] = useState('');
+  const [modelF, setModelF] = useState('');
+  const [qualF, setQualF] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState<string[] | null>(null);
   const [invOp, setInvOp] = useState<InvOp | null>(null);
@@ -82,7 +90,7 @@ export function InventoryScreen() {
     const items = await rpc<StockRow[]>('items_stock', br.view === 'all' && br.multi ? { p_all: true } : {});
     const suppliers = owner ? (must(await supabase.from('suppliers').select('id, name, phone').is('deleted_at', null).order('name')) as Supplier[]) : [];
     const bal = owner ? await rpc<{ party_id: string; balance: number }[]>('party_balances', { p_kind: 'suppliers' }) : [];
-    return { items: items.map((i) => ({ ...i, qty: Number(i.qty), avg_cost: i.avg_cost == null ? null : Number(i.avg_cost), value: i.value == null ? null : Number(i.value) })), suppliers, bal: new Map(bal.map((b) => [b.party_id, Number(b.balance)])) };
+    return { items: items.map((i) => ({ ...i, qty: Number(i.qty), avg_cost: i.avg_cost == null ? null : Number(i.avg_cost), value: i.value == null ? null : Number(i.value), unsettled: Number(i.unsettled ?? 0) })), suppliers, bal: new Map(bal.map((b) => [b.party_id, Number(b.balance)])) };
     // البند 14: آخر نسخة بتتحفظ على الجهاز، فالمخزون والبيع بيفتحوا من غير نت
   }, [owner, br.view], { cacheKey: `inventory:${profile.id}:${br.view}` });
   useLiveRefresh(reload);
@@ -94,9 +102,14 @@ export function InventoryScreen() {
   // الماركات: من قايمة الماركات (نفس اللي في الاستلام) + اللي على الأصناف فعلًا
   const brandList = useShopList('brands').items;
   const brands = useMemo(() => [...new Set([...brandList.map((b) => b.value), ...(data?.items ?? []).map((i) => i.brand).filter((b): b is string => !!b)])].sort(), [brandList, data]);
-  const needle = toLatinDigits(q.trim()).toLowerCase();
+  const distinct = (k: 'item_type' | 'model' | 'quality') => [...new Set((data?.items ?? []).map((i) => i[k]).filter((x): x is string => !!x))].sort();
+  const types = useMemo(() => distinct('item_type'), [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const models = useMemo(() => distinct('model'), [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const quals = useMemo(() => distinct('quality'), [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const unsettledCount = (data?.items ?? []).filter((i) => (i.unsettled ?? 0) > 0).length;
+  // البحث: جزء من الكلمة، بالعربي أو الإنجليزي، في الاسم والنوع والماركة والموديل والجودة والباركود (نفس بحث خانة الصنف)
   const shown = (data?.items ?? []).filter(
-    (i) => (!onlyShort || i.short) && (!cat || i.category === cat) && (!brandF || i.brand === brandF) && (!needle || [i.name, i.sku, i.barcode, i.category, i.brand].some((x) => x && toLatinDigits(x).toLowerCase().includes(needle))),
+    (i) => (!onlyShort || i.short) && (!cat || i.category === cat) && (!brandF || i.brand === brandF) && (!typeF || i.item_type === typeF) && (!modelF || i.model === modelF) && (!qualF || i.quality === qualF) && matches(i, q),
   );
   /** قارئ الباركود بيكتب الرقم ويدوس Enter: لو مطابق لصنف، بيفتح تفاصيله على طول */
   function onCode(code: string) {
@@ -216,6 +229,11 @@ export function InventoryScreen() {
             }}
           />
         )}
+        {unsettledCount > 0 && (
+          <div className="mb-3" data-testid="unsettled-banner">
+            <Alert tone="danger">{t('item.unsettledBanner', { n: unsettledCount })}</Alert>
+          </div>
+        )}
         {shortCount > 0 && (
           <Panel className="mb-3 flex flex-wrap items-center gap-3 border-[color-mix(in_srgb,var(--warn)_40%,var(--glass-border))] p-3" data-testid="shortages">
             <AlertTriangle className="size-4 text-warn" aria-hidden />
@@ -279,6 +297,24 @@ export function InventoryScreen() {
               </option>
             ))}
           </Select>
+          {(
+            [
+              [types, typeF, setTypeF, 'item.allTypes', 'inv-type-filter'],
+              [models, modelF, setModelF, 'item.allModels', 'inv-model-filter'],
+              [quals, qualF, setQualF, 'item.allQualities', 'inv-quality-filter'],
+            ] as const
+          ).map(([opts, v, setV, lbl, tid]) =>
+            opts.length > 0 ? (
+              <Select key={tid} value={v} onChange={(e) => setV(e.target.value)} aria-label={t(lbl)} className="h-8 w-auto" data-testid={tid}>
+                <option value="">{t(lbl)}</option>
+                {opts.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </Select>
+            ) : null,
+          )}
           <Button size="sm" variant="ghost" icon={<Camera className="size-4" />} onClick={() => setScan(true)}>
             {t('scan.title')}
           </Button>
@@ -333,6 +369,11 @@ export function InventoryScreen() {
                         </button>
                       ) : (
                         i.name
+                      )}
+                      {(i.unsettled ?? 0) > 0 && (
+                        <span className="ms-2 rounded-full border border-[color-mix(in_srgb,var(--danger)_50%,transparent)] px-1.5 text-2xs text-danger" title={t('item.unsettledHint')} data-testid="item-unsettled">
+                          {t('item.unsettled', { n: f.number(i.unsettled ?? 0) })}
+                        </span>
                       )}
                       {i.short && <span className="ms-2 rounded-full border border-[color-mix(in_srgb,var(--warn)_45%,transparent)] px-1.5 text-2xs text-warn">{t('inv.short')}</span>}
                       {(i.barcode || i.sku) && (
@@ -456,10 +497,10 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
   const { shop } = useMe();
   const f = useFormat();
   const toast = useToast();
-  const [kind, setKind] = useState<'part' | 'accessory'>('part');
+  const [d, setD] = useState<ItemDetails>(emptyDetails);
   const [name, setName] = useState('');
+  const [nameEdited, setNameEdited] = useState(false);
   const [sku, setSku] = useState('');
-  const [newBrand, setNewBrand] = useState('');
   const [newCat, setNewCat] = useState('');
   const [price, setPrice] = useState('');
   const [minQty, setMinQty] = useState('0');
@@ -468,9 +509,10 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (open) {
+      setD(emptyDetails());
       setName('');
+      setNameEdited(false);
       setSku('');
-      setNewBrand('');
       setNewCat('');
       setPrice('');
       setMinQty('0');
@@ -478,14 +520,21 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
       setErr(null);
     }
   }, [open]);
+  // S6: الاسم بيتكوّن لوحده من الخانات، وتقدر تعدّله
+  const listLabel = useListLabel();
+  const shownName = nameEdited ? name : composeItemName({ ...d, color: d.color ? listLabel('colors', d.color) : '' });
   async function save() {
-    if (!name.trim()) return setErr(t('inv.errName'));
+    const nm = shownName.trim();
+    if (!nm) return setErr(t('inv.errName'));
     const p = price.trim() ? parsePounds(price) : null;
     if (price.trim() && p == null) return setErr(t('fin.errAmount'));
     const mq = Number(toLatinDigits(minQty.trim() || '0'));
     if (!Number.isInteger(mq) || mq < 0) return setErr(t('inv.errMin'));
     setBusy(true);
-    const { error } = await supabase.from('items').insert({ id: crypto.randomUUID(), shop_id: shop.id, kind, name: name.trim(), sku: toLatinDigits(sku.trim()) || null, sale_price: p, min_qty: mq, supplier_id: supplier || null, brand: newBrand.trim() || null, category: newCat.trim() || null });
+    const { error } = await supabase.from('items').insert({
+      id: crypto.randomUUID(), shop_id: shop.id, kind: d.kind, name: nm, sku: toLatinDigits(sku.trim()) || null, sale_price: p, min_qty: mq, supplier_id: supplier || null,
+      brand: d.brand.trim() || null, category: newCat.trim() || null, item_type: d.item_type.trim() || null, model: d.model.trim() || null, quality: d.quality.trim() || null, color: d.color.trim() || null,
+    });
     setBusy(false);
     if (error) return setErr(errorMessage(error));
     toast({ tone: 'ok', title: t('inv.itemAdded') });
@@ -509,23 +558,21 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
       }
     >
       <div className="flex flex-col gap-3">
-        <Field label={t('inv.cols.kind')}>
-          <Select value={kind} onChange={(e) => setKind(e.target.value as 'part' | 'accessory')}>
-            <option value="part">{t('inv.kinds.part')}</option>
-            <option value="accessory">{t('inv.kinds.accessory')}</option>
-          </Select>
+        <ItemDetailFields v={d} set={(x) => setD((c) => ({ ...c, ...x }))} testid="new-item" />
+        <Field label={t('inv.cols.name')} hint={t('item.nameHint')} required>
+          <Input
+            value={shownName}
+            onChange={(e) => {
+              setName(e.target.value);
+              setNameEdited(true);
+            }}
+            maxLength={160}
+            data-testid="new-item-name"
+          />
         </Field>
-        <Field label={t('inv.cols.name')} required>
-          <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={160} />
+        <Field label={t('inv.category')}>
+          <ListCombo list="item_categories" value={newCat} onChange={setNewCat} maxLength={60} testid="new-item-category" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t('inv.brand')}>
-            <ListCombo list="brands" value={newBrand} onChange={setNewBrand} maxLength={60} dir="auto" testid="new-item-brand" />
-          </Field>
-          <Field label={t('inv.category')}>
-            <ListCombo list="item_categories" value={newCat} onChange={setNewCat} maxLength={60} testid="new-item-category" />
-          </Field>
-        </div>
         <Field label={t('inv.sku')}>
           <Input dir="ltr" mono value={sku} onChange={(e) => setSku(e.target.value)} />
         </Field>
@@ -628,10 +675,19 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [id, setId] = useState(opId);
+  // S6: الأصناف اللي اتعملت من النافذة دي، والكمية اللي اتسجلت (stock_in)، لحد ما قايمة المخزون تتحدث
+  const [extra, setExtra] = useState<StockRow[]>([]);
+  const [stocked, setStocked] = useState<Record<string, number>>({});
+  const [creating, setCreating] = useState<{ line: number; typed: string } | null>(null);
+  const allowNeg = readAllowNegative(shop.extras);
+  useEffect(() => setStocked({}), [items]);
+  const all = useMemo(() => [...extra.filter((x) => !items.some((y) => y.id === x.id)), ...items].map((x) => (stocked[x.id] ? { ...x, qty: x.qty + stocked[x.id] } : x)), [extra, items, stocked]);
   // قبل ما النافذة تترسم (زي OpDialog): اللي بيتكتب بسرعة ما يتمسحش
   useLayoutEffect(() => {
     if (!open) return;
     setId(opId());
+    setCreating(null);
+    setExtra([]);
     setLines(preset?.lines.length ? preset.lines.map((l) => ({ item: l.item, qty: String(l.qty), price: '' })) : [{ item: '', qty: '1', price: '' }]);
     setSupplier(preset?.supplier ?? suppliers[0]?.id ?? '');
     setErr(null);
@@ -669,7 +725,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   function addByCode(code: string) {
     const c = toLatinDigits(code.trim());
     if (!c) return;
-    const it = items.find((x) => x.sku && x.sku === c);
+    const it = all.find((x) => (x.sku && x.sku === c) || (x.barcode && x.barcode === c));
     setScan('');
     if (!it) return setErr(t('inv.codeNotFound', { c }));
     setErr(null);
@@ -689,6 +745,12 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
     if (parsed.some((l) => !l.item || !l.qty || l.price == null)) return setErr(t('inv.errLines'));
     if (mode === 'purchase' && !supplier) return setErr(t('fin.errParty'));
     if (mode === 'sale' && !cashbox) return setErr(t('fin.errCashbox'));
+    if (mode === 'sale' && !allowNeg) {
+      const need = new Map<string, number>();
+      for (const l of parsed) need.set(l.item, (need.get(l.item) ?? 0) + (l.qty ?? 0));
+      const it = all.find((x) => (need.get(x.id) ?? 0) > Math.max(x.qty, 0));
+      if (it) return setErr(t('item.noStock', { n: f.number(Math.max(it.qty, 0)) }));
+    }
     setBusy(true);
     const saleArgs = { p_id: id, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, price: l.price })), p_cashbox: cashbox };
     const queueSale = async () => {
@@ -781,36 +843,72 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
           </Field>
         )}
         <div className="flex flex-col gap-2" role="group" aria-label={t('inv.lines')}>
-          {lines.map((l, i) => (
-            <div key={i} className="grid grid-cols-[minmax(0,1fr)_64px_100px_auto] items-end gap-2" data-testid="line">
-              <Field label={i === 0 ? t('inv.cols.name') : ''}>
-                <Select
-                  aria-label={t('inv.cols.name')}
-                  value={l.item}
-                  onChange={(e) => {
-                    const it = items.find((x) => x.id === e.target.value);
-                    upd(i, { item: e.target.value, price: mode === 'sale' && it?.sale_price != null ? String(it.sale_price / 100) : l.price });
-                  }}
-                >
-                  <option value="">{t('fin.pick')}</option>
-                  {items.map((it) => (
-                    <option key={it.id} value={it.id}>
-                      {it.name} ({f.number(it.qty)})
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label={i === 0 ? t('inv.cols.qty') : ''}>
-                <Input aria-label={t('inv.cols.qty')} dir="ltr" inputMode="numeric" mono value={l.qty} onChange={(e) => upd(i, { qty: e.target.value })} className="text-start" />
-              </Field>
-              <Field label={i === 0 ? (mode === 'purchase' ? t('inv.unitCost') : t('inv.unitPrice')) : ''}>
-                <Input aria-label={mode === 'purchase' ? t('inv.unitCost') : t('inv.unitPrice')} dir="ltr" inputMode="decimal" mono value={l.price} onChange={(e) => upd(i, { price: e.target.value })} placeholder="0" className="text-start" />
-              </Field>
-              <button type="button" onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((_, j) => j !== i) : ls))} className="mb-1 grid size-8 place-items-center rounded-md text-fg-3 hover:bg-raised hover:text-danger" aria-label={t('inv.removeLine')}>
-                <Trash2 className="size-4" aria-hidden />
-              </button>
-            </div>
-          ))}
+          {lines.map((l, i) => {
+            const it = l.item ? all.find((x) => x.id === l.item) : undefined;
+            // البيع: الكمية المطلوبة من الصنف ده في كل السطور، مقارنة باللي متاح
+            const want = it ? parsed.reduce((a, p) => a + (p.item === it.id ? (p.qty ?? 0) : 0), 0) : 0;
+            const short = mode === 'sale' && it && want > Math.max(it.qty, 0) && lines.findIndex((x) => x.item === it.id) === i ? want - Math.max(it.qty, 0) : 0;
+            return (
+              <div key={i} className="flex flex-col gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_64px_100px_auto] items-end gap-2" data-testid="line">
+                  <Field label={i === 0 ? t('inv.cols.name') : ''}>
+                    <ItemPicker
+                      items={all}
+                      value={l.item}
+                      testid="line-item"
+                      onPick={(x) => {
+                        setCreating(null);
+                        // البيع: سعر البيع بيتملى لوحده بسعر الصنف (زي الأول)
+                        upd(i, { item: x.id, price: mode === 'sale' && x.sale_price != null ? String(x.sale_price / 100) : l.price });
+                      }}
+                      onCreate={(typed) => setCreating({ line: i, typed })}
+                    />
+                  </Field>
+                  <Field label={i === 0 ? t('inv.cols.qty') : ''}>
+                    <Input aria-label={t('inv.cols.qty')} dir="ltr" inputMode="numeric" mono value={l.qty} onChange={(e) => upd(i, { qty: e.target.value })} className="text-start" />
+                  </Field>
+                  <Field label={i === 0 ? (mode === 'purchase' ? t('inv.unitCost') : t('inv.unitPrice')) : ''}>
+                    <Input aria-label={mode === 'purchase' ? t('inv.unitCost') : t('inv.unitPrice')} dir="ltr" inputMode="decimal" mono value={l.price} onChange={(e) => upd(i, { price: e.target.value })} placeholder="0" className="text-start" />
+                  </Field>
+                  <button type="button" onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((_, j) => j !== i) : ls))} className="mb-1 grid size-8 place-items-center rounded-md text-fg-3 hover:bg-raised hover:text-danger" aria-label={t('inv.removeLine')}>
+                    <Trash2 className="size-4" aria-hidden />
+                  </button>
+                </div>
+                {creating?.line === i && (
+                  <NewItemInline
+                    key={creating.typed}
+                    typed={creating.typed}
+                    withStock={mode === 'sale'}
+                    onCancel={() => setCreating(null)}
+                    onCreated={(row) => {
+                      setExtra((xs) => [...xs, row]);
+                      setCreating(null);
+                      upd(i, { item: row.id, price: mode === 'sale' && row.sale_price != null ? String(row.sale_price / 100) : l.price });
+                      toast({ tone: 'ok', title: t('item.created', { name: row.name }) });
+                      onDone();
+                    }}
+                  />
+                )}
+                {it && short > 0 && !allowNeg && (
+                  <StockInInline
+                    key={it.id}
+                    item={it}
+                    need={short}
+                    onDone={(q) => {
+                      setStocked((m) => ({ ...m, [it.id]: (m[it.id] ?? 0) + q }));
+                      toast({ tone: 'ok', title: t('item.stockInDone') });
+                      onDone();
+                    }}
+                  />
+                )}
+                {it && short > 0 && allowNeg && (
+                  <p className="text-2xs text-danger" data-testid="line-unsettled">
+                    {t('item.unsettled', { n: f.number(short) })}. {t('item.unsettledHint')}
+                  </p>
+                )}
+              </div>
+            );
+          })}
           <Button size="sm" variant="ghost" icon={<PackagePlus className="size-4" />} onClick={() => setLines((ls) => [...ls, { item: '', qty: '1', price: '' }])} className="self-start">
             {t('inv.addLine')}
           </Button>
@@ -832,6 +930,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
+  const [det, setDet] = useState({ item_type: '', model: '', quality: '', color: '' });
   const [barcode, setBarcode] = useState('');
   const [img, setImg] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -848,6 +947,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     setName(item.name);
     setCategory(item.category ?? '');
     setBrand(item.brand ?? '');
+    setDet({ item_type: item.item_type ?? '', model: item.model ?? '', quality: item.quality ?? '', color: item.color ?? '' });
     setBarcode(item.barcode ?? '');
     setImg(null);
     if (item.image_path) void supabase.storage.from('item-images').createSignedUrl(item.image_path, 3600).then((r) => setImg(r.data?.signedUrl ?? null));
@@ -863,7 +963,8 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     if (!name.trim()) return setErr(t('common.required'));
     const bc = toLatinDigits(barcode.trim()) || null;
     if (bc && !/^[0-9A-Za-z-]{4,32}$/.test(bc)) return setErr(t('barcode.bad'));
-    const { error } = await supabase.from('items').update({ name: name.trim(), category: category.trim() || null, brand: brand.trim() || null, barcode: bc, min_qty: mq, supplier_id: supplier || null, sale_price: p }).eq('id', item.id);
+    const { error } = await supabase.from('items').update({ name: name.trim(), category: category.trim() || null, brand: brand.trim() || null, barcode: bc, min_qty: mq, supplier_id: supplier || null, sale_price: p,
+      item_type: det.item_type.trim() || null, model: det.model.trim() || null, quality: det.quality.trim() || null, color: det.color.trim() || null }).eq('id', item.id);
     if (error) return setErr(/items_barcode_unique/.test(error.message) ? t('barcode.dup') : errorMessage(error));
     toast({ tone: 'ok', title: t('settings.saved') });
     onOpenChange(false);
@@ -944,6 +1045,19 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
             </Field>
             <Field label={t('inv.brand')}>
               <ListCombo list="brands" value={brand} onChange={setBrand} maxLength={60} dir="auto" testid="item-brand" />
+            </Field>
+            {/* S6: تفاصيل الصنف (اختيارية، والاسم القديم ما بيتغيّرش لوحده) */}
+            <Field label={t('item.type')}>
+              <ListCombo list="item_types" value={det.item_type} onChange={(v) => setDet((c) => ({ ...c, item_type: v }))} maxLength={60} testid="item-type" />
+            </Field>
+            <Field label={t('item.model')}>
+              <ListCombo list="models" value={det.model} onChange={(v) => setDet((c) => ({ ...c, model: v }))} maxLength={80} dir="auto" testid="item-model" />
+            </Field>
+            <Field label={t('item.quality')}>
+              <ListCombo list="qualities" value={det.quality} onChange={(v) => setDet((c) => ({ ...c, quality: v }))} maxLength={60} testid="item-quality" />
+            </Field>
+            <Field label={t('item.color')}>
+              <ListCombo list="colors" value={det.color} onChange={(v) => setDet((c) => ({ ...c, color: v }))} maxLength={40} testid="item-color" />
             </Field>
           </div>
         </div>
@@ -1027,13 +1141,22 @@ function InventorySummary() {
   const br = useBranch();
   const { shop } = useMe();
   const { period, range, set } = usePeriod();
+  // S6: فلتر التقرير بالنوع والماركة والموديل والجودة (بيأثر على أكتر الأصناف مبيعًا ومخزونها)
+  const [flt, setFlt] = useState({ item_type: '', brand: '', model: '', quality: '' });
+  const opts = useLoad(async () => {
+    const items = await rpc<StockRow[]>('items_stock');
+    const d = (k: 'item_type' | 'brand' | 'model' | 'quality') => [...new Set(items.map((i) => i[k]).filter((x): x is string => !!x))].sort();
+    return { item_type: d('item_type'), brand: d('brand'), model: d('model'), quality: d('quality') };
+  }, []);
+  const fkey = JSON.stringify(flt);
+  const hasF = Object.values(flt).some(Boolean);
   const { data, error, reload } = useLoad(
     async () => {
-      const r = await rpc<InvSummary>('inventory_summary', { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter });
+      const r = await rpc<InvSummary>('inventory_summary', { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter, p_filter: hasF ? flt : null });
       const n = (k: keyof InvSummary) => Number(r[k] ?? 0);
       return { ...r, sales: n('sales'), sales_cost: n('sales_cost'), wastage: n('wastage'), return_diff: n('return_diff'), cost_adjust: n('cost_adjust'), parts_used: n('parts_used'), purchases: n('purchases'), stock_value: n('stock_value'), stock_qty: n('stock_qty'), profit: n('profit') };
     },
-    [range.from.getTime(), range.to.getTime(), br.filter],
+    [range.from.getTime(), range.to.getTime(), br.filter, fkey],
   );
   useLiveRefresh(reload);
   const cur = f.currency(shop.currency);
@@ -1051,6 +1174,27 @@ function InventorySummary() {
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <PeriodFilter value={period} onChange={set} />
+        <div className="flex flex-wrap items-center gap-2" data-testid="invsum-filters">
+          {(
+            [
+              ['item_type', 'item.allTypes'],
+              ['brand', 'inv.allBrands'],
+              ['model', 'item.allModels'],
+              ['quality', 'item.allQualities'],
+            ] as const
+          ).map(([k, lbl]) =>
+            opts.data && opts.data[k].length > 0 ? (
+              <Select key={k} value={flt[k]} onChange={(e) => setFlt((c) => ({ ...c, [k]: e.target.value }))} aria-label={t(lbl)} className="h-8 w-auto" data-testid={`invsum-${k}`}>
+                <option value="">{t(lbl)}</option>
+                {opts.data[k].map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </Select>
+            ) : null,
+          )}
+        </div>
         <ExportMenu
           testid="invsum-export"
           disabled={!data}
@@ -1087,6 +1231,20 @@ function InventorySummary() {
             ))}
           </div>
           <p className="mt-2 text-xs text-fg-3">{t('invsum.formula')}</p>
+          {hasF && data?.filtered && (
+            <Panel className="mt-3 flex flex-wrap items-center gap-4 p-3 text-sm" data-testid="invsum-filtered">
+              <span className="text-fg-2">{t('item.filteredTitle')}</span>
+              <span>
+                {t('item.filteredItems')}: <span className="num text-fg">{f.number(Number(data.filtered.items))}</span>
+              </span>
+              <span>
+                {t('inv.cols.qty')}: <span className="num text-fg">{f.number(Number(data.filtered.stock_qty))}</span>
+              </span>
+              <span>
+                {t('invsum.stock_value')}: <span className="num text-fg">{f.money(Number(data.filtered.stock_value))}</span> {cur}
+              </span>
+            </Panel>
+          )}
           {data && data.top.length > 0 && (
             <Panel className="mt-3 overflow-x-auto">
               <table className="w-full text-sm" data-testid="inv-top">

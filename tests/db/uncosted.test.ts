@@ -155,5 +155,25 @@ d('البيع من غير رصيد والتسوية', () => {
     await as(O, `select set_staff_override($1, 'inventory', 'add', null)`, [R]);
     await clean();
   });
+
+  it('تقرير المخزون بفلتر النوع والماركة والموديل والجودة: الأصناف اللي في الفلتر بس', async () => {
+    const a = id();
+    const b = id();
+    await as(R, `select create_item($1, 'part', 'بطارية A52', 'بطارية', 'Samsung', 'A52', 'أصلي', null, 30000, 4, 10000)`, [a]);
+    await as(R, `select create_item($1, 'part', 'بطارية iPhone 11', 'بطارية', 'Apple', 'iPhone 11', 'كوبي', null, 30000, 2, 8000)`, [b]);
+    await sell(R, a, 1, 30000);
+    await sell(R, b, 1, 30000);
+    const sum = async (f: object | null) => (await as(O, `select inventory_summary(now() - interval '1 day', now() + interval '1 day', null, $1::jsonb) s`, [f ? JSON.stringify(f) : null])).rows[0].s;
+    const s1 = await sum({ item_type: 'بطارية', brand: 'Samsung' });
+    expect(s1.top.map((x: { id: string }) => x.id)).toEqual([a]);
+    expect(s1.filtered).toEqual({ items: 1, stock_qty: 3, stock_value: 30000 });
+    const s2 = await sum({ quality: 'كوبي' });
+    expect(s2.top.map((x: { id: string }) => x.id)).toEqual([b]);
+    expect(s2.filtered).toEqual({ items: 1, stock_qty: 1, stock_value: 8000 });
+    // من غير فلتر: زي الأول (أرقام المحل كله، ومفيش "filtered")
+    const s0 = await sum(null);
+    expect(s0.filtered).toBeNull();
+    expect(s0.top.map((x: { id: string }) => x.id)).toEqual(expect.arrayContaining([a, b]));
+  });
 });
 

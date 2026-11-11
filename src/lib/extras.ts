@@ -23,6 +23,12 @@ export function readExtras(v: unknown): Extras {
   return { quick_issues: pick('quick_issues'), day_summary: pick('day_summary'), auto_print: pick('auto_print'), link_inventory: pick('link_inventory') };
 }
 
+/** S6: "السماح بالبيع بدون رصيد" (مقفول افتراضيًا). نفس القيمة اللي السيرفر بيقراها في allow_negative_stock() */
+export function readAllowNegative(v: unknown): boolean {
+  const o = v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+  return o.allow_negative_stock === true;
+}
+
 export interface DayNumbers {
   received: number;
   delivered: number;

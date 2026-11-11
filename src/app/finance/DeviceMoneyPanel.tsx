@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ItemPicker } from '../ItemPicker';
 import { Calculator, HandCoins, PackageMinus, Pencil, Truck, Undo2 } from 'lucide-react';
 import { useCanCorrect } from '../correct';
 import { ReverseDialog } from './ReverseDialog';
@@ -324,7 +325,6 @@ function ManualPartPanel({ deviceId, status, onChanged }: { deviceId: string; st
 
 function StockPartPanel({ deviceId, status, onChanged }: { deviceId: string; status: DeviceStatus; onChanged: () => void }) {
   const { t } = useTranslation();
-  const f = useFormat();
   const toast = useToast();
   const [item, setItem] = useState('');
   const [qty, setQty] = useState('1');
@@ -353,14 +353,7 @@ function StockPartPanel({ deviceId, status, onChanged }: { deviceId: string; sta
       <PanelHeader title={t('parts.title')} />
       <div className="grid grid-cols-[minmax(0,1fr)_64px_auto] items-end gap-2 p-4">
         <Field label={t('parts.item')}>
-          <Select value={item} onChange={(e) => setItem(e.target.value)}>
-            <option value="">{t('fin.pick')}</option>
-            {(data ?? []).map((i) => (
-              <option key={i.id} value={i.id} disabled={i.qty <= 0}>
-                {i.name} ({f.number(i.qty)})
-              </option>
-            ))}
-          </Select>
+          <ItemPicker items={data ?? []} value={item} onPick={(x) => setItem(x.id)} onlyInStock showPrice={false} label={t('parts.item')} testid="part-item" />
         </Field>
         <Field label={t('inv.cols.qty')}>
           <Input dir="ltr" mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} className="text-start" />

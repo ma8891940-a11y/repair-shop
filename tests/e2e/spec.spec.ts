@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField, pickItem } from './helpers';
 
 test('استكمال المواصفات: أجرة العطل والسعر المقترح، النواقص والباركود، التوقيع على الإيصال، والمتبقي في صفحة التتبع', async ({ page, browser }, info) => {
   test.setTimeout(180_000);
@@ -36,7 +36,7 @@ test('استكمال المواصفات: أجرة العطل والسعر الم
   await expect(page.getByText('اتضاف الصنف')).toBeVisible();
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ index: 1 });
+  await pickItem(dlg, null);
   await fillField(dlg.getByLabel('الكمية'), '3');
   await fillField(dlg.getByLabel('سعر الوحدة'), '500');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
@@ -76,7 +76,7 @@ test('استكمال المواصفات: أجرة العطل والسعر الم
   const deviceHash = page.url().replace(/^.*#/, '/#');
 
   // القطعة اتركبت ← السعر المقترح = 500 + 150 + 20% من 500 = 750
-  await page.getByLabel('القطعة').selectOption({ index: 1 });
+  await pickItem(page, null, { label: 'القطعة' });
   await page.getByRole('button', { name: 'ركّبت' }).click();
   await expect(page.getByText('اتسجلت القطعة')).toBeVisible();
   await expect(page.getByTestId('auto-suggested')).toHaveText('750');

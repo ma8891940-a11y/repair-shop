@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField, pickItem } from './helpers';
 
 // البند 5: الشركاء: النسب لحد 100%، ورأس المال، وتوزيع الأرباح، والسحب مش مصروف، وكشف حساب الشريك
 test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزيع ← سحب (الربح زي ما هو) ← كشف حساب', async ({ page }, info) => {
@@ -51,14 +51,14 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
   await expect(page.getByText('اتضاف الصنف')).toBeVisible();
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   let dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ index: 1 });
+  await pickItem(dlg, null);
   await fillField(dlg.getByLabel('الكمية'), '10');
   await fillField(dlg.getByLabel('سعر الوحدة'), '20');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل الشراء')).toBeVisible();
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ index: 1 });
+  await pickItem(dlg, null);
   await fillField(dlg.getByLabel('الكمية'), '10');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل البيع')).toBeVisible();
@@ -117,7 +117,7 @@ test('الشركاء: نسب ← إيداع ← ربح من بيع ← توزي�
   await fillField(dlg.getByLabel('اسم الشريك'), 'منير');
   await fillField(dlg.getByLabel('النسبة من صافي الربح'), '0');
   await dlg.getByTestId('cap-kind-goods').click();
-  await dlg.getByLabel('الصنف 1', { exact: true }).selectOption({ label: 'جراب' });
+  await pickItem(dlg, 'جراب', { label: 'الصنف 1' });
   await fillField(dlg.getByLabel('الكمية 1', { exact: true }), '3');
   await fillField(dlg.getByLabel('تكلفة الوحدة 1', { exact: true }), '20');
   await dlg.getByTestId('partner-save').click();

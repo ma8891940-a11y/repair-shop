@@ -9758,3 +9758,46 @@ begin
 end $$;
 revoke execute on function public.create_item(uuid, text, text, text, text, text, text, text, integer, integer, bigint, uuid) from public, anon;
 grant execute on function public.create_item(uuid, text, text, text, text, text, text, text, integer, integer, bigint, uuid) to authenticated;
+
+-- inventory_summary: (src: 0034_branches.sql) S6: فلتر بالنوع والماركة والموديل والجودة
+drop function if exists public.inventory_summary(timestamptz, timestamptz, uuid);
+create or replace function public.inventory_summary(p_from timestamptz, p_to timestamptz, p_branch uuid default null, p_filter jsonb default null) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); res jsonb;
+  -- S6: فلتر الأصناف (النوع والماركة والموديل والجودة) على أكتر الأصناف مبيعًا وقيمة المخزون بتاعتها
+  fk text := nullif(trim(p_filter ->> 'item_type'), ''); fb text := nullif(trim(p_filter ->> 'brand'), '');
+  fm text := nullif(trim(p_filter ->> 'model'), ''); fq text := nullif(trim(p_filter ->> 'quality'), '');
+  has_f boolean := coalesce(fk, fb, fm, fq) is not null;
+begin
+  perform public.ledger_require(array['owner']::public.app_role[]);
+  with en as (
+    select e.id, coalesce(o.source_type, e.source_type) t
+    from public.journal_entries e left join public.journal_entries o on o.id = e.reverses_id
+    where e.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to and (p_branch is null or e.branch_id = p_branch)
+  ), ln as (
+    select en.t, a.code, sum(l.credit - l.debit) cr from en join public.journal_lines l on l.entry_id = en.id join public.accounts a on a.id = l.account_id
+    group by en.t, a.code
+  )
+  select jsonb_build_object(
+    'sales', coalesce((select sum(cr) from ln where t in ('sale', 'sale_return') and code in ('rev_parts', 'rev_accessories')), 0),
+    'sales_cost', coalesce((select -sum(cr) from ln where t in ('sale', 'sale_return') and code = 'cogs'), 0),
+    'wastage', coalesce((select -sum(cr) from ln where code = 'wastage'), 0),
+    'return_diff', coalesce((select -sum(cr) from ln where t = 'supplier_return' and code = 'cogs'), 0),
+    'cost_adjust', coalesce((select -sum(cr) from ln where t = 'cost_adjust' and code = 'cogs'), 0),
+    'parts_used', coalesce((select -sum(cr) from ln where t = 'part_use' and code = 'cogs'), 0),
+    'purchases', coalesce((select -sum(cr) from ln where t = 'purchase' and code = 'inventory'), 0),
+    'stock_value', (select coalesce(sum(value), 0) from public.stock_moves where shop_id = s and (p_branch is null or branch_id = p_branch)),
+    'stock_qty', (select coalesce(sum(qty), 0) from public.stock_moves where shop_id = s and (p_branch is null or branch_id = p_branch)),
+    'top', coalesce((select jsonb_agg(x order by x.qty desc) from (
+        select i.id, i.name, -sum(m.qty)::bigint qty, -sum(m.value)::bigint cost
+        from public.stock_moves m join en on en.id = m.entry_id join public.items i on i.id = m.item_id
+        where en.t = 'sale' and (fk is null or i.item_type = fk) and (fb is null or i.brand = fb) and (fm is null or i.model = fm) and (fq is null or i.quality = fq) group by i.id, i.name order by -sum(m.qty) desc limit case when has_f then 50 else 10 end) x), '[]'::jsonb),
+    'filtered', case when has_f then (select jsonb_build_object('stock_value', coalesce(sum(m.value), 0), 'stock_qty', coalesce(sum(m.qty), 0), 'items', count(distinct i.id))
+        from public.items i left join public.stock_moves m on m.item_id = i.id and (p_branch is null or m.branch_id = p_branch)
+        where i.shop_id = s and i.deleted_at is null and (fk is null or i.item_type = fk) and (fb is null or i.brand = fb) and (fm is null or i.model = fm) and (fq is null or i.quality = fq)) end
+  ) into res;
+  res := res || jsonb_build_object('profit', (res->>'sales')::bigint - (res->>'sales_cost')::bigint - (res->>'wastage')::bigint - (res->>'return_diff')::bigint - (res->>'cost_adjust')::bigint);
+  return res;
+end $$;
+revoke execute on function public.inventory_summary(timestamptz, timestamptz, uuid, jsonb) from public, anon;
+grant execute on function public.inventory_summary(timestamptz, timestamptz, uuid, jsonb) to authenticated;

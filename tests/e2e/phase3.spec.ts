@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
 import { readFileSync } from 'node:fs';
-import { activateInvite, afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField } from './helpers';
+import { activateInvite, afterSplash, noHorizontalScroll, prefs, registerShop, uniq, fillAmount, fillField, pickItem } from './helpers';
 
 const DB = process.env.E2E_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
@@ -95,14 +95,14 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
   await page.getByRole('tab', { name: 'الأصناف' }).click();
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   let dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ index: 1 });
+  await pickItem(dlg, null);
   await fillField(dlg.getByLabel('الكمية'), '10');
   await fillField(dlg.getByLabel('سعر الوحدة'), '30');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل الشراء')).toBeVisible();
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ index: 1 });
+  await pickItem(dlg, null);
   await fillField(dlg.getByLabel('الكمية'), '2');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل البيع')).toBeVisible();

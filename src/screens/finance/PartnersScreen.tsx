@@ -6,7 +6,8 @@ import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
 import { useBranch } from '../../app/branch';
-import { loadCashboxes, opId, rpc, useAccountName, type Cashbox } from '../../app/ledgerApi';
+import { loadCashboxes, opId, rpc, useAccountName, type Cashbox, type StockRow } from '../../app/ledgerApi';
+import { ItemPicker } from '../../app/ItemPicker';
 import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
 import { parsePounds } from '../../lib/money';
@@ -203,8 +204,8 @@ function PartnerDialog({ partner, others, onOpenChange, onDone }: { partner: Par
   const [lines, setLines] = useState<GoodsLine[]>([{ item: '', qty: '1', cost: '' }]);
   const ids = useMemo(() => (partner ? { partner: crypto.randomUUID(), cap: opId() } : null), [partner]);
   const lists = useLoad(async () => {
-    if (partner !== 'new') return { cbs: [] as Cashbox[], items: [] as { id: string; name: string }[] };
-    const [cbs, items] = await Promise.all([loadCashboxes(), rpc<{ id: string; name: string }[]>('items_stock')]);
+    if (partner !== 'new') return { cbs: [] as Cashbox[], items: [] as StockRow[] };
+    const [cbs, items] = await Promise.all([loadCashboxes(), rpc<StockRow[]>('items_stock')]);
     return { cbs, items };
   }, [partner === 'new']);
   useEffect(() => {
@@ -332,7 +333,7 @@ type GoodsLine = { item: string; qty: string; cost: string };
 export function CapitalFields({ kind, setKind, amount, setAmount, date, setDate, cashbox, setCashbox, lines, setLines, cashboxes, items, withdraw }: {
   kind: CapitalKind; setKind: (k: CapitalKind) => void; amount: string; setAmount: (v: string) => void; date: string; setDate: (v: string) => void;
   cashbox: string; setCashbox: (v: string) => void; lines: GoodsLine[]; setLines: (f: (l: GoodsLine[]) => GoodsLine[]) => void;
-  cashboxes: Cashbox[]; items: { id: string; name: string }[]; withdraw?: boolean;
+  cashboxes: Cashbox[]; items: StockRow[]; withdraw?: boolean;
 }) {
   const { t } = useTranslation();
   const f = useFormat();
@@ -354,14 +355,14 @@ export function CapitalFields({ kind, setKind, amount, setAmount, date, setDate,
         <div className="flex flex-col gap-2" data-testid="cap-goods">
           {lines.map((l, i) => (
             <div key={i} className="grid grid-cols-[minmax(0,1fr)_70px_100px] gap-2">
-              <Select value={l.item} onChange={(e) => setLines((cur) => cur.map((x, k) => (k === i ? { ...x, item: e.target.value } : x)))} aria-label={`${t('inv.cols.name')} ${i + 1}`}>
-                <option value="">{t('fin.pick')}</option>
-                {items.map((it) => (
-                  <option key={it.id} value={it.id}>
-                    {it.name}
-                  </option>
-                ))}
-              </Select>
+              <ItemPicker
+                items={items}
+                value={l.item}
+                showPrice={false}
+                onPick={(x) => setLines((cur) => cur.map((y, k) => (k === i ? { ...y, item: x.id } : y)))}
+                label={`${t('inv.cols.name')} ${i + 1}`}
+                testid="cap-item"
+              />
               <Input mono inputMode="numeric" value={l.qty} onChange={(e) => setLines((cur) => cur.map((x, k) => (k === i ? { ...x, qty: e.target.value } : x)))} aria-label={`${t('inv.cols.qty')} ${i + 1}`} />
               <Input mono inputMode="decimal" value={l.cost} onChange={(e) => setLines((cur) => cur.map((x, k) => (k === i ? { ...x, cost: e.target.value } : x)))} aria-label={`${t('opening.unitCost')} ${i + 1}`} suffix={f.currency()} />
             </div>
@@ -430,8 +431,8 @@ function MoneyDialog({ target, onOpenChange, onDone }: { target: { p: PartnerRow
   const [busy, setBusy] = useState(false);
   const id = useMemo(() => (target ? opId() : ''), [target]);
   const lists = useLoad(async () => {
-    if (!target) return { cbs: [] as Cashbox[], items: [] as { id: string; name: string }[] };
-    const [cbs, items] = await Promise.all([loadCashboxes(), rpc<{ id: string; name: string }[]>('items_stock')]);
+    if (!target) return { cbs: [] as Cashbox[], items: [] as StockRow[] };
+    const [cbs, items] = await Promise.all([loadCashboxes(), rpc<StockRow[]>('items_stock')]);
     return { cbs, items };
   }, [!!target]);
   // تهيئة النافذة قبل ما تترسم: اللي بيتكتب أول ما تفتح ما يتمسحش

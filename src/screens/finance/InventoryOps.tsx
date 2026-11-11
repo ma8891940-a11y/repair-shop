@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { ItemPicker } from '../../app/ItemPicker';
+import { NewItemInline } from '../../app/NewItemInline';
 import { loadCashboxes, opId, rpc, useAccountName, type Cashbox, type StockRow } from '../../app/ledgerApi';
 import { useLoad } from '../../app/useLoad';
 import { supabase } from '../../lib/supabase';
@@ -27,24 +29,35 @@ interface Sup {
 }
 
 /** صنف + كمية: نفس الخانات في الهالك والمرتجعات */
-function ItemQty({ items, item, setItem, qty, setQty, onlyInStock }: { items: StockRow[]; item: string; setItem: (v: string) => void; qty: string; setQty: (v: string) => void; onlyInStock: boolean }) {
+function ItemQty({ items, item, setItem, qty, setQty, onlyInStock, canCreate }: { items: StockRow[]; item: string; setItem: (v: string) => void; qty: string; setQty: (v: string) => void; onlyInStock: boolean; canCreate?: boolean }) {
   const { t } = useTranslation();
-  const f = useFormat();
+  // S6: الصنف بحث وكتابة، والمرتجع من عميل ممكن يكون لصنف لسه مش متسجل
+  const [extra, setExtra] = useState<StockRow[]>([]);
+  const [creating, setCreating] = useState<string | null>(null);
+  const all = useMemo(() => [...extra.filter((x) => !items.some((y) => y.id === x.id)), ...items], [extra, items]);
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
-      <Field label={t('inv.cols.name')} required>
-        <Select value={item} onChange={(e) => setItem(e.target.value)}>
-          <option value="">{t('fin.pick')}</option>
-          {items.map((i) => (
-            <option key={i.id} value={i.id} disabled={onlyInStock && i.qty <= 0}>
-              {i.name} ({f.number(i.qty)})
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label={t('inv.cols.qty')} required>
-        <Input mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
-      </Field>
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
+        <Field label={t('inv.cols.name')} required>
+          <ItemPicker items={all} value={item} onPick={(x) => setItem(x.id)} onlyInStock={onlyInStock} onCreate={canCreate ? setCreating : undefined} testid="op-item" />
+        </Field>
+        <Field label={t('inv.cols.qty')} required>
+          <Input mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />
+        </Field>
+      </div>
+      {creating != null && (
+        <NewItemInline
+          key={creating}
+          typed={creating}
+          withStock={false}
+          onCancel={() => setCreating(null)}
+          onCreated={(row) => {
+            setExtra((xs) => [...xs, row]);
+            setCreating(null);
+            setItem(row.id);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -140,7 +153,7 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
       }
     >
       <div className="flex flex-col gap-3">
-        <ItemQty items={items} item={item} setItem={setItem} qty={qty} setQty={setQty} onlyInStock={op !== 'sale_return'} />
+        <ItemQty items={items} item={item} setItem={setItem} qty={qty} setQty={setQty} onlyInStock={op !== 'sale_return'} canCreate={op === 'sale_return'} />
         {op === 'supplier_return' && (
           <Field label={t('fin.supplier')} required>
             <Select value={supplier} onChange={(e) => setSupplier(e.target.value)}>
@@ -496,4 +509,6 @@ export interface InvSummary {
   stock_qty: number;
   profit: number;
   top: { id: string; name: string; qty: number; cost: number }[];
+  /** S6: لما فيه فلتر بالنوع أو الماركة أو الموديل أو الجودة */
+  filtered?: { items: number; stock_qty: number; stock_value: number } | null;
 }

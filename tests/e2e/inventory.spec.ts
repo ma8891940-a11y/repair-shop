@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { afterSplash, noHorizontalScroll, prefs, quickIntake, registerShop, uniq, fillField } from './helpers';
+import { afterSplash, noHorizontalScroll, prefs, quickIntake, registerShop, uniq, fillField, pickItem } from './helpers';
 
 // البند 3: المخزون قسم مستقل بحساباته
 test('المخزون: استيراد Excel ← شراء ← هالك ← مرتجع مورد ← بيع ومرتجع عميل ← باركود وبحث ← حركة الصنف ← تعديل جماعي ← حسابات المخزون ← قطعة يدوية', async ({ page }, info) => {
@@ -36,7 +36,7 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   // شراء 10 جرابات × 20 ج
   await page.getByRole('button', { name: 'شراء', exact: true }).click();
   let dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (0)' });
+  await pickItem(dlg, 'جراب شفاف', { qty: 0 });
   await fillField(dlg.getByLabel('الكمية'), '10');
   await fillField(dlg.getByLabel('سعر الوحدة'), '20');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
@@ -45,7 +45,7 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   // هالك جراب
   await page.getByTestId('op-write_off').click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (10)' });
+  await pickItem(dlg, 'جراب شفاف', { qty: 10 });
   await dlg.getByTestId('invop-submit').click();
   await expect(dlg.getByText('اكتب سبب التصحيح')).toBeVisible();
   await fillField(dlg.getByLabel('السبب'), 'اتقطع');
@@ -55,7 +55,7 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   // مرتجع للمورد: جراب، والمورد خصم 15 بس (التكلفة 20 ← فرق 5)
   await page.getByTestId('op-supplier_return').click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (9)' });
+  await pickItem(dlg, 'جراب شفاف', { qty: 9 });
   await dlg.getByRole('combobox', { name: /^المورد/ }).selectOption({ label: 'مورد القطع' });
   await expect(dlg.getByText('تكلفتها عندك 20')).toBeVisible();
   await fillField(dlg.getByLabel('المورد هيرجّع أو هيخصم'), '15');
@@ -66,13 +66,13 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   // بيع 3 بـ 50، ومرتجع واحد سليم بفلوس من الخزنة
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (8)' });
+  await pickItem(dlg, 'جراب شفاف', { qty: 8 });
   await fillField(dlg.getByLabel('الكمية'), '3');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل البيع')).toBeVisible();
   await page.getByTestId('op-sale_return').click();
   dlg = page.getByRole('dialog');
-  await dlg.getByLabel('الصنف').selectOption({ label: 'جراب شفاف (5)' });
+  await pickItem(dlg, 'جراب شفاف', { qty: 5 });
   await fillField(dlg.getByLabel('المبلغ اللي هيرجع للعميل'), '50');
   await fillField(dlg.getByLabel('السبب'), 'غيّر رأيه');
   await dlg.getByTestId('invop-submit').click();
