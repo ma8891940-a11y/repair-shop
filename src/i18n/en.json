@@ -715,7 +715,9 @@
       "staff_roles": "Employee roles",
       "staff_overrides": "Permission exception",
       "uncosted_sales": "Sale needing settlement",
-      "payment_plans": "Installment plan"
+      "payment_plans": "Installment plan",
+      "plan_installments": "Installment",
+      "notification_reads": "Read notification"
     },
     "actions": {
       "insert": "add",
@@ -2856,7 +2858,8 @@
       "reports": "Reports",
       "staff": "Staff",
       "settings": "Settings",
-      "audit": "Activity log"
+      "audit": "Activity log",
+      "item_create": "Add new item"
     },
     "ops": {
       "view": "View",
@@ -2903,14 +2906,16 @@
     "ownerAll": "Owner: every permission",
     "locked": {
       "owner": "Owner only",
-      "tech": "Technicians never see prices or profits"
+      "tech": "Technicians never see prices or profits",
+      "na": "Not used here"
     }
   },
   "picker": {
     "placeholder": "Type the item name, type, model or barcode",
     "qty": "{{n}} in stock",
     "none": "No item matches",
-    "create": "Add new item «{{v}}»"
+    "create": "Add new item «{{v}}»",
+    "askOwner": "This item does not exist. Ask the shop owner to add it"
   },
   "item": {
     "type": "Type (screen, battery, case…)",

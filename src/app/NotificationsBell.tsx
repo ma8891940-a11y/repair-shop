@@ -28,7 +28,7 @@ export function NotificationsBell() {
   const { t } = useTranslation();
   const f = useFormat();
   const navigate = useNavigate();
-  const { data, reload } = useLoad(async () => await rpc<Notice[]>('notifications_feed'), []);
+  const { data, reload } = useLoad(async () => (await rpc('notifications_feed')) as Notice[], []);
   useEffect(() => {
     const on = () => void reload();
     window.addEventListener('focus', on);

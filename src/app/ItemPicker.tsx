@@ -13,11 +13,13 @@ import { cn } from '../ui/cn';
  * - كل نتيجة جنبها الكمية المتاحة وسعر البيع. الأسهم وEnter للاختيار، والباركود (القارئ بيكتب ويدوس Enter) بيختار على طول.
  * - لو مش موجود: "إضافة صنف جديد «...»" (onCreate) بيفتح فورم صغير في نفس النافذة.
  */
-export function ItemPicker({ items, value, onPick, onCreate, onlyInStock = false, showPrice = true, label, testid = 'item-picker', autoFocus, className }: {
+export function ItemPicker({ items, value, onPick, onCreate, createDenied = false, onlyInStock = false, showPrice = true, label, testid = 'item-picker', autoFocus, className }: {
   items: StockRow[];
   value: string;
   onPick: (item: StockRow) => void;
   onCreate?: (typed: string) => void;
+  /** الموظف مالوش "إضافة صنف جديد": لو مفيش نتايج بيظهرله يطلب من صاحب المحل */
+  createDenied?: boolean;
   onlyInStock?: boolean;
   showPrice?: boolean;
   label?: string;
@@ -64,7 +66,8 @@ export function ItemPicker({ items, value, onPick, onCreate, onlyInStock = false
       const h = (box.current?.closest('[role="dialog"]') as HTMLElement | null) ?? document.body;
       const o = h === document.body ? { top: 0, left: 0 } : h.getBoundingClientRect();
       setHost(h);
-      setPos({ top: r.bottom + 4 - o.top, left: r.left - o.left, width: Math.max(r.width, 280) });
+      const next = { top: Math.round(r.bottom + 4 - o.top), left: Math.round(r.left - o.left), width: Math.round(Math.max(r.width, 280)) };
+      setPos((c) => (c && c.top === next.top && c.left === next.left && c.width === next.width ? c : next));
     };
     place();
     window.addEventListener('scroll', place, true);
@@ -172,7 +175,11 @@ export function ItemPicker({ items, value, onPick, onCreate, onlyInStock = false
                 </li>
               );
             })}
-            {!shown.length && <li className="px-2 py-1.5 text-xs text-fg-3">{t('picker.none')}</li>}
+            {!shown.length && (
+              <li className={cn('px-2 py-1.5 text-xs', createDenied && !onCreate ? 'text-warn' : 'text-fg-3')} data-testid={createDenied && !onCreate ? 'picker-ask-owner' : undefined}>
+                {createDenied && !onCreate ? t('picker.askOwner') : t('picker.none')}
+              </li>
+            )}
             {canCreate && (
               <li id={`${menuId}-${shown.length}`} role="option" aria-selected={active === shown.length}>
                 <button

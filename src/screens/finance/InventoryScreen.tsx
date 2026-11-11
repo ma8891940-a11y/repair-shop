@@ -694,6 +694,8 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   const [extra, setExtra] = useState<StockRow[]>([]);
   const [stocked, setStocked] = useState<Record<string, number>>({});
   const [creating, setCreating] = useState<{ line: number; typed: string } | null>(null);
+  // قرار صاحب المشروع: "إضافة صنف جديد" صلاحية لوحدها (صاحب المحل دايمًا، والموظف لو اتفتحتله)
+  const canCreate = usePerms().grant('item_create', 'add');
   const allowNeg = readAllowNegative(shop.extras);
   useEffect(() => setStocked({}), [items]);
   const all = useMemo(() => [...extra.filter((x) => !items.some((y) => y.id === x.id)), ...items].map((x) => (stocked[x.id] ? { ...x, qty: x.qty + stocked[x.id] } : x)), [extra, items, stocked]);
@@ -876,7 +878,8 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
                         // البيع: سعر البيع بيتملى لوحده بسعر الصنف (زي الأول)
                         upd(i, { item: x.id, price: mode === 'sale' && x.sale_price != null ? String(x.sale_price / 100) : l.price });
                       }}
-                      onCreate={(typed) => setCreating({ line: i, typed })}
+                      onCreate={canCreate ? (typed) => setCreating({ line: i, typed }) : undefined}
+                      createDenied={!canCreate}
                     />
                   </Field>
                   <Field label={i === 0 ? t('inv.cols.qty') : ''}>

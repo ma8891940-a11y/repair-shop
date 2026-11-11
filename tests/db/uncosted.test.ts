@@ -139,6 +139,9 @@ d('البيع من غير رصيد والتسوية', () => {
 
   it('صنف جديد من نافذة البيع: بالتفاصيل والكمية والتكلفة في عملية واحدة، وبيتباع على طول، والحسابات صح', async () => {
     const it = id();
+    // "إضافة صنف جديد" مقفولة افتراضيًا للموظف: مرفوضة لحد ما صاحب المحل يفتحها
+    await expect(as(R, `select create_item($1, 'part', 'x')`, [id()])).rejects.toThrow(/E_FORBIDDEN/);
+    await as(O, `select set_staff_override($1, 'item_create', 'add', true)`, [R]);
     await as(R, `select create_item($1, 'part', 'شاشة A52 - Incell', 'شاشة', 'Samsung', 'A52', 'Incell', null, 45000, 3, 25000)`, [it]);
     expect(await stock(it)).toEqual({ q: 3, v: 75000 });
     expect((await as(R, `select sale_price, quality from items_stock() where id = $1`, [it])).rows[0]).toEqual({ sale_price: 45000, quality: 'Incell' });
@@ -150,17 +153,16 @@ d('البيع من غير رصيد والتسوية', () => {
     await as(R, `select create_item($1, 'part', 'تاني', null, null, null, null, null, null, 0, null)`, [it]);
     expect((await admin(`select name from items where id = $1`, [it])).rows[0].name).toBe('شاشة A52 - Incell');
     // من غير صلاحية "يضيف" في المخزون: مرفوض
-    await as(O, `select set_staff_override($1, 'inventory', 'add', false)`, [R]);
+    await as(O, `select set_staff_override($1, 'item_create', 'add', null)`, [R]);
     await expect(as(R, `select create_item($1, 'part', 'x')`, [id()])).rejects.toThrow(/E_FORBIDDEN/);
-    await as(O, `select set_staff_override($1, 'inventory', 'add', null)`, [R]);
     await clean();
   });
 
   it('تقرير المخزون بفلتر النوع والماركة والموديل والجودة: الأصناف اللي في الفلتر بس', async () => {
     const a = id();
     const b = id();
-    await as(R, `select create_item($1, 'part', 'بطارية A52', 'بطارية', 'Samsung', 'A52', 'أصلي', null, 30000, 4, 10000)`, [a]);
-    await as(R, `select create_item($1, 'part', 'بطارية iPhone 11', 'بطارية', 'Apple', 'iPhone 11', 'كوبي', null, 30000, 2, 8000)`, [b]);
+    await as(O, `select create_item($1, 'part', 'بطارية A52', 'بطارية', 'Samsung', 'A52', 'أصلي', null, 30000, 4, 10000)`, [a]);
+    await as(O, `select create_item($1, 'part', 'بطارية iPhone 11', 'بطارية', 'Apple', 'iPhone 11', 'كوبي', null, 30000, 2, 8000)`, [b]);
     await sell(R, a, 1, 30000);
     await sell(R, b, 1, 30000);
     const sum = async (f: object | null) => (await as(O, `select inventory_summary(now() - interval '1 day', now() + interval '1 day', null, $1::jsonb) s`, [f ? JSON.stringify(f) : null])).rows[0].s;

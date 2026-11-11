@@ -13,16 +13,18 @@ import { Alert, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 
-export const SECTIONS = ['devices', 'intake', 'customers', 'technicians', 'inventory', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'audit'] as const;
+export const SECTIONS = ['devices', 'intake', 'customers', 'technicians', 'inventory', 'item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'audit'] as const;
 export const OPS = ['view', 'add', 'edit', 'delete', 'amounts', 'export'] as const;
 export type PermMap = Record<string, string[]>;
 
 /** لصاحب المحل بس (مش بتتدي لحد): الشركاء، والمرتبات والفريق، والإعدادات */
 export const OWNER_ONLY = ['partners', 'staff', 'settings'];
 /** الدور المبني على "فني": ما يشوفش أسعار ولا أرباح ولا بيبيع ولا بيشتري (نفس القاعدة في قاعدة البيانات) */
-const TECH_LOCKED = ['sales', 'purchases', 'cashbox', 'expenses', 'finance', 'reports', 'audit', 'customers'];
-export function permLocked(base: 'reception' | 'technician', section: string, op: string): 'owner' | 'tech' | null {
+const TECH_LOCKED = ['item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'reports', 'audit', 'customers'];
+export function permLocked(base: 'reception' | 'technician', section: string, op: string): 'owner' | 'tech' | 'na' | null {
   if (OWNER_ONLY.includes(section)) return 'owner';
+  // "إضافة صنف جديد": خانة "يضيف" بس
+  if (section === 'item_create' && op !== 'add') return 'na';
   if (base === 'technician' && (TECH_LOCKED.includes(section) || op === 'amounts')) return 'tech';
   return null;
 }

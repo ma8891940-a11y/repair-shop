@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ItemPicker } from '../../app/ItemPicker';
+import { usePerms } from '../../app/perms';
 import { NewItemInline } from '../../app/NewItemInline';
 import { loadCashboxes, opId, rpc, useAccountName, type Cashbox, type StockRow } from '../../app/ledgerApi';
 import { useLoad } from '../../app/useLoad';
@@ -34,12 +35,13 @@ function ItemQty({ items, item, setItem, qty, setQty, onlyInStock, canCreate }: 
   // S6: الصنف بحث وكتابة، والمرتجع من عميل ممكن يكون لصنف لسه مش متسجل
   const [extra, setExtra] = useState<StockRow[]>([]);
   const [creating, setCreating] = useState<string | null>(null);
+  const mayCreate = usePerms().grant('item_create', 'add');
   const all = useMemo(() => [...extra.filter((x) => !items.some((y) => y.id === x.id)), ...items], [extra, items]);
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
         <Field label={t('inv.cols.name')} required>
-          <ItemPicker items={all} value={item} onPick={(x) => setItem(x.id)} onlyInStock={onlyInStock} onCreate={canCreate ? setCreating : undefined} testid="op-item" />
+          <ItemPicker items={all} value={item} onPick={(x) => setItem(x.id)} onlyInStock={onlyInStock} onCreate={canCreate && mayCreate ? setCreating : undefined} createDenied={canCreate && !mayCreate} testid="op-item" />
         </Field>
         <Field label={t('inv.cols.qty')} required>
           <Input mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} />

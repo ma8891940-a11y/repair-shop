@@ -82,7 +82,7 @@ d('الأدوار والصلاحيات', () => {
     expect((await admin(`select r.preset from staff_roles sr join roles r on r.id = sr.role_id where sr.profile_id = $1`, [T])).rows.map((x) => x.preset)).toEqual(['technician']);
     // صاحب المحل: كل حاجة من غير أدوار
     const po = (await as(O, `select my_perms() p`)).rows[0].p;
-    expect(Object.keys(po)).toHaveLength(15);
+    expect(Object.keys(po)).toHaveLength(16); // ومعاهم "إضافة صنف جديد"
     expect(po.finance).toContain('amounts');
     // الاستقبال: نفس اللي كان بيعمله (أجهزة وعملاء ومبيعات ودفعات) ومفيش الوضع المالي
     const pr = (await as(R, `select my_perms() p`)).rows[0].p;

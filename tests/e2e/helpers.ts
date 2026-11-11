@@ -218,12 +218,20 @@ export async function pickItem(scope: Page | Locator, query: string | null, opts
   const box = scope.getByRole('combobox', { name: opts.label ?? 'الصنف', exact: true });
   await box.click();
   if (query) await fillField(box, query);
-  let opt = page.getByTestId('picker-option');
+  const all = page.getByTestId('picker-option');
+  let opt = all;
   if (opts.name) opt = opt.filter({ hasText: opts.name });
   else if (query) opt = opt.filter({ hasText: query });
   opt = opt.first();
+  await expect(opt).toBeVisible();
   if (opts.qty != null) await expect(opt.getByTestId('picker-qty')).toContainText(String(opts.qty));
-  await opt.click();
+  // بالكيبورد (الأسهم وEnter) زي المستخدم: من غير ما نستنى القايمة تثبت مكانها
+  const names = await all.allInnerTexts();
+  const target = await opt.innerText();
+  const at = Math.max(0, names.indexOf(target));
+  for (let i = 0; i < at; i++) await box.press('ArrowDown');
+  await box.press('Enter');
+  await expect(page.getByTestId('picker-option')).toHaveCount(0);
 }
 
 /**

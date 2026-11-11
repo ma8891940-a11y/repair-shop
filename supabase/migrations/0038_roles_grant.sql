@@ -4,6 +4,12 @@
 -- الأدوار المبنية على "فني" عمرها ما بتاخد حاجة من دول (الفني ما يشوفش أسعار ولا أرباح): الدوال بتقبل owner وreception بس.
 -- ومحدش بيكسب صلاحية لوحده: دور "استقبال" (اللي الموظفين الحاليين عليه) بيتشال منه "المصروفات" اللي ما كانتش شغالة.
 
+-- قرار صاحب المشروع: "إضافة صنف جديد" صلاحية لوحدها في الجدول (item_create ← يضيف)، مقفولة لكل الأدوار ما عدا صاحب المحل
+create or replace function public.perm_sections() returns text[]
+language sql immutable as $$
+  select array['devices', 'intake', 'customers', 'technicians', 'inventory', 'item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'audit']
+$$;
+
 -- الموظف معاه كل فروع المحل؟ (التقارير على مستوى المحل كله بتحتاج كده)
 create or replace function public.all_my_branches() returns boolean
 language sql stable security definer set search_path = public as $$
@@ -664,6 +670,29 @@ begin
   left join (select m.item_id, sum(m.qty) as q, sum(m.value) as v from public.stock_moves m where everywhere or m.branch_id = b group by m.item_id) st on st.item_id = i.id
   where i.shop_id = public.current_shop_id() and i.deleted_at is null
   order by i.kind, i.name;
+end $$;
+
+-- create_item: (src: 0037_item_details.sql) + صلاحية "إضافة صنف جديد"
+create or replace function public.create_item(
+  p_id uuid, p_kind text, p_name text, p_item_type text default null, p_brand text default null, p_model text default null,
+  p_quality text default null, p_color text default null, p_sale_price integer default null, p_qty integer default null, p_unit_cost bigint default null,
+  p_stock_id uuid default null
+) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); nm text := trim(coalesce(p_name, ''));
+begin
+  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
+  perform public.perm_require('item_create', 'add');
+  if exists (select 1 from public.items where id = p_id and shop_id = s) then return p_id; end if;
+  if p_kind not in ('part', 'accessory') or nm = '' or length(nm) > 160 then raise exception 'E_BAD_INPUT'; end if;
+  if p_sale_price is not null and (p_sale_price < 0 or p_sale_price > 2000000000) then raise exception 'E_BAD_AMOUNT'; end if;
+  insert into public.items(id, shop_id, kind, name, item_type, brand, model, quality, color, sale_price)
+  values (p_id, s, p_kind, nm, nullif(trim(p_item_type), ''), nullif(trim(p_brand), ''), nullif(trim(p_model), ''), nullif(trim(p_quality), ''), nullif(trim(p_color), ''), p_sale_price);
+  if coalesce(p_qty, 0) > 0 then
+    if p_unit_cost is null or p_unit_cost <= 0 then raise exception 'E_BAD_AMOUNT'; end if;
+    perform public.stock_in(coalesce(p_stock_id, gen_random_uuid()), p_id, p_qty, p_unit_cost, 'stock');
+  end if;
+  return p_id;
 end $$;
 
 -- ---------- القراية (RLS): للموظف (مش الفني) اللي معاه الصلاحية، وفي فروعه بس ----------
