@@ -18,6 +18,7 @@ import { BranchCompare } from '../../app/finance/BranchCompare';
 import { rpc, sortCashboxes, useAccountName, type Position } from '../../app/ledgerApi';
 import { OpDialog, type Op } from '../../app/finance/OpDialog';
 import { usePerms } from '../../app/perms';
+import { UpcomingDues } from '../../app/finance/UpcomingDues';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
 import { fillDaily } from '../../lib/ledger';
 import { useFormat } from '../../i18n/format';
@@ -229,6 +230,8 @@ export function FinanceScreen() {
           {owner && p?.equity_parts && <EquityPanel p={p} money={money} cur={cur} />}
           {owner && <BranchCompare from={range.from} to={range.to} />}
 
+          {/* N: المتأخر والقريب من الأقساط ومواعيد التحصيل */}
+          <UpcomingDues />
           <ReadyReports query={query} lastDay={range.days.at(-1)!} />
           {owner && <FinanceAssist p={p} period={periodLine} />}
 

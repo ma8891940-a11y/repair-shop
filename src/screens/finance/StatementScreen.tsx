@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { PlansPanel } from '../../app/finance/PlansPanel';
 import { ArrowLeft, ArrowDownUp, HandCoins, Lock, Pencil, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
@@ -202,6 +203,8 @@ export function StatementScreen() {
       </div>
 
       {(kind === 'customer' || kind === 'supplier') && h && <PartyLinkBar kind={kind} id={id} name={h.title} onChanged={reload} />}
+      {/* N: مواعيد التحصيل والأقساط */}
+      {(kind === 'customer' || kind === 'supplier') && h && <PlansPanel key={`${kind}:${id}:${h.balance}`} partyType={kind} partyId={id} balance={h.balance} />}
       {kind === 'linked' && h?.link && (
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm" data-testid="linked-summary">
           <span className="text-fg-2">{t('link.owesUs', { name: h.link.customer })}</span>

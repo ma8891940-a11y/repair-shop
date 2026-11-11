@@ -714,7 +714,8 @@
       "roles": "Role",
       "staff_roles": "Employee roles",
       "staff_overrides": "Permission exception",
-      "uncosted_sales": "Sale needing settlement"
+      "uncosted_sales": "Sale needing settlement",
+      "payment_plans": "Installment plan"
     },
     "actions": {
       "insert": "add",
@@ -903,7 +904,8 @@
       "assistant": "Assistant",
       "branches": "Branches",
       "roles": "Roles & permissions",
-      "inventory": "Inventory"
+      "inventory": "Inventory",
+      "alerts": "Alerts"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -2936,5 +2938,76 @@
     "allQualities": "All qualities",
     "filteredTitle": "Items matching the filter now",
     "filteredItems": "Items"
+  },
+  "inst": {
+    "title": {
+      "customer": "Due dates & installments",
+      "supplier": "Payment dates & installments"
+    },
+    "new": "New due date or plan",
+    "none": "No due dates or installments. Add a due date (one installment) or an installment plan.",
+    "installments": "Installment plan",
+    "dueDate": "Due date",
+    "paidOf": "Paid {{paid}} of {{total}}",
+    "progress": "Paid of plan",
+    "overdueAmount": "Overdue {{v}}",
+    "partly": "Paid {{v}}",
+    "status": {
+      "done": "Closed (fully paid)",
+      "overdue": "Has overdue",
+      "due_soon": "Due soon",
+      "open": "Active"
+    },
+    "inst": {
+      "paid": "Paid",
+      "overdue": "Overdue",
+      "due_soon": "Soon",
+      "upcoming": "Upcoming"
+    },
+    "cancel": "Cancel plan",
+    "cancelled": "Plan cancelled (money and entries unchanged)",
+    "saved": "Plan saved",
+    "hint": {
+      "customer": "The customer owes the shop: every payment covers installments in order, extra goes to the next one, and the plan closes itself when fully paid.",
+      "supplier": "The shop owes the supplier: every payment covers installments in order, extra goes to the next one, and the plan closes itself."
+    },
+    "name": "Plan name (optional)",
+    "namePh": "e.g. Phone on installments",
+    "total": "Total",
+    "count": "Installments",
+    "countHint": "1 = a single due date",
+    "first": "First due",
+    "every": "Every",
+    "everyMonth": "Month",
+    "everyWeek": "Week",
+    "schedule": "Schedule",
+    "dueN": "Due date {{n}}",
+    "amountN": "Amount {{n}}",
+    "errRows": "Each installment needs a date and an amount above zero"
+  },
+  "notify": {
+    "title": "Notifications",
+    "titleN": "Notifications ({{n}} new)",
+    "readAll": "Mark all read",
+    "empty": "No notifications right now",
+    "unread": "New",
+    "kinds": {
+      "overdue": "{{name}}: overdue installment {{amount}} (was due {{due}})",
+      "due_soon": "{{name}}: installment {{amount}} due {{due}}",
+      "ready_old": "Device {{order}} has been ready for {{days}} days and not picked up",
+      "short": "{{name}} is running low ({{qty}} left)",
+      "unsettled": "{{name}}: {{qty}} sold without stock and need settlement"
+    },
+    "days": "Remind how many days before",
+    "daysHint": "An installment shows as \"due soon\" in the bell and the financial overview this many days before its date (0 to 30)."
+  },
+  "due": {
+    "title": "Upcoming dues",
+    "overdue": "Overdue",
+    "soon": "Within {{n}} days",
+    "none": "No overdue or upcoming installments",
+    "in": "Owed to us",
+    "out": "We owe",
+    "all": "All dues"
   }
 }
