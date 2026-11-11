@@ -47,7 +47,13 @@ test('الأدوار: فتح الوضع المالي والمشتريات لمو
   // الموظف: بيظهروا على طول (من غير خروج ودخول)
   await c.reload();
   await afterSplash(c);
-  await expect(c.getByRole('link', { name: 'الوضع المالي' })).toBeVisible();
+  // مجموعة "المالية" بتظهر في القايمة (مقفولة لحد ما يفتحها)، وجواها الوضع المالي
+  if (info.project.name.startsWith('desktop')) {
+    const grp = c.getByRole('button', { name: 'المالية', exact: true });
+    await expect(grp).toBeVisible();
+    if ((await grp.getAttribute('aria-expanded')) !== 'true') await grp.click();
+    await expect(c.getByRole('link', { name: 'الوضع المالي' })).toBeVisible();
+  }
   await c.goto('/#/finance');
   await afterSplash(c);
   await expect(c.getByTestId('ready-reports')).toBeVisible();
@@ -64,6 +70,8 @@ test('الأدوار: فتح الوضع المالي والمشتريات لمو
 
   // بيتشالوا: بيختفوا تاني، وحتى بالرابط
   dlg = await openRoles();
+  // الاستثناءات المحفوظة وصلت (قبل كده الدوسة كانت ممكن تيجي على جدول لسه فاضي)
+  for (const k of ['perm-finance-view', 'perm-purchases-view', 'perm-purchases-add']) await expect(dlg.getByTestId('staff-grid').getByTestId(k)).toHaveAttribute('aria-checked', 'true');
   for (const k of ['perm-finance-view', 'perm-purchases-view', 'perm-purchases-add']) {
     // الاستثناء بيتشال ← زي الدور
     await dlg.getByTestId('staff-grid').getByTestId(k).click();
