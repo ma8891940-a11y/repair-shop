@@ -7,13 +7,13 @@
 -- بحيث كل فرع يقفل متوازن لوحده، والمستحقات تلغي بعض في المجموع (مجموع المحل زي ما هو بالظبط).
 
 -- السطور منسوبة للفروع: amount = مدين − دائن. account_id = null ← سطر "مستحق بين الفروع"
-create or replace function public.branch_lines(p_to timestamptz default null)
+-- (من غير فحص صلاحية: بتتنادى من الدوال اللي فحصت بنفسها، ومقفولة على المستخدمين)
+create or replace function public.branch_lines_raw(p_to timestamptz default null)
 returns table(entry_id uuid, occurred_at timestamptz, source_type text, branch_id uuid, account_id uuid, amount bigint)
 language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
 declare s uuid := public.current_shop_id(); inv uuid;
 begin
-  perform public.grant_require('finance', 'view');
   select a.id into inv from public.accounts a where a.shop_id = s and a.code = 'inventory' and a.deleted_at is null limit 1;
   return query
   with en as (
@@ -45,6 +45,15 @@ begin
   -- الموظف: فروعه بس
   where public.all_my_branches() or public.can_branch(x.br);
 end $$;
+revoke execute on function public.branch_lines_raw(timestamptz) from public, anon, authenticated;
+
+create or replace function public.branch_lines(p_to timestamptz default null)
+returns table(entry_id uuid, occurred_at timestamptz, source_type text, branch_id uuid, account_id uuid, amount bigint)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  perform public.grant_require('finance', 'view');
+  return query select * from public.branch_lines_raw(p_to);
+end $$;
 revoke execute on function public.branch_lines(timestamptz) from public, anon;
 grant execute on function public.branch_lines(timestamptz) to authenticated;
 
@@ -59,7 +68,7 @@ begin
   if p_branch is not null and not public.all_my_branches() and not public.can_branch(p_branch) then raise exception 'E_FORBIDDEN'; end if;
   if p_branch is null and not public.all_my_branches() then p_branch := public.op_branch(); end if;
   return query
-  with b as (select * from public.branch_lines(p_to) bl where p_branch is null or bl.branch_id = p_branch),
+  with b as (select * from public.branch_lines_raw(p_to) bl where p_branch is null or bl.branch_id = p_branch),
   t as (select b.account_id acc, sum(greatest(b.amount, 0))::bigint dr, sum(greatest(-b.amount, 0))::bigint cr from b group by 1)
   select t.acc, a.code, a.name, coalesce(a.type::text, 'inter_branch'), coalesce(a.kind, 'inter_branch'), t.dr, t.cr, (t.dr - t.cr)::bigint
   from t left join public.accounts a on a.id = t.acc
@@ -77,7 +86,7 @@ language plpgsql stable security definer set search_path = public as $$
 begin
   perform public.grant_require('finance', 'view');
   return query
-  with d as (select bl.entry_id, bl.branch_id, bl.amount from public.branch_lines(p_to) bl where bl.account_id is null),
+  with d as (select bl.entry_id, bl.branch_id, bl.amount from public.branch_lines_raw(p_to) bl where bl.account_id is null),
   -- القيد بين فرعين: كل فرع قصاد التاني. لو أكتر من فرعين: بالنسبة (نادر جدًا)
   pairs as (
     select a.branch_id, o.branch_id other, (a.amount * abs(o.amount) / nullif((select sum(abs(z.amount)) from d z where z.entry_id = a.entry_id and z.branch_id <> a.branch_id), 0))::bigint amt

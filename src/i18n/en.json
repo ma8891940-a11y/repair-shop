@@ -70,7 +70,8 @@
     "returns": "Returns & write-offs",
     "cashboxes": "Cashboxes",
     "expenses": "Expenses",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "analytics": "Performance & analytics"
   },
   "roles": {
     "owner": "Owner",
@@ -926,7 +927,8 @@
       "branches": "Branches",
       "roles": "Roles & permissions",
       "inventory": "Inventory",
-      "alerts": "Alerts"
+      "alerts": "Alerts",
+      "app": "My app"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -3059,5 +3061,74 @@
     "dueFrom": "Due from {{b}}",
     "dueTo": "Due to {{b}}",
     "hint": "Each branch closes balanced on its own: money or stock moved between branches shows as due from/to a branch, and these cancel out in the consolidated view. Switch the branch at the top."
+  },
+  "analytics": {
+    "title": "Performance & analytics",
+    "sub": "Per branch and for the whole shop, from the books",
+    "branch": "Branch",
+    "total": "Whole shop",
+    "compare": "Compare branches",
+    "metric": "Metric",
+    "rankN": "Rank {{n}} of {{of}}",
+    "hours": "{{n}} h",
+    "m": {
+      "revenue": "Revenue",
+      "profit": "Net profit",
+      "margin": "Profit margin",
+      "devices_in": "Devices received",
+      "avgInvoice": "Average invoice",
+      "avgRepair": "Average repair time",
+      "returnRate": "Returns & warranty",
+      "expenseRatio": "Expenses to revenue",
+      "turnover": "Stock turnover",
+      "staleShare": "Stale stock"
+    },
+    "insights": {
+      "noActivity": "No activity in this period",
+      "topRevenue": "Most profitable branch this period",
+      "marginHigh": "Profit margin {{pct}}% above the shop average",
+      "marginLowCogs": "Profit margin {{pct}}% below the shop average because of goods and parts cost",
+      "marginLowOpex": "Profit margin {{pct}}% below the shop average because of expenses",
+      "expensesHigh": "Expenses are {{pct}}% of revenue, higher than the rest of the shop",
+      "repairSlow": "Repairs are {{pct}}% slower than average",
+      "repairFast": "Repairs are {{pct}}% faster than average",
+      "returnsHigh": "Returns & warranty are {{pct}}% of delivered devices",
+      "staleStock": "{{pct}}% of its stock value has not sold for 60 days ({{n}} items)",
+      "oldDebts": "Customer debts older than 60 days: {{amount}}",
+      "growth": "Revenue up {{pct}}% from the previous period",
+      "decline": "Revenue down {{pct}}% from the previous period",
+      "goalHit": "Hit this month's revenue goal"
+    },
+    "recos": "Recommendations",
+    "staleReco": "“{{name}}” has not sold for {{days}} days: consider an offer or returning it",
+    "debtReco": "Customer debts older than 60 days total {{amount}}: follow up",
+    "noRecos": "No recommendations right now",
+    "goal": "Monthly goal {{v}} ({{pct}}% reached)",
+    "goalProgress": "Monthly goal progress",
+    "goalSet": "Set a monthly revenue goal",
+    "goalChange": "Change goal",
+    "hint": "All numbers come from the books, devices and stock, with no AI. Ratios come from the totals (not an average of ratios), and the change compares with the previous period of the same length."
+  },
+  "appBrand": {
+    "hint": "Make the app yours: your name and logo appear on the splash, login, sidebar, tab title and browser icon. If you don't change them, it stays \"Gawalak\" with its logo.",
+    "name": "App name",
+    "nameHint": "Up to 40 characters",
+    "logo": "App logo",
+    "defaultLogo": "Use the default logo",
+    "accent": "Accent colour",
+    "accentHint": "The app adjusts its shade so it stays clear in both modes",
+    "defaultAccent": "Default colour",
+    "preview": "Preview in both modes",
+    "mode": {
+      "dark": "Dark",
+      "light": "Light"
+    },
+    "adjusted": "This colour's shade was adjusted a little so text stays readable in both modes (AA contrast).",
+    "errName": "Name too long (40 characters max)",
+    "errColor": "Write the colour like #38d6f0",
+    "reinstall": "If the app is installed on a device, its icon and name on the desktop or phone don't change by themselves: uninstall it and install it again from the browser to see them.",
+    "link": "Your shop's login link (opens the login screen with your logo and name):",
+    "copy": "Copy",
+    "copied": "Link copied"
   }
 }

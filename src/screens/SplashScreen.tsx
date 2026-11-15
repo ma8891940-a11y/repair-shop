@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect } from 'react';
+import { useAppBrand } from '../app/appBrand';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { usePrefs } from '../app/prefs';
@@ -24,6 +25,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export function SplashScreen() {
   const { t, i18n } = useTranslation();
   const { calm, logoAnim } = usePrefs();
+  const brand = useAppBrand();
   const { hero, phase } = useStage();
   const h = SPLASH_LOGO_H;
   const w = Math.round(h * LOGO_RATIO);
@@ -55,7 +57,7 @@ export function SplashScreen() {
       />
       {/* اللوجو في نص الشاشة بالظبط، بالحركة اللي صاحب المحل اختارها من الإعدادات ← المظهر */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ width: w, height: h }}>
-        <LogoIntro style={logoAnim} w={w} h={h} k={k} calm={calm} leaving={leaving} heroRef={hero} alt={t('app.name')} />
+        <LogoIntro style={logoAnim} w={w} h={h} k={k} calm={calm} leaving={leaving} heroRef={hero} alt={brand.name} src={brand.custom ? brand.logo : undefined} />
         {/* الاسم تحت اللوجو (في الإنجليزي بس) بمسافة محسوبة، ومن غير ما يحرّك اللوجو من النص */}
         {i18n.language !== 'ar' && (
           <motion.div

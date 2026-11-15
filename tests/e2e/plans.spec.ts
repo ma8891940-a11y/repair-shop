@@ -52,7 +52,7 @@ test('الأقساط: خطة 3 أقساط ← متأخر ← الجرس ← دف
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   await fillAmount(page.getByRole('dialog'), '150');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل', exact: true }).click();
-  await expect(page.getByText('اتسجلت العملية')).toBeVisible();
+  await expect(page.getByText('اتسجلت العملية').first()).toBeVisible();
   await expect(plan).toContainText('اتدفع 150 من 300');
   await expect(plan.getByTestId('plan-inst').nth(0)).toHaveAttribute('data-status', 'paid');
   await expect(plan.getByTestId('plan-inst').nth(1)).toContainText('اتدفع 50');
@@ -69,7 +69,7 @@ test('الأقساط: خطة 3 أقساط ← متأخر ← الجرس ← دف
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   await fillAmount(page.getByRole('dialog'), '150');
   await page.getByRole('dialog').getByRole('button', { name: 'سجّل', exact: true }).click();
-  await expect(page.getByText('اتسجلت العملية')).toBeVisible();
+  await expect(page.getByText('اتسجلت العملية').first()).toBeVisible();
   await expect(panel.getByTestId('plan-row')).toHaveAttribute('data-status', 'done');
   await expect(panel.getByTestId('plan-status')).toHaveText('اتقفلت (اتدفعت كلها)');
 });

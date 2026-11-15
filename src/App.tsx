@@ -48,6 +48,7 @@ const BalancesScreen = lazyScreen(() => import('./screens/finance/BalancesScreen
 const ProfitScreen = lazyScreen(() => import('./screens/finance/BalancesScreen').then((m) => m.ProfitScreen));
 const InventoryScreen = lazyScreen(() => import('./screens/finance/InventoryScreen').then((m) => m.InventoryScreen));
 const WorkScreen = lazyScreen(() => import('./screens/WorkScreen').then((m) => m.WorkScreen));
+const AnalyticsScreen = lazyScreen(() => import('./screens/AnalyticsScreen').then((m) => m.AnalyticsScreen));
 const ReportsScreen = lazyScreen(() => import('./screens/ReportsScreen').then((m) => m.ReportsScreen));
 const DayReportPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.DayReportPrint));
 const StatementPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.StatementPrint));
@@ -58,7 +59,7 @@ const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) =>
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, TrialBalanceScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, TablePrint, VideosScreen, CommunityScreen, AdminScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, TablePrint, VideosScreen, CommunityScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
@@ -75,6 +76,7 @@ function preloadAll() {
 }
 import { Button } from './ui/Button';
 import { StageProvider, useStage, type SplashPhase } from './app/stage';
+import { AppBrandEffects } from './app/appBrand';
 import type { Role } from './lib/status';
 
 // الافتتاحية: ظهور اللوجو والتجمّع والسكان في 0.8 ثانية، وبعدها اللوجو بيطير لمكانه (0.45 ثانية).
@@ -216,6 +218,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
           {grant('finance') && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
           {(may('inventory') || may('sales')) && <Route path="inventory" element={<InventoryScreen />} />}
           <Route path="work" element={<WorkScreen />} />
+          {grant('reports') && <Route path="analytics" element={<AnalyticsScreen />} />}
           {grant('reports') && <Route path="reports" element={<ReportsScreen />} />}
           {front && may('cashbox') && <Route path="drawer" element={<DrawerScreen />} />}
           {owner && <Route path="users" element={<TeamScreen />} />}
@@ -304,6 +307,7 @@ export function App() {
             {isConfigured ? (
               <HashRouter>
                 <AuthProvider>
+                  <AppBrandEffects />
                   <SyncProvider>
                     <Boot />
                   </SyncProvider>

@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import {
   BarChart3, Bot, Boxes, ChevronDown, ClipboardCheck, ClipboardList, Contact, Film, Gauge, Handshake, History, Landmark, MessagesSquare, PackageMinus, PackagePlus,
-  Receipt, Settings, ShieldCheck, ShoppingCart, Star, Store, Truck, Users, Wallet, Wrench, type LucideIcon,
+  Receipt, Settings, ShieldCheck, ShoppingCart, Star, Store, TrendingUp, Truck, Users, Wallet, Wrench, type LucideIcon,
 } from 'lucide-react';
 import { useMe } from './auth';
 import { favoriteEntries, groupOf, isActiveEntry, type NavEntry, type NavGroup, type NavGroupKey } from './navGroups';
@@ -14,7 +14,7 @@ import { cn } from '../ui/cn';
 
 export const NAV_ICONS: Record<string, LucideIcon> = {
   BarChart3, Bot, Boxes, ClipboardCheck, ClipboardList, Contact, Film, Gauge, Handshake, History, Landmark, MessagesSquare, PackageMinus, PackagePlus,
-  Receipt, Settings, ShieldCheck, ShoppingCart, Store, Truck, Users, Wallet, Wrench,
+  Receipt, Settings, ShieldCheck, ShoppingCart, Store, TrendingUp, Truck, Users, Wallet, Wrench,
 };
 
 const readJson = <T,>(k: string, fallback: T): T => {

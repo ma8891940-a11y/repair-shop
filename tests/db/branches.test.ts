@@ -353,4 +353,34 @@ d('الفروع', () => {
     expect(mine.some((r) => r.account_id === cash2)).toBe(true);
     await as(O, `select set_staff_override($1, 'finance', 'view', null)`, [R2]);
   });
+
+  it('U3: مؤشرات كل فرع = حساب مباشر من القيود والأجهزة والمخزون، والهدف الشهري لصاحب المحل بس', async () => {
+    const F = new Date(Date.now() - 86400_000 * 365).toISOString();
+    const T = new Date(Date.now() + 86400_000).toISOString();
+    const k = Object.fromEntries((await as(O, `select * from branch_kpis($1, $2)`, [F, T])).rows.map((r) => [r.branch_id, r]));
+    for (const b of [main, B2]) {
+      // الإيرادات: سطور حسابات الإيراد (من غير زيادة الدرج) في قيود الفرع
+      const rev = Number((await admin(
+        `select coalesce(sum(l.credit - l.debit), 0) v from journal_lines l join journal_entries e on e.id = l.entry_id join accounts a on a.id = l.account_id
+         where e.shop_id = $1 and e.branch_id = $2 and a.type = 'revenue' and a.kind = 'revenue' and e.occurred_at >= $3 and e.occurred_at < $4`, [shop, b, F, T])).rows[0].v);
+      const cogs = Number((await admin(
+        `select coalesce(sum(l.debit - l.credit), 0) v from journal_lines l join journal_entries e on e.id = l.entry_id join accounts a on a.id = l.account_id
+         where e.shop_id = $1 and e.branch_id = $2 and a.kind = 'cogs' and e.occurred_at >= $3 and e.occurred_at < $4`, [shop, b, F, T])).rows[0].v);
+      const din = Number((await admin(`select count(*) n from devices where shop_id = $1 and branch_id = $2 and deleted_at is null and received_at >= $3 and received_at < $4`, [shop, b, F, T])).rows[0].n);
+      const sv = Number((await admin(`select coalesce(sum(v), 0) v from (select sum(value) v, sum(qty) q from stock_moves where shop_id = $1 and branch_id = $2 group by item_id) x where q > 0`, [shop, b])).rows[0].v);
+      expect(Number(k[b].revenue)).toBe(rev);
+      expect(Number(k[b].cogs)).toBe(cogs);
+      expect(Number(k[b].devices_in)).toBe(din);
+      expect(Number(k[b].stock_value)).toBe(sv);
+    }
+    expect(Number(k[B2].revenue)).toBe(200000);
+    // الهدف: صاحب المحل بيحدده، والموظف لأ
+    const m = new Date().toISOString().slice(0, 8) + '01';
+    await as(O, `select save_goal($1, $2, 'revenue', 300000)`, [B2, m]);
+    const k2 = (await as(O, `select * from branch_kpis($1, $2)`, [m, T])).rows.find((r) => r.branch_id === B2);
+    expect(Number(k2.goal_revenue)).toBe(300000);
+    await expect(as(R2, `select save_goal($1, $2, 'revenue', 1)`, [B2, m], B2)).rejects.toThrow(/E_FORBIDDEN/);
+    await as(O, `select save_goal($1, $2, 'revenue', 0)`, [B2, m]);
+    expect((await as(O, `select * from branch_kpis($1, $2)`, [m, T])).rows.find((r) => r.branch_id === B2).goal_revenue).toBeNull();
+  });
 });

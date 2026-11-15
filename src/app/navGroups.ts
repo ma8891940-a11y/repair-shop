@@ -128,6 +128,7 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
     {
       key: 'reports',
       items: [
+        ...e(g('reports'), { key: 'analytics', to: '/analytics', path: '/analytics', icon: 'TrendingUp' }),
         ...e(g('reports'), { key: 'reports', to: '/reports', path: '/reports', icon: 'BarChart3' }),
         ...e(g('audit'), { key: 'audit', to: '/audit', path: '/audit', icon: 'History' }),
       ],

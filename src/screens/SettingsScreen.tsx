@@ -23,6 +23,7 @@ import { PlanUsage } from '../app/PlanUsage';
 import { ExtrasTab } from './settings/ExtrasTab';
 import { InventoryTab } from './settings/InventoryTab';
 import { AlertsTab } from './settings/AlertsTab';
+import { AppBrandTab } from './settings/AppBrandTab';
 import { MotionStatus } from './settings/MotionStatus';
 import { LogoAnimPicker } from './settings/LogoAnimPicker';
 import { cn } from '../ui/cn';
@@ -49,7 +50,7 @@ export function SettingsScreen() {
   }, [wanted]);
   // البند 14: الإعدادات بتتحفظ على السيرفر، فمن غير نت بتتقفل بهدوء (إلا المظهر، ده على الجهاز) وبتتفتح لوحدها
   const online = useOnline();
-  const tabs = (owner ? ['shop', 'branches', 'roles', 'payments', 'tech', 'ledger', 'inventory', 'alerts', 'lists', 'print', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
+  const tabs = (owner ? ['shop', 'app', 'branches', 'roles', 'payments', 'tech', 'ledger', 'inventory', 'alerts', 'lists', 'print', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
@@ -127,6 +128,12 @@ export function SettingsScreen() {
           <Tabs.Content value="ledger">
             <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
             <LedgerTab />            </fieldset>
+          </Tabs.Content>
+        )}
+        {owner && (
+          <Tabs.Content value="app">
+            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            <AppBrandTab />            </fieldset>
           </Tabs.Content>
         )}
         {owner && (

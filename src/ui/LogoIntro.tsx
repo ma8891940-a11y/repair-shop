@@ -1,6 +1,6 @@
 import { useMemo, type Ref } from 'react';
 import { motion } from 'motion/react';
-import logo from '../assets/app-logo.png';
+import defaultLogo from '../assets/app-logo.png';
 import outline from '../assets/app-logo-outline.json';
 
 /**
@@ -28,7 +28,7 @@ const FROM = [
   [-1.5, 1.2], [-0.4, 1.8], [0.5, 1.7], [1.6, 1.1],
 ];
 
-export function LogoIntro({ style, w, h, k = 1, calm = false, leaving = false, heroRef, alt, testids = true }: {
+export function LogoIntro({ style, w, h, k = 1, calm = false, leaving = false, heroRef, alt, testids = true, src }: {
   style: LogoAnim;
   w: number;
   h: number;
@@ -41,7 +41,11 @@ export function LogoIntro({ style, w, h, k = 1, calm = false, leaving = false, h
   heroRef?: Ref<HTMLImageElement>;
   alt: string;
   testids?: boolean;
+  /** U4: لوجو المحل بدل لوجو التطبيق (نفس الحركة؛ "الرسم" بيرسم إطار حواليه بدل حدود اللوجو الأصلي) */
+  src?: string;
 }) {
+  const logo = src || defaultLogo;
+  const custom = !!src && src !== defaultLogo;
   const tid = (s: string) => (testids ? s : undefined);
   const s = (n: number) => n * k;
   const pieces = useMemo(() => Array.from({ length: COLS * ROWS }, (_, i) => ({ i, c: i % COLS, r: Math.floor(i / COLS) })), []);
@@ -50,7 +54,7 @@ export function LogoIntro({ style, w, h, k = 1, calm = false, leaving = false, h
   if (calm) {
     return (
       <div className="relative" style={{ width: w, height: h }}>
-        <motion.img ref={heroRef} src={logo} alt={alt} draggable={false} className="block size-full select-none" initial={{ opacity: 0.55 }} animate={{ opacity: leaving ? 0 : 1 }} transition={{ duration: leaving ? 0 : 0.25 }} data-testid={tid('app-mark')} />
+        <motion.img ref={heroRef} src={logo} alt={alt} draggable={false} className="block size-full select-none object-contain" initial={{ opacity: 0.55 }} animate={{ opacity: leaving ? 0 : 1 }} transition={{ duration: leaving ? 0 : 0.25 }} data-testid={tid('app-mark')} />
       </div>
     );
   }
@@ -76,15 +80,15 @@ export function LogoIntro({ style, w, h, k = 1, calm = false, leaving = false, h
         data-testid={tid('splash-glow')}
       />
 
-      <motion.img ref={heroRef} src={logo} alt={alt} draggable={false} className="relative block size-full select-none" {...imgAnim} data-testid={tid('app-mark')} />
+      <motion.img ref={heroRef} src={logo} alt={alt} draggable={false} className="relative block size-full select-none object-contain" {...imgAnim} data-testid={tid('app-mark')} />
 
       {style === 'draw' && !leaving && (
-        <svg className="pointer-events-none absolute inset-0 size-full overflow-visible" viewBox={`0 0 ${outline.w} ${outline.h}`} aria-hidden data-testid={tid('splash-outline')}>
+        <svg className="pointer-events-none absolute inset-0 size-full overflow-visible" viewBox={custom ? '0 0 100 100' : `0 0 ${outline.w} ${outline.h}`} preserveAspectRatio={custom ? 'none' : undefined} aria-hidden data-testid={tid('splash-outline')}>
           <motion.path
-            d={outline.d}
+            d={custom ? 'M50 1 H91 Q99 1 99 9 V91 Q99 99 91 99 H9 Q1 99 1 91 V9 Q1 1 9 1 Z' : outline.d}
             fill="none"
             stroke="rgb(var(--accent-rgb))"
-            strokeWidth={outline.w / 160}
+            strokeWidth={custom ? 1.2 : outline.w / 160}
             strokeLinejoin="round"
             style={{ filter: 'drop-shadow(0 0 6px rgb(var(--accent-rgb) / 0.9))' }}
             initial={{ pathLength: 0, opacity: 1 }}

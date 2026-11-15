@@ -48,6 +48,10 @@
         if (l === 'en') { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr'; }
         if (localStorage.getItem('effects') !== '1') document.documentElement.setAttribute('data-lite', '');
         // شكل حركة اللوجو (الافتراضي نفس DEFAULT_LOGO_ANIM في src/app/prefs.tsx)
+        // U4: هوية صاحب المحل (آخر محل اتفتح على الجهاز ده): اللون والعنوان من أول لحظة
+        var ab = JSON.parse(localStorage.getItem('app-brand') || '{}');
+        if (ab && ab.name) document.title = ab.name;
+        window.__appBrand = ab;
         var a = localStorage.getItem('logo-anim');
         document.documentElement.setAttribute('data-logo-anim', a === 'shine' || a === 'assemble' || a === 'draw' ? a : 'draw');
       } catch (e) {
@@ -57,6 +61,15 @@
   </head>
   <body>
     <div id="boot" aria-hidden="true"><div class="calm"></div><img src="%BOOT_LOGO%" alt="" /></div>
+    <script>
+      try {
+        var ab2 = window.__appBrand;
+        if (ab2 && typeof ab2.logo === 'string' && ab2.logo.indexOf('data:image/') === 0) {
+          var bi = document.querySelector('#boot img');
+          if (bi) { bi.src = ab2.logo; bi.style.objectFit = 'contain'; }
+        }
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
