@@ -313,4 +313,44 @@ d('الفروع', () => {
     const last = Math.max(...(b.devices as { order_no: string }[]).filter((x) => x.order_no.startsWith(`B2-${year}-`)).map((x) => Number(x.order_no.split('-')[2])));
     expect((await admin(`select order_no from devices where id = $1`, [nd])).rows[0].order_no).toBe(`B2-${year}-${String(last + 1).padStart(4, '0')}`);
   });
+
+  it('U2: كل فرع متوازن لوحده، والموحّد = أرصدة الحسابات بالظبط، والمستحقات بين الفرعين بتلغي بعض', async () => {
+    const tb = async (b: string | null) => (await as(O, `select * from trial_balance($1)`, [b])).rows.map((r) => ({ ...r, balance: Number(r.balance) }));
+    const sum = (rows: { balance: number }[]) => rows.reduce((a, r) => a + r.balance, 0);
+    const tMain = await tb(main);
+    const t2 = await tb(B2);
+    const all = await tb(null);
+    // كل فرع بيقفل متوازن لوحده (مدين = دائن)
+    expect(sum(tMain)).toBe(0);
+    expect(sum(t2)).toBe(0);
+    expect(sum(all)).toBe(0);
+    // الموحّد: مفيش مستحقات بين الفروع، وكل حساب = رصيده في الدفتر نفسه (ولا رقم اتغير)
+    expect(all.filter((r) => r.kind === 'inter_branch')).toHaveLength(0);
+    const direct = (await admin(`select l.account_id, sum(l.debit - l.credit)::bigint b from journal_lines l where l.shop_id = $1 group by 1 having sum(l.debit - l.credit) <> 0`, [shop])).rows;
+    expect(Object.fromEntries(all.map((r) => [r.account_id, r.balance]))).toEqual(Object.fromEntries(direct.map((r) => [r.account_id, Number(r.b)])));
+    // الفرعين: مجموع كل حساب = الموحّد، والمستحق على واحد = المستحق للتاني
+    const dueMain = tMain.find((r) => r.kind === 'inter_branch')?.balance ?? 0;
+    const due2 = t2.find((r) => r.kind === 'inter_branch')?.balance ?? 0;
+    expect(dueMain + due2).toBe(0);
+    expect(dueMain).not.toBe(0);
+    const dues = (await as(O, `select * from inter_branch_dues()`)).rows.map((r) => ({ b: r.branch_id, o: r.other_id, a: Number(r.amount) }));
+    expect(dues.find((d) => d.b === main && d.o === B2)?.a).toBe(dueMain);
+    expect(dues.find((d) => d.b === B2 && d.o === main)?.a).toBe(due2);
+    // خزنة المعادي في ميزان المعادي بس، وبنفس رصيدها
+    expect(t2.find((r) => r.account_id === cash2)?.balance).toBe(await bal(cash2));
+    expect(tMain.find((r) => r.account_id === cash2)).toBeUndefined();
+    // تحويل جديد بين الفرعين: إجمالي المحل ما اتغيرش، والفرعين لسه متوازنين
+    const before = Object.fromEntries((await tb(null)).map((r) => [r.account_id, r.balance]));
+    await as(O, `select transfer_cash($1, $2, $3, 10000)`, [id(), acc.cash_cash, cash2]);
+    const after = Object.fromEntries((await tb(null)).map((r) => [r.account_id, r.balance]));
+    expect(after[acc.cash_cash] + after[cash2]).toBe(before[acc.cash_cash] + before[cash2]);
+    expect(sum(await tb(main))).toBe(0);
+    expect(sum(await tb(B2))).toBe(0);
+    // موظف المعادي بيشوف ميزان فرعه بس (لو اتفتحله الوضع المالي)
+    await as(O, `select set_staff_override($1, 'finance', 'view', true)`, [R2]);
+    await expect(as(R2, `select * from trial_balance($1)`, [main], B2)).rejects.toThrow(/E_FORBIDDEN/);
+    const mine = (await as(R2, `select * from trial_balance(null)`, [], B2)).rows;
+    expect(mine.some((r) => r.account_id === cash2)).toBe(true);
+    await as(O, `select set_staff_override($1, 'finance', 'view', null)`, [R2]);
+  });
 });

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { BarChart3, Boxes, CalendarDays, Contact, Handshake, Receipt, Truck, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, Boxes, CalendarDays, Contact, Handshake, Receipt, Scale, Truck, Users, type LucideIcon } from 'lucide-react';
 import { Panel, PanelHeader } from '../../ui/Panel';
 import { usePerms } from '../perms';
 
@@ -13,6 +13,7 @@ export function ReadyReports({ query, lastDay }: { query: string; lastDay: strin
   const all: { k: string; to: string; icon: LucideIcon }[] = [
     { k: 'day', to: `/print/day/${lastDay}`, icon: CalendarDays },
     { k: 'pl', to: `/finance/pl${query}`, icon: Receipt },
+    { k: 'trial', to: '/finance/trial', icon: Scale },
     { k: 'customers', to: '/finance/balances/customers', icon: Contact },
     { k: 'suppliers', to: '/finance/balances/suppliers', icon: Truck },
     { k: 'employees', to: '/finance/balances/employees', icon: Users },

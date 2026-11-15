@@ -178,6 +178,10 @@
       "identity": {
         "title": "Shop identity",
         "desc": "The logo and name shown on receipts, invoices and the customer tracking page. You can skip this and finish it later."
+      },
+      "layout": {
+        "title": "How you work",
+        "desc": "One shop or a shop with several branches? You can change this later without losing any data."
       }
     },
     "shopName": "Shop name",
@@ -252,6 +256,21 @@
       "desc": "Your account is ready. Just the shop name and your name, then the remaining steps.",
       "account": "Signed in as",
       "other": "Another account? Sign out"
+    },
+    "layout": {
+      "single": "One shop",
+      "single_d": "The app stays simple, with nothing about branches",
+      "multi": "Several branches",
+      "multi_d": "Each branch has its own cash boxes, stock and books, plus an all-branches view",
+      "mainPh": "Main branch name",
+      "branchPh": "Branch {{n}} name",
+      "name": "Branch {{n}} name",
+      "kind": "Branch {{n}} type",
+      "add": "Add a branch",
+      "removeLast": "Remove last branch",
+      "later": "You can add or edit branches later in Settings → Branches.",
+      "singleLater": "If you open a branch later: Settings → Branches → Add branch. All your current data stays in the main branch as it is.",
+      "errRows": "Enter a name for each branch (at least two)"
     }
   },
   "countries": {
@@ -2712,6 +2731,10 @@
       "partners": {
         "t": "Partners",
         "d": "Capital, current and distribution"
+      },
+      "trial": {
+        "t": "Trial balance",
+        "d": "Per branch or consolidated"
       }
     }
   },
@@ -3022,5 +3045,19 @@
     "in": "Owed to us",
     "out": "We owe",
     "all": "All dues"
+  },
+  "tb": {
+    "title": "Trial balance",
+    "allBranches": "All branches (consolidated)",
+    "account": "Account",
+    "debit": "Debit",
+    "credit": "Credit",
+    "interBranch": "Inter-branch due",
+    "balanced": "Balanced: total debit = total credit",
+    "unbalanced": "Not balanced! Check the accounts integrity report",
+    "duesTitle": "Inter-branch dues",
+    "dueFrom": "Due from {{b}}",
+    "dueTo": "Due to {{b}}",
+    "hint": "Each branch closes balanced on its own: money or stock moved between branches shows as due from/to a branch, and these cancel out in the consolidated view. Switch the branch at the top."
   }
 }

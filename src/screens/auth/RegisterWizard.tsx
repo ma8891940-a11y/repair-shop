@@ -21,9 +21,9 @@ import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
 import { AuthLayout } from './AuthLayout';
 
-const STEPS = ['shop', 'account', 'verify', 'region', 'payments', 'identity', 'brand'] as const;
+const STEPS = ['shop', 'account', 'verify', 'region', 'payments', 'layout', 'identity', 'brand'] as const;
 type StepKey = (typeof STEPS)[number];
-const STEP_ICON: Record<StepKey, LineIconName> = { shop: 'store', account: 'shield', verify: 'mail', region: 'globe', payments: 'wallet', identity: 'receipt', brand: 'palette' };
+const STEP_ICON: Record<StepKey, LineIconName> = { shop: 'store', account: 'shield', verify: 'mail', region: 'globe', payments: 'wallet', layout: 'store', identity: 'receipt', brand: 'palette' };
 const PAY_ICON: Record<PaymentMethod, LucideIcon> = { cash: Banknote, card: CreditCard, bank_transfer: Landmark, wallet: Wallet, instapay: Zap, installments: Smartphone };
 
 import { draftMode, hasRegisterDraft, loadDraft, regMeta, saveDraft, type RegMeta, type WizardMode } from './registerDraft';
@@ -56,6 +56,11 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
           ? Math.max(2, draft?.step ?? 2)
           : Math.max(first, draft?.step ?? first);
   const [step, setStep] = useState(resumeAt);
+  // U1: شكل الشغل
+  const [layout, setLayout] = useState<'single' | 'multi'>('single');
+  const newRow = () => ({ id: crypto.randomUUID(), name: '', kind: 'both', address: '', phone: '' });
+  const [branchRows, setBranchRows] = useState<{ id: string; name: string; kind: string; address: string; phone: string }[]>(() => [newRow(), newRow()]);
+  const setRow = (i: number, p: Partial<{ name: string; kind: string; address: string; phone: string }>) => setBranchRows((rs) => rs.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const [dir, setDir] = useState(1);
 
   const [shopName, setShopName] = useState(draft?.shopName ?? meta?.shop_name ?? '');
@@ -187,6 +192,23 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
         const { error: ue } = await supabase.from('shops').update({ payment_methods: methods }).eq('id', shopId());
         if (ue) return fail(ue);
         go(5);
+      } else if (key === 'layout') {
+        // U1: محل واحد (البرنامج يفضل بسيط) أو فروع (الرئيسي + اللي بعده بالاسم والنوع والعنوان والتليفون)
+        if (layout === 'multi') {
+          const rows = branchRows.map((b) => ({ ...b, name: b.name.trim() }));
+          if (rows.length < 2 || rows.some((b) => !b.name)) return fail(t('register.layout.errRows'));
+          const { data: mb, error: me } = await supabase.from('branches').select('id').eq('is_main', true).is('deleted_at', null).maybeSingle();
+          if (me || !mb) return fail(me ?? t('register.layout.errRows'));
+          for (let i = 0; i < rows.length; i++) {
+            const b = rows[i];
+            const bid = i === 0 ? (mb as { id: string }).id : b.id;
+            const { error: se } = await supabase.rpc('save_branch', { p_id: bid, p_name: b.name, p_prefix: i === 0 ? '' : `B${i + 1}`, p_phone: b.phone.trim() || null, p_address: b.address.trim() || null });
+            if (se && !/E_DUP/.test(se.message)) return fail(se);
+            const { error: ke } = await supabase.rpc('set_branch_kind', { p_id: bid, p_kind: b.kind });
+            if (ke) return fail(ke);
+          }
+        }
+        go(6);
       } else if (key === 'identity') {
         // هوية المحل (اختيارية): اللوجو الأصلي في Storage تحت المحل، ونسخة ملونة ونسخة حرارية جاهزين للطباعة
         const id = shopId();
@@ -226,7 +248,7 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
             }
           }
         }
-        go(6);
+        go(7);
       } else if (key === 'brand') {
         const id = shopId();
         const { error: ue } = await supabase
@@ -521,6 +543,49 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
                   </div>
                 )}
 
+                {key === 'layout' && (
+                  <div className="flex flex-col gap-3" data-testid="layout-step">
+                    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('register.steps.layout.title')}>
+                      {(['single', 'multi'] as const).map((k) => (
+                        <Choice key={k} selected={layout === k} onClick={() => setLayout(k)} role="radio">
+                          <span className="text-sm font-medium text-fg">{t(`register.layout.${k}`)}</span>
+                          <span className="text-2xs text-fg-3">{t(`register.layout.${k}_d`)}</span>
+                        </Choice>
+                      ))}
+                    </div>
+                    {layout === 'multi' && (
+                      <div className="flex flex-col gap-2">
+                        {branchRows.map((b, i) => (
+                          <div key={b.id} className="grid grid-cols-2 gap-2 rounded-md border border-glass-border p-2 sm:grid-cols-4" data-testid="layout-branch">
+                            <Input value={b.name} onChange={(e) => setRow(i, { name: e.target.value })} maxLength={80} placeholder={i === 0 ? t('register.layout.mainPh') : t('register.layout.branchPh', { n: i + 1 })} aria-label={t('register.layout.name', { n: i + 1 })} />
+                            <select value={b.kind} onChange={(e) => setRow(i, { kind: e.target.value })} aria-label={t('register.layout.kind', { n: i + 1 })} className="h-9 rounded-md border border-line bg-sunken/60 px-2 text-sm text-fg">
+                              {(['both', 'repair', 'sales'] as const).map((k) => (
+                                <option key={k} value={k}>
+                                  {t(`perm.kinds.${k}`)}
+                                </option>
+                              ))}
+                            </select>
+                            <Input value={b.address} onChange={(e) => setRow(i, { address: e.target.value })} maxLength={200} placeholder={t('branch.address')} aria-label={`${t('branch.address')} ${i + 1}`} />
+                            <Input value={b.phone} onChange={(e) => setRow(i, { phone: e.target.value })} dir="ltr" inputMode="tel" maxLength={40} placeholder={t('branch.phone')} aria-label={`${t('branch.phone')} ${i + 1}`} />
+                          </div>
+                        ))}
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => setBranchRows((rs) => [...rs, newRow()])} data-testid="layout-add">
+                            {t('register.layout.add')}
+                          </Button>
+                          {branchRows.length > 2 && (
+                            <Button size="sm" variant="ghost" onClick={() => setBranchRows((rs) => rs.slice(0, -1))}>
+                              {t('register.layout.removeLast')}
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-2xs text-fg-3">{t('register.layout.later')}</p>
+                      </div>
+                    )}
+                    {layout === 'single' && <p className="text-2xs text-fg-3">{t('register.layout.singleLater')}</p>}
+                  </div>
+                )}
+
                 {key === 'identity' && (
                   <>
                     <div className="flex items-center gap-4">
@@ -606,7 +671,7 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
               <span />
             )}
             {key === 'identity' && (
-              <Button variant="ghost" className="ms-auto" onClick={() => go(6)} disabled={busy}>
+              <Button variant="ghost" className="ms-auto" onClick={() => go(7)} disabled={busy}>
                 {t('register.skip')}
               </Button>
             )}

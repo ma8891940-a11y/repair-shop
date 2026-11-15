@@ -126,13 +126,24 @@ export async function finishWizard(page: Page) {
   await expect(page.getByRole('heading', { name: 'لوحة التحكم' })).toBeVisible();
 }
 
-export async function registerShop(page: Page, email: string, shopName = 'مركز الاختبار') {
+export async function registerShop(page: Page, email: string, shopName = 'مركز الاختبار', opts: { branches?: { name: string; kind?: 'both' | 'repair' | 'sales' }[] } = {}) {
   await startRegister(page, email, shopName);
   await page.locator('input[autocomplete=one-time-code]').click();
   await page.keyboard.type(await otpFor(email));
   await expect(page.getByRole('heading', { name: 'البلد والعملة' })).toBeVisible();
   await page.getByRole('button', { name: 'التالي' }).click();
   await expect(page.getByRole('heading', { name: 'طرق الدفع' })).toBeVisible();
+  await page.getByRole('button', { name: 'التالي' }).click();
+  // U1: شكل الشغل (الافتراضي محل واحد)
+  await expect(page.getByRole('heading', { name: 'شكل شغلك' })).toBeVisible();
+  if (opts.branches?.length) {
+    await page.getByRole('radio', { name: /محل ليه فروع/ }).click();
+    for (let i = 2; i < opts.branches.length; i++) await page.getByTestId('layout-add').click();
+    for (const [i, b] of opts.branches.entries()) {
+      await fillField(page.getByLabel(`اسم الفرع ${i + 1}`, { exact: true }), b.name);
+      if (b.kind) await page.getByLabel(`نوع الفرع ${i + 1}`, { exact: true }).selectOption(b.kind);
+    }
+  }
   await page.getByRole('button', { name: 'التالي' }).click();
   // هوية المحل: خطوة اختيارية
   await expect(page.getByRole('heading', { name: 'هوية المحل' })).toBeVisible();
