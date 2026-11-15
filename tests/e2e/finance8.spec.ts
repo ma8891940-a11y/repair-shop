@@ -53,7 +53,7 @@ test('الوضع المالي: جملة النتيجة، ولوح التفاصي
 
   // التقارير الجاهزة
   const ready = page.getByTestId('ready-reports');
-  await expect(ready.getByRole('link')).toHaveCount(8);
+  await expect(ready.getByRole('link')).toHaveCount(9); // U2: ميزان المراجعة اتضاف
   await ready.getByTestId('ready-pl').click();
   await expect(page.getByTestId('pl-profit')).toBeVisible();
 });

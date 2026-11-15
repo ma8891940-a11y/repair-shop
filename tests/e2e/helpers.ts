@@ -119,6 +119,9 @@ export async function finishWizard(page: Page) {
   await page.getByRole('button', { name: 'التالي' }).click();
   await expect(page.getByRole('heading', { name: 'طرق الدفع' })).toBeVisible();
   await page.getByRole('button', { name: 'التالي' }).click();
+  // U1: شكل الشغل (الافتراضي محل واحد)
+  await expect(page.getByRole('heading', { name: 'شكل شغلك' })).toBeVisible();
+  await page.getByRole('button', { name: 'التالي' }).click();
   await expect(page.getByRole('heading', { name: 'هوية المحل' })).toBeVisible();
   await page.getByRole('button', { name: 'تخطّي' }).click();
   await expect(page.getByRole('heading', { name: 'المظهر' })).toBeVisible();
