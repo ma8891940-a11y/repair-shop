@@ -737,7 +737,8 @@
       "uncosted_sales": "Sale needing settlement",
       "payment_plans": "Installment plan",
       "plan_installments": "Installment",
-      "notification_reads": "Read notification"
+      "notification_reads": "Read notification",
+      "branch_goals": "Branch goal"
     },
     "actions": {
       "insert": "add",

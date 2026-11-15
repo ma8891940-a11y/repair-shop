@@ -741,7 +741,8 @@
       "uncosted_sales": "بيع محتاج تسوية",
       "payment_plans": "خطة تقسيط",
       "plan_installments": "قسط",
-      "notification_reads": "إشعار مقروء"
+      "notification_reads": "إشعار مقروء",
+      "branch_goals": "هدف فرع"
     },
     "actions": {
       "insert": "إضافة",
