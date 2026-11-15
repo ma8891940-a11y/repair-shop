@@ -2832,7 +2832,8 @@
       "inventory": "Stock",
       "delivered": "Delivered"
     },
-    "sep": ", "
+    "sep": ", ",
+    "mainName": "Main branch"
   },
   "rows": {
     "count": "Rows",
@@ -2908,6 +2909,13 @@
       "owner": "Owner only",
       "tech": "Technicians never see prices or profits",
       "na": "Not used here"
+    },
+    "presets": {
+      "branch_manager": "Branch manager",
+      "reception": "Reception",
+      "technician": "Technician",
+      "cashier": "Sales cashier",
+      "accountant": "Accountant"
     }
   },
   "picker": {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import ar from '../i18n/ar.json';
-import { auditSentence, entityLabel, isTechnicalField, linkOf, readableChanges, type AuditRow } from './auditText';
+import { auditSentence, entityLabel, isTechnicalField, linkOf, readableChanges, refOf, type AuditRow } from './auditText';
+import en from '../i18n/en.json';
 
 // البند 11: سجل النشاط بجمل عربي، ومفيش أي اسم جدول أو عمود أو إنجليزي في الواجهة العربي
 const dir = new URL('../../supabase/migrations/', import.meta.url);
@@ -83,5 +84,12 @@ describe('سجل النشاط بالعربي', () => {
     const ch = readableChanges(t, { id: 1, shop_id: 1, tracking_token: 'a', status: 'received', weird: 1 }, { id: 2, shop_id: 2, tracking_token: 'b', status: 'ready', weird: 2 });
     expect(ch.changes.map((c) => c.label)).toEqual(['الحالة']);
     expect(ch.other).toBe(1);
+  });
+  it('الأسماء الافتراضية من قاعدة البيانات (الأدوار الجاهزة والفرع الرئيسي) بتتترجم في الإنجليزي، والأسماء اللي اتغيرت بتفضل زي ما هي', () => {
+    const tEn = (key: string) => key.split('.').reduce<unknown>((o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined), en) as string;
+    const row = (entity: string, after: Record<string, unknown>) => ({ id: 'x', actor_id: null, action: 'insert', entity, entity_id: 'e', before: null, after, created_at: '' }) as unknown as AuditRow;
+    expect(refOf(row('roles', { preset: 'cashier', name: ar.perm.presets.cashier }), tEn)).toBe('Sales cashier');
+    expect(refOf(row('branches', { is_main: true, name: ar.branch.mainName }), tEn)).toBe('Main branch');
+    expect(refOf(row('roles', { preset: 'cashier', name: 'Ahmed role' }), tEn)).toBe('Ahmed role');
   });
 });

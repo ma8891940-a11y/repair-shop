@@ -1,3 +1,4 @@
+import DB_DEFAULTS from '../data/dbDefaults.json';
 /**
  * البند 11: سجل النشاط بجمل عربي مفهومة، وكل سطر فيه رابط للحاجة اللي اتغيّرت.
  * ممنوع يظهر في الواجهة العربي أي اسم جدول أو عمود أو كلمة إنجليزي من قاعدة البيانات:
@@ -42,6 +43,9 @@ export function fieldLabel(t: T, field: string): string {
  *  الحسابات والمسارات والتخصصات الأساسية ليها كود (salaries_payable، micro...) بيتترجم، وعمره ما بيظهر كده */
 export function refOf(r: AuditRow, t?: T): string {
   const v = (r.after ?? r.before ?? {}) as Record<string, unknown>;
+  // الأسماء الافتراضية من قاعدة البيانات (الأدوار الجاهزة والفرع الرئيسي) بتتترجم لو ما اتغيرتش
+  if (t && r.entity === 'roles' && typeof v.preset === 'string' && v.name === (DB_DEFAULTS.presets as Record<string, string>)[v.preset]) return tr(t, `perm.presets.${v.preset}`);
+  if (t && r.entity === 'branches' && v.is_main === true && v.name === DB_DEFAULTS.mainBranch) return tr(t, 'branch.mainName');
   for (const k of ['order_no', 'name', 'full_name', 'label']) if (typeof v[k] === 'string' && v[k]) return String(v[k]);
   if (typeof v.entry_no === 'number' || typeof v.entry_no === 'string') return `#${v.entry_no}`;
   if (typeof v.code === 'string' && v.code && t) {
