@@ -738,7 +738,9 @@
       "payment_plans": "Installment plan",
       "plan_installments": "Installment",
       "notification_reads": "Read notification",
-      "branch_goals": "Branch goal"
+      "branch_goals": "Branch goal",
+      "printers": "Printer",
+      "print_templates": "Print template"
     },
     "actions": {
       "insert": "add",
@@ -929,7 +931,8 @@
       "roles": "Roles & permissions",
       "inventory": "Inventory",
       "alerts": "Alerts",
-      "app": "My app"
+      "app": "My app",
+      "printers": "Printers & print designer"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -3131,5 +3134,90 @@
     "link": "Your shop's login link (opens the login screen with your logo and name):",
     "copy": "Copy",
     "copied": "Link copied"
+  },
+  "printers": {
+    "title": "Printers",
+    "hint": "Browsers can't list the printers connected to the device, so each printer here is a \"profile\" with its size and margins, and printing opens the print dialog at that size. Pick the printer in the dialog once and the browser remembers it.",
+    "preset": "Ready model",
+    "add": "Add printer",
+    "none": "No printers yet. Printing uses the default sizes.",
+    "name": "Printer name",
+    "width": "Width",
+    "height": "Height",
+    "auto": "By content",
+    "margin": "Margin",
+    "remove": "Remove {{name}}",
+    "kinds": {
+      "thermal58": "Thermal 58mm",
+      "thermal80": "Thermal 80mm",
+      "label": "Labels",
+      "a4": "A4",
+      "a5": "A5",
+      "dot": "Dot matrix"
+    },
+    "direct": "Direct printing without the print dialog needs a free helper app on the computer (QZ Tray). Steps in README → Direct printing.",
+    "designer": "Print designer",
+    "doc": "Document",
+    "docs": {
+      "receipt": "Intake receipt (thermal)",
+      "receipt-a4": "Intake receipt (A4)",
+      "invoice": "Delivery invoice"
+    },
+    "printer": "Printer",
+    "defaultSize": "Default size",
+    "forBranch": "Branch",
+    "allBranches": "All branches",
+    "blocks": "Fields",
+    "b": {
+      "header": "Shop name & logo",
+      "title": "Document title",
+      "orderNo": "Order number",
+      "date": "Date",
+      "customer": "Customer name",
+      "phone": "Customer phone",
+      "device": "Device",
+      "imei": "IMEI",
+      "issue": "Issue",
+      "accessories": "Accessories",
+      "condition": "Condition",
+      "estimate": "Estimated cost",
+      "parts": "Parts",
+      "total": "Total",
+      "paid": "Paid",
+      "remaining": "Remaining",
+      "warranty": "Warranty",
+      "terms": "Intake terms",
+      "signature": "Customer signature",
+      "qr": "Tracking QR",
+      "sign": "Signature line",
+      "thanks": "Thank-you line",
+      "text": "Free text"
+    },
+    "size": "Font size",
+    "sizes": {
+      "sm": "Small",
+      "md": "Normal",
+      "lg": "Large"
+    },
+    "align": "Alignment",
+    "aligns": {
+      "start": "Start",
+      "center": "Center",
+      "end": "End"
+    },
+    "bold": "Bold",
+    "hide": "Hide",
+    "show": "Show",
+    "up": "Up",
+    "down": "Down",
+    "removeText": "Remove text",
+    "addText": "Add free text",
+    "reset": "Restore default",
+    "resetDone": "Default template restored",
+    "save": "Save as default template",
+    "saved": "Template saved",
+    "testPrint": "Test print",
+    "preview": "Preview at real size ({{w}}mm)",
+    "noDevice": "The preview appears after the first device is recorded"
   }
 }
