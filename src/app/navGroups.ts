@@ -61,6 +61,7 @@ const NEEDS: Record<string, [string, string]> = {
   technicians: ['technicians', 'view'],
   videos: ['devices', 'view'],
   sale: ['sales', 'add'],
+  used: ['sales', 'add'],
   inventory: ['inventory', 'view'],
   drawer: ['cashbox', 'view'],
   customers: ['customers', 'view'],
@@ -103,6 +104,7 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
       items: [
         ...e(front, { key: 'sale', to: '/inventory?do=sale', path: '/inventory?do=sale', icon: 'ShoppingCart' }),
         ...e(staff, { key: 'inventory', to: '/inventory', path: '/inventory', icon: 'Boxes', shortcut: 'nav.inventory' }),
+        ...e(front, { key: 'used', to: '/used', path: '/used', icon: 'Smartphone' }),
         ...e(owner, { key: 'stocktake', to: '/opening', path: '/opening', icon: 'ClipboardCheck' }),
         ...e(g('purchases', 'add'), { key: 'purchases', to: '/inventory?do=purchase', path: '/inventory?do=purchase', icon: 'Truck' }),
         ...e(g('inventory', 'delete'), { key: 'returns', to: '/inventory?do=write_off', path: '/inventory?do=write_off', icon: 'PackageMinus' }),

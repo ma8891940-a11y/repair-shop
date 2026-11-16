@@ -71,7 +71,8 @@
     "cashboxes": "Cashboxes",
     "expenses": "Expenses",
     "suppliers": "Suppliers",
-    "analytics": "Performance & analytics"
+    "analytics": "Performance & analytics",
+    "used": "Used devices"
   },
   "roles": {
     "owner": "Owner",
@@ -526,7 +527,11 @@
       "E_MASTER_REQUIRED": "This action needs the master password",
       "E_MASTER_WRONG": "Wrong master password",
       "E_MASTER_LOCKED": "Too many wrong attempts. Wait 15 minutes and try again",
-      "E_MASTER_SHORT": "The master password needs at least 6 characters"
+      "E_MASTER_SHORT": "The master password needs at least 6 characters",
+      "E_BAD_IMEI": "Invalid IMEI",
+      "E_BAD_NID": "The national ID must be 14 digits",
+      "E_USED_IN_STOCK": "This device (same IMEI) is still in stock",
+      "E_USED_SELL_HERE": "Used devices are sold from the Used devices screen so their price is recorded"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -755,7 +760,8 @@
       "check_templates": "Check templates",
       "shop_secrets": "Shop secrets",
       "master_unlocks": "Password unlocks",
-      "master_attempts": "Password attempts"
+      "master_attempts": "Password attempts",
+      "used_devices": "Used devices"
     },
     "actions": {
       "insert": "add",
@@ -780,7 +786,8 @@
       "sync_conflict": "sync conflict",
       "_other": "action",
       "master_set": "set the master password",
-      "master_removed": "removed the master password"
+      "master_removed": "removed the master password",
+      "seller_viewed": "opened a used device seller details"
     },
     "fields": {
       "status": "status",
@@ -895,7 +902,10 @@
       "device_receive": "{{who}} received {{target}} at the branch",
       "device_transfer_cancel": "{{who}} cancelled sending {{target}} to another branch",
       "stock_transfer": "{{who}} transferred {{target}} between branches",
-      "staff_roles": "{{who}} changed {{target}}'s roles"
+      "staff_roles": "{{who}} changed {{target}}'s roles",
+      "seller_viewed": "{{who}} opened the seller details of {{target}}",
+      "master_set": "{{who}} set the master password",
+      "master_removed": "{{who}} removed the master password"
     },
     "otherChanges": "and other data ({{n}})",
     "yes": "yes",
@@ -1428,7 +1438,8 @@
     },
     "kinds": {
       "part": "Spare part",
-      "accessory": "Accessory"
+      "accessory": "Accessory",
+      "used": "Used device"
     },
     "sku": "Code (optional)",
     "empty": "No items yet",
@@ -3337,5 +3348,59 @@
     "manual": "Or type this key in the app:",
     "enabled": "Two-step verification is on",
     "disabled": "Two-step verification is off"
+  },
+  "used": {
+    "title": "Used devices",
+    "sub": "Buy and sell by IMEI, with profit per device. Every action is a balanced ledger entry.",
+    "buy": "Buy a used device",
+    "buySave": "Buy and record",
+    "inStock": "In stock",
+    "profitTotal": "Profit on sold",
+    "list": "Devices",
+    "search": "Search by IMEI or model",
+    "filter": "Show",
+    "f": {
+      "in_stock": "In stock",
+      "sold": "Sold",
+      "all": "All"
+    },
+    "s": {
+      "in_stock": "In stock",
+      "sold": "Sold",
+      "cancelled": "Cancelled"
+    },
+    "empty": "No used devices here",
+    "emptyHint": "Record the first device you bought. Seller details are kept for the shop owner only.",
+    "device": "Device",
+    "branch": "Branch",
+    "status": "Status",
+    "buyPrice": "Buy price",
+    "askPrice": "Asking price",
+    "price": "Sale price",
+    "profit": "Profit",
+    "sell": "Sell",
+    "sellerBtn": "Seller",
+    "brand": "Brand",
+    "model": "Model",
+    "storage": "Storage",
+    "color": "Color",
+    "condition": "Condition and notes",
+    "payFrom": "Pay from cash box",
+    "payTo": "Money goes to cash box",
+    "seller": "Seller details",
+    "privacy": "These details are kept for legal protection if the device turns out to have a problem. Only the shop owner can see them, the ID number is stored encrypted, and every view is logged.",
+    "sellerName": "Seller name",
+    "sellerPhone": "Seller mobile",
+    "nid": "National ID",
+    "nidHint": "14 digits (optional)",
+    "idPhoto": "ID card photo",
+    "needModel": "Enter the brand and model",
+    "needImei": "IMEI needs at least 14 digits",
+    "needPrice": "Enter a valid price",
+    "needSeller": "Enter the seller name",
+    "badNid": "The national ID is 14 digits",
+    "bought": "Device purchase recorded",
+    "soldOk": "Device sold",
+    "sellerNote": "Opening these details is recorded in the activity log."
   }
 }

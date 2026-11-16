@@ -43,7 +43,9 @@ export function ItemPicker({ items, value, onPick, onCreate, createDenied = fals
   }, [picked?.id, picked?.name, value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const typing = !picked || q !== picked.name;
-  const shown = useMemo(() => searchItems(items, typing ? q : '', 30), [items, q, typing]);
+  // C4: الأجهزة المستعملة بتتباع وتتشرى من شاشتها (عشان سعر كل جهاز يتسجل عليه)
+  const pickable = useMemo(() => items.filter((i) => (i.kind as string) !== 'used'), [items]);
+  const shown = useMemo(() => searchItems(pickable, typing ? q : '', 30), [pickable, q, typing]);
   const canCreate = !!onCreate && typing && q.trim().length > 0;
   const count = shown.length + (canCreate ? 1 : 0);
   useEffect(() => setActive(0), [q, open]);
@@ -110,7 +112,7 @@ export function ItemPicker({ items, value, onPick, onCreate, createDenied = fals
           }
           if (e.key === 'Enter' && (open || typing)) {
             // الباركود بالظبط: يختار على طول
-            const hit = byCode(items, q);
+            const hit = byCode(pickable, q);
             if (hit) {
               e.preventDefault();
               return choose(hit);
