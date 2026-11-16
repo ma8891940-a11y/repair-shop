@@ -1,0 +1,7 @@
+{
+  "apple": ["apple", "iphone", "ipad", "آيفون", "ايفون", "ابل", "أبل"],
+  "samsung": ["samsung", "galaxy", "سامسونج"],
+  "xiaomi": ["xiaomi", "redmi", "poco", "شاومي", "ريدمي"],
+  "oppo": ["oppo", "اوبو", "أوبو"],
+  "realme": ["realme", "ريلمي"]
+}

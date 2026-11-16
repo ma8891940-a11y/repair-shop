@@ -38,6 +38,7 @@ const TeamScreen = lazyScreen(() => import('./screens/TeamScreen').then((m) => m
 const AuditScreen = lazyScreen(() => import('./screens/AuditScreen').then((m) => m.AuditScreen));
 const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen').then((m) => m.SettingsScreen));
 const PrintScreen = lazyScreen(() => import('./screens/PrintScreen').then((m) => m.PrintScreen));
+const ChecklistPrint = lazyScreen(() => import('./screens/ChecklistPrint').then((m) => m.ChecklistPrint));
 const CustomersScreen = lazyScreen(() => import('./screens/CustomersScreen').then((m) => m.CustomersScreen));
 const CustomerProfileScreen = lazyScreen(() => import('./screens/CustomersScreen').then((m) => m.CustomerProfileScreen));
 const AssistantScreen = lazyScreen(() => import('./screens/AssistantScreen').then((m) => m.AssistantScreen));
@@ -203,6 +204,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
         <Route path="print/table" element={<TablePrint />} />
         {grant('finance') && <Route path="print/day/:day" element={<DayReportPrint />} />}
         {front && <Route path="print/barcode/:id" element={<BarcodePrint />} />}
+        {front && <Route path="print/checklist/:id" element={<ChecklistPrint />} />}
         {front && <Route path="print/:kind/:id" element={<PrintScreen />} />}
         <Route element={<AppShell />}>
           <Route index element={<DashboardScreen />} />

@@ -15,13 +15,15 @@ import { useMe } from '../app/auth';
 import { useLoad, must } from '../app/useLoad';
 import { useLiveRefresh } from '../app/AppShell';
 import { WhatsAppButton, WhatsAppDialog, type MessageTarget } from '../app/messaging';
-import type { CheckItems } from '../lib/checks';
+import { labelsOf, type CheckItems } from '../lib/checks';
 import { inWarranty } from '../lib/customers';
 import { CheckCompare, QuickCheck } from '../ui/QuickCheck';
 import { supabase } from '../lib/supabase';
 import { nextStatusesFor, type DeviceStatus } from '../lib/status';
 import { errorMessage } from '../lib/errors';
 import { PhoneUploadQR } from '../app/PhoneUploadQR';
+import { SignaturePad } from '../ui/SignaturePad';
+import { useDeviceTemplate } from '../app/checkTemplates';
 import { formatPounds, parsePounds } from '../lib/money';
 import { MAX_PHOTOS, signedPhotoUrls, uploadDevicePhoto } from '../lib/photos';
 import type { Customer, Device, DeviceCost } from '../lib/types';
@@ -63,6 +65,7 @@ interface CheckRow {
   id: string;
   stage: 'intake' | 'delivery';
   items: CheckItems;
+  labels?: Record<string, string>;
 }
 interface LockRow {
   kind: 'pin' | 'pattern';
@@ -86,6 +89,8 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ msg: string; n: number } | null>(null);
   const [confirmDeliver, setConfirmDeliver] = useState(false);
+  // C2: توقيع العميل وقت التسليم (اختياري)، وبيتطبع على الفاتورة وورقة الفحص
+  const [deliverSig, setDeliverSig] = useState<string | null>(null);
   const [wa, setWa] = useState(false);
   const canCorrect = useCanCorrect();
   const [del, setDel] = useState(false);
@@ -106,7 +111,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
       supabase.from('device_notes').select('id, body, created_at, profiles(full_name)').eq('device_id', id).is('deleted_at', null).order('created_at'),
       supabase.from('device_photos').select('id, storage_path').eq('device_id', id).is('deleted_at', null).order('created_at'),
       supabase.from('device_passcodes').select('kind, secret_id, erased_at').eq('device_id', id).maybeSingle(),
-      supabase.from('device_checks').select('id, stage, items').eq('device_id', id).is('deleted_at', null),
+      supabase.from('device_checks').select('id, stage, items, labels').eq('device_id', id).is('deleted_at', null),
     ]);
     const photos = (must(p) ?? []) as PhotoRow[];
     let urls: Record<string, string> = {};
@@ -179,6 +184,11 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
           throw r.error;
         }
         setLocalStatus(null);
+        if (to === 'delivered' && deliverSig) {
+          const sg = await supabase.from('devices').update({ delivery_signature: deliverSig }).eq('id', id);
+          if (sg.error) toast({ tone: 'warn', title: errorMessage(sg.error) });
+          setDeliverSig(null);
+        }
         // التسليم: فاتورة التسليم الورقية (لو متعلّمة في الإعدادات ← الطباعة)
         if (to === 'delivered' && readPrint(shop.extras).deliveryPaper) {
           toast({ tone: 'info', title: t('print.deliveryReady'), duration: 10000, action: { label: t('print.docs.invoice'), onClick: () => navigate(`/print/invoice/${id}`) } });
@@ -428,7 +438,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                 <AssistantPanel brand={d.brand} model={d.model} issue={d.issue ?? ''} names={data.customer ? [data.customer.name] : []} />
               )}
 
-              <ChecksPanel deviceId={id} shopId={profile.shop_id} status={d.status} checks={data.checks} onSaved={reload} />
+              <ChecksPanel deviceId={id} shopId={profile.shop_id} status={d.status} brand={d.brand} checks={data.checks} onSaved={reload} />
 
               <PhotosPanel deviceId={id} shopId={profile.shop_id} photos={data.photos} urls={data.urls} canEdit={front && d.status !== 'delivered'} onChanged={reload} />
               {d.imei && <ImeiHistory imei={d.imei} deviceId={id} />}
@@ -479,7 +489,12 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
             </Button>
           </>
         }
-      />
+      >
+        <div className="flex flex-col gap-1.5" data-testid="deliver-signature">
+          <span className="text-xs text-fg-2">{t('signature.delivery')}</span>
+          <SignaturePad value={deliverSig} onChange={setDeliverSig} />
+        </div>
+      </Dialog>
     </div>
   );
 
@@ -853,8 +868,10 @@ function PhotosPanel({
   );
 }
 
-function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: string; shopId: string; status: DeviceStatus; checks: CheckRow[]; onSaved: () => void }) {
+function ChecksPanel({ deviceId, shopId, status, brand, checks, onSaved }: { deviceId: string; shopId: string; status: DeviceStatus; brand: string; checks: CheckRow[]; onSaved: () => void }) {
   const { t } = useTranslation();
+  // C2: بنود الفحص حسب الماركة، والأسماء اللي كتبها صاحب المحل بتتحفظ مع الفحص
+  const template = useDeviceTemplate(brand);
   const toast = useToast();
   const sync = useSync();
   const intake = checks.find((c) => c.stage === 'intake') ?? null;
@@ -882,11 +899,12 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
 
   async function save() {
     setBusy(true);
-    const row = { id: current?.id ?? crypto.randomUUID(), shop_id: shopId, device_id: deviceId, stage, items };
+    const labels = { ...(current?.labels ?? {}), ...labelsOf(template) };
+    const row = { id: current?.id ?? crypto.randomUUID(), shop_id: shopId, device_id: deviceId, stage, items, labels };
     const r = !navigator.onLine
       ? { error: new Error('offline') }
       : current
-        ? await supabase.from('device_checks').update({ items }).eq('id', current.id)
+        ? await supabase.from('device_checks').update({ items, labels }).eq('id', current.id)
         : await supabase.from('device_checks').insert(row);
     if (r.error && (!navigator.onLine || shouldQueue(r.error))) {
       // البند 14: من غير نت الفحص بيتسجل على الجهاز وبيتبعت لوحده (والمسودة بتفضل لحد ما يوصل)
@@ -930,14 +948,21 @@ function ChecksPanel({ deviceId, shopId, status, checks, onSaved }: { deviceId: 
             {t('draft.checkRestored')}
           </p>
         )}
-        <QuickCheck value={items} onChange={setItems} disabled={status === 'delivered' && stage === 'delivery' && !!delivery} />
-        <Button size="sm" loading={busy} onClick={() => void save()} className="self-start">
-          {t('checks.save')}
-        </Button>
+        <QuickCheck value={items} onChange={setItems} items={template} disabled={status === 'delivered' && stage === 'delivery' && !!delivery} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" loading={busy} onClick={() => void save()}>
+            {t('checks.save')}
+          </Button>
+          {(intake || delivery) && (
+            <Link to={`/print/checklist/${deviceId}`} className="inline-flex h-7 items-center gap-1.5 rounded-sm px-2 text-xs text-fg-2 hover:bg-raised hover:text-fg focus-visible:outline-2 focus-visible:outline-accent" data-testid="print-checklist">
+              <Printer className="size-3.5" aria-hidden /> {t('checks.print')}
+            </Link>
+          )}
+        </div>
         {intake && delivery && (
           <div className="mt-1 border-t border-glass-border pt-3">
             <div className="mb-1 text-xs font-medium text-fg-2">{t('checks.compare')}</div>
-            <CheckCompare intake={intake.items} delivery={delivery.items} />
+            <CheckCompare intake={intake.items} delivery={delivery.items} items={template} labels={{ ...(intake.labels ?? {}), ...(delivery.labels ?? {}) }} />
           </div>
         )}
       </div>

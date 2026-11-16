@@ -28,10 +28,11 @@ import { LineIcon } from '../ui/fx/LineIcon';
 import { QuickCheck } from '../ui/QuickCheck';
 import { SignaturePad } from '../ui/SignaturePad';
 import { PhoneUploadQR } from '../app/PhoneUploadQR';
+import { useDeviceTemplate } from '../app/checkTemplates';
 import { RoutingFields, type Routing } from '../app/tech/RoutingFields';
 import { shouldQueue, useSync } from '../offline/sync';
 import { localDb } from '../offline/outbox';
-import type { CheckItems } from '../lib/checks';
+import { labelsOf, type CheckItems } from '../lib/checks';
 import { inWarranty } from '../lib/customers';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
@@ -78,6 +79,8 @@ export function IntakeScreen() {
   useSensitiveNames([custName]);
   const [custArea, setCustArea] = useState('');
   const [brand, setBrand] = useState('');
+  // C2: بنود الفحص حسب ماركة الجهاز (قالب صاحب المحل أو الجاهز)
+  const checkTemplate = useDeviceTemplate(brand);
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
   const [deviceType, setDeviceType] = useState('');
@@ -91,6 +94,7 @@ export function IntakeScreen() {
   const [estimate, setEstimate] = useState('');
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [check, setCheck] = useState<CheckItems>({});
+
   const [signature, setSignature] = useState<string | null>(null);
   const [routing, setRouting] = useState<Routing>({ routeId: null, priority: 'normal', estMinutes: null });
   const [busy, setBusy] = useState(false);
@@ -226,7 +230,7 @@ export function IntakeScreen() {
       customer: newCustomer,
       device: { id, shop_id: profile.shop_id, customer_id: customerIdPlanned, brand: brand.trim(), model: model.trim(), imei: imeiClean || null, color: color.trim() || null, device_type: deviceType.trim() || null, accessories, issue: issue.trim(), cosmetic_condition: condition.trim() || null, intake_signature: signature, priority: routing.priority, est_minutes: routing.estMinutes },
       cost: { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, estimated_cost: estMinor },
-      check: Object.keys(check).length > 0 ? { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check } : null,
+      check: Object.keys(check).length > 0 ? { id: crypto.randomUUID(), shop_id: profile.shop_id, device_id: id, stage: 'intake', items: check, labels: labelsOf(checkTemplate) } : null,
       route: routeId,
       lock: lockType !== 'none' && lockValue.trim() ? { p_kind: lockType, p_value: lockValue.trim() } : null,
     };
@@ -651,7 +655,7 @@ export function IntakeScreen() {
           <Panel>
             <PanelHeader index="04" title={t('checks.title')} actions={<span className="text-2xs text-fg-3">{t('common.optional')}</span>} />
             <div className="p-4">
-              <QuickCheck value={check} onChange={setCheck} />
+              <QuickCheck value={check} onChange={setCheck} items={checkTemplate} />
             </div>
           </Panel>
 

@@ -20,7 +20,7 @@ export interface Block {
 }
 
 const RECEIPT: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'accessories', 'condition', 'estimate', 'terms', 'signature', 'qr', 'sign', 'thanks'];
-const INVOICE: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'parts', 'total', 'paid', 'remaining', 'warranty', 'sign', 'thanks'];
+const INVOICE: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'parts', 'total', 'paid', 'remaining', 'warranty', 'signature', 'sign', 'thanks'];
 /** الخانات المتاحة لكل نوع ورقة (بالترتيب الافتراضي)، و"نص حر" ممكن يتضاف في أي مكان */
 export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE };
 

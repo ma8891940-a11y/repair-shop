@@ -521,7 +521,8 @@
       "E_BRANCH_KIND": "This section isn't part of this branch type",
       "E_SETTLED": "This sale was already settled (its cost was recorded after selling without stock), so it can't be reversed. Record a customer return instead",
       "E_UPLOAD_EXPIRED": "The photo upload link expired. Open a new QR",
-      "E_DELIVERED": "The device was already delivered"
+      "E_DELIVERED": "The device was already delivered",
+      "E_NOT_DELIVERED": "This signature is taken after delivery"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -746,7 +747,8 @@
       "branch_goals": "Branch goal",
       "printers": "Printer",
       "print_templates": "Print template",
-      "photo_upload_sessions": "Photo upload sessions"
+      "photo_upload_sessions": "Photo upload sessions",
+      "check_templates": "Check templates"
     },
     "actions": {
       "insert": "add",
@@ -938,7 +940,8 @@
       "inventory": "Inventory",
       "alerts": "Alerts",
       "app": "My app",
-      "printers": "Printers & print designer"
+      "printers": "Printers & print designer",
+      "checks": "Check lists"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -1058,8 +1061,26 @@
       "mic": "Microphone",
       "charging": "Charging",
       "screen_touch": "Screen & touch",
-      "network": "Network"
-    }
+      "network": "Network",
+      "face_id": "Face ID",
+      "true_tone": "True Tone",
+      "icloud": "iCloud signed out",
+      "battery_health": "Battery health",
+      "s_pen": "S Pen",
+      "nfc": "NFC",
+      "ir_blaster": "IR blaster",
+      "earpiece": "Earpiece",
+      "proximity": "Proximity sensor",
+      "vibration": "Vibration",
+      "buttons": "Buttons",
+      "sim_tray": "SIM tray",
+      "flash": "Flash",
+      "water": "Water marks"
+    },
+    "print": "Print check sheet",
+    "sheet": "Device check sheet",
+    "item": "Item",
+    "sheetNote": "The customer received the device and reviewed these items. Anything that worked at intake and failed at delivery is marked in red."
   },
   "warranty": {
     "inTitle": "This device is still under warranty",
@@ -1512,7 +1533,8 @@
     "text": "The customer signs to accept the device condition and the receipt terms. It appears on the receipt.",
     "area": "Signature area",
     "hint": "Sign here with the mouse or your finger",
-    "clear": "Clear signature"
+    "clear": "Clear signature",
+    "delivery": "Customer signature at delivery"
   },
   "tech": {
     "priority": "Priority",
@@ -3243,5 +3265,30 @@
     "qrTitle": "Photograph the device from your phone",
     "qrSub": "Scan the code with the phone camera and take photos. They appear here right away",
     "needOnline": "Needs internet"
+  },
+  "checksTpl": {
+    "hint": "Check items per brand. Each device takes its brand template automatically; other brands use the general one. Old checks stay as they were.",
+    "brand": "Brand",
+    "brands": {
+      "general": "General",
+      "apple": "Apple",
+      "samsung": "Samsung",
+      "xiaomi": "Xiaomi",
+      "oppo": "Oppo",
+      "realme": "Realme"
+    },
+    "edited": "edited",
+    "itemName": "Item {{n}} name",
+    "up": "Move up",
+    "down": "Move down",
+    "remove": "Remove {{name}}",
+    "addReady": "Ready item",
+    "add": "Add",
+    "new": "New item",
+    "newPh": "e.g. card slot",
+    "reset": "Restore default",
+    "resetDone": "Default template restored",
+    "empty": "At least one item is required",
+    "needName": "Every new item needs a name"
   }
 }

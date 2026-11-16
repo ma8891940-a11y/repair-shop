@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { motion } from 'motion/react';
 import { AlertTriangle, CheckCheck } from 'lucide-react';
-import { CHECK_ITEMS, compareChecks, type CheckItem, type CheckItems, type CheckValue } from '../lib/checks';
+import { BUILTIN_TEMPLATES, checkKeys, compareChecks, type CheckItem, type CheckItems, type CheckValue, type TemplateItem } from '../lib/checks';
+import { useItemLabel } from '../app/checkTemplates';
 import { cn } from './cn';
 
 const VALUES: CheckValue[] = ['ok', 'fail', 'na'];
@@ -12,9 +13,10 @@ const tone: Record<CheckValue, string> = {
 };
 
 /** قائمة الفحص السريع: بند في كل سطر وتلات اختيارات (شغال / عطلان / مش متاح). بتتعمل في ثواني بالماوس أو الكيبورد. */
-export function QuickCheck({ value, onChange, disabled }: { value: CheckItems; onChange: (v: CheckItems) => void; disabled?: boolean }) {
+export function QuickCheck({ value, onChange, disabled, items = BUILTIN_TEMPLATES.general }: { value: CheckItems; onChange: (v: CheckItems) => void; disabled?: boolean; items?: TemplateItem[] }) {
   const { t } = useTranslation();
-  const set = (item: CheckItem, v: CheckValue) => onChange({ ...value, [item]: v });
+  const label = useItemLabel();
+  const set = (item: string, v: CheckValue) => onChange({ ...value, [item]: v });
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
@@ -22,26 +24,26 @@ export function QuickCheck({ value, onChange, disabled }: { value: CheckItems; o
         <button
           type="button"
           disabled={disabled}
-          onClick={() => onChange(Object.fromEntries(CHECK_ITEMS.map((i) => [i, 'ok'])) as CheckItems)}
+          onClick={() => onChange({ ...value, ...(Object.fromEntries(items.map((i) => [i.key, 'ok'])) as CheckItems) })}
           className="flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-2xs font-medium text-ok hover:bg-ok-soft"
         >
           <CheckCheck className="size-3.5" /> {t('checks.allOk')}
         </button>
       </div>
       <ul className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
-        {CHECK_ITEMS.map((item) => (
+        {items.map(({ key: item }) => (
           <li key={item} className="flex items-center justify-between gap-2 py-0.5">
-            <span className="text-sm text-fg">{t(`checks.items.${item}`)}</span>
-            <div className="flex gap-1" role="radiogroup" aria-label={t(`checks.items.${item}`)}>
+            <span className="text-sm text-fg">{label(item, null, items)}</span>
+            <div className="flex gap-1" role="radiogroup" aria-label={label(item, null, items)}>
               {VALUES.map((v) => (
                 <button
                   key={v}
                   type="button"
                   role="radio"
-                  aria-checked={value[item] === v}
+                  aria-checked={value[item as CheckItem] === v}
                   disabled={disabled}
                   onClick={() => set(item, v)}
-                  className={cn('h-6 rounded-sm border px-2 text-2xs transition-colors', value[item] === v ? tone[v] : 'border-line text-fg-3 hover:text-fg')}
+                  className={cn('h-6 rounded-sm border px-2 text-2xs transition-colors', value[item as CheckItem] === v ? tone[v] : 'border-line text-fg-3 hover:text-fg')}
                 >
                   {t(`checks.${v}`)}
                 </button>
@@ -55,9 +57,10 @@ export function QuickCheck({ value, onChange, disabled }: { value: CheckItems; o
 }
 
 /** مقارنة فحص الاستلام بفحص التسليم: اللي كان شغال وباظ بيظهر بالأحمر */
-export function CheckCompare({ intake, delivery }: { intake: CheckItems | null; delivery: CheckItems | null }) {
+export function CheckCompare({ intake, delivery, items = BUILTIN_TEMPLATES.general, labels }: { intake: CheckItems | null; delivery: CheckItems | null; items?: TemplateItem[]; labels?: Record<string, string> }) {
   const { t } = useTranslation();
-  const rows = compareChecks(intake, delivery);
+  const label = useItemLabel();
+  const rows = compareChecks(intake, delivery, checkKeys(items, intake, delivery));
   return (
     <table className="w-full text-sm">
       <thead>
@@ -71,7 +74,7 @@ export function CheckCompare({ intake, delivery }: { intake: CheckItems | null; 
         {rows.map((r, i) => (
           <motion.tr key={r.item} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className={cn('border-t border-glass-border', r.regressed && 'bg-danger-soft')}>
             <td className="py-1.5 text-fg">
-              {t(`checks.items.${r.item}`)}
+              {label(r.item, labels, items)}
               {r.regressed && (
                 <span className="ms-2 inline-flex items-center gap-1 text-2xs text-danger">
                   <AlertTriangle className="size-3" /> {t('checks.regressed')}

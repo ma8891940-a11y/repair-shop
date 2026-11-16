@@ -74,7 +74,7 @@ async function numbers(o: string, s: string) {
     `select e.entry_no, e.occurred_at, e.source_type, e.memo, (e.reverses_id is not null) rev, sum(l.debit)::bigint dr, sum(l.credit)::bigint cr
        from journal_entries e join journal_lines l on l.entry_id = e.id where e.shop_id = $1 group by e.id order by e.entry_no`, [s])).rows.map((r) => ({ ...r, dr: Number(r.dr), cr: Number(r.cr) }));
   const counts: Record<string, number> = {};
-  for (const t of ['customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks', 'journal_entries', 'journal_lines', 'payments', 'purchases', 'stock_moves', 'drawer_closings', 'items', 'suppliers', 'repair_steps', 'partners', 'profit_distributions', 'party_links'])
+  for (const t of ['customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks', 'journal_entries', 'journal_lines', 'payments', 'purchases', 'stock_moves', 'drawer_closings', 'items', 'suppliers', 'repair_steps', 'partners', 'profit_distributions', 'party_links', 'branch_goals', 'printers', 'print_templates', 'check_templates'])
     counts[t] = Number((await admin(`select count(*) n from ${t} where shop_id = $1`, [s])).rows[0].n);
   const unbalanced = Number((await admin(`select count(*) n from (select entry_id from journal_lines where shop_id = $1 group by entry_id having sum(debit) <> sum(credit)) x`, [s])).rows[0].n);
   const notes = (await admin(`select n.body, p.full_name from device_notes n left join profiles p on p.id = n.author_id where n.shop_id = $1 order by n.created_at`, [s])).rows;
@@ -179,8 +179,17 @@ d('استرجاع النسخة الاحتياطية لمحل جديد فاضي',
     const pid = (await as(A.o, `select id from partners where name = 'شريك النسخة'`)).rows[0].id;
     await as(A.o, `select partner_withdraw($1, $2, $3, 1000)`, [id(), pid, cash]);
 
+    // U3/U5/C2: أهداف الفروع، والطابعات، وقوالب الطباعة (بتشاور على الطابعة)، وقوالب الفحص لازم يرجعوا كمان
+    const mainBr = (await admin(`select id from branches where shop_id = $1 and is_main`, [A.s])).rows[0].id;
+    await as(A.o, `select save_goal($1, current_date, 'revenue', 5000000)`, [mainBr]);
+    const prn = id();
+    await as(A.o, `insert into printers(id, shop_id, name, kind, width_mm, margin_mm) values ($1, gen_random_uuid(), 'حراري الأصل', 'thermal80', 72, 3)`, [prn]);
+    await as(A.o, `insert into print_templates(shop_id, doc, printer_id, name, blocks, is_default) values (gen_random_uuid(), 'invoice', $1, 'فاتورة الأصل', '[{"key":"total","show":true}]', true)`, [prn]);
+    await as(A.o, `insert into check_templates(shop_id, brand, items) values (gen_random_uuid(), 'samsung', '[{"key":"wifi"},{"key":"c_1","label":"فتحة الكارت"}]')`);
+
     before = await numbers(A.o, A.s);
     expect(before.unbalanced).toBe(0);
+    expect(before.counts.printers).toBe(1);
     expect(before.counts.partners).toBe(1);
     expect(before.counts.profit_distributions).toBe(1);
     backup = (await as(A.o, `select export_backup() b`)).rows[0].b;
@@ -208,6 +217,9 @@ d('استرجاع النسخة الاحتياطية لمحل جديد فاضي',
     expect(after.drawers).toEqual(before.drawers);
     expect(after.shop).toEqual({ ...before.shop, name: before.shop.name });
     expect(after.templates).toEqual(before.templates);
+    // قالب الطباعة بيشاور على الطابعة الجديدة (مش القديمة)، وقالب الفحص زي ما هو
+    expect((await admin(`select count(*)::int n from print_templates t join printers p on p.id = t.printer_id and p.shop_id = t.shop_id where t.shop_id = $1`, [B.s])).rows[0].n).toBe(1);
+    expect((await admin(`select items from check_templates where shop_id = $1`, [B.s])).rows[0].items).toEqual([{ key: 'wifi' }, { key: 'c_1', label: 'فتحة الكارت' }]);
     // الأرقام نفسها مش صفر (السيناريو فيه شغل فعلًا)
     expect(before.counts.journal_entries).toBeGreaterThan(15);
     expect(before.pos.cash).toBeGreaterThan(0);

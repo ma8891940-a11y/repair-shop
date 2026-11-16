@@ -289,6 +289,16 @@ export function PrintScreen() {
                     </section>
                   ) : null;
                 case 'signature':
+                  // C2: الإيصال بتوقيع الاستلام، والفاتورة بتوقيع التسليم
+                  if (!isReceipt) {
+                    const sig = (data.d as { delivery_signature?: string | null }).delivery_signature;
+                    return sig ? (
+                      <div key={x.key} className={cn('mt-3 border-t border-neutral-300 pt-2', cls(x))} data-block="signature" data-testid="invoice-signature">
+                        <b>{t('signature.delivery')}</b>
+                        <img src={sig} alt="" className="mt-1 h-[16mm] w-auto" />
+                      </div>
+                    ) : null;
+                  }
                   return isReceipt && data.d.intake_signature ? (
                     <div key={x.key} className={cn('mt-2 border-t border-dashed border-black pt-1.5', cls(x))} data-block="signature">
                       <b>{t('signature.title')}</b>
