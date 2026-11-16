@@ -108,7 +108,7 @@ d('C5: عمولات الفنيين', () => {
     // الجهاز رجع ضمان واتسلّم تاني: مفيش عمولة تانية
     await as(owner, `update devices set status = 'warranty_return' where id = $1`, [dv]);
     for (const st of ['in_repair', 'repaired', 'ready']) await as(t1, `update devices set status = $2 where id = $1`, [dv, st]);
-    await as(owner, `update devices set status = 'delivered' where id = $1`, [dv]);
+    await as(owner, `select deliver_on_credit($1)`, [dv]);
     expect(await owed(t1)).toBe(24000);
   });
 

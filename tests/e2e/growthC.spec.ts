@@ -12,7 +12,7 @@ test('C6-C8: بيانات تجريبية ← تحليلات الصيانة ← �
   await expect(page.getByText('اتحمّلت البيانات التجريبية').first()).toBeVisible();
   await expect(page.getByTestId('demo-clear')).toBeVisible();
   await page.goto('/#/devices');
-  await expect(page.getByText('Galaxy A52').first()).toBeVisible();
+  await expect(page.getByText('Galaxy A52').filter({ visible: true }).first()).toBeVisible();
 
   // C6: تحليلات الصيانة
   await page.goto('/#/analytics');

@@ -58,10 +58,15 @@ export function CatalogTab() {
       setBusy(false);
     }
   }
+  // الاختيار بيظهر على طول، ولو الحفظ فشل بيرجع زي ما كان
+  const [picked, setPicked] = useState<Record<string, boolean>>({});
   async function pick(id: string, v: boolean) {
+    setPicked((p) => ({ ...p, [id]: v }));
     const { error } = await supabase.from('items').update({ in_catalog: v }).eq('id', id);
-    if (error) return toast({ tone: 'danger', title: errorMessage(error) });
-    reload();
+    if (error) {
+      setPicked((p) => ({ ...p, [id]: !v }));
+      return toast({ tone: 'danger', title: errorMessage(error) });
+    }
   }
 
   return (
@@ -90,7 +95,7 @@ export function CatalogTab() {
               <ul className="max-h-96 divide-y divide-line overflow-y-auto rounded-md border border-line">
                 {shown.map((i) => (
                   <li key={i.id} className="flex items-center gap-2 px-3 py-1.5 text-sm" data-testid="catalog-pick">
-                    <input type="checkbox" checked={i.in_catalog} onChange={(e) => void pick(i.id, e.target.checked)} className="size-4 accent-[var(--accent)]" aria-label={i.name} disabled={i.sale_price == null} />
+                    <input type="checkbox" checked={picked[i.id] ?? i.in_catalog} onChange={(e) => void pick(i.id, e.target.checked)} className="size-4 accent-[var(--accent)]" aria-label={i.name} disabled={i.sale_price == null} />
                     <span className="min-w-0 flex-1 truncate text-fg">{i.name}</span>
                     <span className="text-2xs text-fg-3">{t(`inv.kinds.${i.kind}`)}</span>
                     <span className="num w-20 text-end text-fg-2">{i.sale_price != null ? f.money(i.sale_price) : t('catalog.noPrice')}</span>

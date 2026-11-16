@@ -14,7 +14,7 @@ test('C5: قاعدة عمولة 30% ← الفني يشتغل على الجها�
   await page.getByLabel('الدور').selectOption('technician');
   await page.getByRole('button', { name: 'إرسال الدعوة' }).click();
   await expect(page.getByText('اتعملت الدعوة')).toBeVisible();
-  const tech = await activateInvite(browser, info, techEmail, 'شغلي');
+  const tech = await activateInvite(browser, info, techEmail);
 
   // القاعدة: 30% من المصنعية لكل الفنيين
   await page.goto('/#/settings?tab=tech');
