@@ -42,3 +42,28 @@ export async function signedPhotoUrls(paths: string[]): Promise<Record<string, s
   for (const item of data ?? []) if (item.path && item.signedUrl) out[item.path] = item.signedUrl;
   return out;
 }
+
+/** C1: رفع صورة من الموبايل بجلسة الرفع (من غير تسجيل دخول). folder = shop_id/device_id من الجلسة */
+export async function uploadSessionPhoto(token: string, folder: string, file: File): Promise<void> {
+  const { tokenClient } = await import('./supabase');
+  const c = tokenClient('x-upload-token', token);
+  const blob = await shrinkImage(file);
+  const path = `${folder}/${crypto.randomUUID()}.jpg`;
+  const { error: upErr } = await c.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (upErr) throw upErr;
+  const { error } = await c.rpc('add_session_photo', { p_token: token, p_path: path });
+  if (error) throw error;
+}
+
+/** C1: روابط صور الاستلام لصفحة التتبع (بـ token التتبع) */
+export async function trackingPhotoUrls(token: string): Promise<string[]> {
+  const { tokenClient } = await import('./supabase');
+  const c = tokenClient('x-track-token', token);
+  const { data, error } = await c.rpc('tracking_photos', { p_token: token });
+  if (error) throw error;
+  const paths = ((data ?? []) as unknown[]).map((x) => (typeof x === 'string' ? x : String((x as Record<string, unknown>).tracking_photos ?? '')));
+  if (!paths.length) return [];
+  const { data: signed, error: e2 } = await c.storage.from(PHOTO_BUCKET).createSignedUrls(paths, 3600);
+  if (e2) throw e2;
+  return (signed ?? []).map((s) => s.signedUrl).filter((u): u is string => !!u);
+}

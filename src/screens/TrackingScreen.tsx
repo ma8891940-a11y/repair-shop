@@ -15,6 +15,7 @@ import { Alert, Skeleton } from '../ui/Feedback';
 import { StatusBadge } from '../ui/StatusBadge';
 import { cn } from '../ui/cn';
 import { RatingBox } from './RatingBox';
+import { trackingPhotoUrls } from '../lib/photos';
 
 interface Tracking {
   order_no: string;
@@ -192,9 +193,16 @@ export function TrackingScreen() {
                   {data.due != null && Number(data.due) > 0 && <Item label={t('track.due')} value={`${f.money(Number(data.due))} ${f.currency(data.currency)}`} mono />}
                   {data.due != null && Number(data.due) === 0 && data.final_cost != null && <Item label={t('track.due')} value={t('track.paidFull')} />}
                   {data.technician && <Item label={t('track.tech')} value={data.technician} />}
-                  {data.warranty_until && <Item label={t('track.warranty')} value={f.date(data.warranty_until)} />}
+                  {data.warranty_until && (
+                    <Item
+                      label={t('track.warranty')}
+                      value={`${f.date(data.warranty_until)} · ${new Date(data.warranty_until).getTime() >= Date.now() ? t('track.warrantyActive') : t('track.warrantyEnded')}`}
+                    />
+                  )}
                 </dl>
               </div>
+
+              {token && <TrackPhotos token={token} />}
 
               {done && <Alert tone="ok">{done}</Alert>}
               {err && (
@@ -254,5 +262,35 @@ function Item({ label, value, mono }: { label: string; value: string; mono?: boo
       <dt className="readout-label">{label}</dt>
       <dd className={cn('mt-0.5 truncate text-fg', mono && 'num')}>{value}</dd>
     </div>
+  );
+}
+
+/** C1: صور الاستلام لصاحب رابط التتبع بس (بتثبت حالة الجهاز وقت ما اتسلّم للمحل) */
+function TrackPhotos({ token }: { token: string }) {
+  const { t } = useTranslation();
+  const [urls, setUrls] = useState<string[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    trackingPhotoUrls(token)
+      .then((u) => live && setUrls(u))
+      .catch(() => live && setUrls([]));
+    return () => {
+      live = false;
+    };
+  }, [token]);
+  if (urls === null) return <Skeleton className="h-24 w-full rounded-2xl" />;
+  if (!urls.length) return null;
+  return (
+    <section className="glass edge-glow shadow-3 relative rounded-2xl p-5" data-testid="track-photos">
+      <h2 className="text-sm font-semibold text-fg">{t('track.photos')}</h2>
+      <p className="mt-0.5 text-2xs text-fg-3">{t('track.photosHint')}</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {urls.map((u, i) => (
+          <a key={u} href={u} target="_blank" rel="noreferrer" className="aspect-square overflow-hidden rounded-lg bg-sunken focus-visible:outline-2 focus-visible:outline-accent">
+            <img src={u} alt={t('intake.photoN', { n: i + 1 })} className="size-full object-cover" loading="lazy" />
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }

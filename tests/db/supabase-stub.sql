@@ -23,8 +23,8 @@ create function storage.foldername(name text) returns text[] language sql immuta
   select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1]
 $$;
 alter table storage.objects enable row level security;
-grant usage on schema storage to authenticated;
-grant select, insert on storage.objects to authenticated;
+grant usage on schema storage to authenticated, anon;
+grant select, insert on storage.objects to authenticated, anon;
 
 -- نسخة مصغّرة من Supabase Vault (في الاختبار بس؛ الحقيقي بيشفّر القيمة)
 create schema vault;

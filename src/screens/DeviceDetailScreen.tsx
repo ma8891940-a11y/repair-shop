@@ -21,6 +21,7 @@ import { CheckCompare, QuickCheck } from '../ui/QuickCheck';
 import { supabase } from '../lib/supabase';
 import { nextStatusesFor, type DeviceStatus } from '../lib/status';
 import { errorMessage } from '../lib/errors';
+import { PhoneUploadQR } from '../app/PhoneUploadQR';
 import { formatPounds, parsePounds } from '../lib/money';
 import { MAX_PHOTOS, signedPhotoUrls, uploadDevicePhoto } from '../lib/photos';
 import type { Customer, Device, DeviceCost } from '../lib/types';
@@ -430,6 +431,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
               <ChecksPanel deviceId={id} shopId={profile.shop_id} status={d.status} checks={data.checks} onSaved={reload} />
 
               <PhotosPanel deviceId={id} shopId={profile.shop_id} photos={data.photos} urls={data.urls} canEdit={front && d.status !== 'delivered'} onChanged={reload} />
+              {d.imei && <ImeiHistory imei={d.imei} deviceId={id} />}
             </div>
 
             <div className="flex min-w-0 flex-col gap-4">
@@ -787,9 +789,12 @@ function PhotosPanel({
       <PanelHeader
         title={t('detail.photos')}
         actions={
-          <span className="num text-xs text-fg-3">
-            {photos.length}/{MAX_PHOTOS}
-          </span>
+          <div className="flex items-center gap-2">
+            {canEdit && photos.length < MAX_PHOTOS && <PhoneUploadQR deviceId={deviceId} onPhotos={onChanged} compact />}
+            <span className="num text-xs text-fg-3">
+              {photos.length}/{MAX_PHOTOS}
+            </span>
+          </div>
         }
       />
       <div className="p-4">
@@ -966,5 +971,67 @@ function SubStatusPicker({ deviceId, status, value, onChanged }: { deviceId: str
         ))}
       </div>
     </div>
+  );
+}
+
+interface ImeiVisit {
+  id: string;
+  order_no: string | null;
+  received_at: string;
+  status: DeviceStatus;
+  issue: string | null;
+  warranty_until: string | null;
+}
+/** سجل أعطال الجهاز بالـ IMEI (كل مرة دخل فيها نفس المحل)، عشان لو رجع تاني الفني يشوف اللي اتعمل قبل كده */
+function ImeiHistory({ imei, deviceId }: { imei: string; deviceId: string }) {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const [rows, setRows] = useState<ImeiVisit[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    void supabase
+      .from('devices')
+      .select('id, order_no, received_at, status, issue, warranty_until')
+      .eq('imei', imei)
+      .neq('id', deviceId)
+      .is('deleted_at', null)
+      .order('received_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => live && setRows((data ?? []) as ImeiVisit[]));
+    return () => {
+      live = false;
+    };
+  }, [imei, deviceId]);
+  if (rows === null) return <Skeleton className="h-20 w-full rounded-xl" />;
+  return (
+    <Panel data-testid="imei-history">
+      <PanelHeader title={t('detail.imeiHistory')} actions={<span className="num text-xs text-fg-3">{rows.length}</span>} />
+      {rows.length === 0 ? (
+        <p className="p-4 text-sm text-fg-3">{t('detail.imeiFirst')}</p>
+      ) : (
+        <ul className="divide-y divide-line">
+          {rows.map((r) => (
+            <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm" data-testid="imei-visit">
+              <div className="min-w-0">
+                <Link to={`/devices/${r.id}`} className="num text-fg hover:text-accent focus-visible:outline-2 focus-visible:outline-accent" dir="ltr">
+                  {r.order_no ?? '—'}
+                </Link>
+                <div className="truncate text-xs text-fg-3">
+                  {f.date(r.received_at)} · {r.issue || t('common.none')}
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <StatusBadge status={r.status} />
+                {r.warranty_until && (
+                  <span className={cn('text-2xs', new Date(r.warranty_until).getTime() >= Date.now() ? 'text-ok' : 'text-fg-3')}>
+                    {t('detail.warrantyUntil', { date: f.date(r.warranty_until) })}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }

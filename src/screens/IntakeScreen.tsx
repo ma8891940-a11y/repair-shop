@@ -27,6 +27,7 @@ import { Kbd } from '../ui/Kbd';
 import { LineIcon } from '../ui/fx/LineIcon';
 import { QuickCheck } from '../ui/QuickCheck';
 import { SignaturePad } from '../ui/SignaturePad';
+import { PhoneUploadQR } from '../app/PhoneUploadQR';
 import { RoutingFields, type Routing } from '../app/tech/RoutingFields';
 import { shouldQueue, useSync } from '../offline/sync';
 import { localDb } from '../offline/outbox';
@@ -43,6 +44,8 @@ import { useSensitiveNames } from '../app/assist';
 import { DraftBanner, useDraft } from '../app/useDraft';
 import { useLeaveGuard } from '../app/leaveGuard';
 import { hasContent } from '../lib/draft';
+
+const noop = () => undefined;
 
 // الماركات والملحقات والألوان من القوايم اللي بيديرها صاحب المحل (الإعدادات ← القوائم). الافتراضي في src/app/lists.tsx
 
@@ -762,6 +765,12 @@ export function IntakeScreen() {
         </div>
         {/* طباعة وإرسال: الحراري، والورقي، والاستيكر، والـ QR، وواتساب، في نفس الشاشة */}
         {saved?.orderNo && <PrintSendPanel deviceId={saved.id} autoRun className="mt-4" />}
+        {/* C1: صور الاستلام من موبايل الفني بالـ QR */}
+        {saved?.orderNo && (
+          <div className="mt-3 flex justify-end">
+            <PhoneUploadQR deviceId={saved.id} onPhotos={noop} />
+          </div>
+        )}
       </Dialog>
     </form>
   );

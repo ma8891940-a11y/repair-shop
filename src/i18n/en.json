@@ -519,7 +519,9 @@
       "E_OWNER_PERMS": "The owner always has every permission; it can't be removed",
       "E_ROLE_IN_USE": "Staff have this role. Remove it from them first",
       "E_BRANCH_KIND": "This section isn't part of this branch type",
-      "E_SETTLED": "This sale was already settled (its cost was recorded after selling without stock), so it can't be reversed. Record a customer return instead"
+      "E_SETTLED": "This sale was already settled (its cost was recorded after selling without stock), so it can't be reversed. Record a customer return instead",
+      "E_UPLOAD_EXPIRED": "The photo upload link expired. Open a new QR",
+      "E_DELIVERED": "The device was already delivered"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -601,7 +603,10 @@
     "invoice": "A4 invoice",
     "deliverTitle": "Confirm delivery",
     "deliverText": "The device will be marked as delivered and the lock erased permanently.",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "imeiHistory": "Device history by IMEI",
+    "imeiFirst": "First time this device came to the shop",
+    "warrantyUntil": "Warranty until {{date}}"
   },
   "print": {
     "receipt": "Device check-in receipt",
@@ -740,7 +745,8 @@
       "notification_reads": "Read notification",
       "branch_goals": "Branch goal",
       "printers": "Printer",
-      "print_templates": "Print template"
+      "print_templates": "Print template",
+      "photo_upload_sessions": "Photo upload sessions"
     },
     "actions": {
       "insert": "add",
@@ -990,7 +996,11 @@
     "privacy": "This page never shows personal information.",
     "due": "Remaining",
     "paidFull": "Fully paid",
-    "ambiguous": "This order number is shared. Scan the QR code on your receipt or label to open your exact device."
+    "ambiguous": "This order number is shared. Scan the QR code on your receipt or label to open your exact device.",
+    "warrantyActive": "active",
+    "warrantyEnded": "ended",
+    "photos": "Device photos at intake",
+    "photosHint": "This is how the device arrived at the shop"
   },
   "wa": {
     "send": "WhatsApp",
@@ -3219,5 +3229,19 @@
     "testPrint": "Test print",
     "preview": "Preview at real size ({{w}}mm)",
     "noDevice": "The preview appears after the first device is recorded"
+  },
+  "upload": {
+    "title": "Intake photos",
+    "count": "Photos",
+    "take": "Take photos",
+    "sent": "{{n}} photo(s) sent and shown on the device at the shop",
+    "full": "Limit reached (6 photos)",
+    "expired": "This link has expired or was closed. Ask the shop for a new QR",
+    "failed": "The photo was not uploaded. Try again",
+    "until": "Link valid until {{time}}, with no customer data",
+    "fromPhone": "From phone",
+    "qrTitle": "Photograph the device from your phone",
+    "qrSub": "Scan the code with the phone camera and take photos. They appear here right away",
+    "needOnline": "Needs internet"
   }
 }

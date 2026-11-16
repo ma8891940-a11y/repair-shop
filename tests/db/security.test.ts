@@ -151,7 +151,7 @@ d('المراجعة الأمنية الشاملة', () => {
     // دوال الإضافات (زي pgcrypto) مستثناة: دي مكتبات قياسية مش دوالنا
     const fns = (await admin(`select p.proname from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prorettype <> 'trigger'::regtype and has_function_privilege('anon', p.oid, 'execute')
       and not exists (select 1 from pg_depend dp where dp.objid = p.oid and dp.deptype = 'e') order by 1`)).rows.map((r) => r.proname as string);
-    const allowed = ['account_sign', 'current_app_role', 'current_shop_id', 'decide_quote', 'get_tracking', 'has_private_data', 'is_valid_transition', 'ledger_amount', 'ledger_issue_cost', 'ledger_line', 'public_app_brand', 'rate_device', 'rating_state', 'tracking_client_key', 'valid_payment_methods'];
+    const allowed = ['account_sign', 'add_session_photo', 'current_app_role', 'current_shop_id', 'decide_quote', 'get_tracking', 'has_private_data', 'is_valid_transition', 'ledger_amount', 'ledger_issue_cost', 'ledger_line', 'photo_session', 'photo_upload_allowed', 'public_app_brand', 'rate_device', 'rating_state', 'track_photo_allowed', 'tracking_client_key', 'tracking_photos', 'valid_payment_methods'];
     expect(fns.filter((f) => !allowed.includes(f))).toEqual([]);
     // U4: رابط دخول المحل بيرجّع الاسم واللوجو واللون بس، ولا أي بيانات تانية
     const brand = (await as(null, `select public_app_brand($1) b`, [A.shop])).rows[0].b;

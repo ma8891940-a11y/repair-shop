@@ -25,6 +25,9 @@ const AppShell = lazyScreen(() => import('./app/AppShell').then((m) => m.AppShel
 const RegisterWizard = lazyScreen(() => import('./screens/auth/RegisterWizard').then((m) => m.RegisterWizard));
 const JoinScreen = lazyScreen(() => import('./screens/auth/JoinScreen').then((m) => m.JoinScreen));
 const TrackingScreen = lazyScreen(() => import('./screens/TrackingScreen').then((m) => m.TrackingScreen));
+const PhoneUploadScreen = lazyScreen(() => import('./screens/PhoneUploadScreen').then((m) => m.PhoneUploadScreen));
+/** الصفحات العامة: التتبع، ورفع صور الاستلام من الموبايل (C1) */
+const isPublicPath = (p: string) => p === '/t' || p.startsWith('/t/') || p.startsWith('/up/');
 const DashboardScreen = lazyScreen(() => import('./screens/DashboardScreen').then((m) => m.DashboardScreen));
 const IntakeScreen = lazyScreen(() => import('./screens/IntakeScreen').then((m) => m.IntakeScreen));
 const DeviceDetailScreen = lazyScreen(() => import('./screens/DeviceDetailScreen').then((m) => m.DeviceDetailScreen));
@@ -118,11 +121,12 @@ function Gate() {
   const { loading, session, profile, shop, suspended, isAdmin } = useAuth();
   const location = useLocation();
   // صفحة تتبع العميل: عامة، بتشتغل بتسجيل دخول أو من غيره
-  if (location.pathname === '/t' || location.pathname.startsWith('/t/')) {
+  if (isPublicPath(location.pathname)) {
     return (
       <Routes>
         <Route path="/t" element={<TrackingScreen key="form" />} />
         <Route path="/t/:token" element={<TrackingScreen key="token" />} />
+        <Route path="/up/:token" element={<PhoneUploadScreen />} />
       </Routes>
     );
   }
@@ -260,7 +264,7 @@ function Boot() {
   }, [ms]);
   const location = useLocation();
   // العميل اللي بيفتح صفحة التتبع ما يستناش الشاشة الافتتاحية
-  const publicPage = location.pathname === '/t' || location.pathname.startsWith('/t/');
+  const publicPage = isPublicPath(location.pathname);
   const show = !publicPage && (!minDone || loading);
   useEffect(() => {
     if (!loading) performance.mark('auth-ready');
