@@ -13,7 +13,7 @@ import { Button } from '../ui/Button';
 import { Alert } from '../ui/Feedback';
 
 export interface ItemDetails {
-  kind: 'part' | 'accessory';
+  kind: 'part' | 'accessory' | 'service';
   item_type: string;
   brand: string;
   model: string;
@@ -27,9 +27,10 @@ export function ItemDetailFields({ v, set, testid = 'item' }: { v: ItemDetails; 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       <Field label={t('inv.cols.kind')}>
-        <Select value={v.kind} onChange={(e) => set({ kind: e.target.value as 'part' | 'accessory' })} data-testid={`${testid}-kind`}>
+        <Select value={v.kind} onChange={(e) => set({ kind: e.target.value as ItemDetails['kind'] })} data-testid={`${testid}-kind`}>
           <option value="part">{t('inv.kinds.part')}</option>
           <option value="accessory">{t('inv.kinds.accessory')}</option>
+          <option value="service">{t('inv.kinds.service')}</option>
         </Select>
       </Field>
       <Field label={t('item.type')}>

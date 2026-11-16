@@ -72,7 +72,8 @@
     "expenses": "Expenses",
     "suppliers": "Suppliers",
     "analytics": "Performance & analytics",
-    "used": "Used devices"
+    "used": "Used devices",
+    "categories": "Categories"
   },
   "roles": {
     "owner": "Owner",
@@ -535,7 +536,9 @@
       "E_DEMO_USED": "Demo data was already loaded before",
       "E_DEMO_NOT_EMPTY": "Demo data is for a new empty shop only",
       "E_TOO_MANY": "Too many orders today, try tomorrow or call the shop",
-      "E_BAD_TOKEN": "Invalid token (it looks like 123456789:AA...)"
+      "E_BAD_TOKEN": "Invalid token (it looks like 123456789:AA...)",
+      "E_CATEGORY_DEPTH": "Categories have two levels only (main and sub)",
+      "E_CATEGORY_NOT_EMPTY": "The category has items or sub-categories. Move them first"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -771,7 +774,8 @@
       "wholesale_orders": "Wholesale orders",
       "shop_telegram": "Telegram notifications",
       "eta_settings": "E-invoice settings",
-      "eta_documents": "E-invoices"
+      "eta_documents": "E-invoices",
+      "categories": "Categories"
     },
     "actions": {
       "insert": "add",
@@ -1457,7 +1461,8 @@
     "kinds": {
       "part": "Spare part",
       "accessory": "Accessory",
-      "used": "Used device"
+      "used": "Used device",
+      "service": "Service"
     },
     "sku": "Code (optional)",
     "empty": "No items yet",
@@ -3574,5 +3579,74 @@
     "testSent": "Test message sent. If it does not arrive, check the token and chat ID",
     "testOff": "Notifications are off or not set up",
     "off": "Turn off notifications"
+  },
+  "cats": {
+    "title": "Categories",
+    "path": "Path",
+    "results": "Search results",
+    "count": "{{n}} items",
+    "available": "{{n}} available",
+    "search": "Search items",
+    "addSub": "Sub-category",
+    "addTop": "Category in {{section}}",
+    "edit": "Edit",
+    "order": "Reorder",
+    "orderDone": "Done reordering",
+    "archive": "Archive",
+    "notEmpty": "Move its items and sub-categories first",
+    "archived": "{{name}} archived",
+    "seed": "Start with ready categories",
+    "seedMore": "Add missing ready categories",
+    "seeded": "{{n}} categories added",
+    "empty": "No categories yet",
+    "emptyHint": "Arrange your items in categories (parts, accessories, services...) to find them fast when selling.",
+    "direct": "Items in this category",
+    "noResults": "No items with this name",
+    "noItems": "No items in this category",
+    "noItemsHint": "Pick this category in the item form (Inventory > New item or Edit).",
+    "service": "Service",
+    "inStock": "{{n}} in stock",
+    "out": "Out of stock",
+    "sell": "Sell",
+    "sections": {
+      "products": "Products",
+      "services": "Services"
+    },
+    "none": "None yet",
+    "name": "Name",
+    "icon": "Icon",
+    "needName": "Enter the category name",
+    "dup": "A category with this name exists here",
+    "pick": "Category",
+    "noCategory": "No category",
+    "icons": {
+      "box": "General",
+      "chip": "Chips",
+      "screen": "Screen",
+      "battery": "Battery",
+      "backglass": "Back",
+      "charge": "Charging",
+      "camera": "Camera",
+      "speaker": "Speaker",
+      "flex": "Flex",
+      "frame": "Frame",
+      "case": "Case",
+      "glass": "Protector",
+      "cable": "Cable",
+      "earphones": "Earphones",
+      "powerbank": "Power bank",
+      "watch": "Watch",
+      "screwdriver": "Screwdriver",
+      "tool": "Tool",
+      "gamepad": "Games",
+      "phone_new": "New phone",
+      "tablet": "Tablet",
+      "brand": "Brand (name)",
+      "inspect": "Inspection",
+      "cleaning": "Cleaning",
+      "software": "Software",
+      "transfer": "Data transfer",
+      "unlock": "Unlock"
+    }
   }
 }

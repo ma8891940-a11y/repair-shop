@@ -1,0 +1,424 @@
+{
+ "ar": [
+  {
+   "name": "قطع الغيار",
+   "icon": "chip",
+   "children": [
+    {
+     "name": "شاشات",
+     "icon": "screen"
+    },
+    {
+     "name": "بطاريات",
+     "icon": "battery"
+    },
+    {
+     "name": "ظهر زجاج",
+     "icon": "backglass"
+    },
+    {
+     "name": "سوكت شحن",
+     "icon": "charge"
+    },
+    {
+     "name": "كاميرات خلفية",
+     "icon": "camera"
+    },
+    {
+     "name": "كاميرات أمامية",
+     "icon": "camera"
+    },
+    {
+     "name": "سماعات وجرس",
+     "icon": "speaker"
+    },
+    {
+     "name": "فلاتات",
+     "icon": "flex"
+    },
+    {
+     "name": "فريمات وهاوسنج",
+     "icon": "frame"
+    },
+    {
+     "name": "آيسيهات",
+     "icon": "chip"
+    },
+    {
+     "name": "عدسات كاميرا",
+     "icon": "camera"
+    },
+    {
+     "name": "مسامير وقطع صغيرة",
+     "icon": "screwdriver"
+    }
+   ]
+  },
+  {
+   "name": "إكسسوارات",
+   "icon": "case",
+   "children": [
+    {
+     "name": "جرابات",
+     "icon": "case"
+    },
+    {
+     "name": "سكرينات",
+     "icon": "glass"
+    },
+    {
+     "name": "شواحن",
+     "icon": "charge"
+    },
+    {
+     "name": "كابلات",
+     "icon": "cable"
+    },
+    {
+     "name": "سماعات",
+     "icon": "earphones"
+    },
+    {
+     "name": "باور بانك",
+     "icon": "powerbank"
+    },
+    {
+     "name": "ساعات ذكية",
+     "icon": "watch"
+    }
+   ]
+  },
+  {
+   "name": "العدد والأدوات",
+   "icon": "screwdriver",
+   "children": [
+    {
+     "name": "مفكات",
+     "icon": "screwdriver"
+    },
+    {
+     "name": "أجهزة لحام وهوت إير",
+     "icon": "tool"
+    },
+    {
+     "name": "خامات",
+     "icon": "box"
+    }
+   ]
+  },
+  {
+   "name": "أجهزة ألعاب",
+   "icon": "gamepad",
+   "children": [
+    {
+     "name": "أذرع تحكم",
+     "icon": "gamepad"
+    },
+    {
+     "name": "أجهزة",
+     "icon": "gamepad"
+    }
+   ]
+  },
+  {
+   "name": "موبايلات جديدة",
+   "icon": "phone_new",
+   "children": [
+    {
+     "name": "Samsung",
+     "icon": "brand"
+    },
+    {
+     "name": "Apple",
+     "icon": "brand"
+    },
+    {
+     "name": "Xiaomi",
+     "icon": "brand"
+    },
+    {
+     "name": "Oppo",
+     "icon": "brand"
+    },
+    {
+     "name": "Realme",
+     "icon": "brand"
+    },
+    {
+     "name": "Vivo",
+     "icon": "brand"
+    },
+    {
+     "name": "Infinix",
+     "icon": "brand"
+    },
+    {
+     "name": "Tecno",
+     "icon": "brand"
+    },
+    {
+     "name": "Honor",
+     "icon": "brand"
+    },
+    {
+     "name": "Huawei",
+     "icon": "brand"
+    },
+    {
+     "name": "Nokia",
+     "icon": "brand"
+    },
+    {
+     "name": "Motorola",
+     "icon": "brand"
+    },
+    {
+     "name": "OnePlus",
+     "icon": "brand"
+    },
+    {
+     "name": "Lenovo",
+     "icon": "brand"
+    }
+   ]
+  },
+  {
+   "name": "خدمات الصيانة",
+   "icon": "tool",
+   "section": "services",
+   "children": [
+    {
+     "name": "فحص الأجهزة",
+     "icon": "inspect"
+    },
+    {
+     "name": "خدمات التنظيف",
+     "icon": "cleaning"
+    },
+    {
+     "name": "خدمات السوفت وير",
+     "icon": "software"
+    },
+    {
+     "name": "نقل البيانات",
+     "icon": "transfer"
+    },
+    {
+     "name": "فك وتركيب",
+     "icon": "screwdriver"
+    }
+   ]
+  }
+ ],
+ "en": [
+  {
+   "name": "Spare parts",
+   "icon": "chip",
+   "children": [
+    {
+     "name": "Screens",
+     "icon": "screen"
+    },
+    {
+     "name": "Batteries",
+     "icon": "battery"
+    },
+    {
+     "name": "Back glass",
+     "icon": "backglass"
+    },
+    {
+     "name": "Charging ports",
+     "icon": "charge"
+    },
+    {
+     "name": "Rear cameras",
+     "icon": "camera"
+    },
+    {
+     "name": "Front cameras",
+     "icon": "camera"
+    },
+    {
+     "name": "Speakers",
+     "icon": "speaker"
+    },
+    {
+     "name": "Flex cables",
+     "icon": "flex"
+    },
+    {
+     "name": "Frames and housings",
+     "icon": "frame"
+    },
+    {
+     "name": "ICs",
+     "icon": "chip"
+    },
+    {
+     "name": "Camera lenses",
+     "icon": "camera"
+    },
+    {
+     "name": "Screws and small parts",
+     "icon": "screwdriver"
+    }
+   ]
+  },
+  {
+   "name": "Accessories",
+   "icon": "case",
+   "children": [
+    {
+     "name": "Cases",
+     "icon": "case"
+    },
+    {
+     "name": "Screen protectors",
+     "icon": "glass"
+    },
+    {
+     "name": "Chargers",
+     "icon": "charge"
+    },
+    {
+     "name": "Cables",
+     "icon": "cable"
+    },
+    {
+     "name": "Earphones",
+     "icon": "earphones"
+    },
+    {
+     "name": "Power banks",
+     "icon": "powerbank"
+    },
+    {
+     "name": "Smart watches",
+     "icon": "watch"
+    }
+   ]
+  },
+  {
+   "name": "Tools",
+   "icon": "screwdriver",
+   "children": [
+    {
+     "name": "Screwdrivers",
+     "icon": "screwdriver"
+    },
+    {
+     "name": "Soldering and hot air",
+     "icon": "tool"
+    },
+    {
+     "name": "Supplies",
+     "icon": "box"
+    }
+   ]
+  },
+  {
+   "name": "Game consoles",
+   "icon": "gamepad",
+   "children": [
+    {
+     "name": "Controllers",
+     "icon": "gamepad"
+    },
+    {
+     "name": "Consoles",
+     "icon": "gamepad"
+    }
+   ]
+  },
+  {
+   "name": "New phones",
+   "icon": "phone_new",
+   "children": [
+    {
+     "name": "Samsung",
+     "icon": "brand"
+    },
+    {
+     "name": "Apple",
+     "icon": "brand"
+    },
+    {
+     "name": "Xiaomi",
+     "icon": "brand"
+    },
+    {
+     "name": "Oppo",
+     "icon": "brand"
+    },
+    {
+     "name": "Realme",
+     "icon": "brand"
+    },
+    {
+     "name": "Vivo",
+     "icon": "brand"
+    },
+    {
+     "name": "Infinix",
+     "icon": "brand"
+    },
+    {
+     "name": "Tecno",
+     "icon": "brand"
+    },
+    {
+     "name": "Honor",
+     "icon": "brand"
+    },
+    {
+     "name": "Huawei",
+     "icon": "brand"
+    },
+    {
+     "name": "Nokia",
+     "icon": "brand"
+    },
+    {
+     "name": "Motorola",
+     "icon": "brand"
+    },
+    {
+     "name": "OnePlus",
+     "icon": "brand"
+    },
+    {
+     "name": "Lenovo",
+     "icon": "brand"
+    }
+   ]
+  },
+  {
+   "name": "Repair services",
+   "icon": "tool",
+   "section": "services",
+   "children": [
+    {
+     "name": "Device inspection",
+     "icon": "inspect"
+    },
+    {
+     "name": "Cleaning",
+     "icon": "cleaning"
+    },
+    {
+     "name": "Software",
+     "icon": "software"
+    },
+    {
+     "name": "Data transfer",
+     "icon": "transfer"
+    },
+    {
+     "name": "Disassembly and assembly",
+     "icon": "screwdriver"
+    }
+   ]
+  }
+ ]
+}

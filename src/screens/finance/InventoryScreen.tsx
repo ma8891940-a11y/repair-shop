@@ -40,6 +40,7 @@ import { ItemDetailFields, NewItemInline, StockInInline, emptyDetails, type Item
 import { composeItemName, matches } from '../../lib/itemSearch';
 import { readAllowNegative } from '../../lib/extras';
 import { logoUploadError, prepareLogoUpload } from '../../lib/brandImage';
+import { CategorySelect } from '../CategoriesScreen';
 
 interface Supplier {
   id: string;
@@ -79,15 +80,20 @@ export function InventoryScreen() {
   // من القايمة الجانبية: ?do=sale|purchase|write_off بيفتح العملية على طول، و?tab=suppliers بيفتح الموردين
   const [params, setParams] = useSearchParams();
   const want = params.get('do');
+  const wantItem = params.get('item');
   const wantTab = params.get('tab');
   useEffect(() => {
     if ((wantTab === 'suppliers' && canSup) || (wantTab === 'summary' && canReports)) setTab(wantTab);
     else if (!want) setTab((t0) => (t0 === 'suppliers' && !wantTab ? 'items' : t0));
-    if (want === 'sale' && front) setDlg('sale');
+    if (want === 'sale' && front) {
+      // K: ?do=sale&item=<id> من تصفح التصنيفات بيفتح البيع بالصنف ده
+      if (wantItem) setPreset({ supplier: '', lines: [{ item: wantItem, qty: 1 }] });
+      setDlg('sale');
+    }
     else if (want === 'purchase' && canBuy) setDlg('purchase');
     else if ((want === 'write_off' && canWriteOff) || (want === 'supplier_return' && canSupReturn)) setInvOp(want);
     else if (want === 'sale_return' && front) setInvOp('sale_return');
-  }, [want, wantTab, owner, front, canSup, canReports, canBuy, canWriteOff, canSupReturn]);
+  }, [want, wantTab, wantItem, owner, front, canSup, canReports, canBuy, canWriteOff, canSupReturn]);
   // لما العملية تتقفل، الرابط يرجع للمخزون عادي (عشان "رجوع" ما يفتحهاش تاني)
   const clearDo = () => want && setParams({}, { replace: true });
   const [dlg, setDlg] = useState<'item' | 'purchase' | 'sale' | 'supplier' | null>(null);
@@ -495,11 +501,13 @@ export function InventoryScreen() {
           onOpenChange={(v) => {
             if (!v) {
               setDlg(null);
+              setPreset(null);
               clearDo();
             }
           }}
           items={data.items}
           suppliers={[]}
+          preset={wantItem ? preset : null}
           onDone={reload}
         />
       )}
@@ -548,7 +556,7 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
     setBusy(true);
     const { error } = await supabase.from('items').insert({
       id: crypto.randomUUID(), shop_id: shop.id, kind: d.kind, name: nm, sku: toLatinDigits(sku.trim()) || null, sale_price: p, min_qty: mq, supplier_id: supplier || null,
-      brand: d.brand.trim() || null, category: newCat.trim() || null, item_type: d.item_type.trim() || null, model: d.model.trim() || null, quality: d.quality.trim() || null, color: d.color.trim() || null,
+      brand: d.brand.trim() || null, category_id: newCat || null, item_type: d.item_type.trim() || null, model: d.model.trim() || null, quality: d.quality.trim() || null, color: d.color.trim() || null,
     });
     setBusy(false);
     if (error) return setErr(errorMessage(error));
@@ -586,7 +594,7 @@ function ItemDialog({ open, onOpenChange, onDone, suppliers }: { open: boolean; 
           />
         </Field>
         <Field label={t('inv.category')}>
-          <ListCombo list="item_categories" value={newCat} onChange={setNewCat} maxLength={60} testid="new-item-category" />
+          <CategorySelect value={newCat} onChange={setNewCat} testid="new-item-category" />
         </Field>
         <Field label={t('inv.sku')}>
           <Input dir="ltr" mono value={sku} onChange={(e) => setSku(e.target.value)} />
@@ -699,13 +707,26 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   const allowNeg = readAllowNegative(shop.extras);
   useEffect(() => setStocked({}), [items]);
   const all = useMemo(() => [...extra.filter((x) => !items.some((y) => y.id === x.id)), ...items].map((x) => (stocked[x.id] ? { ...x, qty: x.qty + stocked[x.id] } : x)), [extra, items, stocked]);
+  // K: الصنف اللي جاي من تصفح التصنيفات: سعره بيتحط أول ما بيانات الأصناف توصل (لو النافذة اتفتحت قبلها)
+  useEffect(() => {
+    if (!open || mode !== 'sale' || !preset?.lines.length) return;
+    setLines((ls) =>
+      ls.map((l) => {
+        if (l.price !== '' || !l.item) return l;
+        const sp = items.find((x) => x.id === l.item)?.sale_price;
+        return sp != null ? { ...l, price: String(Number(sp) / 100) } : l;
+      }),
+    );
+  }, [open, mode, preset, items]);
   // قبل ما النافذة تترسم (زي OpDialog): اللي بيتكتب بسرعة ما يتمسحش
   useLayoutEffect(() => {
     if (!open) return;
     setId(opId());
     setCreating(null);
     setExtra([]);
-    setLines(preset?.lines.length ? preset.lines.map((l) => ({ item: l.item, qty: String(l.qty), price: '' })) : [{ item: '', qty: '1', price: '' }]);
+    // K: من تصفح التصنيفات: الصنف بسعر البيع بتاعه
+    const priceOf = (id: string) => (mode === 'sale' ? items.find((x) => x.id === id)?.sale_price : null);
+    setLines(preset?.lines.length ? preset.lines.map((l) => ({ item: l.item, qty: String(l.qty), price: priceOf(l.item) != null ? String(Number(priceOf(l.item)) / 100) : '' })) : [{ item: '', qty: '1', price: '' }]);
     setSupplier(preset?.supplier ?? suppliers[0]?.id ?? '');
     setErr(null);
     setCbsReady(false);
@@ -765,7 +786,8 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
     if (mode === 'sale' && !allowNeg) {
       const need = new Map<string, number>();
       for (const l of parsed) need.set(l.item, (need.get(l.item) ?? 0) + (l.qty ?? 0));
-      const it = all.find((x) => (need.get(x.id) ?? 0) > Math.max(x.qty, 0));
+      // K: الخدمة من غير مخزون
+      const it = all.find((x) => x.kind !== 'service' && (need.get(x.id) ?? 0) > Math.max(x.qty, 0));
       if (it) return setErr(t('item.noStock', { n: f.number(Math.max(it.qty, 0)) }));
     }
     setBusy(true);
@@ -864,7 +886,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
             const it = l.item ? all.find((x) => x.id === l.item) : undefined;
             // البيع: الكمية المطلوبة من الصنف ده في كل السطور، مقارنة باللي متاح
             const want = it ? parsed.reduce((a, p) => a + (p.item === it.id ? (p.qty ?? 0) : 0), 0) : 0;
-            const short = mode === 'sale' && it && want > Math.max(it.qty, 0) && lines.findIndex((x) => x.item === it.id) === i ? want - Math.max(it.qty, 0) : 0;
+            const short = mode === 'sale' && it && it.kind !== 'service' && want > Math.max(it.qty, 0) && lines.findIndex((x) => x.item === it.id) === i ? want - Math.max(it.qty, 0) : 0;
             return (
               <div key={i} className="flex flex-col gap-2">
                 <div className="grid grid-cols-[minmax(0,1fr)_64px_100px_auto] items-end gap-2" data-testid="line">
@@ -947,6 +969,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
   const [price, setPrice] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [brand, setBrand] = useState('');
   const [det, setDet] = useState({ item_type: '', model: '', quality: '', color: '' });
   const [barcode, setBarcode] = useState('');
@@ -964,6 +987,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     setSupplier(item.supplier_id ?? '');
     setName(item.name);
     setCategory(item.category ?? '');
+    setCategoryId((item as { category_id?: string | null }).category_id ?? '');
     setBrand(item.brand ?? '');
     setDet({ item_type: item.item_type ?? '', model: item.model ?? '', quality: item.quality ?? '', color: item.color ?? '' });
     setBarcode(item.barcode ?? '');
@@ -981,7 +1005,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
     if (!name.trim()) return setErr(t('common.required'));
     const bc = toLatinDigits(barcode.trim()) || null;
     if (bc && !/^[0-9A-Za-z-]{4,32}$/.test(bc)) return setErr(t('barcode.bad'));
-    const { error } = await supabase.from('items').update({ name: name.trim(), category: category.trim() || null, brand: brand.trim() || null, barcode: bc, min_qty: mq, supplier_id: supplier || null, sale_price: p,
+    const { error } = await supabase.from('items').update({ name: name.trim(), ...(categoryId ? { category_id: categoryId } : { category_id: null, category: category.trim() || null }), brand: brand.trim() || null, barcode: bc, min_qty: mq, supplier_id: supplier || null, sale_price: p,
       item_type: det.item_type.trim() || null, model: det.model.trim() || null, quality: det.quality.trim() || null, color: det.color.trim() || null }).eq('id', item.id);
     if (error) return setErr(/items_barcode_unique/.test(error.message) ? t('barcode.dup') : errorMessage(error));
     toast({ tone: 'ok', title: t('settings.saved') });
@@ -1059,7 +1083,7 @@ function ItemDetailDialog({ item, onOpenChange, suppliers, onDone }: { item: Sto
               <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} data-testid="item-name" />
             </Field>
             <Field label={t('inv.category')}>
-              <ListCombo list="item_categories" value={category} onChange={setCategory} maxLength={60} testid="item-category" />
+              <CategorySelect value={categoryId} onChange={setCategoryId} testid="item-category" />
             </Field>
             <Field label={t('inv.brand')}>
               <ListCombo list="brands" value={brand} onChange={setBrand} maxLength={60} dir="auto" testid="item-brand" />

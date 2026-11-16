@@ -51,7 +51,7 @@ export function ItemPicker({ items, value, onPick, onCreate, createDenied = fals
   useEffect(() => setActive(0), [q, open]);
 
   const choose = (it: StockRow) => {
-    if (onlyInStock && it.qty <= 0) return;
+    if (onlyInStock && it.qty <= 0 && it.kind !== 'service') return;
     onPick(it);
     setQ(it.name);
     setOpen(false);
@@ -152,7 +152,7 @@ export function ItemPicker({ items, value, onPick, onCreate, createDenied = fals
             data-testid={`${testid}-menu`}
           >
             {shown.map((it, k) => {
-              const off = onlyInStock && it.qty <= 0;
+              const off = onlyInStock && it.qty <= 0 && it.kind !== 'service';
               return (
                 <li key={it.id} id={`${menuId}-${k}`} role="option" aria-selected={active === k} aria-disabled={off || undefined}>
                   <button

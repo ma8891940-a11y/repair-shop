@@ -41,6 +41,7 @@ const TeamScreen = lazyScreen(() => import('./screens/TeamScreen').then((m) => m
 const AuditScreen = lazyScreen(() => import('./screens/AuditScreen').then((m) => m.AuditScreen));
 const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen').then((m) => m.SettingsScreen));
 const PrintScreen = lazyScreen(() => import('./screens/PrintScreen').then((m) => m.PrintScreen));
+const CategoriesScreen = lazyScreen(() => import('./screens/CategoriesScreen').then((m) => m.CategoriesScreen));
 const UsedDevicesScreen = lazyScreen(() => import('./screens/UsedDevicesScreen').then((m) => m.UsedDevicesScreen));
 const ChecklistPrint = lazyScreen(() => import('./screens/ChecklistPrint').then((m) => m.ChecklistPrint));
 const CustomersScreen = lazyScreen(() => import('./screens/CustomersScreen').then((m) => m.CustomersScreen));
@@ -232,6 +233,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
           {grant('finance') && <Route path="finance/:kind/:id" element={<StatementScreen />} />}
           {(may('inventory') || may('sales')) && <Route path="inventory" element={<InventoryScreen />} />}
           {front && may('sales') && <Route path="used" element={<UsedDevicesScreen />} />}
+          {(may('inventory') || may('sales')) && <Route path="categories" element={<CategoriesScreen />} />}
           <Route path="work" element={<WorkScreen />} />
           {grant('reports') && <Route path="analytics" element={<AnalyticsScreen />} />}
           {grant('reports') && <Route path="reports" element={<ReportsScreen />} />}

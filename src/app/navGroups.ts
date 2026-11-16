@@ -63,6 +63,7 @@ const NEEDS: Record<string, [string, string]> = {
   sale: ['sales', 'add'],
   used: ['sales', 'add'],
   inventory: ['inventory', 'view'],
+  categories: ['inventory', 'view'],
   drawer: ['cashbox', 'view'],
   customers: ['customers', 'view'],
 };
@@ -76,7 +77,7 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
   const e = (show: boolean, item: NavEntry) => {
     const need = NEEDS[item.key];
     // المخزون: بيظهر لو بيشوف المخزون أو بيبيع
-    const allowed = !need || can(perms, need[0], need[1]) || (item.key === 'inventory' && can(perms, 'sales', 'view'));
+    const allowed = !need || can(perms, need[0], need[1]) || ((item.key === 'inventory' || item.key === 'categories') && can(perms, 'sales', 'view'));
     const inBranch = !need || branchHas(branchKind, need[0]);
     return show && allowed && inBranch ? [item] : [];
   };
@@ -104,6 +105,7 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
       items: [
         ...e(front, { key: 'sale', to: '/inventory?do=sale', path: '/inventory?do=sale', icon: 'ShoppingCart' }),
         ...e(staff, { key: 'inventory', to: '/inventory', path: '/inventory', icon: 'Boxes', shortcut: 'nav.inventory' }),
+        ...e(staff, { key: 'categories', to: '/categories', path: '/categories', icon: 'LayoutGrid' }),
         ...e(front, { key: 'used', to: '/used', path: '/used', icon: 'Smartphone' }),
         ...e(owner, { key: 'stocktake', to: '/opening', path: '/opening', icon: 'ClipboardCheck' }),
         ...e(g('purchases', 'add'), { key: 'purchases', to: '/inventory?do=purchase', path: '/inventory?do=purchase', icon: 'Truck' }),

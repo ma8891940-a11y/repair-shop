@@ -76,7 +76,7 @@ export interface Statement {
 }
 export interface StockRow {
   id: string;
-  kind: 'part' | 'accessory';
+  kind: 'part' | 'accessory' | 'used' | 'service';
   name: string;
   sku: string | null;
   sale_price: number | null;

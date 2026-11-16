@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { prefs, registerShop, uniq } from './helpers';
+import { fillField, prefs, registerShop, uniq } from './helpers';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGP4z8CAFWEXHbQSACj/P8Fu7N9hAAAAAElFTkSuQmCC', 'base64');
 
@@ -52,7 +52,7 @@ test('C4: شراء جهاز مستعمل ببيانات البائع وصورة 
 
   // البيع بسعر 6,200 ← ربح 1,200
   await row.getByTestId('used-sell').click();
-  await page.getByTestId('used-sell-price').fill('6,200');
+  await fillField(page.getByTestId('used-sell-price'), '6,200');
   await page.getByTestId('used-sell-save').click();
   await expect(page.getByText('اتباع الجهاز').first()).toBeVisible();
   await page.getByLabel('العرض').selectOption('sold');
