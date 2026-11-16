@@ -12,7 +12,7 @@ import { Alert, Skeleton } from '../ui/Feedback';
 import { cn } from '../ui/cn';
 
 interface Portal {
-  shop: { name: string; phone: string | null; currency: string; logo: string | null };
+  shop: { name: string; branch?: string | null; phone: string | null; currency: string; logo: string | null };
   customer: { name: string };
   balance: number;
   entries: { at: string; type: string; no: number; debit: number; credit: number }[];
@@ -59,7 +59,10 @@ export function PortalScreen() {
       <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-4 px-4 pb-10">
         <header className="flex items-center justify-between py-4">
           <div className="min-w-0">
-            <div className="truncate text-lg font-bold text-fg">{data?.shop.name ?? t('portal.title')}</div>
+            <div className="truncate text-lg font-bold text-fg">
+              {data?.shop.name ?? t('portal.title')}
+              {data?.shop.branch && <span className="ms-2 text-sm font-normal text-fg-3">{data.shop.branch}</span>}
+            </div>
             {data && <div className="text-sm text-fg-3">{t('portal.hello', { name: data.customer.name })}</div>}
           </div>
           <div className="flex items-center gap-1">

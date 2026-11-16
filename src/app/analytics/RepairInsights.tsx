@@ -48,9 +48,10 @@ export function RepairInsights({ from, to, branch, owner }: { from: Date; to: Da
     const [faults, techs, parts, stock, usage] = await Promise.all([
       rpc<Fault[]>('faults_by_model', { ...args, p_branch: branch }),
       rpc<Tech[]>('tech_report', args).catch(() => [] as Tech[]),
-      owner ? rpc<Part[]>('parts_profit', args) : Promise.resolve([] as Part[]),
-      rpc<StockRow[]>('items_stock'),
-      rpc<{ item_id: string; used: number }[]>('items_usage30'),
+      owner ? rpc<Part[]>('parts_profit', { ...args, p_branch: branch }) : Promise.resolve([] as Part[]),
+      // المخزون: فرع العرض، أو كل الفروع مجمّعة
+      rpc<StockRow[]>('items_stock', branch ? {} : { p_all: true }, { branch }),
+      rpc<{ item_id: string; used: number }[]>('items_usage30', { p_branch: branch }),
     ]);
     const used = new Map(usage.map((u) => [u.item_id, Number(u.used)]));
     const forecast = stock

@@ -54,7 +54,8 @@ export function UsedDevicesScreen() {
   const [buying, setBuying] = useState(false);
   const [selling, setSelling] = useState<UsedRow | null>(null);
   const [seller, setSeller] = useState<UsedRow | null>(null);
-  const { data, error, reload } = useLoad(async () => ((await rpc('used_devices_list')) ?? []) as UsedRow[], []);
+  // الفرع المعروض (أو كل الفروع لصاحب المحل)، والموظف بيشوف فرعه بس من القاعدة
+  const { data, error, reload } = useLoad(async () => ((await rpc('used_devices_list', { p_branch: br.filter })) ?? []) as UsedRow[], [br.filter]);
   const rows = useMemo(() => {
     const s = normalizeImei(toLatinDigits(q)) || q.trim().toLowerCase();
     return (data ?? [])
@@ -193,8 +194,9 @@ export function UsedDevicesScreen() {
   );
 }
 
-function useCashboxOptions() {
-  return useLoad(async () => cashboxesFor(await loadCashboxes(), getBranchHeader()), []);
+/** خزن الفرع: الشرا في فرع الشغل الحالي، والبيع في فرع الجهاز نفسه */
+function useCashboxOptions(branch?: string | null) {
+  return useLoad(async () => cashboxesFor(await loadCashboxes(), branch ?? getBranchHeader()), [branch]);
 }
 
 function BuyDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (v: boolean) => void; onDone: () => void }) {
@@ -341,7 +343,7 @@ function SellDialog({ row, onClose, onDone }: { row: UsedRow | null; onClose: ()
   const { t } = useTranslation();
   const toast = useToast();
   const accName = useAccountName();
-  const cbs = useCashboxOptions();
+  const cbs = useCashboxOptions(row?.branch_id);
   const [price, setPrice] = useState('');
   const [cashbox, setCashbox] = useState('');
   const [busy, setBusy] = useState(false);
@@ -356,7 +358,7 @@ function SellDialog({ row, onClose, onDone }: { row: UsedRow | null; onClose: ()
     if (p == null || p <= 0) return setErr(t('used.needPrice'));
     setBusy(true);
     try {
-      await rpc('sell_used_device', { p_id: opId(), p_used: row.id, p_price: p, p_cashbox: box });
+      await rpc('sell_used_device', { p_id: opId(), p_used: row.id, p_price: p, p_cashbox: box }, { branch: row.branch_id });
       toast({ tone: 'ok', title: t('used.soldOk') });
       setPrice('');
       onClose();

@@ -20,7 +20,7 @@ interface Item {
   details: { brand: string; model: string; storage: string | null; color: string | null; condition: string | null } | null;
 }
 interface Catalog {
-  shop: { name: string; phone: string | null; currency: string; logo: string | null };
+  shop: { name: string; branch?: string | null; phone: string | null; currency: string; logo: string | null };
   items: Item[];
 }
 
@@ -63,7 +63,10 @@ export function CatalogScreen() {
         <header className="flex items-center justify-between gap-3 py-4">
           <div className="flex min-w-0 items-center gap-2.5">
             {logo && <img src={logo} alt={data?.shop.name ?? ''} className="h-10 max-w-[140px] rounded-md bg-white object-contain p-1" />}
-            <h1 className={cn('truncate font-bold text-fg', logo ? 'text-base' : 'text-xl')}>{data?.shop.name ?? t('catalog.title')}</h1>
+            <div className="min-w-0">
+              <h1 className={cn('truncate font-bold text-fg', logo ? 'text-base' : 'text-xl')}>{data?.shop.name ?? t('catalog.title')}</h1>
+              {data?.shop.branch && <div className="truncate text-xs text-fg-3" data-testid="catalog-branch">{data.shop.branch}</div>}
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <LangToggle />

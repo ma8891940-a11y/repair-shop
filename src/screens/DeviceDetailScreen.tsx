@@ -439,7 +439,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
                 <AssistantPanel brand={d.brand} model={d.model} issue={d.issue ?? ''} names={data.customer ? [data.customer.name] : []} />
               )}
 
-              <ChecksPanel deviceId={id} shopId={profile.shop_id} status={d.status} brand={d.brand} checks={data.checks} onSaved={reload} />
+              <ChecksPanel deviceId={id} shopId={profile.shop_id} status={d.status} brand={d.brand} branch={(d as { branch_id?: string | null }).branch_id ?? null} checks={data.checks} onSaved={reload} />
 
               <PhotosPanel deviceId={id} shopId={profile.shop_id} photos={data.photos} urls={data.urls} canEdit={front && d.status !== 'delivered'} onChanged={reload} />
               {d.imei && <ImeiHistory imei={d.imei} deviceId={id} />}
@@ -867,10 +867,10 @@ function PhotosPanel({
   );
 }
 
-function ChecksPanel({ deviceId, shopId, status, brand, checks, onSaved }: { deviceId: string; shopId: string; status: DeviceStatus; brand: string; checks: CheckRow[]; onSaved: () => void }) {
+function ChecksPanel({ deviceId, shopId, status, brand, branch, checks, onSaved }: { deviceId: string; shopId: string; status: DeviceStatus; brand: string; branch: string | null; checks: CheckRow[]; onSaved: () => void }) {
   const { t } = useTranslation();
   // C2: بنود الفحص حسب الماركة، والأسماء اللي كتبها صاحب المحل بتتحفظ مع الفحص
-  const template = useDeviceTemplate(brand);
+  const template = useDeviceTemplate(brand, branch);
   const toast = useToast();
   const sync = useSync();
   const intake = checks.find((c) => c.stage === 'intake') ?? null;

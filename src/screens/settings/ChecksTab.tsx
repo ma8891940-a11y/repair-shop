@@ -5,9 +5,10 @@ import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
 import { BRANDS, BUILTIN_TEMPLATES, CHECK_ITEMS, EXTRA_ITEMS, customKey, normalizeTemplate, type BrandKey, type TemplateItem } from '../../lib/checks';
 import { move } from '../../lib/printTemplate';
-import { invalidateCheckTemplates, useCheckTemplates, useItemLabel } from '../../app/checkTemplates';
+import { customFor, invalidateCheckTemplates, useCheckTemplates, useItemLabel } from '../../app/checkTemplates';
+import { useBranch } from '../../app/branch';
 import { Panel, PanelHeader } from '../../ui/Panel';
-import { Input } from '../../ui/Field';
+import { Input, Select } from '../../ui/Field';
 import { Button } from '../../ui/Button';
 import { Alert, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
@@ -18,21 +19,25 @@ export function ChecksTab() {
   const { t } = useTranslation();
   const toast = useToast();
   const label = useItemLabel();
-  const { rows, custom, loading } = useCheckTemplates();
+  const { rows, loading } = useCheckTemplates();
+  const br = useBranch();
+  // فرع معيّن (قالبه بيكسب قالب المحل) أو '' = كل الفروع
+  const [branch, setBranch] = useState('');
+  const custom = customFor(rows ?? [], branch || null);
   const [brand, setBrand] = useState<BrandKey>('general');
   const [items, setItems] = useState<TemplateItem[]>(BUILTIN_TEMPLATES.general);
   const [extra, setExtra] = useState('');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const row = rows?.find((r) => r.brand === brand) ?? null;
+  const row = rows?.find((r) => r.brand === brand && (r.branch_id ?? '') === branch) ?? null;
   // لما الماركة تتغير أو القوالب توصل: القالب المتخزّن أو الجاهز
   const stored = JSON.stringify(custom[brand] ?? null);
   useEffect(() => {
     setItems(custom[brand] ?? BUILTIN_TEMPLATES[brand]);
     setErr(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, stored]);
+  }, [brand, stored, branch]);
 
   const used = new Set(items.map((i) => i.key));
   const available = [...CHECK_ITEMS, ...EXTRA_ITEMS].filter((k) => !used.has(k));
@@ -46,7 +51,7 @@ export function ChecksTab() {
     setBusy(true);
     const r = row
       ? await supabase.from('check_templates').update({ items: clean }).eq('id', row.id)
-      : await supabase.from('check_templates').insert({ id: crypto.randomUUID(), brand, items: clean });
+      : await supabase.from('check_templates').insert({ id: crypto.randomUUID(), brand, branch_id: branch || null, items: clean });
     setBusy(false);
     if (r.error) return setErr(errorMessage(r.error));
     invalidateCheckTemplates();
@@ -70,6 +75,19 @@ export function ChecksTab() {
       <PanelHeader title={t('settings.tabs.checks')} />
       <div className="flex flex-col gap-3 p-4">
         <p className="text-xs text-fg-3">{t('checksTpl.hint')}</p>
+        {br.multi && (
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-fg-2">{t('checksTpl.branch')}</span>
+            <Select value={branch} onChange={(e) => setBranch(e.target.value)} className="h-8 w-auto text-sm" aria-label={t('checksTpl.branch')} data-testid="tpl-branch">
+              <option value="">{t('checksTpl.allBranches')}</option>
+              {br.all.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
         <div className="flex flex-wrap gap-1" role="tablist" aria-label={t('checksTpl.brand')}>
           {BRANDS.map((b) => (
             <button

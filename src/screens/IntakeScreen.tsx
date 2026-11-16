@@ -29,6 +29,7 @@ import { QuickCheck } from '../ui/QuickCheck';
 import { SignaturePad } from '../ui/SignaturePad';
 import { PhoneUploadQR } from '../app/PhoneUploadQR';
 import { useDeviceTemplate } from '../app/checkTemplates';
+import { getBranchHeader } from '../lib/branchHeader';
 import { RoutingFields, type Routing } from '../app/tech/RoutingFields';
 import { shouldQueue, useSync } from '../offline/sync';
 import { localDb } from '../offline/outbox';
@@ -80,7 +81,7 @@ export function IntakeScreen() {
   const [custArea, setCustArea] = useState('');
   const [brand, setBrand] = useState('');
   // C2: بنود الفحص حسب ماركة الجهاز (قالب صاحب المحل أو الجاهز)
-  const checkTemplate = useDeviceTemplate(brand);
+  const checkTemplate = useDeviceTemplate(brand, getBranchHeader());
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
   const [deviceType, setDeviceType] = useState('');

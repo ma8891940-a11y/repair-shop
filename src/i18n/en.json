@@ -3328,7 +3328,9 @@
     "reset": "Restore default",
     "resetDone": "Default template restored",
     "empty": "At least one item is required",
-    "needName": "Every new item needs a name"
+    "needName": "Every new item needs a name",
+    "branch": "Template for",
+    "allBranches": "All branches (default)"
   },
   "master": {
     "title": "Master password",
@@ -3451,7 +3453,9 @@
     "add": "Add rule",
     "remove": "Remove rule",
     "badPercent": "Percent from 0.01 to 100",
-    "dup": "There is already a rule for this technician and fault type. Remove it first"
+    "dup": "There is already a rule for this technician and fault type. Remove it first",
+    "branch": "Branch",
+    "anyBranch": "All branches"
   },
   "insights": {
     "empty": "No data in this period",
@@ -3508,7 +3512,8 @@
     "turnOff": "Close the catalog",
     "pick": "Items shown",
     "noItems": "No items yet",
-    "noPrice": "No price"
+    "noPrice": "No price",
+    "allBranches": "All branches"
   },
   "portal": {
     "title": "Wholesale customer portal",
@@ -3546,7 +3551,9 @@
     "kind": "Entry",
     "debit": "Charged",
     "credit": "Paid",
-    "after": "Balance"
+    "after": "Balance",
+    "allBranches": "All branches",
+    "branch": "Portal branch"
   },
   "telegram": {
     "title": "Telegram notifications",

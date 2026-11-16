@@ -7,6 +7,7 @@ export type CustomTemplates = Partial<Record<BrandKey, TemplateItem[]>>;
 interface Row {
   id: string;
   brand: BrandKey;
+  branch_id: string | null;
   items: unknown;
 }
 
@@ -15,7 +16,7 @@ let cache: { rows: Row[] } | null = null;
 const listeners = new Set<() => void>();
 
 async function fetchRows(): Promise<Row[]> {
-  const { data, error } = await supabase.from('check_templates').select('id, brand, items').is('deleted_at', null);
+  const { data, error } = await supabase.from('check_templates').select('id, brand, branch_id, items').is('deleted_at', null);
   if (error) throw error;
   return (data ?? []) as Row[];
 }
@@ -44,14 +45,21 @@ export function useCheckTemplates() {
       listeners.delete(load);
     };
   }, [load]);
-  const custom: CustomTemplates = Object.fromEntries((rows ?? []).map((r) => [r.brand, normalizeTemplate(r.items)]));
-  return { rows, custom, loading: rows === null };
+  return { rows, custom: customFor(rows ?? [], null), loading: rows === null };
 }
 
-/** قالب الفحص لجهاز بماركته */
-export function useDeviceTemplate(brand: string | null | undefined): TemplateItem[] {
-  const { custom } = useCheckTemplates();
-  return templateFor(brand, custom);
+/** قوالب فرع: قالب الفرع بيكسب قالب المحل، والماركات التانية بالجاهز */
+export function customFor(rows: Row[], branch: string | null | undefined): CustomTemplates {
+  const out: CustomTemplates = {};
+  for (const r of rows) if (!r.branch_id) out[r.brand] = normalizeTemplate(r.items);
+  if (branch) for (const r of rows) if (r.branch_id === branch) out[r.brand] = normalizeTemplate(r.items);
+  return out;
+}
+
+/** قالب الفحص لجهاز بماركته وفرعه */
+export function useDeviceTemplate(brand: string | null | undefined, branch?: string | null): TemplateItem[] {
+  const { rows } = useCheckTemplates();
+  return templateFor(brand, customFor(rows ?? [], branch));
 }
 
 /** اسم البند: اللي كتبه صاحب المحل، أو المحفوظ مع الفحص، أو اسم البند الجاهز */

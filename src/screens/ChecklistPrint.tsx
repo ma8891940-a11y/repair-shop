@@ -41,7 +41,7 @@ export function ChecklistPrint() {
     const checks = (must(await supabase.from('device_checks').select('stage, items, labels, created_at, updated_at').eq('device_id', id).is('deleted_at', null)) ?? []) as CheckRow[];
     return { d, intake: checks.find((c) => c.stage === 'intake') ?? null, delivery: checks.find((c) => c.stage === 'delivery') ?? null };
   }, [id]);
-  const template = useDeviceTemplate(data?.d.brand);
+  const template = useDeviceTemplate(data?.d.brand, (data?.d as { branch_id?: string | null } | undefined)?.branch_id);
   const ready = !!data && !branding.loading;
   useEffect(() => {
     if (!ready) return;

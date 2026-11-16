@@ -9,6 +9,7 @@ import { toLatinDigits } from '../../lib/digits';
 import { useLoad } from '../useLoad';
 import { useRouteName } from './names';
 import { useMe } from '../auth';
+import { useBranch } from '../branch';
 import { opId, rpc } from '../ledgerApi';
 import { ExportMenu } from '../exporting';
 import { useFormat } from '../../i18n/format';
@@ -35,10 +36,12 @@ export function CommissionsPanel({ from, to, periodLine }: { from: Date; to: Dat
   const { t } = useTranslation();
   const f = useFormat();
   const { shop } = useMe();
+  const br = useBranch();
   const [op, setOp] = useState<{ row: Row; kind: 'bonus' | 'penalty' } | null>(null);
+  // الفرع المعروض (null = كل الفروع): العمولات بتتقيّد في فرع الجهاز
   const { data, error, reload } = useLoad(
     async () =>
-      (((await rpc('commissions_report', { p_from: from.toISOString(), p_to: to.toISOString() })) ?? []) as Row[]).map((r) => ({
+      (((await rpc('commissions_report', { p_from: from.toISOString(), p_to: to.toISOString(), p_branch: br.filter })) ?? []) as Row[]).map((r) => ({
         ...r,
         devices: Number(r.devices),
         commission: Number(r.commission),
@@ -47,10 +50,10 @@ export function CommissionsPanel({ from, to, periodLine }: { from: Date; to: Dat
         paid: Number(r.paid),
         balance: Number(r.balance),
       })),
-    [from.getTime(), to.getTime()],
+    [from.getTime(), to.getTime(), br.filter],
   );
   const cur = f.currency(shop.currency);
-  const title = t('comm.title');
+  const title = br.multi && br.filter ? `${t('comm.title')} · ${br.name(br.filter)}` : t('comm.title');
   return (
     <Panel className="break-inside-avoid overflow-hidden" data-testid="report-commissions">
       <PanelHeader
@@ -201,6 +204,7 @@ interface Rule {
   id: string;
   technician_id: string | null;
   route_id: string | null;
+  branch_id: string | null;
   mode: 'percent' | 'fixed';
   value: number;
 }
@@ -213,7 +217,7 @@ export function CommissionRulesPanel() {
   const { shop } = useMe();
   const { data, error, reload } = useLoad(async () => {
     const [rules, techs, routes] = await Promise.all([
-      supabase.from('commission_rules').select('id, technician_id, route_id, mode, value').is('deleted_at', null).order('created_at'),
+      supabase.from('commission_rules').select('id, technician_id, route_id, branch_id, mode, value').is('deleted_at', null).order('created_at'),
       supabase.from('profiles').select('id, full_name').eq('role', 'technician').is('deleted_at', null).order('full_name'),
       supabase.from('routes').select('id, code, name').is('deleted_at', null).order('created_at'),
     ]);
@@ -224,8 +228,10 @@ export function CommissionRulesPanel() {
       routes: (routes.data ?? []) as { id: string; code: string | null; name: string | null }[],
     };
   }, []);
+  const br = useBranch();
   const [tech, setTech] = useState('');
   const [route, setRoute] = useState('');
+  const [branch, setBranch] = useState('');
   const [mode, setMode] = useState<'percent' | 'fixed'>('percent');
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -248,7 +254,7 @@ export function CommissionRulesPanel() {
     } else v = parsePounds(value);
     if (!v || v <= 0) return setErr(mode === 'percent' ? t('comm.badPercent') : t('comm.needAmount'));
     setBusy(true);
-    const r = await supabase.from('commission_rules').insert({ id: crypto.randomUUID(), technician_id: tech || null, route_id: route || null, mode, value: v });
+    const r = await supabase.from('commission_rules').insert({ id: crypto.randomUUID(), technician_id: tech || null, route_id: route || null, branch_id: branch || null, mode, value: v });
     setBusy(false);
     if (r.error) return setErr(/duplicate|unique/i.test(r.error.message) ? t('comm.dup') : errorMessage(r.error));
     setValue('');
@@ -280,6 +286,7 @@ export function CommissionRulesPanel() {
                   <li key={r.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm" data-testid="comm-rule">
                     <span className="min-w-0 truncate text-fg">
                       {techName(r.technician_id)} · {routeName(r.route_id)}
+                      {br.multi && ` · ${r.branch_id ? br.name(r.branch_id) : t('comm.anyBranch')}`}
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="num text-fg">{show(r)}</span>
@@ -312,6 +319,18 @@ export function CommissionRulesPanel() {
                   ))}
                 </Select>
               </Field>
+              {br.multi && (
+                <Field label={t('comm.branch')}>
+                  <Select value={branch} onChange={(e) => setBranch(e.target.value)} data-testid="comm-branch">
+                    <option value="">{t('comm.anyBranch')}</option>
+                    {br.all.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
               <Field label={t('comm.mode')}>
                 <Select value={mode} onChange={(e) => setMode(e.target.value as 'percent' | 'fixed')} data-testid="comm-mode">
                   <option value="percent">{t('comm.percent')}</option>

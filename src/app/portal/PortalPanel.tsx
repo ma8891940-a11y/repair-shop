@@ -6,6 +6,7 @@ import { errorMessage } from '../../lib/errors';
 import { appBase } from '../../lib/publicUrl';
 import { waLink } from '../../lib/messages';
 import { useMe } from '../auth';
+import { useBranch } from '../branch';
 import { useLoad } from '../useLoad';
 import { rpc } from '../ledgerApi';
 import { useFormat } from '../../i18n/format';
@@ -31,22 +32,26 @@ export function PortalPanel({ customerId, phone }: { customerId: string; phone: 
   const { t } = useTranslation();
   const f = useFormat();
   const toast = useToast();
-  const { shop } = useMe();
+  const { shop, profile } = useMe();
+  const br = useBranch();
+  // صاحب المحل في محل فروع: البوابة لفرع معيّن (كشف حساب الفرع وطلبياته) أو لكل الفروع. الموظف: فرعه بس (من القاعدة)
+  const [branch, setBranch] = useState<string>(br.filter ?? '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const { data, reload } = useLoad(async () => {
     const [c, o] = await Promise.all([
-      supabase.from('customers').select('portal_token').eq('id', customerId).maybeSingle(),
+      supabase.from('customers').select('portal_token, portal_branch').eq('id', customerId).maybeSingle(),
       supabase.from('wholesale_orders').select('id, created_at, status, note, lines').eq('customer_id', customerId).is('deleted_at', null).order('created_at', { ascending: false }).limit(20),
     ]);
-    return { token: (c.data as { portal_token: string | null } | null)?.portal_token ?? null, orders: (o.data ?? []) as Order[] };
+    const row = c.data as { portal_token: string | null; portal_branch: string | null } | null;
+    return { token: row?.portal_token ?? null, branch: row?.portal_branch ?? null, orders: (o.data ?? []) as Order[] };
   }, [customerId]);
   const url = data?.token ? portalUrl(appBase(shop.extras, window.location.href), data.token) : null;
   async function toggle(on: boolean) {
     setErr(null);
     setBusy(true);
     try {
-      await rpc('set_portal', { p_customer: customerId, p_on: on });
+      await rpc('set_portal', { p_customer: customerId, p_on: on, p_branch: branch || null });
       reload();
     } catch (e) {
       setErr(errorMessage(e));
@@ -69,6 +74,7 @@ export function PortalPanel({ customerId, phone }: { customerId: string; phone: 
           <Skeleton className="h-16 w-full" />
         ) : url ? (
           <div className="flex flex-wrap items-center gap-2">
+            {br.multi && <span className="w-full text-xs text-fg-2" data-testid="portal-branch">{data.branch ? br.name(data.branch) : t('portal.allBranches')}</span>}
             <Input readOnly value={url} dir="ltr" className="min-w-0 flex-1 text-xs" aria-label={t('portal.link')} data-testid="portal-link" />
             <Button size="sm" onClick={() => void navigator.clipboard?.writeText(url).then(() => toast({ tone: 'ok', title: t('catalog.copied') }))} icon={<Copy className="size-3.5" />}>
               {t('catalog.copy')}
@@ -83,9 +89,21 @@ export function PortalPanel({ customerId, phone }: { customerId: string; phone: 
             </Button>
           </div>
         ) : (
-          <Button variant="secondary" loading={busy} onClick={() => void toggle(true)} icon={<Store className="size-4" />} className="self-start" data-testid="portal-on">
-            {t('portal.on')}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {br.multi && profile.role === 'owner' && (
+              <Select value={branch} onChange={(e) => setBranch(e.target.value)} className="h-9 w-auto text-sm" aria-label={t('portal.branch')} data-testid="portal-branch-pick">
+                <option value="">{t('portal.allBranches')}</option>
+                {br.all.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+            <Button variant="secondary" loading={busy} onClick={() => void toggle(true)} icon={<Store className="size-4" />} data-testid="portal-on">
+              {t('portal.on')}
+            </Button>
+          </div>
         )}
         {err && <Alert tone="danger">{err}</Alert>}
         {data && data.orders.length > 0 && (
