@@ -18,6 +18,13 @@ grant execute on all functions in schema auth to anon, authenticated;
 -- نسخة مصغّرة من جدول 2FA في Supabase Auth (C3)
 create table auth.mfa_factors (id uuid primary key default gen_random_uuid(), user_id uuid not null, factor_type text not null default 'totp', status text not null default 'unverified');
 
+-- نسخة مصغّرة من pg_net (C8): الطلبات بتتسجل في جدول بدل ما تتبعت
+create schema if not exists extensions;
+create schema net;
+create table net.test_requests (id bigserial primary key, url text, body jsonb, headers jsonb, created_at timestamptz default now());
+create function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 5000) returns bigint
+language sql as $$ insert into net.test_requests(url, body, headers) values (url, body, headers) returning id $$;
+
 create schema storage;
 create table storage.buckets (id text primary key, name text, public boolean,
   file_size_limit bigint, allowed_mime_types text[]);

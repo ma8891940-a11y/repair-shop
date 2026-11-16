@@ -18,7 +18,7 @@ export const PHOTO_BUCKET = 'device-photos';
  * C1: عميل Supabase مؤقت للصفحات العامة اللي بتشتغل بـ token (رفع صور الاستلام من الموبايل، وصور صفحة التتبع).
  * الـ token بيتبعت في header، وسياسات Storage في القاعدة هي اللي بتتأكد منه. من غير جلسة دخول.
  */
-export function tokenClient(header: 'x-upload-token' | 'x-track-token', token: string): SupabaseClient {
+export function tokenClient(header: 'x-upload-token' | 'x-track-token' | 'x-catalog-token', token: string): SupabaseClient {
   return createClient(url!, anonKey!, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: `tok-${header}` },
     global: { headers: { [header]: token } },

@@ -21,6 +21,7 @@ import { ErrorState, Skeleton } from '../ui/Feedback';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
 import type { ExportTable } from '../lib/xlsx';
+import { RepairInsights } from '../app/analytics/RepairInsights';
 
 type Metric = 'revenue' | 'profit' | 'margin' | 'avgInvoice' | 'avgRepair' | 'returnRate' | 'expenseRatio' | 'turnover' | 'staleShare' | 'devices_in';
 const METRICS: Metric[] = ['revenue', 'profit', 'margin', 'devices_in', 'avgInvoice', 'avgRepair', 'returnRate', 'expenseRatio', 'turnover', 'staleShare'];
@@ -204,6 +205,8 @@ export function AnalyticsScreen() {
               {!data.stale.length && data.all.receivables_60 <= 0 && <li className="px-3 py-2 text-xs text-fg-3">{t('analytics.noRecos')}</li>}
             </ul>
           </Panel>
+          {/* C6: تحليلات الصيانة والمخزون */}
+          <RepairInsights from={range.from} to={range.to} branch={br.filter} owner={owner} />
           <p className="mt-2 text-xs text-fg-3">{t('analytics.hint')}</p>
         </>
       )}

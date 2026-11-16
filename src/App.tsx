@@ -26,9 +26,11 @@ const RegisterWizard = lazyScreen(() => import('./screens/auth/RegisterWizard').
 const JoinScreen = lazyScreen(() => import('./screens/auth/JoinScreen').then((m) => m.JoinScreen));
 const TrackingScreen = lazyScreen(() => import('./screens/TrackingScreen').then((m) => m.TrackingScreen));
 const MfaScreen = lazyScreen(() => import('./screens/auth/MfaScreen').then((m) => m.MfaScreen));
+const PortalScreen = lazyScreen(() => import('./screens/PortalScreen').then((m) => m.PortalScreen));
+const CatalogScreen = lazyScreen(() => import('./screens/CatalogScreen').then((m) => m.CatalogScreen));
 const PhoneUploadScreen = lazyScreen(() => import('./screens/PhoneUploadScreen').then((m) => m.PhoneUploadScreen));
-/** الصفحات العامة: التتبع، ورفع صور الاستلام من الموبايل (C1) */
-const isPublicPath = (p: string) => p === '/t' || p.startsWith('/t/') || p.startsWith('/up/');
+/** الصفحات العامة: التتبع، ورفع صور الاستلام من الموبايل (C1)، والكتالوج (C8) */
+const isPublicPath = (p: string) => p === '/t' || p.startsWith('/t/') || p.startsWith('/up/') || p.startsWith('/c/') || p.startsWith('/w/');
 const DashboardScreen = lazyScreen(() => import('./screens/DashboardScreen').then((m) => m.DashboardScreen));
 const IntakeScreen = lazyScreen(() => import('./screens/IntakeScreen').then((m) => m.IntakeScreen));
 const DeviceDetailScreen = lazyScreen(() => import('./screens/DeviceDetailScreen').then((m) => m.DeviceDetailScreen));
@@ -130,6 +132,8 @@ function Gate() {
         <Route path="/t" element={<TrackingScreen key="form" />} />
         <Route path="/t/:token" element={<TrackingScreen key="token" />} />
         <Route path="/up/:token" element={<PhoneUploadScreen />} />
+        <Route path="/c/:token" element={<CatalogScreen />} />
+        <Route path="/w/:token" element={<PortalScreen />} />
       </Routes>
     );
   }

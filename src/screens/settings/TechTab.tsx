@@ -13,6 +13,7 @@ import { Checkbox } from '../../ui/Checkbox';
 import { Field, Input, Select } from '../../ui/Field';
 import { Alert, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
+import { CommissionRulesPanel } from '../../app/tech/CommissionsPanel';
 
 interface Spec {
   id: string;
@@ -65,6 +66,7 @@ export function TechTab() {
   if (loading || !data) return <Skeleton className="h-48 w-full" />;
   return (
     <div className="flex flex-col gap-4">
+      <CommissionRulesPanel />
       <Panel>
         <PanelHeader title={t('techSettings.staff')} />
         <div className="overflow-x-auto p-4">

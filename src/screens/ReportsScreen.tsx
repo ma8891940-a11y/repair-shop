@@ -17,6 +17,7 @@ import { ExportMenu } from '../app/exporting';
 import type { ExportTable } from '../lib/xlsx';
 import { AssistBox } from '../app/assist';
 import { anonymizeRows } from '../lib/assistPayloads';
+import { CommissionsPanel } from '../app/tech/CommissionsPanel';
 
 interface TechRow {
   tech_id: string;
@@ -115,6 +116,8 @@ export function ReportsScreen() {
         <Skeleton className="h-64 w-full" />
       ) : (
         <div className="flex flex-col gap-4">
+          {/* C5: عمولات الفنيين (صاحب المحل بس) */}
+          {profile.role === 'owner' && <CommissionsPanel from={range.from} to={range.to} periodLine={periodLine} />}
           {(() => {
             // ملخص مكتوب: أسماء الفنيين بتتشفّر (فني 1، فني 2) وبترجع في الرد، والأرقام بس
             const tech = anonymizeRows(

@@ -27,6 +27,7 @@ import { DeleteDialog } from '../app/DeleteDialog';
 import { useCanCorrect } from '../app/correct';
 import { ExportMenu } from '../app/exporting';
 import { useSensitiveNames } from '../app/assist';
+import { PortalPanel } from '../app/portal/PortalPanel';
 
 interface CustomerRow {
   id: string;
@@ -273,6 +274,8 @@ export function CustomerProfileScreen() {
         </div>
         <Checkbox className="mt-3" checked={c.marketing_ok} onChange={(v) => void update({ marketing_ok: v })} label={t('customers.marketing')} />
       </Panel>
+      {/* C8: بوابة عميل الجملة (اختياري) */}
+      <PortalPanel customerId={c.id} phone={c.phone} />
       <Panel>
         <PanelHeader title={t('customers.history')} />
         <ul className="divide-y divide-glass-border">

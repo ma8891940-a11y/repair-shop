@@ -55,6 +55,8 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
         : confirmedNoProfile
           ? Math.max(2, draft?.step ?? 2)
           : Math.max(first, draft?.step ?? first);
+  // C7: بيانات تجريبية في آخر خطوة (اختياري)
+  const [demo, setDemo] = useState(false);
   const [step, setStep] = useState(resumeAt);
   // U1: شكل الشغل
   const [layout, setLayout] = useState<'single' | 'multi'>('single');
@@ -256,6 +258,11 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
           .update({ theme, setup_completed_at: new Date().toISOString() })
           .eq('id', id);
         if (ue) return fail(ue);
+        // C7: بيانات تجريبية (اختياري): المحل لسه فاضي، فبتتحمّل وبتتمسح بعدين من الإعدادات
+        if (demo) {
+          const { error: de } = await supabase.rpc('load_demo');
+          if (de) toast({ tone: 'warn', title: errorMessage(de) });
+        }
         saveDraft(null);
         toast({ tone: 'ok', title: t('register.doneTitle'), description: t('register.doneText') });
         await refresh();
@@ -630,6 +637,15 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
 
                 {key === 'brand' && (
                   <>
+                    {mode === 'shop' && (
+                      <label className="flex items-start gap-2 rounded-md border border-glass-border p-3 text-sm" data-testid="register-demo">
+                        <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} className="mt-0.5 size-4 accent-[var(--accent)]" />
+                        <span>
+                          <span className="font-medium text-fg">{t('demo.try')}</span>
+                          <span className="block text-xs text-fg-3">{t('demo.tryHint')}</span>
+                        </span>
+                      </label>
+                    )}
                     <div>
                       <div className="mb-2 text-sm font-medium text-fg-2">{t('register.theme')}</div>
                       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('register.theme')}>

@@ -12,6 +12,7 @@ import { Field, Input } from '../../ui/Field';
 import { Alert } from '../../ui/Feedback';
 import { Dialog } from '../../ui/Dialog';
 import { useToast } from '../../ui/Toast';
+import { DemoPanel } from './DemoPanel';
 
 function save(name: string, text: string) {
   const a = document.createElement('a');
@@ -91,6 +92,7 @@ export function BackupTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <DemoPanel />
       <Panel>
         <PanelHeader title={t('backup.export')} />
         <div className="flex flex-col gap-3 p-4">
