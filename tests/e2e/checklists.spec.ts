@@ -19,6 +19,8 @@ test('C2: قالب فحص Samsung فيه بند جديد ← الجهاز بيا
   await page.goto('/#/settings');
   await page.getByRole('tab', { name: 'قوايم الفحص' }).click();
   await page.getByTestId('tpl-brand-samsung').click();
+  // (بنستنى قالب Samsung نفسه يترسم قبل ما نعد)
+  await expect(page.getByTestId('tpl-items')).toContainText('S Pen');
   const before = await page.getByTestId('tpl-item').count();
   await page.getByTestId('tpl-new').fill('فتحة الكارت');
   await page.getByTestId('tpl-new-add').click();
