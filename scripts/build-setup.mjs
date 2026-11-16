@@ -20,4 +20,8 @@ export function buildSetup(root = process.cwd()) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   writeFileSync(join(process.cwd(), 'supabase', 'setup_all.sql'), buildSetup());
   console.log('supabase/setup_all.sql');
+  // ترقية مشروع شغّال (بيشوف الموجود ويشغّل الناقص بس)
+  const { buildUpgrade } = await import('./build-upgrade.mjs');
+  writeFileSync(join(process.cwd(), 'supabase', 'upgrade_existing.sql'), buildUpgrade());
+  console.log('supabase/upgrade_existing.sql');
 }

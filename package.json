@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "db:setup-file": "node scripts/build-setup.mjs",
     "setup:assistant": "node scripts/setup-assistant.mjs",
-    "perf:splash": "node scripts/perf-splash.cjs"
+    "perf:splash": "node scripts/perf-splash.cjs",
+    "test:upgrade": "bash scripts/test-upgrade.sh"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
