@@ -25,6 +25,7 @@ const AppShell = lazyScreen(() => import('./app/AppShell').then((m) => m.AppShel
 const RegisterWizard = lazyScreen(() => import('./screens/auth/RegisterWizard').then((m) => m.RegisterWizard));
 const JoinScreen = lazyScreen(() => import('./screens/auth/JoinScreen').then((m) => m.JoinScreen));
 const TrackingScreen = lazyScreen(() => import('./screens/TrackingScreen').then((m) => m.TrackingScreen));
+const MfaScreen = lazyScreen(() => import('./screens/auth/MfaScreen').then((m) => m.MfaScreen));
 const PhoneUploadScreen = lazyScreen(() => import('./screens/PhoneUploadScreen').then((m) => m.PhoneUploadScreen));
 /** الصفحات العامة: التتبع، ورفع صور الاستلام من الموبايل (C1) */
 const isPublicPath = (p: string) => p === '/t' || p.startsWith('/t/') || p.startsWith('/up/');
@@ -119,7 +120,7 @@ function Suspended() {
 }
 
 function Gate() {
-  const { loading, session, profile, shop, suspended, isAdmin } = useAuth();
+  const { loading, session, profile, shop, suspended, isAdmin, mfaNeeded } = useAuth();
   const location = useLocation();
   // صفحة تتبع العميل: عامة، بتشتغل بتسجيل دخول أو من غيره
   if (isPublicPath(location.pathname)) {
@@ -132,6 +133,8 @@ function Gate() {
     );
   }
   if (loading) return null;
+  // C3: الخطوة التانية من 2FA قبل أي حاجة
+  if (session && mfaNeeded) return <MfaScreen />;
 
   // المعالج بيفضل في نفس المكان من الشجرة طول الخطوات، فحالته ما بتضيعش وقت تأكيد الإيميل
   const joinPath = !session && location.pathname === '/join';

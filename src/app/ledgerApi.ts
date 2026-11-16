@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { BRANCH_HEADER, getBranchHeader } from '../lib/branchHeader';
 import type { SourceType } from '../lib/ledger';
 import { useBranch } from './branch';
+import { withMaster } from './masterAsk';
 
 export interface Cashbox {
   id: string;
@@ -117,11 +118,14 @@ export async function rpc<T>(fn: string, args: Record<string, unknown> = {}, o: 
   // خزنة فاضية (القايمة لسه ما وصلتش): رسالة واضحة بدل خطأ 400 من السيرفر
   if (args.p_cashbox === '') throw { message: 'E_BAD_ACCOUNT', code: 'P0001' };
   const b = o.branch ?? (typeof args.p_cashbox === 'string' ? cashboxBranch.get(args.p_cashbox) : undefined);
-  let q = supabase.rpc(fn, args);
-  if (b && getBranchHeader()) q = q.setHeader(BRANCH_HEADER, b);
-  const { data, error } = await q;
-  if (error) throw error;
-  return data as T;
+  // C3: لو العملية محتاجة كلمة السر الرئيسية، بتتسأل وبتتعاد مرة واحدة
+  return withMaster(async () => {
+    let q = supabase.rpc(fn, args);
+    if (b && getBranchHeader()) q = q.setHeader(BRANCH_HEADER, b);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data as T;
+  });
 }
 
 /** id جديد لكل عملية من التطبيق (نفس العملية لو اتبعتت مرتين ما تتسجلش مرتين) */

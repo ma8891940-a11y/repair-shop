@@ -23,6 +23,7 @@ import { nextStatusesFor, type DeviceStatus } from '../lib/status';
 import { errorMessage } from '../lib/errors';
 import { PhoneUploadQR } from '../app/PhoneUploadQR';
 import { SignaturePad } from '../ui/SignaturePad';
+import { withMasterResult } from '../app/masterAsk';
 import { useDeviceTemplate } from '../app/checkTemplates';
 import { formatPounds, parsePounds } from '../lib/money';
 import { MAX_PHOTOS, signedPhotoUrls, uploadDevicePhoto } from '../lib/photos';
@@ -547,9 +548,7 @@ function CostPanel({ deviceId, shopId, cost, currency, onSaved }: { deviceId: st
       toast({ tone: 'warn', title: t('sync.queued') });
     };
     if (!navigator.onLine) return queueIt();
-    const r = cost
-      ? await supabase.from('device_costs').update({ estimated_cost: a, final_cost: b }).eq('id', cost.id)
-      : await supabase.from('device_costs').insert(row);
+    const r = await withMasterResult(() => (cost ? supabase.from('device_costs').update({ estimated_cost: a, final_cost: b }).eq('id', cost.id) : supabase.from('device_costs').insert(row)));
     if (r.error && shouldQueue(r.error)) return queueIt();
     setBusy(false);
     if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });

@@ -29,6 +29,7 @@ import { usePerms } from './perms';
 import { useBranch } from './branch';
 import { supabase } from '../lib/supabase';
 import { cn } from '../ui/cn';
+import { MasterPrompt } from './master';
 
 /** الاتصال اللحظي (Realtime) للمحل كله: أي شاشة تقدر تسمع للتغييرات */
 type Listener = () => void;
@@ -290,6 +291,7 @@ export function AppShell() {
         {profile.role !== 'marketing' && <ScreenAssist placement="float" />}
         <LeaveGuardHost />
         <ShortcutsDialog open={help} onOpenChange={setHelp} shortcuts={keys} />
+        <MasterPrompt />
         <CommandPalette open={palette} onOpenChange={setPalette} commands={commands} showCustomer={front} onOpenDevice={(id) => navigate(`/devices/${id}`)} />
       </div>
     </LiveCtx.Provider>

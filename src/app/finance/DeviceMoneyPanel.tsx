@@ -25,6 +25,7 @@ import { Field, Input, Select } from '../../ui/Field';
 import { Alert, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 import { cn } from '../../ui/cn';
+import { withMasterResult } from '../masterAsk';
 
 /** فلوس الجهاز (صاحب المحل والاستقبال): التكلفة، والمدفوع، والباقي، والدفعات، والتسليم بالآجل */
 export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCost, version = 0, branchId, onChanged }: { deviceId: string; customer: { id: string; name: string } | null; orderNo: string; status: DeviceStatus; finalCost: number | null | undefined; version?: number; branchId?: string; onChanged: () => void }) {
@@ -178,9 +179,10 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
 /** حاسبة التسعير: القطع + المصنعية + نسبة ربح، وزرار يحط السعر كتكلفة نهائية */
 async function applyFinal(deviceId: string, price: number, okTitle: string, toast: ReturnType<typeof useToast>, onApplied: () => void) {
   const { data: row } = await supabase.from('device_costs').select('id').eq('device_id', deviceId).maybeSingle();
-  const r = row
-    ? await supabase.from('device_costs').update({ final_cost: price }).eq('id', row.id)
-    : await supabase.from('device_costs').insert({ id: crypto.randomUUID(), device_id: deviceId, final_cost: price });
+  const newId = crypto.randomUUID();
+  const r = await withMasterResult(() =>
+    row ? supabase.from('device_costs').update({ final_cost: price }).eq('id', row.id) : supabase.from('device_costs').insert({ id: newId, device_id: deviceId, final_cost: price }),
+  );
   if (r.error) return toast({ tone: 'danger', title: errorMessage(r.error) });
   toast({ tone: 'ok', title: okTitle });
   onApplied();

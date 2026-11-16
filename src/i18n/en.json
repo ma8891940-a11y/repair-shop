@@ -522,7 +522,11 @@
       "E_SETTLED": "This sale was already settled (its cost was recorded after selling without stock), so it can't be reversed. Record a customer return instead",
       "E_UPLOAD_EXPIRED": "The photo upload link expired. Open a new QR",
       "E_DELIVERED": "The device was already delivered",
-      "E_NOT_DELIVERED": "This signature is taken after delivery"
+      "E_NOT_DELIVERED": "This signature is taken after delivery",
+      "E_MASTER_REQUIRED": "This action needs the master password",
+      "E_MASTER_WRONG": "Wrong master password",
+      "E_MASTER_LOCKED": "Too many wrong attempts. Wait 15 minutes and try again",
+      "E_MASTER_SHORT": "The master password needs at least 6 characters"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -748,7 +752,10 @@
       "printers": "Printer",
       "print_templates": "Print template",
       "photo_upload_sessions": "Photo upload sessions",
-      "check_templates": "Check templates"
+      "check_templates": "Check templates",
+      "shop_secrets": "Shop secrets",
+      "master_unlocks": "Password unlocks",
+      "master_attempts": "Password attempts"
     },
     "actions": {
       "insert": "add",
@@ -771,7 +778,9 @@
       "reverse_entry": "entry reversed",
       "set_can_correct": "correction permission",
       "sync_conflict": "sync conflict",
-      "_other": "action"
+      "_other": "action",
+      "master_set": "set the master password",
+      "master_removed": "removed the master password"
     },
     "fields": {
       "status": "status",
@@ -941,7 +950,8 @@
       "alerts": "Alerts",
       "app": "My app",
       "printers": "Printers & print designer",
-      "checks": "Check lists"
+      "checks": "Check lists",
+      "security": "Security"
     },
     "shopSec": "Shop details",
     "shopHint": "Shown on receipts, invoices and the customer tracking page.",
@@ -3290,5 +3300,42 @@
     "resetDone": "Default template restored",
     "empty": "At least one item is required",
     "needName": "Every new item needs a name"
+  },
+  "master": {
+    "title": "Master password",
+    "ask": "This is a sensitive action. The shop owner enters the master password (it unlocks these actions for 5 minutes on this device)",
+    "label": "Master password",
+    "unlock": "Unlock",
+    "wrong": "Wrong password",
+    "hint": "Optional. If set, reversals, money edits, deletes and big discounts need this password, even from you. Nobody can read it, not even you.",
+    "on": "On",
+    "off": "Off",
+    "current": "Current password",
+    "new": "New password",
+    "repeat": "Repeat it",
+    "short": "At least 6 characters",
+    "mismatch": "The two passwords do not match",
+    "set": "Set password",
+    "change": "Change password",
+    "remove": "Remove password",
+    "saved": "Master password saved",
+    "removed": "Master password removed"
+  },
+  "mfa": {
+    "title": "Two-step verification",
+    "sub": "Enter the 6-digit code shown in the authenticator app on your phone",
+    "code": "Verification code",
+    "verify": "Verify",
+    "wrong": "Wrong or expired code, enter the new one",
+    "other": "Sign out and use another account",
+    "settingsTitle": "Two-step verification (2FA)",
+    "hint": "Optional and free. After the password, sign-in asks for a code from an app like Google Authenticator or Microsoft Authenticator. A stolen password alone cannot open the shop data.",
+    "enable": "Turn on two-step verification",
+    "disable": "Turn off two-step verification",
+    "scan": "Scan this code with the authenticator app on your phone, then enter the 6 digits it shows",
+    "qr": "Setup code",
+    "manual": "Or type this key in the app:",
+    "enabled": "Two-step verification is on",
+    "disabled": "Two-step verification is off"
   }
 }

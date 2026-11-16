@@ -15,6 +15,8 @@ interface AuthState {
   isAdmin: boolean;
   /** المحل موقوف من المشرف */
   suspended: boolean;
+  /** C3: الحساب مفعّل عليه 2FA والدخول لسه ما عدّاش الخطوة التانية */
+  mfaNeeded: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -56,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(mayHaveSessionNow);
   const [isAdmin, setIsAdmin] = useState(false);
   const [suspended, setSuspended] = useState(false);
+  const [mfaNeeded, setMfaNeeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (s: Session | null) => {
@@ -65,6 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setShop(null);
       setIsAdmin(false);
       setSuspended(false);
+      setMfaNeeded(false);
+      setLoading(false);
+      return;
+    }
+    // C3: 2FA: لو الحساب عليه تطبيق تحقق والجلسة لسه aal1، الخطوة التانية الأول (قاعدة البيانات نفسها مش هتفتح البيانات من غيرها)
+    const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel().catch(() => null);
+    const needs = aal?.data?.nextLevel === 'aal2' && aal.data.currentLevel !== 'aal2';
+    setMfaNeeded(needs);
+    if (needs) {
+      setProfile(null);
+      setShop(null);
       setLoading(false);
       return;
     }
@@ -121,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'MFA_CHALLENGE_VERIFIED') {
         // خارج callback المصادقة عشان ما يحصلش قفل
         setTimeout(() => void load(s), 0);
       }
@@ -148,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await endSession();
   }, []);
 
-  return <Ctx.Provider value={{ loading, session, profile, shop, error, isAdmin, suspended, refresh, signOut }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ loading, session, profile, shop, error, isAdmin, suspended, mfaNeeded, refresh, signOut }}>{children}</Ctx.Provider>;
 }
 
 /** مفاتيح جلسة Supabase المحفوظة على الجهاز */
