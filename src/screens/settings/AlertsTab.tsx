@@ -10,6 +10,7 @@ import { Button } from "../../ui/Button";
 import { Alert } from "../../ui/Feedback";
 import { useToast } from "../../ui/Toast";
 import { TelegramPanel } from "./TelegramPanel";
+import { PushPanel } from "./PushPanel";
 
 export function readReminderDays(extras: unknown): number {
   const r =
@@ -80,6 +81,7 @@ export function AlertsTab() {
           {err && <Alert tone="danger">{err}</Alert>}
         </div>
       </Panel>
+      <PushPanel />
       <TelegramPanel />
     </div>
   );

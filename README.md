@@ -272,7 +272,7 @@ npm run preview
 
 **الطريقة اليدوية:**
 لو المشروع اتعمل بنسخة قديمة من `setup_all.sql`، شغّل في **SQL Editor** ملفات `supabase\migrations` **الجديدة بس**، واحد واحد بالترتيب.
-مثلًا: لو آخر ملف اتشغّل عندك `0016`، شغّل `0017_growth.sql` وبعده `0018_account_state.sql` وبعده `0019_extras.sql` وبعده `0020_admin_paging.sql` وبعده `0021_spec_rules.sql` وبعده `0022_security_review.sql` وبعده `0023_restore.sql` وبعده `0024_signout.sql` وبعده `0025_integrity.sql` وبعده `0026_edit_delete.sql` وبعده `0027_inventory.sql` وبعده `0028_opening.sql` وبعده `0029_partners.sql` وبعده `0030_party_links.sql` وبعده `0031_partner_capital.sql` وبعده `0032_lists.sql` وبعده `0033_assistant.sql` وبعده `0034_branches.sql` وبعده `0035_lists_everywhere.sql` وبعده `0036_roles.sql` وبعده `0037_item_details.sql` وبعده `0038_roles_grant.sql` وبعده `0039_payment_plans.sql` وبعده `0040_branch_books.sql` وبعده `0041_analytics.sql` وبعده `0042_app_brand.sql` وبعده `0043_printing.sql` وبعده `0044_capture.sql` وبعده `0045_checklists.sql` وبعده `0046_master.sql` وبعده `0047_mfa.sql` وبعده `0048_used.sql` وبعده `0049_commissions.sql` وبعده `0050_insights.sql` وبعده `0051_demo.sql` وبعده `0052_catalog.sql` وبعده `0053_portal.sql` وبعده `0054_telegram.sql` وبعده `0055_eta_placeholder.sql` وبعده `0056_branch_features.sql` وبعده `0057_categories.sql`.
+مثلًا: لو آخر ملف اتشغّل عندك `0016`، شغّل `0017_growth.sql` وبعده `0018_account_state.sql` وبعده `0019_extras.sql` وبعده `0020_admin_paging.sql` وبعده `0021_spec_rules.sql` وبعده `0022_security_review.sql` وبعده `0023_restore.sql` وبعده `0024_signout.sql` وبعده `0025_integrity.sql` وبعده `0026_edit_delete.sql` وبعده `0027_inventory.sql` وبعده `0028_opening.sql` وبعده `0029_partners.sql` وبعده `0030_party_links.sql` وبعده `0031_partner_capital.sql` وبعده `0032_lists.sql` وبعده `0033_assistant.sql` وبعده `0034_branches.sql` وبعده `0035_lists_everywhere.sql` وبعده `0036_roles.sql` وبعده `0037_item_details.sql` وبعده `0038_roles_grant.sql` وبعده `0039_payment_plans.sql` وبعده `0040_branch_books.sql` وبعده `0041_analytics.sql` وبعده `0042_app_brand.sql` وبعده `0043_printing.sql` وبعده `0044_capture.sql` وبعده `0045_checklists.sql` وبعده `0046_master.sql` وبعده `0047_mfa.sql` وبعده `0048_used.sql` وبعده `0049_commissions.sql` وبعده `0050_insights.sql` وبعده `0051_demo.sql` وبعده `0052_catalog.sql` وبعده `0053_portal.sql` وبعده `0054_telegram.sql` وبعده `0055_eta_placeholder.sql` وبعده `0056_branch_features.sql` وبعده `0057_categories.sql` وبعده `0058_web_push.sql`.
 
 > `setup_all.sql` بيتشغّل **مرة واحدة بس** على مشروع **فاضي**. لو اتشغّل تاني على نفس المشروع هيدّي خطأ ("already exists")، وده طبيعي ومش هيبوّظ حاجة.
 
@@ -533,3 +533,36 @@ npm test
 - **المبيعات والمخزون ← التصنيفات:** تصفح بالبلاطات (رئيسي ← فرعي ← الأصناف)، وزرار "بيع" على كل صنف.
 - أول مرة: "ابدأ بالتصنيفات الجاهزة"، وبعدين ضيف وعدّل ورتّب بنفسك.
 - **الخدمة:** في فورم الصنف اختار النوع "خدمة" (زي التنظيف أو السوفت وير): بتتباع من غير مخزون.
+
+## إشعارات على الجهاز (Web Push) (اختياري ومجاني)
+نفس إشعارات الجرس (أقساط متأخرة أو قربت، وأجهزة جاهزة من 10 أيام، وأصناف قربت تخلص)، بتوصل على الكمبيوتر أو الموبايل **حتى والبرنامج مقفول**.
+- **مجانية:** بتستخدم خدمة الإشعارات اللي جوه المتصفح نفسه (Chrome وEdge وFirefox وSafari). مفيش أي خدمة مدفوعة ولا SMS.
+- **كل واحد بيوصله اللي في صلاحيته بس:** الفني ما يوصلوش أقساط ولا فلوس. وكل إشعار بيوصل مرة واحدة، وما بيوصلش لو اتقرا في البرنامج.
+- **الوقت:** الإعدادات ← التنبيهات ← "وقت الإشعارات" (الافتراضي من 9 الصبح لـ 9 بالليل بتوقيت القاهرة). برّه الوقت ده الإشعارات بتستنى.
+- **زرارين في الإشعار:** "افتح" (بيفتح البرنامج على الحاجة نفسها) و"اتقرا".
+- **عند الخروج من البرنامج:** الإشعارات بتتقفل على الجهاز ده لوحدها، عشان اللي يدخل بعدك ما يوصلوش إشعاراتك.
+
+**التجهيز (مرة واحدة، صاحب المشروع):**
+1. على جهازك، جوه فولدر المشروع:
+```bash
+npm run push:keys
+```
+   هيطلع 3 سطور: `VAPID_PUBLIC_KEY` و`VAPID_PRIVATE_KEY` و`PUSH_CRON_SECRET`. **دول أسرار:** ما تبعتهمش لحد، وما تحطهمش في `.env.local` ولا في أي ملف.
+2. في Supabase: **Edge Functions ← Secrets ← Add new secret**، وضيف الـ 3 دول، ومعاهم `VAPID_SUBJECT` وقيمته `mailto:` وبعدها إيميلك (مثلًا `mailto:me@gmail.com`).
+3. انشر الدالة (اكتب كود مشروعك مكان `<كود المشروع>`):
+```bash
+npx supabase functions deploy push --no-verify-jwt --project-ref <كود المشروع>
+```
+4. الجدولة (كل ساعة): في Supabase **SQL Editor** شغّل ده (حط كود مشروعك وقيمة `PUSH_CRON_SECRET`):
+```sql
+select cron.schedule('gawalak-push', '5 * * * *', $$
+  select net.http_post(
+    url := 'https://<كود المشروع>.supabase.co/functions/v1/push',
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '<PUSH_CRON_SECRET>'),
+    body := '{}'::jsonb)
+$$);
+```
+   محتاجة إضافتين في **Database ← Extensions**: `pg_cron` و`pg_net` (Enable). أو من **Integrations ← Cron** بنفس الرابط والهيدر.
+5. في البرنامج: **الإعدادات ← التنبيهات ← إشعارات على الجهاز ← فعّل على الجهاز ده**، ووافق على الإشعارات، وبعدين **ابعت إشعار تجربة**.
+   - **الموظفين:** كل واحد بيفعّلها من جهازه (الإعدادات ← التنبيهات).
+   - **الآيفون:** محتاج iOS 16.4 أو أحدث، والبرنامج يكون متثبّت على الشاشة الرئيسية (مشاركة ← إضافة إلى الشاشة الرئيسية) ويتفتح من هناك.

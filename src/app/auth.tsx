@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { disablePush } from '../lib/push';
 import { SHOP_COLUMNS, type Profile, type Shop } from '../lib/types';
 import { isNetworkError, localDb } from '../offline/outbox';
 import { mayHaveSessionNow } from '../lib/authFast';
@@ -191,6 +192,8 @@ async function endSession() {
   }
   const valid = token?.access_token && (token.expires_at ?? 0) * 1000 > Date.now() + 5_000;
   if (valid && (typeof navigator === 'undefined' || navigator.onLine)) {
+    // إشعارات الجهاز: اللي هيدخل بعدك على نفس الجهاز ما يوصلوش إشعاراتك (بحد أقصى 3 ثواني)
+    await Promise.race([disablePush().catch(() => undefined), new Promise((r) => setTimeout(r, 3000))]);
     await supabase.rpc('end_my_session').then(
       () => undefined,
       () => undefined,

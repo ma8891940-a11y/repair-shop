@@ -10,6 +10,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:db": "bash scripts/test-db.sh",
+    "push:keys": "node scripts/push-keys.mjs",
     "lint": "eslint .",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "test:e2e": "playwright test",
@@ -27,7 +28,6 @@
     "@radix-ui/react-tabs": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.4.1",
     "@supabase/supabase-js": "^2.119.0",
-    "@tailwindcss/vite": "^4.1.18",
     "clsx": "^2.1.1",
     "dexie": "4.4.6",
     "i18next": "^25.10.10",
@@ -37,12 +37,12 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-i18next": "^15.7.4",
-    "react-router": "^7.18.5",
-    "tailwindcss": "^4.1.18"
+    "react-router": "^7.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.23.1",
     "@types/qrcode": "^1.5.5",
@@ -54,6 +54,7 @@
     "fake-indexeddb": "6.2.5",
     "globals": "^16.5.0",
     "pg": "^8.23.1",
+    "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.72.1",
     "vite": "^6.4.5",

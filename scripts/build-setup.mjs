@@ -24,4 +24,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const { buildUpgrade } = await import('./build-upgrade.mjs');
   writeFileSync(join(process.cwd(), 'supabase', 'upgrade_existing.sql'), buildUpgrade());
   console.log('supabase/upgrade_existing.sql');
+  // نصوص إشعارات الجهاز (Web Push) من الترجمة
+  const { buildPushTexts } = await import('./build-push-texts.mjs');
+  writeFileSync(join(process.cwd(), 'supabase', 'functions', 'push', 'texts.ts'), buildPushTexts());
+  console.log('supabase/functions/push/texts.ts');
 }

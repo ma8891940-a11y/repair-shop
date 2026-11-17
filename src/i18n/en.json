@@ -775,7 +775,9 @@
       "shop_telegram": "Telegram notifications",
       "eta_settings": "E-invoice settings",
       "eta_documents": "E-invoices",
-      "categories": "Categories"
+      "categories": "Categories",
+      "push_subscriptions": "Device notification subscription",
+      "push_sent": "Notification sent to device"
     },
     "actions": {
       "insert": "add",
@@ -3648,5 +3650,39 @@
       "transfer": "Data transfer",
       "unlock": "Unlock"
     }
+  },
+  "push": {
+    "titles": {
+      "overdue": "Overdue installment",
+      "due_soon": "Installment due soon",
+      "ready_old": "Device waiting too long",
+      "short": "Item running low",
+      "unsettled": "Sale needs settlement",
+      "summary": "New notifications",
+      "test": "Notification test"
+    },
+    "summary": "You have {{n}} new notifications. Open the app to see them.",
+    "test": "Notifications work on this device.",
+    "open": "Open",
+    "read": "Mark read",
+    "section": "Notifications on this device",
+    "hint": "The same notifications as the bell, delivered to this device even when the app is closed. Everyone enables it on their own device and only gets what their permissions allow.",
+    "enable": "Enable on this device",
+    "disable": "Turn off on this device",
+    "sendTest": "Send a test notification",
+    "on": "Enabled on this device",
+    "off": "Not enabled on this device",
+    "unsupported": "This browser does not support notifications. On iPhone: add the app to the Home Screen first (Share → Add to Home Screen) and open it from there.",
+    "denied": "Notifications are blocked for this app in the browser settings. Allow them from the lock icon next to the address and try again.",
+    "notConfigured": "Device notifications are not set up on the server yet. The project owner should follow the \"Web Push\" steps in the README.",
+    "enabled": "Notifications enabled on this device",
+    "disabled": "Notifications turned off on this device",
+    "testSent": "Sent. If it does not arrive within a minute, check the device notification settings.",
+    "testNone": "No device has notifications enabled.",
+    "from": "From",
+    "to": "Until",
+    "window": "Notification hours (Cairo time)",
+    "windowHint": "Outside these hours notifications wait until the window opens. If \"From\" equals \"Until\", they arrive all day.",
+    "hour": "{{h}}:00"
   }
 }
