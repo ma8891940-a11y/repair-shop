@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | 1 | تجهيز الشغل مع Codex (AGENTS.md، وقاعدة الفروع والـ PR) | claude | اتدمج (#1) | `claude/agents-setup` |
 | 2 | Web Push (إشعارات على الجهاز حتى والبرنامج مقفول) | claude | اتدمج (#2) | `claude/web-push` |
-| 3 | نظام "مدير ومطوّر": AGENTS.md للشغل المحلي، و`docs/tasks/`، والجدول ده | claude | شغال | `claude/codex-workflow` |
+| 3 | نظام "مدير ومطوّر": AGENTS.md للشغل المحلي، و`docs/tasks/`، والجدول ده | claude | اتدمج (#3) | `claude/codex-workflow` |
 | 4 | U5: قالب "كشف الحساب" في مصمم الطباعة | codex | جاهزة لـ Codex | `docs/tasks/codex-001-statement-template.md` ← `codex/statement-template` |
 | 5 | U6: مراجعة الميزات الجديدة (C1–C9 وK وWeb Push) من غير نت، والصلاحيات (الموظف فرعه بس)، واللغتين، والوضعين | claude | لسه | — |
 | 6 | U5: باقي القوالب (فاتورة البيع، والسندات، والملصقات) | codex | لسه (بعد 4) | — |
