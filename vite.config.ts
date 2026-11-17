@@ -41,6 +41,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon-16.png', 'favicon-32.png', 'apple-touch-icon.png'],
+      // Web Push: استقبال الإشعارات والضغط عليها (public/push-sw.js)
+      workbox: { importScripts: ['push-sw.js'] },
       manifest: {
         name: 'جوالك | Gawalak',
         short_name: 'جوالك',

@@ -10,6 +10,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:db": "bash scripts/test-db.sh",
+    "push:keys": "node scripts/push-keys.mjs",
     "lint": "eslint .",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "test:e2e": "playwright test",

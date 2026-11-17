@@ -23,6 +23,7 @@ import { PlanUsage } from '../app/PlanUsage';
 import { ExtrasTab } from './settings/ExtrasTab';
 import { InventoryTab } from './settings/InventoryTab';
 import { AlertsTab } from './settings/AlertsTab';
+import { PushPanel } from './settings/PushPanel';
 import { AppBrandTab } from './settings/AppBrandTab';
 import { PrintersTab } from './settings/PrintersTab';
 import { ChecksTab } from './settings/ChecksTab';
@@ -54,7 +55,7 @@ export function SettingsScreen() {
   }, [wanted]);
   // البند 14: الإعدادات بتتحفظ على السيرفر، فمن غير نت بتتقفل بهدوء (إلا المظهر، ده على الجهاز) وبتتفتح لوحدها
   const online = useOnline();
-  const tabs = (owner ? ['shop', 'app', 'branches', 'roles', 'payments', 'tech', 'ledger', 'inventory', 'alerts', 'lists', 'print', 'printers', 'checks', 'catalog', 'security', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['appearance']) as string[];
+  const tabs = (owner ? ['shop', 'app', 'branches', 'roles', 'payments', 'tech', 'ledger', 'inventory', 'alerts', 'lists', 'print', 'printers', 'checks', 'catalog', 'security', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['alerts', 'appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
@@ -167,12 +168,12 @@ export function SettingsScreen() {
             <AppBrandTab />            </fieldset>
           </Tabs.Content>
         )}
-        {owner && (
-          <Tabs.Content value="alerts">
-            <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
-            <AlertsTab />            </fieldset>
-          </Tabs.Content>
-        )}
+        <Tabs.Content value="alerts">
+          <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
+            {/* الموظفين: إشعارات أجهزتهم بس */}
+            {owner ? <AlertsTab /> : <PushPanel />}
+          </fieldset>
+        </Tabs.Content>
         {owner && (
           <Tabs.Content value="inventory">
             <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
