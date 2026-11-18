@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListCombo } from './ListCombo';
-import { ACCESSORY_TYPES, useListLabel } from './lists';
+import { isAccessoryType, useListLabel } from './lists';
 import { opId, rpc, type StockRow } from './ledgerApi';
 import { composeItemName } from '../lib/itemSearch';
 import { parsePounds } from '../lib/money';
@@ -34,7 +34,7 @@ export function ItemDetailFields({ v, set, testid = 'item' }: { v: ItemDetails; 
         </Select>
       </Field>
       <Field label={t('item.type')}>
-        <ListCombo list="item_types" value={v.item_type} onChange={(x) => set({ item_type: x, ...(ACCESSORY_TYPES.includes(x.trim()) ? { kind: 'accessory' as const } : {}) })} maxLength={60} testid={`${testid}-type`} />
+        <ListCombo list="item_types" value={v.item_type} onChange={(x) => set({ item_type: x, ...(isAccessoryType(x) ? { kind: 'accessory' as const } : {}) })} maxLength={60} testid={`${testid}-type`} />
       </Field>
       <Field label={t('inv.brand')}>
         <ListCombo list="brands" value={v.brand} onChange={(x) => set({ brand: x })} maxLength={60} dir="auto" testid={`${testid}-brand`} />

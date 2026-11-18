@@ -22,6 +22,11 @@ export const LIST_KEYS: ListKey[] = ['brands', 'models', 'device_types', 'access
 export const PART_TYPES: string[] = itemLists.part_types;
 export const ACCESSORY_TYPES: string[] = itemLists.accessory_types;
 export const QUALITIES: string[] = itemLists.qualities;
+// U6: أسماء القوايم الجاهزة بالإنجليزي (للعرض بس)
+const BUILTIN_EN: Record<string, string> = itemLists.en;
+const ACCESSORY_EN = new Set(ACCESSORY_TYPES.map((x) => BUILTIN_EN[x]).filter(Boolean));
+/** نوع إكسسوار (بالعربي أو باسمه الإنجليزي) */
+export const isAccessoryType = (x: string) => ACCESSORY_TYPES.includes(x.trim()) || ACCESSORY_EN.has(x.trim());
 
 export const LIST_DEFAULTS: Record<ListKey, string[]> = {
   brands: ['Samsung', 'iPhone', 'Xiaomi', 'Oppo', 'Realme', 'Infinix', 'Vivo', 'Honor', 'Huawei', 'Tecno'],
@@ -58,10 +63,20 @@ export interface ListItem {
 
 /** اسم البند المعروض: الكود الافتراضي مترجم، وغيره زي ما اتكتب */
 export function useListLabel() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const en = i18n.language === 'en';
   return useCallback(
-    (list: ListKey, value: string) => (list === 'accessories' ? t(`intake.acc.${value}`, { defaultValue: value }) : list === 'issues' ? t(`intake.quick.${value}`, { defaultValue: value }) : list === 'brands' || list === 'models' || list === 'item_types' || list === 'qualities' ? value : t(`lists.values.${list}.${value}`, { defaultValue: value })),
-    [t],
+    (list: ListKey, value: string) =>
+      list === 'accessories'
+        ? t(`intake.acc.${value}`, { defaultValue: value })
+        : list === 'issues'
+          ? t(`intake.quick.${value}`, { defaultValue: value })
+          : list === 'item_types' || list === 'qualities'
+            ? (en && BUILTIN_EN[value]) || value
+            : list === 'brands' || list === 'models'
+              ? value
+              : t(`lists.values.${list}.${value}`, { defaultValue: value }),
+    [t, en],
   );
 }
 

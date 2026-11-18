@@ -11,6 +11,7 @@ import { Button } from '../../ui/Button';
 import { Field, Input, Select } from '../../ui/Field';
 import { Alert, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
+import DB_DEFAULTS from '../../data/dbDefaults.json';
 import { cn } from '../../ui/cn';
 
 export const SECTIONS = ['devices', 'intake', 'customers', 'technicians', 'inventory', 'item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'audit'] as const;
@@ -104,6 +105,9 @@ export function PermGrid({ value, onToggle, cell, testid, base = 'reception' }: 
 export function RolesTab() {
   const { t } = useTranslation();
   const toast = useToast();
+  // U6: الأدوار الجاهزة بأسمائها الافتراضية (بالعربي من قاعدة البيانات) بتتترجم، لحد ما صاحب المحل يغيّر الاسم
+  const roleLabel = (r: Role) =>
+    r.preset && r.name === (DB_DEFAULTS.presets as Record<string, string>)[r.preset] ? t(`perm.presets.${r.preset}`, { defaultValue: r.name }) : r.name;
   const { data, loading, reload } = useLoad(async () => must(await supabase.from('roles').select('id, name, preset, base, perms').is('deleted_at', null).order('created_at')) as Role[], []);
   const [sel, setSel] = useState<string | 'new' | null>(null);
   const roles = useMemo(() => data ?? [], [data]);
@@ -185,7 +189,7 @@ export function RolesTab() {
                 className={cn('h-8 rounded-md border px-3 text-sm', cur?.id === r.id && sel !== 'new' ? 'border-accent bg-accent-soft text-fg' : 'border-glass-border text-fg-2 hover:text-fg')}
                 data-testid="role-tab"
               >
-                {r.name}
+                {roleLabel(r)}
                 {r.preset && <span className="ms-1.5 text-2xs text-fg-3">· {t('perm.preset')}</span>}
               </button>
             ))}

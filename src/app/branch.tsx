@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import { setBranchHeader } from '../lib/branchHeader';
 import { cacheGet, cacheSet, localDb } from '../offline/outbox';
 import { useAuth } from './auth';
+import { useTranslation } from 'react-i18next';
+import DB_DEFAULTS from '../data/dbDefaults.json';
 
 export interface Branch {
   id: string;
@@ -57,7 +59,10 @@ export function BranchProvider({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
   const uid = profile?.id ?? '';
   const owner = profile?.role === 'owner';
-  const [all, setAll] = useState<Branch[]>([]);
+  const { t } = useTranslation();
+  const [rawAll, setAll] = useState<Branch[]>([]);
+  // U6: اسم الفرع الرئيسي الافتراضي (اللي قاعدة البيانات حطته بالعربي) بيتترجم في الإنجليزي، لحد ما صاحب المحل يغيّره
+  const all = useMemo(() => rawAll.map((b) => (b.is_main && b.name === DB_DEFAULTS.mainBranch ? { ...b, name: t('branch.mainName') } : b)), [rawAll, t]);
   const [mineIds, setMineIds] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [view, setViewState] = useState<string>(() => (uid ? (read(viewKey(uid)) ?? '') : ''));
