@@ -63,3 +63,13 @@ describe('U5: قالب كشف الحساب', () => {
     }
   });
 });
+
+describe('U5: قالب السند', () => {
+  it('الافتراضي بالترتيب، والمبلغ كبير وعريض، والشكر مخفي', () => {
+    const b = defaultBlocks('voucher');
+    expect(b.map((x) => x.key)).toEqual(['header', 'title', 'entryNo', 'date', 'party', 'amount', 'method', 'cashbox', 'memo', 'sign', 'thanks']);
+    expect(b.filter((x) => !x.show).map((x) => x.key)).toEqual(['thanks']);
+    expect(b.find((x) => x.key === 'amount')).toMatchObject({ size: 'lg', bold: true });
+    expect(normalizeBlocks('voucher', [{ key: 'opening', show: true }]).map((x) => x.key)).not.toContain('opening');
+  });
+});

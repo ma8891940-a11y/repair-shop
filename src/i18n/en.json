@@ -3240,7 +3240,8 @@
       "receipt": "Intake receipt (thermal)",
       "receipt-a4": "Intake receipt (A4)",
       "invoice": "Delivery invoice",
-      "statement": "Account statement (A4)"
+      "statement": "Account statement (A4)",
+      "voucher": "Receipt / payment voucher (A4)"
     },
     "printer": "Printer",
     "defaultSize": "Default size",
@@ -3275,7 +3276,12 @@
       "period": "Period",
       "opening": "Opening balance",
       "moves": "Transactions table",
-      "closing": "Closing balance"
+      "closing": "Closing balance",
+      "entryNo": "Voucher number",
+      "amount": "Amount",
+      "method": "Payment method",
+      "cashbox": "Cashbox",
+      "memo": "Description"
     },
     "size": "Font size",
     "sizes": {
@@ -3690,5 +3696,20 @@
     "window": "Notification hours (Cairo time)",
     "windowHint": "Outside these hours notifications wait until the window opens. If \"From\" equals \"Until\", they arrive all day.",
     "hour": "{{h}}:00"
+  },
+  "voucher": {
+    "receipt": "Receipt voucher",
+    "payment": "Payment voucher",
+    "no": "Voucher number",
+    "from": "Received from",
+    "to": "Paid to",
+    "amount": "Amount",
+    "method": "Payment method",
+    "cashbox": "Cashbox",
+    "memo": "Description",
+    "signReceiver": "Receiver signature",
+    "signCashier": "Cashier signature",
+    "print": "Print voucher",
+    "cancelled": "Cancelled: reversed by entry #{{no}}"
   }
 }
