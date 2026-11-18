@@ -32,7 +32,7 @@ interface TplRow {
   blocks: unknown;
   is_default: boolean;
 }
-const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice', 'statement', 'voucher'];
+const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice', 'statement', 'voucher', 'sale'];
 
 /**
  * U5: الإعدادات ← الطابعات: ملفات الطابعات (بقوالب جاهزة لأشهر الموديلات) ومصمم الطباعة لكل نوع ورقة.
@@ -43,7 +43,7 @@ export function PrintersTab() {
   const toast = useToast();
   const br = useBranch();
   const { data, reload } = useLoad(async () => {
-    const [p, tp, dev, cash, ent] = await Promise.all([
+    const [p, tp, dev, cash, ent, sale] = await Promise.all([
       supabase.from('printers').select('id, name, kind, model, width_mm, height_mm, margin_mm').is('deleted_at', null).order('created_at'),
       supabase.from('print_templates').select('id, doc, branch_id, printer_id, name, blocks, is_default').is('deleted_at', null).order('created_at'),
       supabase.from('devices').select('id').is('deleted_at', null).order('created_at', { ascending: false }).limit(1),
@@ -51,6 +51,8 @@ export function PrintersTab() {
       supabase.from('accounts').select('id').eq('kind', 'cash').is('deleted_at', null).order('created_at').limit(1),
       // السند: المعاينة على آخر قيد ليه سند
       supabase.from('journal_entries').select('id').in('source_type', VOUCHER_SOURCES).order('created_at', { ascending: false }).limit(1),
+      // فاتورة البيع: المعاينة على آخر بيع
+      supabase.from('journal_entries').select('id').eq('source_type', 'sale').order('created_at', { ascending: false }).limit(1),
     ]);
     return {
       printers: must(p) as PrinterRow[],
@@ -58,6 +60,7 @@ export function PrintersTab() {
       lastDevice: ((dev.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
       cashbox: ((cash.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
       lastVoucher: ((ent.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
+      lastSale: ((sale.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
     };
   }, []);
   const [preset, setPreset] = useState(0);
@@ -113,12 +116,12 @@ export function PrintersTab() {
           <Alert tone="info">{t('printers.direct')}</Alert>
         </div>
       </Panel>
-      {data && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} lastVoucher={data.lastVoucher} branches={br.multi ? br.all : []} onSaved={reload} />}
+      {data && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} lastVoucher={data.lastVoucher} lastSale={data.lastSale} branches={br.multi ? br.all : []} onSaved={reload} />}
     </div>
   );
 }
 
-function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, branches, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; lastVoucher: string | null; branches: { id: string; name: string }[]; onSaved: () => void }) {
+function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastSale, branches, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; lastVoucher: string | null; lastSale: string | null; branches: { id: string; name: string }[]; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
   const [doc, setDoc] = useState<TemplateDoc>('receipt');
@@ -174,6 +177,10 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, branc
         ? lastVoucher
           ? `print/voucher/${lastVoucher}`
           : null
+        : doc === 'sale'
+          ? lastSale
+            ? `print/sale/${lastSale}`
+            : null
         : lastDevice
           ? `print/${doc}/${lastDevice}`
           : null;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Barcode as BarcodeIcon, Camera, FileUp, MessageCircle, PackageMinus, PackagePlus, Plus, Printer, RotateCcw, ScanBarcode, Search, ShoppingCart, Trash2, Truck, Undo2 } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
@@ -688,6 +688,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   const { shop } = useMe();
   const sync = useSync();
   const toast = useToast();
+  const navigate = useNavigate();
   const accName = useAccountName();
   const [lines, setLines] = useState<Line[]>([]);
   const [supplier, setSupplier] = useState('');
@@ -803,13 +804,20 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
       setBusy(false);
       return;
     }
+    let saleEntry: string | null = null;
     try {
       if (mode === 'purchase') {
         await rpc('record_purchase', { p_id: id, p_supplier: supplier, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, unit_cost: l.price })), p_cashbox: cashbox || null });
       } else {
-        await rpc('record_sale', saleArgs);
+        saleEntry = (await rpc('record_sale', saleArgs)) as string;
       }
-      toast({ tone: 'ok', title: t(mode === 'purchase' ? 'inv.purchased' : 'inv.sold'), description: `${f.money(total)} ${f.currency(shop.currency)}` });
+      toast({
+        tone: 'ok',
+        title: t(mode === 'purchase' ? 'inv.purchased' : 'inv.sold'),
+        description: `${f.money(total)} ${f.currency(shop.currency)}`,
+        // 6ب: فاتورة البيع على طول
+        ...(saleEntry ? { action: { label: t('saleInv.print'), onClick: () => navigate(`/print/sale/${saleEntry}`) } } : {}),
+      });
       onOpenChange(false);
       onDone();
     } catch (e) {
