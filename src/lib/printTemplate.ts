@@ -2,7 +2,7 @@
  * U5: قوالب الطباعة. القالب = خانات مرتبة (تظهر أو لأ، وحجم الخط، والمحاذاة، والعريض، ونص حر).
  * القالب بيتحكم في الشكل بس: الأرقام والبيانات دايمًا من البرنامج.
  */
-export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement' | 'voucher' | 'sale';
+export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement' | 'voucher' | 'sale' | 'barcode';
 export type BlockKey =
   | 'header' | 'title' | 'orderNo' | 'date' | 'customer' | 'phone' | 'device' | 'imei' | 'issue'
   | 'accessories' | 'condition' | 'estimate' | 'parts' | 'total' | 'paid' | 'remaining' | 'warranty'
@@ -12,7 +12,9 @@ export type BlockKey =
   // سند القبض والصرف
   | 'entryNo' | 'amount' | 'method' | 'cashbox' | 'memo'
   // فاتورة البيع
-  | 'lines';
+  | 'lines'
+  // ملصق الباركود
+  | 'itemName' | 'code' | 'price';
 export type Size = 'sm' | 'md' | 'lg';
 export type Align = 'start' | 'center' | 'end';
 export interface Block {
@@ -31,12 +33,16 @@ const INVOICE: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', '
 const STATEMENT: BlockKey[] = ['header', 'title', 'party', 'period', 'opening', 'moves', 'closing', 'signature', 'thanks'];
 const VOUCHER: BlockKey[] = ['header', 'title', 'entryNo', 'date', 'party', 'amount', 'method', 'cashbox', 'memo', 'sign', 'thanks'];
 const SALE: BlockKey[] = ['header', 'title', 'entryNo', 'date', 'customer', 'phone', 'lines', 'total', 'paid', 'remaining', 'memo', 'sign', 'thanks'];
-export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE, statement: STATEMENT, voucher: VOUCHER, sale: SALE };
+const BARCODE: BlockKey[] = ['header', 'itemName', 'code', 'price'];
+export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE, statement: STATEMENT, voucher: VOUCHER, sale: SALE, barcode: BARCODE };
 
 const BIG: BlockKey[] = ['orderNo', 'total', 'closing', 'amount'];
 // كشف الحساب الافتراضي = نفس شكل الكشف من غير قالب (التوقيع والشكر مخفيين)
 const HIDDEN_BY_DEFAULT: Partial<Record<TemplateDoc, BlockKey[]>> = { statement: ['signature', 'thanks'], voucher: ['thanks'] };
 export function defaultBlocks(doc: TemplateDoc): Block[] {
+  // ملصق الباركود الافتراضي = نفس الملصق القديم: اسم المحل صغير وعريض، والسعر كبير وعريض، وكله في النص
+  if (doc === 'barcode')
+    return DOC_BLOCKS.barcode.map((key) => ({ key, show: true, size: key === 'header' ? 'sm' : key === 'price' ? 'lg' : 'md', align: 'center', bold: key === 'header' || key === 'price' }));
   return DOC_BLOCKS[doc].map((key) => ({
     key,
     show: !HIDDEN_BY_DEFAULT[doc]?.includes(key),
