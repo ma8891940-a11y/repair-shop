@@ -35,3 +35,31 @@ describe('قوالب الطباعة', () => {
     expect(PRINTER_PRESETS.every((p) => p.width_mm > 0)).toBe(true);
   });
 });
+
+describe('U5: قالب كشف الحساب', () => {
+  it('الافتراضي بالترتيب، والتوقيع والشكر مخفيين، والرصيد الختامي كبير وعريض', () => {
+    const b = defaultBlocks('statement');
+    expect(b.map((x) => x.key)).toEqual(['header', 'title', 'party', 'period', 'opening', 'moves', 'closing', 'signature', 'thanks']);
+    expect(b.filter((x) => !x.show).map((x) => x.key)).toEqual(['signature', 'thanks']);
+    expect(b.find((x) => x.key === 'closing')).toMatchObject({ size: 'lg', bold: true });
+  });
+  it('التنضيف: خانة من نوع تاني بتتشال، والناقصة بتتضاف مخفية، و"نص حر" مسموح', () => {
+    const b = normalizeBlocks('statement', [
+      { key: 'imei', show: true },
+      { key: 'closing', show: true, size: 'sm' },
+      { key: 'text', show: true, text: 'شكرًا' },
+    ]);
+    expect(b.map((x) => x.key)).not.toContain('imei');
+    expect(b[0]).toMatchObject({ key: 'closing', size: 'sm' });
+    expect(b[1]).toMatchObject({ key: 'text', text: 'شكرًا' });
+    expect(b.filter((x) => x.key !== 'closing' && x.key !== 'text').every((x) => !x.show)).toBe(true);
+    expect(b).toHaveLength(2 + 8);
+  });
+  it('الأنواع القديمة زي ما هي (الإيصال والفاتورة من غير خانات كشف الحساب)', () => {
+    for (const d of ['receipt', 'receipt-a4', 'invoice'] as const) {
+      const keys = defaultBlocks(d).map((x) => x.key);
+      for (const k of ['party', 'period', 'opening', 'moves', 'closing']) expect(keys).not.toContain(k);
+      expect(defaultBlocks(d).every((x) => x.show)).toBe(true);
+    }
+  });
+});

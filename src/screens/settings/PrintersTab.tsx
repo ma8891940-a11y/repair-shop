@@ -31,7 +31,7 @@ interface TplRow {
   blocks: unknown;
   is_default: boolean;
 }
-const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice'];
+const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice', 'statement'];
 
 /**
  * U5: الإعدادات ← الطابعات: ملفات الطابعات (بقوالب جاهزة لأشهر الموديلات) ومصمم الطباعة لكل نوع ورقة.
@@ -42,12 +42,19 @@ export function PrintersTab() {
   const toast = useToast();
   const br = useBranch();
   const { data, reload } = useLoad(async () => {
-    const [p, tp, dev] = await Promise.all([
+    const [p, tp, dev, cash] = await Promise.all([
       supabase.from('printers').select('id, name, kind, model, width_mm, height_mm, margin_mm').is('deleted_at', null).order('created_at'),
       supabase.from('print_templates').select('id, doc, branch_id, printer_id, name, blocks, is_default').is('deleted_at', null).order('created_at'),
       supabase.from('devices').select('id').is('deleted_at', null).order('created_at', { ascending: false }).limit(1),
+      // كشف الحساب: المعاينة على أول خزنة
+      supabase.from('accounts').select('id').eq('kind', 'cash').is('deleted_at', null).order('created_at').limit(1),
     ]);
-    return { printers: must(p) as PrinterRow[], templates: must(tp) as TplRow[], lastDevice: ((dev.data ?? [])[0] as { id: string } | undefined)?.id ?? null };
+    return {
+      printers: must(p) as PrinterRow[],
+      templates: must(tp) as TplRow[],
+      lastDevice: ((dev.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
+      cashbox: ((cash.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
+    };
   }, []);
   const [preset, setPreset] = useState(0);
   async function addPrinter() {
@@ -102,12 +109,12 @@ export function PrintersTab() {
           <Alert tone="info">{t('printers.direct')}</Alert>
         </div>
       </Panel>
-      {data && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} branches={br.multi ? br.all : []} onSaved={reload} />}
+      {data && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} branches={br.multi ? br.all : []} onSaved={reload} />}
     </div>
   );
 }
 
-function Designer({ printers, templates, lastDevice, branches, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; branches: { id: string; name: string }[]; onSaved: () => void }) {
+function Designer({ printers, templates, lastDevice, cashbox, branches, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; branches: { id: string; name: string }[]; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
   const [doc, setDoc] = useState<TemplateDoc>('receipt');
@@ -153,7 +160,9 @@ function Designer({ printers, templates, lastDevice, branches, onSaved }: { prin
     toast({ tone: 'ok', title: t('printers.resetDone') });
     onSaved();
   }
-  const previewUrl = useMemo(() => (lastDevice ? `${window.location.pathname}#/print/${doc}/${lastDevice}?preview=1&embed=1&v=${v}` : null), [doc, lastDevice, v]);
+  // الورقة اللي بتتعاين وبتتطبع تجربة: آخر جهاز، وكشف الحساب على أول خزنة
+  const sample = doc === 'statement' ? (cashbox ? `print/statement/cashbox/${cashbox}` : null) : lastDevice ? `print/${doc}/${lastDevice}` : null;
+  const previewUrl = useMemo(() => (sample ? `${window.location.pathname}#/${sample}?preview=1&embed=1&v=${v}` : null), [sample, v]);
   return (
     <Panel data-testid="print-designer">
       <PanelHeader title={t('printers.designer')} />
@@ -254,8 +263,8 @@ function Designer({ printers, templates, lastDevice, branches, onSaved }: { prin
             <Button size="sm" variant="primary" needsNet onClick={() => void save()} data-testid="tpl-save">
               {t('printers.save')}
             </Button>
-            {lastDevice && (
-              <a href={`#/print/${doc}/${lastDevice}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent" data-testid="tpl-test-print">
+            {sample && (
+              <a href={`#/${sample}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent" data-testid="tpl-test-print">
                 <Printer className="size-4" aria-hidden /> {t('printers.testPrint')}
               </a>
             )}
