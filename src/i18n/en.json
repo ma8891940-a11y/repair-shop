@@ -3243,7 +3243,8 @@
       "invoice": "Delivery invoice",
       "statement": "Account statement (A4)",
       "voucher": "Receipt / payment voucher (A4)",
-      "sale": "Sale invoice (A4)"
+      "sale": "Sale invoice (A4)",
+      "barcode": "Barcode label"
     },
     "printer": "Printer",
     "defaultSize": "Default size",
@@ -3284,7 +3285,10 @@
       "method": "Payment method",
       "cashbox": "Cashbox",
       "memo": "Description",
-      "lines": "Items table"
+      "lines": "Items table",
+      "itemName": "Item name",
+      "code": "Barcode",
+      "price": "Price"
     },
     "size": "Font size",
     "sizes": {

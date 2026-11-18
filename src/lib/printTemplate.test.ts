@@ -83,3 +83,20 @@ describe('6ب: قالب فاتورة البيع', () => {
     expect(normalizeBlocks('sale', [{ key: 'qr', show: true }]).map((x) => x.key)).not.toContain('qr');
   });
 });
+
+describe('6ج: قالب ملصق الباركود', () => {
+  it('الافتراضي = الملصق القديم: اسم المحل صغير وعريض، والسعر كبير وعريض، وكله في النص', () => {
+    const b = defaultBlocks('barcode');
+    expect(b.map((x) => [x.key, x.size, x.bold, x.align])).toEqual([
+      ['header', 'sm', true, 'center'],
+      ['itemName', 'md', false, 'center'],
+      ['code', 'md', false, 'center'],
+      ['price', 'lg', true, 'center'],
+    ]);
+    expect(b.every((x) => x.show)).toBe(true);
+    // التنضيف بيرجّع الناقص بنفس افتراضي الملصق (مش الافتراضي العام)
+    const n = normalizeBlocks('barcode', [{ key: 'price', show: false }]);
+    expect(n[0]).toMatchObject({ key: 'price', show: false, size: 'lg', bold: true, align: 'center' });
+    expect(n.find((x) => x.key === 'header')).toMatchObject({ show: false, size: 'sm', bold: true });
+  });
+});
