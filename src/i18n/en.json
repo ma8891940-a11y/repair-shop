@@ -3239,7 +3239,8 @@
     "docs": {
       "receipt": "Intake receipt (thermal)",
       "receipt-a4": "Intake receipt (A4)",
-      "invoice": "Delivery invoice"
+      "invoice": "Delivery invoice",
+      "statement": "Account statement (A4)"
     },
     "printer": "Printer",
     "defaultSize": "Default size",
@@ -3269,7 +3270,12 @@
       "qr": "Tracking QR",
       "sign": "Signature line",
       "thanks": "Thank-you line",
-      "text": "Free text"
+      "text": "Free text",
+      "party": "Account holder",
+      "period": "Period",
+      "opening": "Opening balance",
+      "moves": "Transactions table",
+      "closing": "Closing balance"
     },
     "size": "Font size",
     "sizes": {

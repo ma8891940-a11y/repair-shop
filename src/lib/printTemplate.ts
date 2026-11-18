@@ -2,11 +2,13 @@
  * U5: قوالب الطباعة. القالب = خانات مرتبة (تظهر أو لأ، وحجم الخط، والمحاذاة، والعريض، ونص حر).
  * القالب بيتحكم في الشكل بس: الأرقام والبيانات دايمًا من البرنامج.
  */
-export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice';
+export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement';
 export type BlockKey =
   | 'header' | 'title' | 'orderNo' | 'date' | 'customer' | 'phone' | 'device' | 'imei' | 'issue'
   | 'accessories' | 'condition' | 'estimate' | 'parts' | 'total' | 'paid' | 'remaining' | 'warranty'
-  | 'terms' | 'signature' | 'qr' | 'sign' | 'thanks' | 'text';
+  | 'terms' | 'signature' | 'qr' | 'sign' | 'thanks' | 'text'
+  // كشف الحساب
+  | 'party' | 'period' | 'opening' | 'moves' | 'closing';
 export type Size = 'sm' | 'md' | 'lg';
 export type Align = 'start' | 'center' | 'end';
 export interface Block {
@@ -22,13 +24,16 @@ export interface Block {
 const RECEIPT: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'accessories', 'condition', 'estimate', 'terms', 'signature', 'qr', 'sign', 'thanks'];
 const INVOICE: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'parts', 'total', 'paid', 'remaining', 'warranty', 'signature', 'sign', 'thanks'];
 /** الخانات المتاحة لكل نوع ورقة (بالترتيب الافتراضي)، و"نص حر" ممكن يتضاف في أي مكان */
-export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE };
+const STATEMENT: BlockKey[] = ['header', 'title', 'party', 'period', 'opening', 'moves', 'closing', 'signature', 'thanks'];
+export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE, statement: STATEMENT };
 
-const BIG: BlockKey[] = ['orderNo', 'total'];
+const BIG: BlockKey[] = ['orderNo', 'total', 'closing'];
+// كشف الحساب الافتراضي = نفس شكل الكشف من غير قالب (التوقيع والشكر مخفيين)
+const HIDDEN_BY_DEFAULT: Partial<Record<TemplateDoc, BlockKey[]>> = { statement: ['signature', 'thanks'] };
 export function defaultBlocks(doc: TemplateDoc): Block[] {
   return DOC_BLOCKS[doc].map((key) => ({
     key,
-    show: true,
+    show: !HIDDEN_BY_DEFAULT[doc]?.includes(key),
     size: BIG.includes(key) ? 'lg' : 'md',
     align: doc === 'receipt' && ['header', 'title', 'orderNo', 'qr', 'thanks'].includes(key) ? 'center' : 'start',
     bold: BIG.includes(key) || key === 'title',

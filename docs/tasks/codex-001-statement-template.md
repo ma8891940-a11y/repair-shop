@@ -2,6 +2,7 @@
 
 - **الفرع:** `codex/statement-template` (في worktree منفصل: `../repair-shop-codex`)
 - **المسؤول:** codex · **المراجع:** claude
+- **الحالة (2026-11-18):** عملها Claude بدل Codex (الحد المجاني خلص لحد 2026-12-18)، على فرع `claude/statement-template`.
 - **اقرا الأول:** `AGENTS.md` كله.
 
 ## المطلوب بالظبط

@@ -23,8 +23,9 @@
 - **تشغيل Codex في فولدر منفصل:**
   ```
   git worktree add ..\repair-shop-codex -b codex/<اسم>
-  codex exec --full-auto -C ..\repair-shop-codex "اقرأ AGENTS.md والتزم بيه، ونفّذ docs/tasks/codex-<رقم>-<اسم>.md بالظبط. اكتب الاختبارات وشغّلها، واعمل commit على الفرع ده بس. ممنوع push، وممنوع تلمس main، وفي الآخر اكتب ملخص."
+  codex exec --sandbox workspace-write -c model_reasoning_effort='"high"' -C ..\repair-shop-codex "اقرأ AGENTS.md والتزم بيه، ونفّذ docs/tasks/codex-<رقم>-<اسم>.md بالظبط. اكتب الاختبارات وشغّلها، واعمل commit على الفرع ده بس. ممنوع push، وممنوع تلمس main، وفي الآخر اكتب ملخص." < /dev/null
   ```
+  (من Bash مش PowerShell. `--full-auto` اتشال من codex-cli 0.169، والتفاصيل في `PROGRESS.md`.)
 - **لما Codex يخلّص:**
   1. مراجعة الـ diff سطر سطر.
   2. بوابة الجودة كاملة.

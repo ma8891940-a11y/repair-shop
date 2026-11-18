@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useEffect, type ReactNode } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useBackground } from '../../app/stage';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
@@ -12,20 +12,27 @@ import { cairoDayEnd, cairoDayStart } from '../../lib/dates';
 import { useFormat } from '../../i18n/format';
 import { Skeleton } from '../../ui/Feedback';
 import { ColorHeader, useBranding } from '../../app/brand/branding';
+import { useBranch } from '../../app/branch';
+import { defaultBlocks, normalizeBlocks, type Block, type BlockKey, type Size } from '../../lib/printTemplate';
+import { cn } from '../../ui/cn';
 
 export function PrintFrame({ ready, children }: { ready: boolean; children: React.ReactNode }) {
   useBackground('off');
   const { t } = useTranslation();
   const navigate = useNavigate();
+  // U5: معاينة مصمم الطباعة (جوه إطار): من غير نافذة طباعة ومن غير الشريط
+  const [params] = useSearchParams();
+  const preview = params.get('preview') === '1';
+  const embed = params.get('embed') === '1';
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || preview) return;
     const tm = setTimeout(() => window.print(), 350);
     return () => clearTimeout(tm);
-  }, [ready]);
+  }, [ready, preview]);
   return (
     <div className="min-h-dvh bg-white text-black">
       <style>{'@page { size: A4; margin: 12mm; }'}</style>
-      <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden">
+      <div className={`flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden${embed ? ' hidden' : ''}`}>
         <button type="button" onClick={() => window.print()} className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-on-accent">
           {t('print.print')}
         </button>
@@ -56,72 +63,164 @@ export function StatementPrint() {
   const f = useFormat();
   const accName = useAccountName();
   const { range } = usePeriod();
+  const br = useBranch();
+  const [params] = useSearchParams();
+  const preview = params.get('preview') === '1';
+  const previewV = params.get('v');
   const { data } = useLoad(async () => {
     const st = await rpc<Statement>('statement', { p_kind: kind, p_id: id, p_from: range.from.toISOString(), p_to: range.to.toISOString() });
+    let name = '';
     if (kind === 'linked') {
       const li = await loadLink('link', id);
-      return { st, name: li ? `${li.customer} ⇄ ${li.supplier}` : '' };
+      name = li ? `${li.customer} ⇄ ${li.supplier}` : '';
+    } else {
+      const table = kind === 'cashbox' ? 'accounts' : kind === 'customer' ? 'customers' : kind === 'supplier' ? 'suppliers' : kind === 'partner' ? 'partners' : 'profiles';
+      const row = must(await supabase.from(table).select('*').eq('id', id).maybeSingle()) as Record<string, string | null> | null;
+      name = kind === 'cashbox' ? accName(row as { code: string | null; name: string | null }) : (row?.name ?? row?.full_name ?? '');
     }
-    const table = kind === 'cashbox' ? 'accounts' : kind === 'customer' ? 'customers' : kind === 'supplier' ? 'suppliers' : kind === 'partner' ? 'partners' : 'profiles';
-    const row = must(await supabase.from(table).select('*').eq('id', id).maybeSingle()) as Record<string, string | null> | null;
-    const name = kind === 'cashbox' ? accName(row as { code: string | null; name: string | null }) : (row?.name ?? row?.full_name ?? '');
-    return { st, name };
-  }, [kind, id, range.from.getTime(), range.to.getTime()]);
+    // U5: قالب "كشف الحساب" الافتراضي (قالب الفرع الشغال يكسب قالب المحل)، أو مسودة المصمم في المعاينة
+    const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'statement').eq('is_default', true).is('deleted_at', null);
+    const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
+    const pick = list.find((x) => x.branch_id && x.branch_id === br.working?.id) ?? list.find((x) => !x.branch_id);
+    let draft: unknown = null;
+    if (preview) {
+      try {
+        draft = JSON.parse(sessionStorage.getItem('tpl-preview:statement') ?? 'null');
+      } catch {
+        draft = null;
+      }
+    }
+    const tpl = draft ? normalizeBlocks('statement', draft) : pick ? normalizeBlocks('statement', pick.blocks) : null;
+    return { st, name, tpl };
+  }, [kind, id, range.from.getTime(), range.to.getTime(), br.working?.id, preview, previewV]);
   const last = data?.st.moves.at(-1);
-  return (
-    <PrintFrame ready={!!data}>
-      {data && (
-        <>
-          <PrintHeader title={`${t('fin.statement')} · ${t(`fin.kinds.${kind as StatementKind}`)}`} sub={`${data.name} · ${f.date(range.from)} - ${f.date(new Date(range.to.getTime() - 1))}`} />
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="[&_th]:border-b [&_th]:border-black [&_th]:px-1 [&_th]:py-1 [&_th]:text-start">
-                <th>{t('fin.cols.time')}</th>
-                <th>{t('fin.cols.desc')}</th>
-                <th>{t('fin.cols.source')}</th>
-                <th className="!text-end">{t('fin.cols.amount')}</th>
-                <th className="!text-end">{t('fin.cols.balance')}</th>
-              </tr>
-            </thead>
-            <tbody className="[&_td]:border-b [&_td]:border-dotted [&_td]:border-neutral-400 [&_td]:px-1 [&_td]:py-1">
-              <tr>
-                <td colSpan={4} className="font-semibold">
-                  {t('fin.opening')}
+  const blocks = data ? (data.tpl ?? defaultBlocks('statement')) : [];
+  // نفس مقاسات الكشف من غير قالب: العادي 12 والكبير 14 (الرصيد الختامي)
+  const fs: Record<Size, string> = { sm: 'text-[11px]', md: 'text-[12px]', lg: 'text-[14px]' };
+  const cls = (x: Block) => cn(fs[x.size], x.bold && 'font-bold', x.align === 'center' ? 'text-center' : x.align === 'end' ? 'text-end' : 'text-start');
+  const shown = (k: BlockKey) => blocks.some((x) => x.key === k && x.show);
+  const period = `${f.date(range.from)} - ${f.date(new Date(range.to.getTime() - 1))}`;
+  const title = `${t('fin.statement')} · ${t(`fin.kinds.${kind as StatementKind}`)}`;
+  // الرصيد الافتتاحي والحركات والختامي جدول واحد (زي الكشف من غير قالب)، في مكان أول واحد فيهم
+  const TABLE: BlockKey[] = ['opening', 'moves', 'closing'];
+  const tableAt = blocks.findIndex((x) => TABLE.includes(x.key) && x.show);
+  const table = (rows: Block[]) => (
+    <table key="table" className="w-full border-collapse">
+      {rows.some((x) => x.key === 'moves') && (
+        <thead>
+          <tr className="[&_th]:border-b [&_th]:border-black [&_th]:px-1 [&_th]:py-1 [&_th]:text-start">
+            <th>{t('fin.cols.time')}</th>
+            <th>{t('fin.cols.desc')}</th>
+            <th>{t('fin.cols.source')}</th>
+            <th className="!text-end">{t('fin.cols.amount')}</th>
+            <th className="!text-end">{t('fin.cols.balance')}</th>
+          </tr>
+        </thead>
+      )}
+      <tbody className="[&_td]:border-b [&_td]:border-dotted [&_td]:border-neutral-400 [&_td]:px-1 [&_td]:py-1">
+        {rows.map((x) =>
+          x.key === 'opening' ? (
+            <tr key="opening" className={cls(x)} data-block="opening">
+              <td colSpan={4} className="font-semibold">
+                {t('fin.opening')}
+              </td>
+              <td className="text-end font-mono" dir="ltr" data-testid="statement-opening">
+                {f.money(data!.st.opening)}
+              </td>
+            </tr>
+          ) : x.key === 'moves' ? (
+            data!.st.moves.map((m) => (
+              <tr key={`${m.entry_id}-${m.account}`} className={cn(fs[x.size], x.bold && 'font-bold', m.reversed && 'text-neutral-500 line-through')} data-testid="statement-moves">
+                <td className="whitespace-nowrap font-mono">{f.dateTime(m.at)}</td>
+                <td>
+                  {t(`fin.src.${m.source_type}`)}
+                  {m.memo ? ` - ${m.memo}` : ''}
+                </td>
+                <td className="font-mono" dir="ltr">
+                  {m.order_no ?? ''}
                 </td>
                 <td className="text-end font-mono" dir="ltr">
-                  {f.money(data.st.opening)}
+                  {f.money(m.amount)}
+                </td>
+                <td className="text-end font-mono" dir="ltr">
+                  {f.money(m.balance)}
                 </td>
               </tr>
-              {data.st.moves.map((m) => (
-                <tr key={`${m.entry_id}-${m.account}`} className={m.reversed ? 'text-neutral-500 line-through' : ''}>
-                  <td className="whitespace-nowrap font-mono">{f.dateTime(m.at)}</td>
-                  <td>
-                    {t(`fin.src.${m.source_type}`)}
-                    {m.memo ? ` - ${m.memo}` : ''}
-                  </td>
-                  <td className="font-mono" dir="ltr">
-                    {m.order_no ?? ''}
-                  </td>
-                  <td className="text-end font-mono" dir="ltr">
-                    {f.money(m.amount)}
-                  </td>
-                  <td className="text-end font-mono" dir="ltr">
-                    {f.money(m.balance)}
-                  </td>
-                </tr>
-              ))}
-              <tr className="text-[14px] font-bold">
-                <td colSpan={4} className="!border-t-2 !border-solid !border-black">
-                  {t('fin.closingBalance')}
-                </td>
-                <td className="!border-t-2 !border-solid !border-black text-end font-mono" dir="ltr">
-                  {f.money(last ? last.balance : data.st.opening)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </>
-      )}
+            ))
+          ) : (
+            <tr key="closing" className={cls(x)} data-block="closing">
+              <td colSpan={4} className="!border-t-2 !border-solid !border-black">
+                {t('fin.closingBalance')}
+              </td>
+              <td className="!border-t-2 !border-solid !border-black text-end font-mono" dir="ltr" data-testid="statement-closing">
+                {f.money(last ? last.balance : data!.st.opening)}
+              </td>
+            </tr>
+          ),
+        )}
+      </tbody>
+    </table>
+  );
+  const render = (x: Block, i: number): ReactNode => {
+    if (!x.show) return null;
+    if (TABLE.includes(x.key)) return i === tableAt ? table(blocks.filter((b) => TABLE.includes(b.key) && b.show)) : null;
+    switch (x.key) {
+      case 'header':
+        // اسم المحل ولوجوه، والعنوان والاسم والفترة جوه الرأس زي الكشف من غير قالب (كل واحد بيتخفي لوحده)
+        return (
+          <PrintHeader
+            key="header"
+            title={shown('title') ? title : ''}
+            sub={[shown('party') ? data!.name : '', shown('period') ? period : ''].filter(Boolean).join(' · ')}
+          />
+        );
+      case 'title':
+        return shown('header') ? null : (
+          <div key="title" className={cn('mb-1', cls(x))} data-block="title">
+            {title}
+          </div>
+        );
+      case 'party':
+        return shown('header') ? (
+          <span key="party" className="hidden" data-testid="statement-party">
+            {data!.name}
+          </span>
+        ) : (
+          <div key="party" className={cls(x)} data-block="party" data-testid="statement-party">
+            <bdi>{data!.name}</bdi>
+          </div>
+        );
+      case 'period':
+        return shown('header') ? null : (
+          <div key="period" className={cn('mb-2', cls(x))} data-block="period">
+            {period}
+          </div>
+        );
+      case 'signature':
+        return (
+          <div key="signature" className={cn('mt-6', cls(x))} data-block="signature">
+            {t('print.sign')}: ..............................
+          </div>
+        );
+      case 'thanks':
+        return (
+          <div key="thanks" className={cn('mt-2 text-neutral-600', cls(x))} data-block="thanks">
+            {t('print.thanks')}
+          </div>
+        );
+      case 'text':
+        return x.text ? (
+          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} data-block="text">
+            {x.text}
+          </p>
+        ) : null;
+      default:
+        return null;
+    }
+  };
+  return (
+    <PrintFrame ready={!!data}>
+      {data && <div data-testid="print-statement">{blocks.map(render)}</div>}
     </PrintFrame>
   );
 }
