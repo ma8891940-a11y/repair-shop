@@ -2,7 +2,7 @@
  * U5: قوالب الطباعة. القالب = خانات مرتبة (تظهر أو لأ، وحجم الخط، والمحاذاة، والعريض، ونص حر).
  * القالب بيتحكم في الشكل بس: الأرقام والبيانات دايمًا من البرنامج.
  */
-export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement' | 'voucher';
+export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement' | 'voucher' | 'sale';
 export type BlockKey =
   | 'header' | 'title' | 'orderNo' | 'date' | 'customer' | 'phone' | 'device' | 'imei' | 'issue'
   | 'accessories' | 'condition' | 'estimate' | 'parts' | 'total' | 'paid' | 'remaining' | 'warranty'
@@ -10,7 +10,9 @@ export type BlockKey =
   // كشف الحساب
   | 'party' | 'period' | 'opening' | 'moves' | 'closing'
   // سند القبض والصرف
-  | 'entryNo' | 'amount' | 'method' | 'cashbox' | 'memo';
+  | 'entryNo' | 'amount' | 'method' | 'cashbox' | 'memo'
+  // فاتورة البيع
+  | 'lines';
 export type Size = 'sm' | 'md' | 'lg';
 export type Align = 'start' | 'center' | 'end';
 export interface Block {
@@ -28,7 +30,8 @@ const INVOICE: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', '
 /** الخانات المتاحة لكل نوع ورقة (بالترتيب الافتراضي)، و"نص حر" ممكن يتضاف في أي مكان */
 const STATEMENT: BlockKey[] = ['header', 'title', 'party', 'period', 'opening', 'moves', 'closing', 'signature', 'thanks'];
 const VOUCHER: BlockKey[] = ['header', 'title', 'entryNo', 'date', 'party', 'amount', 'method', 'cashbox', 'memo', 'sign', 'thanks'];
-export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE, statement: STATEMENT, voucher: VOUCHER };
+const SALE: BlockKey[] = ['header', 'title', 'entryNo', 'date', 'customer', 'phone', 'lines', 'total', 'paid', 'remaining', 'memo', 'sign', 'thanks'];
+export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE, statement: STATEMENT, voucher: VOUCHER, sale: SALE };
 
 const BIG: BlockKey[] = ['orderNo', 'total', 'closing', 'amount'];
 // كشف الحساب الافتراضي = نفس شكل الكشف من غير قالب (التوقيع والشكر مخفيين)

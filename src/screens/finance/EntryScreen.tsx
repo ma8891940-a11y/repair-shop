@@ -88,6 +88,11 @@ export function EntryScreen() {
           data && !data.reversedBy && !['reversal', 'cost_adjust'].includes(data.e.source_type) ? (
             <div className="flex gap-2">
               {/* U5: سند قبض أو صرف للقيد ده */}
+              {data.e.source_type === 'sale' && (
+                <Link to={`/print/sale/${data.e.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent hover:text-fg" data-testid="entry-sale-invoice">
+                  <Printer className="size-4" aria-hidden /> {t('saleInv.print')}
+                </Link>
+              )}
               {VOUCHER_SOURCES.includes(data.e.source_type) && (
                 <Link to={`/print/voucher/${data.e.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent hover:text-fg" data-testid="entry-voucher">
                   <Printer className="size-4" aria-hidden /> {t('voucher.print')}

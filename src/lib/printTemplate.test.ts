@@ -73,3 +73,13 @@ describe('U5: قالب السند', () => {
     expect(normalizeBlocks('voucher', [{ key: 'opening', show: true }]).map((x) => x.key)).not.toContain('opening');
   });
 });
+
+describe('6ب: قالب فاتورة البيع', () => {
+  it('الافتراضي بالترتيب وكله ظاهر، وجدول الأصناف خانة واحدة، والإجمالي كبير', () => {
+    const b = defaultBlocks('sale');
+    expect(b.map((x) => x.key)).toEqual(['header', 'title', 'entryNo', 'date', 'customer', 'phone', 'lines', 'total', 'paid', 'remaining', 'memo', 'sign', 'thanks']);
+    expect(b.every((x) => x.show)).toBe(true);
+    expect(b.find((x) => x.key === 'total')).toMatchObject({ size: 'lg', bold: true });
+    expect(normalizeBlocks('sale', [{ key: 'qr', show: true }]).map((x) => x.key)).not.toContain('qr');
+  });
+});

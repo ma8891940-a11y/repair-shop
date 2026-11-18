@@ -373,6 +373,165 @@ export function VoucherPrint() {
   );
 }
 
+interface SaleInvoice {
+  entry_no: number;
+  at: string;
+  memo: string | null;
+  branch_id: string | null;
+  lines: { name: string; qty: number; price: number | null; amount: number | null }[];
+  legacy: boolean;
+  total: number;
+  paid: number;
+  due: number;
+  customer: string | null;
+  phone: string | null;
+  cancelled_by: number | null;
+}
+
+/**
+ * 6ب: فاتورة بيع (A4) لقيد بيع، بقالب من مصمم الطباعة.
+ * الإجمالي والمدفوع والباقي من الدفتر (sale_invoice)، وسطور الأصناف زي ما اتباعت بالظبط. البيع القديم من غير سعر كل صنف.
+ */
+export function SaleInvoicePrint() {
+  const { id = '' } = useParams();
+  const { t } = useTranslation();
+  const f = useFormat();
+  const br = useBranch();
+  const [params] = useSearchParams();
+  const preview = params.get('preview') === '1';
+  const previewV = params.get('v');
+  const { data, error } = useLoad(async () => {
+    const inv = (await rpc('sale_invoice', { p_entry: id })) as SaleInvoice;
+    const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'sale').eq('is_default', true).is('deleted_at', null);
+    const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
+    const pick = list.find((x) => x.branch_id && x.branch_id === (inv.branch_id ?? br.working?.id)) ?? list.find((x) => !x.branch_id);
+    let draft: unknown = null;
+    if (preview) {
+      try {
+        draft = JSON.parse(sessionStorage.getItem('tpl-preview:sale') ?? 'null');
+      } catch {
+        draft = null;
+      }
+    }
+    const tpl = draft ? normalizeBlocks('sale', draft) : pick ? normalizeBlocks('sale', pick.blocks) : null;
+    return { inv, tpl };
+  }, [id, preview, previewV, br.working?.id]);
+  const blocks = data ? (data.tpl ?? defaultBlocks('sale')) : [];
+  const fs: Record<Size, string> = { sm: 'text-[12px]', md: 'text-[14px]', lg: 'text-[20px]' };
+  const cls = (x: Block) => cn(fs[x.size], x.bold && 'font-bold', x.align === 'center' ? 'text-center' : x.align === 'end' ? 'text-end' : 'text-start');
+  const shown = (k: BlockKey) => blocks.some((b) => b.key === k && b.show);
+  const money = (v: number) => `${f.money(Number(v))} ${f.currency()}`;
+  const row = (x: Block, label: ReactNode, value: ReactNode, testid?: string, mono = false) => (
+    <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1.5', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} data-block={x.key}>
+      <span className="w-[30%] shrink-0 font-semibold">{label}</span>
+      <span className={cn('min-w-0', mono && 'font-mono')} dir={mono ? 'ltr' : undefined} data-testid={testid}>
+        {value}
+      </span>
+    </div>
+  );
+  const render = (x: Block, i: number): ReactNode => {
+    if (!x.show || !data) return null;
+    const v = data.inv;
+    switch (x.key) {
+      case 'header':
+        return <PrintHeader key="header" title={shown('title') ? t('saleInv.title') : ''} sub={shown('entryNo') ? `#${v.entry_no}` : ''} />;
+      case 'title':
+        return shown('header') ? null : (
+          <div key="title" className={cn('mb-2', cls(x))} data-block="title">
+            {t('saleInv.title')}
+          </div>
+        );
+      case 'entryNo':
+        return shown('header') ? null : row(x, t('saleInv.no'), `#${v.entry_no}`, undefined, true);
+      case 'date':
+        return row(x, t('print.date'), f.dateTime(v.at));
+      case 'customer':
+        return v.customer ? row(x, t('print.customer'), <bdi>{v.customer}</bdi>, 'sale-customer') : null;
+      case 'phone':
+        return v.phone ? row(x, t('print.phone'), v.phone, undefined, true) : null;
+      case 'lines':
+        return (
+          <table key="lines" className={cn('mt-2 w-full border-collapse', fs[x.size])} data-block="lines">
+            <thead>
+              <tr className="[&_th]:border-b [&_th]:border-black [&_th]:px-1 [&_th]:py-1 [&_th]:text-start">
+                <th>{t('saleInv.item')}</th>
+                <th className="!text-end">{t('saleInv.qty')}</th>
+                {!v.legacy && <th className="!text-end">{t('saleInv.price')}</th>}
+                {!v.legacy && <th className="!text-end">{t('saleInv.amount')}</th>}
+              </tr>
+            </thead>
+            <tbody className="[&_td]:border-b [&_td]:border-dotted [&_td]:border-neutral-400 [&_td]:px-1 [&_td]:py-1">
+              {v.lines.map((l, j) => (
+                <tr key={j} data-testid="sale-line">
+                  <td>
+                    <bdi>{l.name}</bdi>
+                  </td>
+                  <td className="text-end font-mono" dir="ltr">
+                    {f.number(Number(l.qty))}
+                  </td>
+                  {!v.legacy && (
+                    <td className="text-end font-mono" dir="ltr">
+                      {f.money(Number(l.price))}
+                    </td>
+                  )}
+                  {!v.legacy && (
+                    <td className="text-end font-mono" dir="ltr" data-testid="sale-line-amount">
+                      {f.money(Number(l.amount))}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        );
+      case 'total':
+        return row(x, t('fin.total'), money(v.total), 'sale-total', true);
+      case 'paid':
+        return row(x, t('print.paid'), money(v.paid), 'sale-paid', true);
+      case 'remaining':
+        return Number(v.due) > 0 ? row(x, t('print.remaining'), money(v.due), 'sale-due', true) : null;
+      case 'memo':
+        return v.memo ? row(x, t('voucher.memo'), v.memo) : null;
+      case 'sign':
+        return (
+          <div key="sign" className={cn('mt-8', cls(x))} data-block="sign">
+            {t('print.sign')}: ..............................
+          </div>
+        );
+      case 'thanks':
+        return (
+          <div key="thanks" className={cn('mt-3 text-neutral-600', cls(x))} data-block="thanks">
+            {t('print.thanks')}
+          </div>
+        );
+      case 'text':
+        return x.text ? (
+          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} data-block="text">
+            {x.text}
+          </p>
+        ) : null;
+      default:
+        return null;
+    }
+  };
+  if (error) return <p className="p-6 text-sm text-red-700">{error}</p>;
+  return (
+    <PrintFrame ready={!!data && br.ready}>
+      {data && (
+        <div data-testid="print-sale" data-legacy={data.inv.legacy ? 'true' : 'false'} data-cancelled={data.inv.cancelled_by != null ? 'true' : 'false'}>
+          {data.inv.cancelled_by != null && (
+            <div className="mb-3 border-2 border-black px-3 py-2 text-center text-[18px] font-extrabold" data-testid="sale-cancelled">
+              {t('voucher.cancelled', { no: data.inv.cancelled_by })}
+            </div>
+          )}
+          {blocks.map(render)}
+          {data.inv.legacy && <p className="mt-2 text-[11px] text-neutral-600">{t('saleInv.legacy')}</p>}
+        </div>
+      )}
+    </PrintFrame>
+  );
+}
+
 /** تقرير اليوم: الإيرادات والمصروفات والربح، والدفعات بكل طريقة، والأجهزة المسلّمة، وتقفيلات الدرج */
 export function DayReportPrint() {
   const { day = '' } = useParams();

@@ -777,7 +777,8 @@
       "eta_documents": "E-invoices",
       "categories": "Categories",
       "push_subscriptions": "Device notification subscription",
-      "push_sent": "Notification sent to device"
+      "push_sent": "Notification sent to device",
+      "sale_lines": "Sale line"
     },
     "actions": {
       "insert": "add",
@@ -3241,7 +3242,8 @@
       "receipt-a4": "Intake receipt (A4)",
       "invoice": "Delivery invoice",
       "statement": "Account statement (A4)",
-      "voucher": "Receipt / payment voucher (A4)"
+      "voucher": "Receipt / payment voucher (A4)",
+      "sale": "Sale invoice (A4)"
     },
     "printer": "Printer",
     "defaultSize": "Default size",
@@ -3281,7 +3283,8 @@
       "amount": "Amount",
       "method": "Payment method",
       "cashbox": "Cashbox",
-      "memo": "Description"
+      "memo": "Description",
+      "lines": "Items table"
     },
     "size": "Font size",
     "sizes": {
@@ -3711,5 +3714,15 @@
     "signCashier": "Cashier signature",
     "print": "Print voucher",
     "cancelled": "Cancelled: reversed by entry #{{no}}"
+  },
+  "saleInv": {
+    "title": "Sale invoice",
+    "no": "Invoice number",
+    "item": "Item",
+    "qty": "Qty",
+    "price": "Price",
+    "amount": "Amount",
+    "print": "Print invoice",
+    "legacy": "Sale recorded before invoice lines: items and quantities from stock, total from the ledger (per-item prices were not recorded)."
   }
 }
