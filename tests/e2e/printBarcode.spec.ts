@@ -42,6 +42,18 @@ test('ملصق الباركود: الافتراضي ← مقاس طابعة ال
   await expect(label.getByTestId('barcode-name')).toHaveText('سماعة الملصق');
   await expect(label.getByTestId('barcode-price')).toContainText('125.50');
   expect(await page.evaluate(() => [...document.querySelectorAll('style')].some((s) => s.textContent?.includes('50mm 30mm')))).toBe(true);
+  // نفس مقاس الملصق القديم (48×28مم)، والمحتوى جواه من غير ما يطلع برّه
+  const box = async () =>
+    page.getByTestId('barcode-label').first().evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const kids = [...el.children].map((c) => c.getBoundingClientRect());
+      return { w: r.width, h: r.height, inside: kids.every((k) => k.top >= r.top - 0.5 && k.bottom <= r.bottom + 0.5) };
+    });
+  const mm = 96 / 25.4;
+  let b = await box();
+  expect(Math.abs(b.w - 48 * mm)).toBeLessThan(1.5);
+  expect(Math.abs(b.h - 28 * mm)).toBeLessThan(1.5);
+  expect(b.inside).toBe(true);
 
   // 2) المصمم: طابعة ملصقات 40×30، وقالب الملصق عليها من غير السعر
   await page.goto('/#/settings?tab=printers');
@@ -64,6 +76,11 @@ test('ملصق الباركود: الافتراضي ← مقاس طابعة ال
   await expect(page.getByTestId('barcode-price')).toHaveCount(0);
   await expect(page.getByTestId('barcode-name').first()).toHaveText('سماعة الملصق');
   expect(await page.evaluate(() => [...document.querySelectorAll('style')].some((s) => s.textContent?.includes('40mm 30mm')))).toBe(true);
+  // طابعة 40×30 بهامش 0: الملصق 40×30مم
+  b = await box();
+  expect(Math.abs(b.w - 40 * mm)).toBeLessThan(1.5);
+  expect(Math.abs(b.h - 30 * mm)).toBeLessThan(1.5);
+  expect(b.inside).toBe(true);
 
   // 4) رجّع الافتراضي (المحفوظ)
   await page.goto('/#/settings?tab=printers');

@@ -191,7 +191,11 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
         : lastDevice
           ? `print/${doc}/${lastDevice}`
           : null;
-  const previewUrl = useMemo(() => (sample ? `${window.location.pathname}#/${sample}?preview=1&embed=1&v=${v}` : null), [sample, v]);
+  // الملصق: المقاس من الطابعة اللي متختارة دلوقتي (حتى قبل الحفظ)
+  const previewUrl = useMemo(
+    () => (sample ? `${window.location.pathname}#/${sample}?preview=1&embed=1&v=${v}${doc === 'barcode' ? `&printer=${printer}` : ''}` : null),
+    [sample, v, doc, printer],
+  );
   return (
     <Panel data-testid="print-designer">
       <PanelHeader title={t('printers.designer')} />

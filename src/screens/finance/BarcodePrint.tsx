@@ -49,11 +49,18 @@ export function BarcodePrint() {
       }
     }
     const tpl = draft ? normalizeBlocks('barcode', draft) : pick ? normalizeBlocks('barcode', pick.blocks) : null;
-    const printer = pick?.printer_id
-      ? ((await supabase.from('printers').select('width_mm, height_mm, margin_mm').eq('id', pick.printer_id).is('deleted_at', null).maybeSingle()).data as { width_mm: number; height_mm: number | null; margin_mm: number } | null)
+    // في المعاينة: الطابعة اللي متختارة في المصمم دلوقتي (حتى قبل الحفظ)
+    const pid = preview && sp.has('printer') ? sp.get('printer') || null : (pick?.printer_id ?? null);
+    const printer = pid
+      ? ((await supabase.from('printers').select('kind, width_mm, height_mm, margin_mm').eq('id', pid).is('deleted_at', null).maybeSingle()).data as {
+          kind: string;
+          width_mm: number;
+          height_mm: number | null;
+          margin_mm: number;
+        } | null)
       : null;
     return { item, tpl, printer };
-  }, [id, preview, previewV, br.working?.id]);
+  }, [id, preview, previewV, br.working?.id, sp.get('printer')]);
   const item = data?.item ?? null;
   const ok = !!item?.barcode && isEan13(item.barcode);
   const ready = ok && br.ready;
@@ -63,12 +70,14 @@ export function BarcodePrint() {
     return () => clearTimeout(tm);
   }, [ready, preview]);
   // المقاس: من طابعة الملصقات في القالب (العرض والطول والهامش)، أو الافتراضي
-  const p = data?.printer?.height_mm ? data.printer : DEFAULT_LABEL;
-  const w = p.width_mm - 2 * p.margin_mm;
-  const h = (p.height_mm ?? DEFAULT_LABEL.height_mm) - 2 * p.margin_mm;
+  // طابعة الملصقات بس (الحرارية أو الورق مالهمش مقاس ملصق)، والملصق ما يصغرش عن 10مم
+  const lp = data?.printer;
+  const p = lp && lp.kind === 'label' && lp.height_mm ? { width_mm: lp.width_mm, height_mm: lp.height_mm, margin_mm: lp.margin_mm } : DEFAULT_LABEL;
+  const w = Math.max(10, p.width_mm - 2 * p.margin_mm);
+  const h = Math.max(10, p.height_mm - 2 * p.margin_mm);
   const blocks = data ? (data.tpl ?? defaultBlocks('barcode')) : [];
   const align = (x: Block) => (x.align === 'start' ? 'self-start text-start' : x.align === 'end' ? 'self-end text-end' : 'self-center text-center');
-  const render = (x: Block) => {
+  const render = (x: Block, j: number) => {
     if (!x.show || !item) return null;
     const c = cn(FONT[x.size], x.bold && 'font-bold', align(x));
     switch (x.key) {
@@ -86,8 +95,9 @@ export function BarcodePrint() {
         );
       case 'code':
         return (
-          <div key="code" className={align(x)} data-block="code">
-            <Barcode code={item.barcode!} className={cn(CODE_H[x.size], 'w-[40mm] max-w-full')} />
+          // block: من غير مسافة السطر تحت الباركود (نفس ارتفاع الملصق القديم)
+          <div key="code" className={cn('leading-none', align(x))} data-block="code">
+            <Barcode code={item.barcode!} className={cn('block', CODE_H[x.size], 'w-[40mm] max-w-full')} />
           </div>
         );
       case 'price':
@@ -98,7 +108,7 @@ export function BarcodePrint() {
         ) : null;
       case 'text':
         return x.text ? (
-          <div key={`text-${blocks.indexOf(x)}`} className={cn('w-full truncate', c)} data-block="text">
+          <div key={`text-${j}`} className={cn('w-full truncate', c)} data-block="text">
             {x.text}
           </div>
         ) : null;
@@ -108,7 +118,7 @@ export function BarcodePrint() {
   };
   return (
     <div className="min-h-dvh bg-white text-black">
-      <style>{`@page { size: ${p.width_mm}mm ${p.height_mm ?? DEFAULT_LABEL.height_mm}mm; margin: ${p.margin_mm}mm; } @media print { .bc-label { break-after: page; } }`}</style>
+      <style>{`@page { size: ${p.width_mm}mm ${p.height_mm}mm; margin: ${p.margin_mm}mm; } @media print { .bc-label { break-after: page; } }`}</style>
       <div className={cn('flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden', embed && 'hidden')}>
         <button type="button" onClick={() => window.print()} className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-on-accent">
           {t('print.print')}
@@ -129,11 +139,11 @@ export function BarcodePrint() {
           {Array.from({ length: n }, (_, i) => (
             <article
               key={i}
-              className="bc-label flex flex-col items-center justify-center overflow-hidden border border-dashed border-neutral-300 px-[1mm] print:border-0"
+              className="bc-label flex flex-col items-center justify-center border border-dashed border-neutral-300 px-[1mm] print:border-0"
               style={{ width: `${w}mm`, height: `${h}mm` }}
               data-testid="barcode-label"
             >
-              {blocks.map(render)}
+              {blocks.map((x, j) => render(x, j))}
             </article>
           ))}
         </div>
