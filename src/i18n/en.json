@@ -3723,6 +3723,7 @@
     "price": "Price",
     "amount": "Amount",
     "print": "Print invoice",
-    "legacy": "Sale recorded before invoice lines: items and quantities from stock, total from the ledger (per-item prices were not recorded)."
+    "legacy": "Sale recorded before invoice lines: items and quantities from stock, total from the ledger (per-item prices were not recorded).",
+    "due": "Remaining (on credit at sale time)"
   }
 }

@@ -14940,6 +14940,7 @@ do $run$ begin
 -- - الجدول للإضافة بس: بيتكتب جوه record_sale في نفس الـ transaction بتاع القيد، وما بيتعدلش ولا بيتحذف.
 -- - القراية بنفس صلاحيات القيد نفسه (اللي يشوف القيد يشوف سطوره)، والفني ما بيشوفش.
 -- - الفاتورة من sale_invoice: صاحب المحل، أو اللي معاه صلاحية البيع في فرع القيد. المبالغ من سطور القيد (الدفتر)، والسطور للعرض بس.
+-- - اسم العميل وتليفونه في الفاتورة لمين يشوف العملاء بس.
 -- - البيع القديم (قبل الملف ده): الفاتورة بالإجمالي من الدفتر، والأصناف من حركة المخزون من غير سعر كل صنف.
 
 create table public.sale_lines (
@@ -14951,6 +14952,8 @@ create table public.sale_lines (
   qty bigint not null check (qty > 0),
   price bigint not null check (price >= 0),
   seq integer not null default 0,
+  -- العميل في البيع الكاش لعميل معروف (القيد ما بيسجّلوش لأنه ما بيأثرش على رصيده)
+  customer_id uuid references public.customers(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
@@ -14961,9 +14964,11 @@ create trigger set_updated_at before update on public.sale_lines for each row ex
 create trigger block_delete before delete on public.sale_lines for each row execute function public.tg_block_delete();
 -- زي سطور القيد: ممنوع التعديل والحذف
 create trigger ledger_immutable before update or delete on public.sale_lines for each row execute function public.tg_ledger_immutable();
+create trigger ledger_no_truncate before truncate on public.sale_lines for each statement execute function public.tg_ledger_immutable();
 -- نفس صلاحيات القيد (RLS بتاع journal_entries بيتطبق جوه الـ exists)
 create policy sale_lines_select on public.sale_lines for select to authenticated
   using (shop_id = public.current_shop_id() and exists (select 1 from public.journal_entries e where e.id = entry_id));
+revoke all on public.sale_lines from public, anon, authenticated;
 grant select on public.sale_lines to authenticated;
 
 -- record_sale: (src: 0057_categories.sql) + سطر لكل صنف في sale_lines
@@ -14999,7 +15004,7 @@ begin
     if q is null or q <= 0 or p is null or p < 0 then raise exception 'E_BAD_AMOUNT'; end if;
     -- 6ب: سطر البيع زي ما اتباع (الاسم والكمية والسعر) عشان فاتورة البيع
     n := n + 1;
-    insert into public.sale_lines(shop_id, entry_id, item_id, name, qty, price, seq) values (s, e, it.id, it.name, q, p, n);
+    insert into public.sale_lines(shop_id, entry_id, item_id, name, qty, price, seq, customer_id) values (s, e, it.id, it.name, q, p, n, p_customer);
     -- K: الخدمة من غير مخزون ولا تكلفة، وإيرادها إيراد الصيانة
     if it.kind = 'service' then rev_srv := rev_srv + q * p; continue; end if;
     cost := public.ledger_issue(it.id, q, e);
@@ -15305,7 +15310,12 @@ begin
     from (select m.item_id, -sum(m.qty) q, min(m.created_at) first from public.stock_moves m where m.entry_id = o.id group by m.item_id) x
     join public.items i on i.id = x.item_id;
   end if;
-  if cust is not null then select c.name, c.phone into cname, cphone from public.customers c where c.id = cust; end if;
+  -- البيع الكاش لعميل معروف: العميل من سطور البيع
+  cust := coalesce(cust, (select max(sl.customer_id::text)::uuid from public.sale_lines sl where sl.entry_id = o.id));
+  -- اسم العميل وتليفونه لمين يشوف العملاء بس (نفس صلاحية جدول العملاء)
+  if cust is not null and (r = 'owner' or public.has_perm('customers', 'view') or public.has_perm('intake', 'add')) then
+    select c.name, c.phone into cname, cphone from public.customers c where c.id = cust;
+  end if;
   select e.entry_no into rev_no from public.journal_entries e where e.reverses_id = o.id;
   return jsonb_build_object('entry_no', o.entry_no, 'at', o.occurred_at, 'memo', o.memo, 'branch_id', o.branch_id,
     'lines', coalesce(ls, '[]'::jsonb), 'legacy', old, 'total', total, 'paid', paid, 'due', due,

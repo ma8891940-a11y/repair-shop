@@ -489,7 +489,7 @@ export function SaleInvoicePrint() {
       case 'paid':
         return row(x, t('print.paid'), money(v.paid), 'sale-paid', true);
       case 'remaining':
-        return Number(v.due) > 0 ? row(x, t('print.remaining'), money(v.due), 'sale-due', true) : null;
+        return Number(v.due) > 0 ? row(x, t('saleInv.due'), money(v.due), 'sale-due', true) : null;
       case 'memo':
         return v.memo ? row(x, t('voucher.memo'), v.memo) : null;
       case 'sign':

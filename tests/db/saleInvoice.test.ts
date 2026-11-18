@@ -90,6 +90,8 @@ d('فاتورة البيع (سطور البيع)', () => {
     ]);
     const i = await inv(R1, e);
     expect(i).toMatchObject({ total: 313050, paid: 313050, due: 0, legacy: false, cancelled_by: null });
+    // بيع كاش لعميل معروف: العميل في الفاتورة (من سطور البيع)
+    expect(i).toMatchObject({ customer: 'عميل الفاتورة', phone: '01055556666' });
     expect(i.lines.map((x: { amount: number }) => Number(x.amount)).reduce((a: number, b: number) => a + b, 0)).toBe(Number(i.total));
     // نفس إيراد القيد في الدفتر
     const rev = (await admin(`select sum(l.credit)::bigint r from journal_lines l join accounts a on a.id = l.account_id where l.entry_id = $1 and a.type = 'revenue'`, [e])).rows[0].r;
@@ -112,6 +114,15 @@ d('فاتورة البيع (سطور البيع)', () => {
     expect((await inv(R1, e)).total).toBe(1000);
     expect((await as(T, `select count(*)::int n from sale_lines`)).rows[0].n).toBe(0);
     await expect(as(O, `select sale_invoice($1)`, [id()])).rejects.toThrow(/E_NOT_FOUND/);
+  });
+
+  it('موظف بيبيع بس من غير صلاحية العملاء: الفاتورة من غير اسم العميل وتليفونه', async () => {
+    const e = (await as(O, `select record_sale($1, $2::jsonb, null, $3) e`, [id(), JSON.stringify([{ item: srv, qty: 1, price: 3000 }]), cust], main)).rows[0].e;
+    expect(await inv(R1, e)).toMatchObject({ customer: 'عميل الفاتورة', total: 3000 });
+    for (const [sec, op] of [['customers', 'view'], ['intake', 'add']]) await as(O, `select set_staff_override($1, $2, $3, false)`, [R1, sec, op]);
+    const i = await inv(R1, e);
+    expect(i).toMatchObject({ customer: null, phone: null, total: 3000, due: 3000 });
+    for (const [sec, op] of [['customers', 'view'], ['intake', 'add']]) await as(O, `select set_staff_override($1, $2, $3, null)`, [R1, sec, op]);
   });
 
   it('السطور ما بتتعدلش ولا بتتحذف، حتى لصاحب قاعدة البيانات', async () => {
