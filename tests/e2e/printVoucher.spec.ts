@@ -84,4 +84,17 @@ test('السندات: سند قبض لدفعة العميل وسند صرف لل
   await expect(page.getByText('رجع القالب الافتراضي')).toBeVisible();
   await page.goto(`/#/print/voucher/${expE}?preview=0`);
   await expect(page.getByTestId('voucher-cashbox')).toBeVisible();
+  await expect(page.getByTestId('voucher-cancelled')).toHaveCount(0);
+
+  // المصروف اتلغى بقيد عكسي: زرار السند اختفى، والرابط القديم بيطبع "ملغي" برقم القيد العكسي
+  await page.goto(`/#/finance/entry/${expE}`);
+  await afterSplash(page);
+  await page.getByTestId('entry-cancel').click();
+  await fillField(page.getByRole('dialog').getByRole('textbox'), 'غلط في المبلغ');
+  await page.getByRole('dialog').getByRole('button', { name: 'سجّل القيد العكسي' }).click();
+  await expect(page.getByTestId('entry-voucher')).toHaveCount(0);
+  await page.goto(`/#/print/voucher/${expE}?preview=0`);
+  await expect(page.getByTestId('print-voucher')).toHaveAttribute('data-cancelled', 'true');
+  await expect(page.getByTestId('voucher-cancelled')).toContainText('ملغي');
+  await expect(page.getByTestId('voucher-amount')).toContainText('1,500.25');
 });

@@ -3709,6 +3709,7 @@
     "memo": "Description",
     "signReceiver": "Receiver signature",
     "signCashier": "Cashier signature",
-    "print": "Print voucher"
+    "print": "Print voucher",
+    "cancelled": "Cancelled: reversed by entry #{{no}}"
   }
 }

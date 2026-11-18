@@ -267,15 +267,20 @@ export function VoucherPrint() {
     const pl = lines.find((l) => l.party_type && l.party_id);
     let party = '';
     if (pl) {
-      const table = pl.party_type === 'customer' ? 'customers' : pl.party_type === 'supplier' ? 'suppliers' : 'profiles';
-      const row = (await supabase.from(table).select('*').eq('id', pl.party_id as string).maybeSingle()).data as Record<string, string | null> | null;
-      party = row?.name ?? row?.full_name ?? '';
+      // كل نوع طرف من جدوله (الموظف في profiles، والشريك في partners)
+      const src = { customer: ['customers', 'name'], supplier: ['suppliers', 'name'], partner: ['partners', 'name'], employee: ['profiles', 'full_name'] }[pl.party_type as string] as [string, string] | undefined;
+      if (src) {
+        const row = must(await supabase.from(src[0]).select(src[1]).eq('id', pl.party_id as string).maybeSingle()) as Record<string, string | null> | null;
+        party = row?.[src[1]] ?? '';
+      }
     } else {
       const other = lines.find((l) => !cashIds.has(l.account_id));
       const a = accs.find((x) => x.id === other?.account_id);
       party = a ? accName(a) : '';
     }
     const cash = accs.find((a) => a.id === cashLine.account_id)!;
+    // القيد اتلغى بقيد عكسي: السند بيتطبع عليه "ملغي" عشان الورقة تفضل مطابقة للدفتر
+    const rev = must(await supabase.from('journal_entries').select('entry_no').eq('reverses_id', id).maybeSingle()) as { entry_no: number } | null;
     const pay = e.source_type === 'payment' ? ((await supabase.from('payments').select('method').eq('entry_id', id).maybeSingle()).data as { method: string } | null) : null;
     const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'voucher').eq('is_default', true).is('deleted_at', null);
     const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
@@ -289,7 +294,7 @@ export function VoucherPrint() {
       }
     }
     const tpl = draft ? normalizeBlocks('voucher', draft) : pick ? normalizeBlocks('voucher', pick.blocks) : null;
-    return { e, receipt, amount, party, cashbox: accName(cash), method: pay?.method ?? null, tpl };
+    return { e, receipt, amount, party, cashbox: accName(cash), method: pay?.method ?? null, tpl, cancelledBy: rev?.entry_no ?? null };
   }, [id, preview, previewV, br.working?.id]);
   const blocks = data ? (data.tpl ?? defaultBlocks('voucher')) : [];
   const fs: Record<Size, string> = { sm: 'text-[12px]', md: 'text-[14px]', lg: 'text-[20px]' };
@@ -355,7 +360,12 @@ export function VoucherPrint() {
   return (
     <PrintFrame ready={!!data && br.ready}>
       {data && (
-        <div data-testid="print-voucher" data-kind={data.receipt ? 'receipt' : 'payment'}>
+        <div data-testid="print-voucher" data-kind={data.receipt ? 'receipt' : 'payment'} data-cancelled={data.cancelledBy ? 'true' : 'false'}>
+          {data.cancelledBy != null && (
+            <div className="mb-3 border-2 border-black px-3 py-2 text-center text-[18px] font-extrabold" data-testid="voucher-cancelled">
+              {t('voucher.cancelled', { no: data.cancelledBy })}
+            </div>
+          )}
           {blocks.map(render)}
         </div>
       )}
