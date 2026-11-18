@@ -4,9 +4,12 @@ import { activateInvite, prefs, quickIntake, registerShop, uniq, fillAmount } fr
 // المراجعة الشاملة: اللغتين، ومفيش أخطاء في الـ console، ومفيش نصوص مش مترجمة، والحالات الغلط
 
 /** الشاشات الأساسية لصاحب المحل (كل اللي في القائمة) */
-const SCREENS = ['/#/', '/#/devices', '/#/intake', '/#/customers', '/#/finance', '/#/finance/pl', '/#/inventory', '/#/reports', '/#/drawer', '/#/users', '/#/audit', '/#/settings', '/#/videos', '/#/community'];
-const SETTINGS_TABS_AR = ['هوية المحل', 'طرق الدفع', 'الفنيين والمسارات', 'الخزن والمصروفات', 'الرسائل', 'إضافات', 'النسخ الاحتياطي', 'المظهر'];
-const SETTINGS_TABS_EN = ['Shop identity', 'Payment methods', 'Technicians & routes', 'Cashboxes & expenses', 'Messages', 'Extras', 'Backup', 'Appearance'];
+const SCREENS = ['/#/', '/#/devices', '/#/intake', '/#/customers', '/#/finance', '/#/finance/pl', '/#/inventory', '/#/reports', '/#/drawer', '/#/users', '/#/audit', '/#/settings', '/#/videos', '/#/community', '/#/used', '/#/categories', '/#/analytics'];
+// أسماء مواقع حقيقية ظاهرة بقصد (زي aistudio.google.com في إعدادات المساعد)، مش مفاتيح ترجمة
+const SITE = /\.(com|co|app|org|net|io|dev)$/i;
+// U6: كل تبويبات الإعدادات (ومنها الجديدة: التنبيهات، وقوايم الفحص، والكتالوج، والأمان، والطابعات)
+const SETTINGS_TABS_AR = ['هوية المحل', 'تطبيقي', 'الفروع', 'الأدوار والصلاحيات', 'طرق الدفع', 'الفنيين والمسارات', 'الخزن والمصروفات', 'المخزون', 'التنبيهات', 'القوائم', 'الطباعة', 'الطابعات ومصمم الطباعة', 'قوايم الفحص', 'الكتالوج', 'الأمان', 'المساعد', 'الرسائل', 'إضافات', 'النسخ الاحتياطي', 'المظهر'];
+const SETTINGS_TABS_EN = ['Shop identity', 'My app', 'Branches', 'Roles & permissions', 'Payment methods', 'Technicians & routes', 'Cashboxes & expenses', 'Inventory', 'Alerts', 'Lists', 'Printing', 'Printers & print designer', 'Check lists', 'Catalog', 'Security', 'Assistant', 'Messages', 'Extras', 'Backup', 'Appearance'];
 
 function consoleErrors(page: Page) {
   const errors: string[] = [];
@@ -32,7 +35,7 @@ async function visibleText(page: Page, userData: string[]) {
 }
 
 test('اللغتين: كل الشاشات بالعربي والإنجليزي من غير نصوص مش مترجمة، ومن غير مفاتيح ترجمة ظاهرة، ومن غير أخطاء في الـ console', async ({ page }, info) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
   await prefs(page, info);
   const errors = consoleErrors(page);
   const shopName = 'مركز الاختبار';
@@ -54,17 +57,17 @@ test('اللغتين: كل الشاشات بالعربي والإنجليزي م
       await expect(page.locator('[data-testid="error-state"], .animate-pulse').first()).toHaveCount(0, { timeout: 15_000 }).catch(() => undefined);
       const txt = await visibleText(page, userData);
       // مفتاح ترجمة ظاهر (زي settings.title أو register.steps.verify.title)
-      expect(txt.match(/\b[a-z]+(?:\.[a-zA-Z0-9_]+){1,4}\b/g)?.filter((k) => !/^(www|gawalak|localhost|e\.g|i\.e)\b/i.test(k)) ?? [], `${lang} ${s}`).toEqual([]);
+      expect(txt.match(/\b[a-z]+(?:\.[a-zA-Z0-9_]+){1,4}\b/g)?.filter((k) => !/^(www|gawalak|localhost|e\.g|i\.e)\b/i.test(k) && !SITE.test(k)) ?? [], `${lang} ${s}`).toEqual([]);
       // في الإنجليزي: مفيش نص عربي غير بيانات المستخدم
       if (lang === 'en') expect(txt.match(/[؀-ۿ]{2,}[^\n]{0,30}/g) ?? [], `en ${s}`).toEqual([]);
     }
     // كل تبويبات الإعدادات
     await page.goto('/#/settings');
     for (const tab of lang === 'ar' ? SETTINGS_TABS_AR : SETTINGS_TABS_EN) {
-      await page.getByRole('tab', { name: tab }).click();
+      await page.getByRole('tab', { name: tab, exact: true }).click();
       await page.waitForTimeout(400);
       const txt = await visibleText(page, userData);
-      expect(txt.match(/\b[a-z]+(?:\.[a-zA-Z0-9_]+){1,4}\b/g)?.filter((k) => !/^(www|gawalak|localhost|e\.g|i\.e)\b/i.test(k)) ?? [], `${lang} settings ${tab}`).toEqual([]);
+      expect(txt.match(/\b[a-z]+(?:\.[a-zA-Z0-9_]+){1,4}\b/g)?.filter((k) => !/^(www|gawalak|localhost|e\.g|i\.e)\b/i.test(k) && !SITE.test(k)) ?? [], `${lang} settings ${tab}`).toEqual([]);
       if (lang === 'en') expect(txt.match(/[؀-ۿ]{2,}[^\n]{0,30}/g) ?? [], `en settings ${tab}`).toEqual([]);
     }
   }
