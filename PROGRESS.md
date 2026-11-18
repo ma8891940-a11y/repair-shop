@@ -1,6 +1,6 @@
 # PROGRESS — النسخة 2
 
-آخر تحديث: 2026-11-17
+آخر تحديث: 2026-11-18
 
 ## جدول المهام (Claude مدير المشروع، وCodex مطوّر)
 - Claude بس هو اللي بيحدّث الجدول.
@@ -13,10 +13,19 @@
 | 1 | تجهيز الشغل مع Codex (AGENTS.md، وقاعدة الفروع والـ PR) | claude | اتدمج (#1) | `claude/agents-setup` |
 | 2 | Web Push (إشعارات على الجهاز حتى والبرنامج مقفول) | claude | اتدمج (#2) | `claude/web-push` |
 | 3 | نظام "مدير ومطوّر": AGENTS.md للشغل المحلي، و`docs/tasks/`، والجدول ده | claude | اتدمج (#3) | `claude/codex-workflow` |
-| 4 | U5: قالب "كشف الحساب" في مصمم الطباعة | codex | جاهزة لـ Codex | `docs/tasks/codex-001-statement-template.md` ← `codex/statement-template` |
+| 4 | U5: قالب "كشف الحساب" في مصمم الطباعة | codex | متوقف (حد Codex المجاني خلص، بيرجع 2026-12-18) | `docs/tasks/codex-001-statement-template.md` ← `codex/001-statement-template` |
 | 5 | U6: مراجعة الميزات الجديدة (C1–C9 وK وWeb Push) من غير نت، والصلاحيات (الموظف فرعه بس)، واللغتين، والوضعين | claude | اتدمج (#4) | `claude/u6-review` |
 | 6 | U5: باقي القوالب (فاتورة البيع، والسندات، والملصقات) | codex | لسه (بعد 4) | — |
 | 7 | U5: الطباعة المباشرة بـ QZ Tray | — | متوقف | محتاج موافقة صاحب المشروع على المكتبة |
+
+### ملاحظات تشغيل Codex على جهاز صاحب المشروع (2026-11-18)
+- **الأمر الصح (codex-cli 0.169):** `--full-auto` اتشال من الإصدار ده، والبديل `--sandbox workspace-write`.
+- **من Bash مش PowerShell:** التشغيل من PowerShell بـ pipe (`| Out-File`) خلّى Codex يقف بعد أول أمر من غير ما يعمل حاجة. من Bash، ومعاه `< /dev/null`، اشتغل عادي.
+- **reasoning effort = high:** الافتراضي كان `none`، فلازم يتحدد في الأمر.
+- **الأمر كامل:**
+  `codex exec --sandbox workspace-write -c model_reasoning_effort='"high"' -C <فولدر الـ worktree> "<المهمة>" < /dev/null`
+- **الحد المجاني:** اتقفل في نص مهمة 4 من غير أي تغيير في الكود، وبيرجع **2026-12-18**. صاحب المشروع قرر نوقف Codex لحد ساعتها، والـ worktree والفرع الفاضيين اتمسحوا.
+- **الجهاز ده:** مفيهوش Docker ولا PostgreSQL 16، فـ `test:db` و`test:e2e` بيشتغلوا في الجلسة السحابية على الـ PR.
 
 ## الوضع الحالي
 - **التصميم v2.1:** اتوافق عليه، والاسم بقى **"جوالك / Gawalak"** (بقرار صاحب المشروع، 2026-11-06)، والمستودع خاص.
