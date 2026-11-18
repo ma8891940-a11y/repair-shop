@@ -1,7 +1,7 @@
 -- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.
 -- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).
 -- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql
 
 -- ============================== 0001_phase1.sql ==============================
 -- =====================================================================
@@ -14190,3 +14190,13 @@ begin
 end $$;
 revoke execute on function public.push_ack(text) from public;
 grant execute on function public.push_ack(text) to anon, authenticated;
+
+-- ============================== 0059_counters_branch.sql ==============================
+-- 0059: U6 (مراجعة عزل الفروع): ترقيم الطلبات لكل فرع
+--
+-- اختبار U6 (tests/db/u6.test.ts) لقى إن موظف فرع بيقدر يقرا عدّاد أرقام طلبات الفرع التاني (order_counters)،
+-- وده بيكشف عدد شغل الفرع التاني في السنة. البرنامج نفسه ما بيقراش الجدول ده خالص (الترقيم جوه قاعدة البيانات)،
+-- فالقراية بقت لفروع الموظف بس (صاحب المحل بيشوف الكل زي الأول).
+drop policy if exists counters_select on public.order_counters;
+create policy counters_select_branch on public.order_counters for select to authenticated
+  using (shop_id = public.current_shop_id() and (branch_id is null or branch_id in (select unnest(public.my_branch_ids()))));
