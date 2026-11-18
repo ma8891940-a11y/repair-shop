@@ -15,6 +15,7 @@ import { ColorHeader, useBranding } from '../../app/brand/branding';
 import { useBranch } from '../../app/branch';
 import { defaultBlocks, normalizeBlocks, type Block, type BlockKey, type Size } from '../../lib/printTemplate';
 import { cn } from '../../ui/cn';
+import { VOUCHER_SOURCES } from '../../lib/ledger';
 
 export function PrintFrame({ ready, children }: { ready: boolean; children: React.ReactNode }) {
   useBackground('off');
@@ -222,6 +223,142 @@ export function StatementPrint() {
     // نستنى الفروع كمان، عشان الطباعة ما تبدأش بقالب المحل قبل ما قالب الفرع يوصل
     <PrintFrame ready={!!data && br.ready}>
       {data && <div data-testid="print-statement">{blocks.map(render)}</div>}
+    </PrintFrame>
+  );
+}
+
+/**
+ * U5: سند قبض أو صرف لقيد واحد (A4) بقالب من مصمم الطباعة.
+ * المبلغ = حركة الخزنة في القيد نفسه (من غير أي حساب جديد)، والطرف التاني من سطور القيد.
+ */
+export function VoucherPrint() {
+  const { id = '' } = useParams();
+  const { t } = useTranslation();
+  const f = useFormat();
+  const accName = useAccountName();
+  const br = useBranch();
+  const [params] = useSearchParams();
+  const preview = params.get('preview') === '1';
+  const previewV = params.get('v');
+  const { data, error } = useLoad(async () => {
+    const e = must(await supabase.from('journal_entries').select('id, entry_no, occurred_at, source_type, memo, branch_id').eq('id', id).maybeSingle()) as
+      | { id: string; entry_no: number; occurred_at: string; source_type: string; memo: string | null; branch_id: string | null }
+      | null;
+    if (!e || !VOUCHER_SOURCES.includes(e.source_type)) throw new Error('E_NOT_FOUND');
+    const lines = (must(await supabase.from('journal_lines').select('account_id, party_type, party_id, debit, credit').eq('entry_id', id)) ?? []) as {
+      account_id: string;
+      party_type: string | null;
+      party_id: string | null;
+      debit: number;
+      credit: number;
+    }[];
+    const accs = (must(await supabase.from('accounts').select('id, code, name, kind').in('id', [...new Set(lines.map((l) => l.account_id))])) ?? []) as {
+      id: string;
+      code: string | null;
+      name: string | null;
+      kind: string;
+    }[];
+    const cashIds = new Set(accs.filter((a) => a.kind === 'cash').map((a) => a.id));
+    const cashLine = lines.find((l) => cashIds.has(l.account_id));
+    if (!cashLine) throw new Error('E_NOT_FOUND');
+    const receipt = Number(cashLine.debit) > 0;
+    const amount = receipt ? Number(cashLine.debit) : Number(cashLine.credit);
+    // الطرف التاني: عميل أو مورد أو موظف، أو بند المصروف
+    const pl = lines.find((l) => l.party_type && l.party_id);
+    let party = '';
+    if (pl) {
+      const table = pl.party_type === 'customer' ? 'customers' : pl.party_type === 'supplier' ? 'suppliers' : 'profiles';
+      const row = (await supabase.from(table).select('*').eq('id', pl.party_id as string).maybeSingle()).data as Record<string, string | null> | null;
+      party = row?.name ?? row?.full_name ?? '';
+    } else {
+      const other = lines.find((l) => !cashIds.has(l.account_id));
+      const a = accs.find((x) => x.id === other?.account_id);
+      party = a ? accName(a) : '';
+    }
+    const cash = accs.find((a) => a.id === cashLine.account_id)!;
+    const pay = e.source_type === 'payment' ? ((await supabase.from('payments').select('method').eq('entry_id', id).maybeSingle()).data as { method: string } | null) : null;
+    const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'voucher').eq('is_default', true).is('deleted_at', null);
+    const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
+    const pick = list.find((x) => x.branch_id && x.branch_id === (e.branch_id ?? br.working?.id)) ?? list.find((x) => !x.branch_id);
+    let draft: unknown = null;
+    if (preview) {
+      try {
+        draft = JSON.parse(sessionStorage.getItem('tpl-preview:voucher') ?? 'null');
+      } catch {
+        draft = null;
+      }
+    }
+    const tpl = draft ? normalizeBlocks('voucher', draft) : pick ? normalizeBlocks('voucher', pick.blocks) : null;
+    return { e, receipt, amount, party, cashbox: accName(cash), method: pay?.method ?? null, tpl };
+  }, [id, preview, previewV, br.working?.id]);
+  const blocks = data ? (data.tpl ?? defaultBlocks('voucher')) : [];
+  const fs: Record<Size, string> = { sm: 'text-[12px]', md: 'text-[14px]', lg: 'text-[20px]' };
+  const cls = (x: Block) => cn(fs[x.size], x.bold && 'font-bold', x.align === 'center' ? 'text-center' : x.align === 'end' ? 'text-end' : 'text-start');
+  const title = data ? t(data.receipt ? 'voucher.receipt' : 'voucher.payment') : '';
+  const row = (x: Block, label: ReactNode, value: ReactNode, testid?: string, mono = false) => (
+    <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1.5', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} data-block={x.key}>
+      <span className="w-[30%] shrink-0 font-semibold">{label}</span>
+      <span className={cn('min-w-0', mono && 'font-mono')} dir={mono ? 'ltr' : undefined} data-testid={testid}>
+        {value}
+      </span>
+    </div>
+  );
+  const render = (x: Block, i: number): ReactNode => {
+    if (!x.show || !data) return null;
+    switch (x.key) {
+      case 'header':
+        return <PrintHeader key="header" title={blocks.some((b) => b.key === 'title' && b.show) ? title : ''} sub={blocks.some((b) => b.key === 'entryNo' && b.show) ? `#${data.e.entry_no}` : ''} />;
+      case 'title':
+        return blocks.some((b) => b.key === 'header' && b.show) ? null : (
+          <div key="title" className={cn('mb-2', cls(x))} data-block="title">
+            {title}
+          </div>
+        );
+      case 'entryNo':
+        return blocks.some((b) => b.key === 'header' && b.show) ? null : row(x, t('voucher.no'), `#${data.e.entry_no}`, undefined, true);
+      case 'date':
+        return row(x, t('print.date'), f.dateTime(data.e.occurred_at));
+      case 'party':
+        return data.party ? row(x, t(data.receipt ? 'voucher.from' : 'voucher.to'), <bdi>{data.party}</bdi>, 'voucher-party') : null;
+      case 'amount':
+        return row(x, t('voucher.amount'), `${f.money(data.amount)} ${f.currency()}`, 'voucher-amount', true);
+      case 'method':
+        return data.method ? row(x, t('voucher.method'), t(`payments.${data.method}`, { defaultValue: data.method })) : null;
+      case 'cashbox':
+        return row(x, t('voucher.cashbox'), data.cashbox, 'voucher-cashbox');
+      case 'memo':
+        return row(x, t('voucher.memo'), `${t(`fin.src.${data.e.source_type}`)}${data.e.memo ? ` - ${data.e.memo}` : ''}`);
+      case 'sign':
+        return (
+          <div key="sign" className={cn('mt-8 grid grid-cols-2 gap-6', cls(x))} data-block="sign">
+            <div>{t('voucher.signReceiver')}: ..............................</div>
+            <div>{t('voucher.signCashier')}: ..............................</div>
+          </div>
+        );
+      case 'thanks':
+        return (
+          <div key="thanks" className={cn('mt-3 text-neutral-600', cls(x))} data-block="thanks">
+            {t('print.thanks')}
+          </div>
+        );
+      case 'text':
+        return x.text ? (
+          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} data-block="text">
+            {x.text}
+          </p>
+        ) : null;
+      default:
+        return null;
+    }
+  };
+  if (error) return <p className="p-6 text-sm text-red-700">{error}</p>;
+  return (
+    <PrintFrame ready={!!data && br.ready}>
+      {data && (
+        <div data-testid="print-voucher" data-kind={data.receipt ? 'receipt' : 'payment'}>
+          {blocks.map(render)}
+        </div>
+      )}
     </PrintFrame>
   );
 }

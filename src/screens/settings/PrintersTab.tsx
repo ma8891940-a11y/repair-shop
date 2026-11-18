@@ -6,6 +6,7 @@ import { useLoad, must } from '../../app/useLoad';
 import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
 import { defaultBlocks, move, normalizeBlocks, PRINTER_PRESETS, type Block, type PrinterKind, type TemplateDoc } from '../../lib/printTemplate';
+import { VOUCHER_SOURCES } from '../../lib/ledger';
 import { Panel, PanelHeader } from '../../ui/Panel';
 import { Button } from '../../ui/Button';
 import { Field, Input, Select } from '../../ui/Field';
@@ -31,7 +32,7 @@ interface TplRow {
   blocks: unknown;
   is_default: boolean;
 }
-const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice', 'statement'];
+const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice', 'statement', 'voucher'];
 
 /**
  * U5: الإعدادات ← الطابعات: ملفات الطابعات (بقوالب جاهزة لأشهر الموديلات) ومصمم الطباعة لكل نوع ورقة.
@@ -42,18 +43,21 @@ export function PrintersTab() {
   const toast = useToast();
   const br = useBranch();
   const { data, reload } = useLoad(async () => {
-    const [p, tp, dev, cash] = await Promise.all([
+    const [p, tp, dev, cash, ent] = await Promise.all([
       supabase.from('printers').select('id, name, kind, model, width_mm, height_mm, margin_mm').is('deleted_at', null).order('created_at'),
       supabase.from('print_templates').select('id, doc, branch_id, printer_id, name, blocks, is_default').is('deleted_at', null).order('created_at'),
       supabase.from('devices').select('id').is('deleted_at', null).order('created_at', { ascending: false }).limit(1),
       // كشف الحساب: المعاينة على أول خزنة
       supabase.from('accounts').select('id').eq('kind', 'cash').is('deleted_at', null).order('created_at').limit(1),
+      // السند: المعاينة على آخر قيد ليه سند
+      supabase.from('journal_entries').select('id').in('source_type', VOUCHER_SOURCES).order('created_at', { ascending: false }).limit(1),
     ]);
     return {
       printers: must(p) as PrinterRow[],
       templates: must(tp) as TplRow[],
       lastDevice: ((dev.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
       cashbox: ((cash.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
+      lastVoucher: ((ent.data ?? [])[0] as { id: string } | undefined)?.id ?? null,
     };
   }, []);
   const [preset, setPreset] = useState(0);
@@ -109,12 +113,12 @@ export function PrintersTab() {
           <Alert tone="info">{t('printers.direct')}</Alert>
         </div>
       </Panel>
-      {data && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} branches={br.multi ? br.all : []} onSaved={reload} />}
+      {data && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} lastVoucher={data.lastVoucher} branches={br.multi ? br.all : []} onSaved={reload} />}
     </div>
   );
 }
 
-function Designer({ printers, templates, lastDevice, cashbox, branches, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; branches: { id: string; name: string }[]; onSaved: () => void }) {
+function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, branches, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; lastVoucher: string | null; branches: { id: string; name: string }[]; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
   const [doc, setDoc] = useState<TemplateDoc>('receipt');
@@ -161,7 +165,18 @@ function Designer({ printers, templates, lastDevice, cashbox, branches, onSaved 
     onSaved();
   }
   // الورقة اللي بتتعاين وبتتطبع تجربة: آخر جهاز، وكشف الحساب على أول خزنة
-  const sample = doc === 'statement' ? (cashbox ? `print/statement/cashbox/${cashbox}` : null) : lastDevice ? `print/${doc}/${lastDevice}` : null;
+  const sample =
+    doc === 'statement'
+      ? cashbox
+        ? `print/statement/cashbox/${cashbox}`
+        : null
+      : doc === 'voucher'
+        ? lastVoucher
+          ? `print/voucher/${lastVoucher}`
+          : null
+        : lastDevice
+          ? `print/${doc}/${lastDevice}`
+          : null;
   const previewUrl = useMemo(() => (sample ? `${window.location.pathname}#/${sample}?preview=1&embed=1&v=${v}` : null), [sample, v]);
   return (
     <Panel data-testid="print-designer">

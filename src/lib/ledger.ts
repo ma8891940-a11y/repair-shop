@@ -88,3 +88,6 @@ export function matchMove(m: { memo?: string | null; order_no?: string | null; b
   if (!s) return true;
   return [m.memo, m.order_no, m.by, String(m.entry_no ?? ''), label].some((x) => (x ?? '').toLowerCase().includes(s));
 }
+
+/** U5: أنواع القيود اللي ليها سند (قبض: فلوس دخلت الخزنة، صرف: فلوس خرجت منها) */
+export const VOUCHER_SOURCES: string[] = ['payment', 'capital', 'expense', 'supplier_payment', 'salary_payment', 'advance', 'drawing'];

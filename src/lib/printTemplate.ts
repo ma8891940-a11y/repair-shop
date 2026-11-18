@@ -2,13 +2,15 @@
  * U5: قوالب الطباعة. القالب = خانات مرتبة (تظهر أو لأ، وحجم الخط، والمحاذاة، والعريض، ونص حر).
  * القالب بيتحكم في الشكل بس: الأرقام والبيانات دايمًا من البرنامج.
  */
-export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement';
+export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement' | 'voucher';
 export type BlockKey =
   | 'header' | 'title' | 'orderNo' | 'date' | 'customer' | 'phone' | 'device' | 'imei' | 'issue'
   | 'accessories' | 'condition' | 'estimate' | 'parts' | 'total' | 'paid' | 'remaining' | 'warranty'
   | 'terms' | 'signature' | 'qr' | 'sign' | 'thanks' | 'text'
   // كشف الحساب
-  | 'party' | 'period' | 'opening' | 'moves' | 'closing';
+  | 'party' | 'period' | 'opening' | 'moves' | 'closing'
+  // سند القبض والصرف
+  | 'entryNo' | 'amount' | 'method' | 'cashbox' | 'memo';
 export type Size = 'sm' | 'md' | 'lg';
 export type Align = 'start' | 'center' | 'end';
 export interface Block {
@@ -25,11 +27,12 @@ const RECEIPT: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', '
 const INVOICE: BlockKey[] = ['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'parts', 'total', 'paid', 'remaining', 'warranty', 'signature', 'sign', 'thanks'];
 /** الخانات المتاحة لكل نوع ورقة (بالترتيب الافتراضي)، و"نص حر" ممكن يتضاف في أي مكان */
 const STATEMENT: BlockKey[] = ['header', 'title', 'party', 'period', 'opening', 'moves', 'closing', 'signature', 'thanks'];
-export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE, statement: STATEMENT };
+const VOUCHER: BlockKey[] = ['header', 'title', 'entryNo', 'date', 'party', 'amount', 'method', 'cashbox', 'memo', 'sign', 'thanks'];
+export const DOC_BLOCKS: Record<TemplateDoc, BlockKey[]> = { receipt: RECEIPT, 'receipt-a4': RECEIPT, invoice: INVOICE, statement: STATEMENT, voucher: VOUCHER };
 
-const BIG: BlockKey[] = ['orderNo', 'total', 'closing'];
+const BIG: BlockKey[] = ['orderNo', 'total', 'closing', 'amount'];
 // كشف الحساب الافتراضي = نفس شكل الكشف من غير قالب (التوقيع والشكر مخفيين)
-const HIDDEN_BY_DEFAULT: Partial<Record<TemplateDoc, BlockKey[]>> = { statement: ['signature', 'thanks'] };
+const HIDDEN_BY_DEFAULT: Partial<Record<TemplateDoc, BlockKey[]>> = { statement: ['signature', 'thanks'], voucher: ['thanks'] };
 export function defaultBlocks(doc: TemplateDoc): Block[] {
   return DOC_BLOCKS[doc].map((key) => ({
     key,

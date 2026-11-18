@@ -61,6 +61,7 @@ const AnalyticsScreen = lazyScreen(() => import('./screens/AnalyticsScreen').the
 const ReportsScreen = lazyScreen(() => import('./screens/ReportsScreen').then((m) => m.ReportsScreen));
 const DayReportPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.DayReportPrint));
 const StatementPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.StatementPrint));
+const VoucherPrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.VoucherPrint));
 const TablePrint = lazyScreen(() => import('./screens/TablePrint').then((m) => m.TablePrint));
 const VideosScreen = lazyScreen(() => import('./screens/VideosScreen').then((m) => m.VideosScreen));
 const CommunityScreen = lazyScreen(() => import('./screens/CommunityScreen').then((m) => m.CommunityScreen));
@@ -68,7 +69,7 @@ const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) =>
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, TablePrint, VideosScreen, CommunityScreen, AdminScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, TablePrint, VideosScreen, CommunityScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
@@ -210,6 +211,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
     <>
       <Routes location={bg ?? location}>
         {grant('finance') && <Route path="print/statement/:kind/:id" element={<StatementPrint />} />}
+        {grant('finance') && <Route path="print/voucher/:id" element={<VoucherPrint />} />}
         <Route path="print/table" element={<TablePrint />} />
         {grant('finance') && <Route path="print/day/:day" element={<DayReportPrint />} />}
         {front && <Route path="print/barcode/:id" element={<BarcodePrint />} />}
