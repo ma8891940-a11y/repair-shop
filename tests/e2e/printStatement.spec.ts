@@ -64,7 +64,9 @@ test('مصمم الطباعة: كشف الحساب ← إخفاء الرصيد �
   await page.getByTestId('print-designer').getByTestId('tpl-doc').selectOption('statement');
   await page.getByTestId('print-designer').getByTestId('tpl-reset').click();
   await expect(page.getByText('رجع القالب الافتراضي')).toBeVisible();
-  await page.goto(url);
+  // من غير معاينة: المحفوظ في قاعدة البيانات نفسه (مش مسودة المصمم)
+  await page.goto(url.replace('?preview=1', '?preview=0'));
+  await expect(page.getByTestId('print-statement')).toBeVisible();
   await expect(page.getByTestId('statement-opening')).toBeVisible();
   await expect(page.getByTestId('statement-closing')).toHaveText(closing);
 });

@@ -121,7 +121,7 @@ export function StatementPrint() {
         {rows.map((x) =>
           x.key === 'opening' ? (
             <tr key="opening" className={cls(x)} data-block="opening">
-              <td colSpan={4} className="font-semibold">
+              <td colSpan={4} className={x.bold ? 'font-bold' : 'font-semibold'}>
                 {t('fin.opening')}
               </td>
               <td className="text-end font-mono" dir="ltr" data-testid="statement-opening">
@@ -219,7 +219,8 @@ export function StatementPrint() {
     }
   };
   return (
-    <PrintFrame ready={!!data}>
+    // نستنى الفروع كمان، عشان الطباعة ما تبدأش بقالب المحل قبل ما قالب الفرع يوصل
+    <PrintFrame ready={!!data && br.ready}>
       {data && <div data-testid="print-statement">{blocks.map(render)}</div>}
     </PrintFrame>
   );
