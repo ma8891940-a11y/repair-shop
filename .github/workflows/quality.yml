@@ -1,17 +1,22 @@
-# بوابة الجودة على كل PR (ونفس الشيء بعد الدمج على main).
-# - checks: typecheck وlint والوحدة و audit:prod
-# - db: اختبارات قاعدة البيانات على PostgreSQL 16 مؤقت، واختبار ملف الترقية
-# - e2e: Playwright على الأربع مشاريع (كل مشروع في job لوحده بالتوازي) على Supabase محلي (Docker)
+# بوابة الجودة (دقايق GitHub Actions محدودة: حوالي 2000 دقيقة في الشهر للمستودع الخاص، ومحسوبة لكل job):
+# - على كل PR (فتح أو push جديد): checks (typecheck وlint والوحدة و audit:prod) وdb (PostgreSQL 16 مؤقت، واختبار الترقية) بس.
+# - e2e (Playwright على الأربع مشاريع، Supabase محلي) مرة واحدة قبل الدمج بس، بطريقتين:
+#     1) label اسمه e2e على الـ PR (لو عايز تعيده: شيل الـ label وحطه تاني)، أو
+#     2) Actions ← quality ← Run workflow على الفرع (يدوي).
+#   الـ push اللي بعد كده ما بيشغّلش e2e تاني لوحده.
+# - مفيش تشغيل على main بعد الدمج (اتختبر في الـ PR).
+# - أي run قديم على نفس الـ PR بيتلغي لو جه push جديد (concurrency).
 # مفيش أي أسرار مستخدمة: Supabase المحلي بمفاتيحه الافتراضية للاختبار بس.
 name: quality
 
 on:
   pull_request:
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 
 concurrency:
-  group: quality-${{ github.ref }}
+  # label تاني غير e2e ما بيلغيش الشغال (ليه group لوحده)
+  group: quality-${{ github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'e2e' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 permissions:
@@ -22,6 +27,7 @@ env:
 
 jobs:
   checks:
+    if: github.event.action != 'labeled' || github.event.label.name == 'e2e'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -37,6 +43,7 @@ jobs:
       - run: npm run audit:prod
 
   db:
+    if: github.event.action != 'labeled' || github.event.label.name == 'e2e'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -54,6 +61,8 @@ jobs:
       - run: npm run test:upgrade
 
   e2e:
+    # مرة واحدة قبل الدمج: label e2e أو تشغيل يدوي
+    if: github.event_name == 'workflow_dispatch' || (github.event.action == 'labeled' && github.event.label.name == 'e2e')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
