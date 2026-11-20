@@ -3729,5 +3729,33 @@
     "print": "Print invoice",
     "legacy": "Sale recorded before invoice lines: items and quantities from stock, total from the ledger (per-item prices were not recorded).",
     "due": "Remaining (on credit at sale time)"
+  },
+  "custImport": {
+    "button": "Import from file",
+    "title": "Import customers from Excel",
+    "hint": "Save the sheet from Excel as \"CSV UTF-8\". First row headers: name and phone (required), area or address (optional).",
+    "file": "Customers file",
+    "ok": "{{n}} ready",
+    "bad": "{{n}} with errors",
+    "dup": "{{n}} duplicate or existing",
+    "save": "Import {{n}} customer(s)",
+    "done": "{{n}} customer(s) imported",
+    "partial": "{{n}} customer(s) imported; the rest were not saved: {{why}}",
+    "more": "and {{n}} more row(s)",
+    "missing": "The file is missing a column: {{cols}}",
+    "line": "Line",
+    "status": "Status",
+    "ready": "Ready",
+    "why": {
+      "name": "Missing name",
+      "phone": "Not a valid Egyptian mobile",
+      "dupFile": "Duplicate in the file",
+      "exists": "Already exists, will be skipped"
+    },
+    "aliases": {
+      "name": "name|customer|customer name|full name",
+      "phone": "phone|mobile|mobile number|phone number|tel",
+      "area": "area|address|city"
+    }
   }
 }
