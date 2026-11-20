@@ -128,20 +128,11 @@ export function markers(root = process.cwd()) {
   return res;
 }
 
-export function buildUpgrade(root = process.cwd()) {
-  const list = markers(root);
+/** السجل وفحص الموجود والفجوة (نفسه في الملف الواحد وفي كل جزء): بيسجّل الملفات اللي موجودة فعلًا، وأي فجوة بتوقف كل حاجة */
+function checkBlock(list) {
   // ملفات من غير بصمة خاصة بيها (بتعدّل دوال بس، وآمنة لو اتعادت): بتعتبر متشغّلة لو أي ملف أحدث منها موجود
   const inferred = list.filter((x) => !x.marker).map((x) => x.file);
-  if (!list[0].marker || !list.at(-1).marker) throw new Error('first and last migrations need markers');
-  const tagOf = (f) => `$m${f.slice(0, 4)}$`;
-  for (const x of list) if (x.text.includes(tagOf(x.file))) throw new Error(`tag clash in ${x.file}`);
   const out = [
-    '-- جوالك / Gawalak: ترقية مشروع Supabase شغّال لآخر نسخة (بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك).',
-    '-- شغّله في SQL Editor كله مرة واحدة. بيشوف إيه اللي موجود، وبيشغّل الناقص بس بالترتيب، كل ملف في transaction لوحده.',
-    '-- آمن تشغّله أكتر من مرة: لو كله موجود، مش هيعمل حاجة. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّله تاني.',
-    '-- لو لقى ملف أحدث موجود وملف أقدم منه ناقص، بيقف برسالة (E_UPGRADE_GAP) من غير ما يغيّر حاجة.',
-    `-- الملفات: ${list.map((x) => x.file).join(', ')}`,
-    '',
     '-- سجل الترقية (للنظام بس، من غير أي بيانات محلات)',
     'create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);',
     'alter table public.app_migrations enable row level security;',
@@ -168,25 +159,120 @@ export function buildUpgrade(root = process.cwd()) {
     "  if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;",
     'end $chk$;',
     '',
-    '-- 2) الناقص بالترتيب، كل ملف في transaction لوحده',
   );
-  for (const x of list) {
-    const tag = tagOf(x.file);
-    out.push(
-      `-- ============================== ${x.file} ==============================`,
-      'begin;',
-      `do $run$ begin`,
-      `  if exists (select 1 from public.app_migrations where version = ${q(x.file)}) then return; end if;`,
-      `  execute ${tag}`,
-      x.text.trimEnd(),
-      `${tag};`,
-      `  insert into public.app_migrations(version, how) values (${q(x.file)}, 'applied');`,
-      `  raise notice 'applied %', ${q(x.file)};`,
-      'end $run$;',
-      'commit;',
-      '',
-    );
-  }
+  return out;
+}
+
+/** ملف واحد: بيتشغّل لو مش متسجّل بس، في transaction لوحده */
+function fileBlock(x) {
+  const tag = `$m${x.file.slice(0, 4)}$`;
+  return [
+    `-- ============================== ${x.file} ==============================`,
+    'begin;',
+    `do $run$ begin`,
+    `  if exists (select 1 from public.app_migrations where version = ${q(x.file)}) then return; end if;`,
+    `  execute ${tag}`,
+    x.text.trimEnd(),
+    `${tag};`,
+    `  insert into public.app_migrations(version, how) values (${q(x.file)}, 'applied');`,
+    `  raise notice 'applied %', ${q(x.file)};`,
+    'end $run$;',
+    'commit;',
+    '',
+  ];
+}
+
+function checked(root) {
+  const list = markers(root);
+  if (!list[0].marker || !list.at(-1).marker) throw new Error('first and last migrations need markers');
+  for (const x of list) if (x.text.includes(`$m${x.file.slice(0, 4)}$`)) throw new Error(`tag clash in ${x.file}`);
+  return list;
+}
+
+export function buildUpgrade(root = process.cwd()) {
+  const list = checked(root);
+  const out = [
+    '-- جوالك / Gawalak: ترقية مشروع Supabase شغّال لآخر نسخة (بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك).',
+    '-- شغّله في SQL Editor كله مرة واحدة. بيشوف إيه اللي موجود، وبيشغّل الناقص بس بالترتيب، كل ملف في transaction لوحده.',
+    '-- آمن تشغّله أكتر من مرة: لو كله موجود، مش هيعمل حاجة. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّله تاني.',
+    '-- لو لقى ملف أحدث موجود وملف أقدم منه ناقص، بيقف برسالة (E_UPGRADE_GAP) من غير ما يغيّر حاجة.',
+    `-- الملفات: ${list.map((x) => x.file).join(', ')}`,
+    '',
+    ...checkBlock(list),
+    '-- 2) الناقص بالترتيب، كل ملف في transaction لوحده',
+  ];
+  for (const x of list) out.push(...fileBlock(x));
   out.push("select count(*) as applied_files, max(version) as latest from public.app_migrations;", '');
   return out.join('\n');
+}
+
+/** أقصى حجم لكل جزء بالبايت: SQL Editor بتاع Supabase بيرفض الطلب الكبير (حوالي 1MB)، فبنسيب هامش كبير */
+export const PART_MAX_BYTES = 300_000;
+const bytes = (s) => Buffer.byteLength(s, 'utf8');
+
+/**
+ * نفس الترقية مقسومة لأجزاء مرقّمة (upgrade_part_1.sql، upgrade_part_2.sql، ...) كل جزء أصغر من الحد، عشان تشتغل من SQL Editor.
+ * كل جزء: نفس فحص الموجود والفجوة (E_UPGRADE_GAP) للمشروع كله، وبعدين بيتأكد إن الأجزاء اللي قبله اتطبقت (E_UPGRADE_ORDER)،
+ * وبعدين ملفاته، كل ملف بيتخطى لو متسجّل. فتشغيل جزء مرتين ما بيعملش حاجة، والأجزاء بتتقسم بالترتيب (الأقدم ما بيتغيرش).
+ */
+export function buildUpgradeParts(root = process.cwd(), max = PART_MAX_BYTES) {
+  const list = checked(root);
+  const check = checkBlock(list).join('\n');
+  // حجم الإطار الثابت لكل جزء (الرأس والفحص والترتيب والنهاية) تقريبيًا، وبعدين الملفات بالترتيب لحد الحد
+  const frame = bytes(check) + 8_000 + list.length * 40;
+  const groups = [];
+  let cur = [];
+  let size = frame;
+  for (const x of list) {
+    const b = bytes(fileBlock(x).join('\n'));
+    if (frame + b > max) throw new Error(`${x.file} أكبر من حد الجزء`);
+    if (cur.length && size + b > max) {
+      groups.push(cur);
+      cur = [];
+      size = frame;
+    }
+    cur.push(x);
+    size += b;
+  }
+  if (cur.length) groups.push(cur);
+  const n = groups.length;
+  const partOf = list.map((x) => groups.findIndex((g) => g.includes(x)) + 1);
+  const name = (k) => `upgrade_part_${k}.sql`;
+  return groups.map((g, i) => {
+    const k = i + 1;
+    const first = g[0].file;
+    const last = g.at(-1).file;
+    const out = [
+      `-- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء ${k} من ${n} (الملفات ${first} لـ ${last}).`,
+      '-- بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك.',
+      `-- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): ${groups.map((_, j) => name(j + 1)).join(' ثم ')}.`,
+      '-- آمن تشغّل أي جزء أكتر من مرة: اللي اتطبق قبل كده بيتخطى. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّل نفس الجزء تاني.',
+      '-- لو لقى ملف أحدث موجود وأقدم منه ناقص بيقف (E_UPGRADE_GAP). ولو جزء قبله لسه ما اتطبقش بيقف (E_UPGRADE_ORDER). الاتنين من غير تغيير.',
+      `-- ملفات الجزء ده: ${g.map((x) => x.file).join(', ')}`,
+      '',
+      check,
+      '-- 2) الأجزاء اللي قبل الجزء ده لازم تكون اتطبقت',
+      'do $ord$',
+      'declare',
+      `  files text[] := array[${list.map((x) => q(x.file)).join(', ')}];`,
+      `  parts int[] := array[${partOf.join(', ')}];`,
+      '  miss text;',
+      'begin',
+      `  select min(v) into miss from unnest(files) v where v < ${q(first)} and v not in (select version from public.app_migrations);`,
+      `  if miss is not null then raise exception 'E_UPGRADE_ORDER: الملف % لسه ما اتطبقش. شغّل upgrade_part_%.sql الأول، وبعدين الجزء ده (${k}).', miss, parts[array_position(files, miss)]; end if;`,
+      'end $ord$;',
+      '',
+      `-- 3) ملفات الجزء ${k} بالترتيب، كل ملف في transaction لوحده`,
+    ];
+    for (const x of g) out.push(...fileBlock(x));
+    out.push(
+      `select ${k} as part, ${n} as parts, count(*) as applied_files, max(version) as latest,`,
+      `  case when ${q(last)} in (select version from public.app_migrations) then`,
+      `    ${k === n ? "'خلص: المشروع على آخر نسخة'" : `'الجزء ${k} خلص. اللي بعده: ${name(k + 1)}'`}`,
+      `  else 'فيه ملف ما اتطبقش' end as status`,
+      'from public.app_migrations;',
+      '',
+    );
+    return { name: name(k), files: g.map((x) => x.file), sql: out.join('\n') };
+  });
 }
