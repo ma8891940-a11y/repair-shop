@@ -1,9 +1,9 @@
--- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 3 من 4 (الملفات 0034_branches.sql لـ 0040_branch_books.sql).
+-- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 3 من 5 (الملفات 0034_branches.sql لـ 0039_payment_plans.sql).
 -- بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك.
--- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql.
+-- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql ثم upgrade_part_5.sql.
 -- آمن تشغّل أي جزء أكتر من مرة: اللي اتطبق قبل كده بيتخطى. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّل نفس الجزء تاني.
 -- لو لقى ملف أحدث موجود وأقدم منه ناقص بيقف (E_UPGRADE_GAP). ولو جزء قبله لسه ما اتطبقش بيقف (E_UPGRADE_ORDER). الاتنين من غير تغيير.
--- ملفات الجزء ده: 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql
+-- ملفات الجزء ده: 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -193,9 +193,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0060_sale_lines.sql') and (to_regclass('public.sale_lines') is not null) then
     insert into public.app_migrations(version, how) values ('0060_sale_lines.sql', 'found: table sale_lines');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0061_attendance.sql') and (to_regclass('public.attendance') is not null) then
+    insert into public.app_migrations(version, how) values ('0061_attendance.sql', 'found: table attendance');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -203,8 +206,8 @@ end $chk$;
 -- 2) الأجزاء اللي قبل الجزء ده لازم تكون اتطبقت
 do $ord$
 declare
-  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql'];
-  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
+  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql'];
+  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5];
   miss text;
 begin
   select min(v) into miss from unnest(files) v where v < '0034_branches.sql' and v not in (select version from public.app_migrations);
@@ -3868,117 +3871,8 @@ $m0039$;
 end $run$;
 commit;
 
--- ============================== 0040_branch_books.sql ==============================
-begin;
-do $run$ begin
-  if exists (select 1 from public.app_migrations where version = '0040_branch_books.sql') then return; end if;
-  execute $m0040$
--- 0040: U2: كل فرع مستقل ماليًا (التطوير الكبير).
--- الدفتر واحد للمحل والقيود ما بتتغيرش خالص. كل سطر بيتنسب لفرع:
---   - الخزنة (kind = cash) ← فرع الخزنة نفسها.
---   - المخزون ← فرع حركة المخزون بتاعة نفس القيد (التحويل بين فرعين: الخارج من فرع والداخل للتاني).
---   - أي حساب تاني ← فرع القيد.
--- القيد اللي لمس فرعين (تحويل فلوس أو بضاعة) بيتولد له سطر محسوب "مستحق من فرع / مستحق لفرع" في كل فرع،
--- بحيث كل فرع يقفل متوازن لوحده، والمستحقات تلغي بعض في المجموع (مجموع المحل زي ما هو بالظبط).
-
--- السطور منسوبة للفروع: amount = مدين − دائن. account_id = null ← سطر "مستحق بين الفروع"
--- (من غير فحص صلاحية: بتتنادى من الدوال اللي فحصت بنفسها، ومقفولة على المستخدمين)
-create or replace function public.branch_lines_raw(p_to timestamptz default null)
-returns table(entry_id uuid, occurred_at timestamptz, source_type text, branch_id uuid, account_id uuid, amount bigint)
-language plpgsql stable security definer set search_path = public as $$
-#variable_conflict use_column
-declare s uuid := public.current_shop_id(); inv uuid;
-begin
-  select a.id into inv from public.accounts a where a.shop_id = s and a.code = 'inventory' and a.deleted_at is null limit 1;
-  return query
-  with en as (
-    select e.id, e.branch_id, e.occurred_at, e.source_type from public.journal_entries e
-    where e.shop_id = s and (p_to is null or e.occurred_at < p_to)
-  ), raw as (
-    -- كل الحسابات غير المخزون
-    select l.entry_id, coalesce(case when a.kind = 'cash' then a.branch_id end, en.branch_id) br, l.account_id acc, (l.debit - l.credit)::bigint amt
-    from public.journal_lines l join en on en.id = l.entry_id join public.accounts a on a.id = l.account_id
-    where l.account_id is distinct from inv
-    union all
-    -- المخزون: بفرع حركة المخزون
-    select m.entry_id, m.branch_id, inv, sum(m.value)::bigint
-    from public.stock_moves m join en on en.id = m.entry_id
-    group by m.entry_id, m.branch_id
-    union all
-    -- لو سطر المخزون في القيد مش متغطي بحركات (نادر): الفرق على فرع القيد، عشان ولا قرش يضيع
-    select en.id, en.branch_id, inv,
-           (coalesce((select sum(l.debit - l.credit) from public.journal_lines l where l.entry_id = en.id and l.account_id = inv), 0)
-            - coalesce((select sum(m.value) from public.stock_moves m where m.entry_id = en.id), 0))::bigint
-    from en
-  ), agg as (
-    select r.entry_id, r.br, r.acc, sum(r.amt)::bigint amt from raw r group by 1, 2, 3 having sum(r.amt) <> 0
-  ), due as (
-    select a.entry_id, a.br, null::uuid acc, (-sum(a.amt))::bigint amt from agg a group by 1, 2 having sum(a.amt) <> 0
-  )
-  select x.entry_id, en.occurred_at, en.source_type, x.br, x.acc, x.amt
-  from (select * from agg union all select * from due) x join en on en.id = x.entry_id
-  -- الموظف: فروعه بس
-  where public.all_my_branches() or public.can_branch(x.br);
-end $$;
-revoke execute on function public.branch_lines_raw(timestamptz) from public, anon, authenticated;
-
-create or replace function public.branch_lines(p_to timestamptz default null)
-returns table(entry_id uuid, occurred_at timestamptz, source_type text, branch_id uuid, account_id uuid, amount bigint)
-language plpgsql stable security definer set search_path = public as $$
-begin
-  perform public.grant_require('finance', 'view');
-  return query select * from public.branch_lines_raw(p_to);
-end $$;
-revoke execute on function public.branch_lines(timestamptz) from public, anon;
-grant execute on function public.branch_lines(timestamptz) to authenticated;
-
--- ميزان المراجعة: لفرع (p_branch) أو موحّد (null). كل فرع بيقفل متوازن لوحده (مجموع الأرصدة = صفر)،
--- والموحّد ما فيهوش مستحقات (بتلغي بعض)
-create or replace function public.trial_balance(p_branch uuid default null, p_to timestamptz default null)
-returns table(account_id uuid, code text, name text, type text, kind text, debit bigint, credit bigint, balance bigint)
-language plpgsql stable security definer set search_path = public as $$
-#variable_conflict use_column
-begin
-  perform public.grant_require('finance', 'view');
-  if p_branch is not null and not public.all_my_branches() and not public.can_branch(p_branch) then raise exception 'E_FORBIDDEN'; end if;
-  if p_branch is null and not public.all_my_branches() then p_branch := public.op_branch(); end if;
-  return query
-  with b as (select * from public.branch_lines_raw(p_to) bl where p_branch is null or bl.branch_id = p_branch),
-  t as (select b.account_id acc, sum(greatest(b.amount, 0))::bigint dr, sum(greatest(-b.amount, 0))::bigint cr from b group by 1)
-  select t.acc, a.code, a.name, coalesce(a.type::text, 'inter_branch'), coalesce(a.kind, 'inter_branch'), t.dr, t.cr, (t.dr - t.cr)::bigint
-  from t left join public.accounts a on a.id = t.acc
-  where t.dr - t.cr <> 0 or t.acc is null and p_branch is not null
-  order by case coalesce(a.type::text, 'inter_branch') when 'asset' then 1 when 'liability' then 2 when 'equity' then 3 when 'revenue' then 4 when 'expense' then 5 else 6 end, a.code nulls last, a.name;
-end $$;
-revoke execute on function public.trial_balance(uuid, timestamptz) from public, anon;
-grant execute on function public.trial_balance(uuid, timestamptz) to authenticated;
-
--- المستحقات بين كل فرعين: موجب = الفرع ده ليه عند التاني (مستحق من)، سالب = عليه (مستحق لـ)
-create or replace function public.inter_branch_dues(p_to timestamptz default null)
-returns table(branch_id uuid, other_id uuid, amount bigint)
-language plpgsql stable security definer set search_path = public as $$
-#variable_conflict use_column
-begin
-  perform public.grant_require('finance', 'view');
-  return query
-  with d as (select bl.entry_id, bl.branch_id, bl.amount from public.branch_lines_raw(p_to) bl where bl.account_id is null),
-  -- القيد بين فرعين: كل فرع قصاد التاني. لو أكتر من فرعين: بالنسبة (نادر جدًا)
-  pairs as (
-    select a.branch_id, o.branch_id other, (a.amount * abs(o.amount) / nullif((select sum(abs(z.amount)) from d z where z.entry_id = a.entry_id and z.branch_id <> a.branch_id), 0))::bigint amt
-    from d a join d o on o.entry_id = a.entry_id and o.branch_id <> a.branch_id and sign(o.amount) <> sign(a.amount)
-  )
-  select p.branch_id, p.other, sum(p.amt)::bigint from pairs p group by 1, 2 having sum(p.amt) <> 0 order by 1, 2;
-end $$;
-revoke execute on function public.inter_branch_dues(timestamptz) from public, anon;
-grant execute on function public.inter_branch_dues(timestamptz) to authenticated;
-$m0040$;
-  insert into public.app_migrations(version, how) values ('0040_branch_books.sql', 'applied');
-  raise notice 'applied %', '0040_branch_books.sql';
-end $run$;
-commit;
-
-select 3 as part, 4 as parts, count(*) as applied_files, max(version) as latest,
-  case when '0040_branch_books.sql' in (select version from public.app_migrations) then
+select 3 as part, 5 as parts, count(*) as applied_files, max(version) as latest,
+  case when '0039_payment_plans.sql' in (select version from public.app_migrations) then
     'الجزء 3 خلص. اللي بعده: upgrade_part_4.sql'
   else 'فيه ملف ما اتطبقش' end as status
 from public.app_migrations;
