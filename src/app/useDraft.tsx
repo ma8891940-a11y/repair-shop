@@ -32,7 +32,10 @@ export function useDraft<T>(key: string, value: T, enabled = true, filled = hasC
       first.current = false;
       return;
     }
-    if (!enabled) return;
+    if (!enabled) {
+      unsaved.current = null;
+      return;
+    }
     const flush = () => {
       timer.current = null;
       unsaved.current = null;

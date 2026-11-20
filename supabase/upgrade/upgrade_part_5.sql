@@ -815,7 +815,8 @@ begin
   -- الملفوفة قبل كده (شكلها المحفوظ: SELECT current_shop_id() AS current_shop_id) بتتعلّم الأول عشان ما تتلفّش تاني
   t := regexp_replace(t, 'SELECT (public\.)?(current_shop_id|current_app_role)\(\) AS (current_shop_id|current_app_role)', 'SELECT @@\2@@ AS \3', 'g');
   t := regexp_replace(t, '\m(public\.)?(current_shop_id|current_app_role)\(\)', '(select public.\2())', 'g');
-  return regexp_replace(t, '@@(current_shop_id|current_app_role)@@', 'public.\1()', 'g');
+  -- بترجع زي ما Postgres بيحفظها بالظبط (من غير public.)، فالسياسة الملفوفة قبل كده بتتخطى فعلًا
+  return regexp_replace(t, '@@(current_shop_id|current_app_role)@@', '\1()', 'g');
 end $$;
 revoke execute on function public.rls_wrap(text) from public, anon, authenticated;
 do $rls$
