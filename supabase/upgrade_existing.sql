@@ -15521,6 +15521,35 @@ end $$;
 revoke execute on function public.attendance_void(uuid, text) from public, anon;
 grant execute on function public.attendance_void(uuid, text) to authenticated;
 
+-- ---------- سرعة الـ RLS: دالة المحل والدور مرة واحدة في الاستعلام، مش مع كل صف ----------
+-- current_shop_id() وcurrent_app_role() بيقروا الملف الشخصي (وcurrent_shop_id بيتأكد من التحقق بخطوتين كمان) مع كل صف.
+-- مع كتر المحلات، استعلام بسيط كان بيعدّي مهلة الـ 8 ثواني. الحل اللي Supabase بيوصي بيه: (select ...) حوالين الدالة،
+-- فبتتحسب مرة واحدة. نفس الشروط بالظبط، والنتيجة نفسها. وآمن يتعاد (السياسة اللي اتلفّت قبل كده بتتخطى).
+create or replace function public.rls_wrap(t text) returns text
+language plpgsql immutable as $$
+begin
+  if t is null then return null; end if;
+  -- الملفوفة قبل كده (شكلها المحفوظ: SELECT current_shop_id() AS current_shop_id) بتتعلّم الأول عشان ما تتلفّش تاني
+  t := regexp_replace(t, 'SELECT (public\.)?(current_shop_id|current_app_role)\(\) AS (current_shop_id|current_app_role)', 'SELECT @@\2@@ AS \3', 'g');
+  t := regexp_replace(t, '\m(public\.)?(current_shop_id|current_app_role)\(\)', '(select public.\2())', 'g');
+  -- بترجع زي ما Postgres بيحفظها بالظبط (من غير public.)، فالسياسة الملفوفة قبل كده بتتخطى فعلًا
+  return regexp_replace(t, '@@(current_shop_id|current_app_role)@@', '\1()', 'g');
+end $$;
+revoke execute on function public.rls_wrap(text) from public, anon, authenticated;
+do $rls$
+declare p record; q text; c text;
+begin
+  for p in select schemaname, tablename, policyname, qual, with_check from pg_policies where schemaname = 'public' loop
+    q := public.rls_wrap(p.qual);
+    c := public.rls_wrap(p.with_check);
+    if q is distinct from p.qual or c is distinct from p.with_check then
+      execute format('alter policy %I on %I.%I', p.policyname, p.schemaname, p.tablename)
+        || case when p.qual is not null then format(' using (%s)', q) else '' end
+        || case when p.with_check is not null then format(' with check (%s)', c) else '' end;
+    end if;
+  end loop;
+end $rls$;
+
 
 -- ---------- النسخة الاحتياطية والاسترجاع ----------
 -- backup_snapshot: (src: 0060_sale_lines.sql) + attendance

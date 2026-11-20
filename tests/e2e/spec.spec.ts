@@ -41,12 +41,14 @@ test('استكمال المواصفات: أجرة العطل والسعر الم
   await fillField(dlg.getByLabel('سعر الوحدة'), '500');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل الشراء')).toBeVisible();
+  // زي المستخدم: الكمية الجديدة تظهر في المخزون الأول (لو فتح البيع قبلها بيشوف "ماعندوش رصيد" لحظة)
+  await expect(page.getByTestId('item-row').filter({ hasText: 'شاشة A54' })).toContainText('3');
   // بيع بالباركود (أرقام عربية) ← الكمية 2 وده الحد الأدنى فالصنف يبقى ناقص
   await page.getByRole('button', { name: 'بيع', exact: true }).click();
   dlg = page.getByRole('dialog');
   await fillField(dlg.getByLabel('باركود'), '622001');
   await dlg.getByLabel('باركود').press('Enter');
-  await expect(dlg.getByLabel('الكمية')).toHaveValue('1');
+  await expect(dlg.getByTestId('line').getByLabel('الكمية')).toHaveValue('1');
   await dlg.getByRole('button', { name: 'سجّل' }).click();
   await expect(page.getByText('اتسجل البيع')).toBeVisible();
   await expect(page.getByTestId('shortages')).toBeVisible();
