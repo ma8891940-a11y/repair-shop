@@ -2,6 +2,7 @@
 # بيثبت إن supabase/upgrade_existing.sql بيرقّي أي قاعدة قديمة لآخر نسخة بالظبط، ومن غير ما يكسر حاجة لو اتشغّل تاني.
 # لكل حالة: قاعدة فيها أول K ملفات بس ← الترقية (كل الملف في رسالة واحدة زي SQL Editor) ← نفس شكل قاعدة جديدة من setup_all.sql
 # (الجداول والأعمدة، ومحتوى كل دالة، والسياسات، والتريجرات، والقيود، والـ indexes) ← الترقية تاني ما بتغيّرش حاجة.
+# وبعدين نفس الحالات بالأجزاء (upgrade_part_N.sql) واحد ورا التاني، والترتيب الغلط والفجوة بيوقفوا من غير تغيير.
 # على Postgres مؤقت على نفس الجهاز بس (زي test-db.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -61,4 +62,53 @@ before="$(psql -At "$P/gap" -c "$FP")"
 if up gap; then echo "gap: كان لازم يقف"; fail=1
 elif grep -q E_UPGRADE_GAP "$DIR/err" && [ "$(psql -At "$P/gap" -c "$FP")" = "$before" ]; then echo "gap: وقف برسالة ومن غير تغيير"
 else echo "gap: وقف بس غلط"; cat "$DIR/err"; fail=1; fi
+
+# ============ أجزاء SQL Editor (supabase/upgrade/upgrade_part_N.sql) ============
+# كل جزء بيتبعت في رسالة واحدة زي SQL Editor. الحالات: مشروع فاضي، وواقف عند ملف معيّن (PART_CASES)، وواقف عنده بسجل ترقية قديم
+PARTS=(supabase/upgrade/upgrade_part_*.sql)
+IFS=$'\n' PARTS=($(printf '%s\n' "${PARTS[@]}" | sort -V)); unset IFS
+runpart() { node scripts/run-sql-once.mjs "$P/$1" "$2" 2>"$DIR/err" >/dev/null; }
+allparts() { for f in "${PARTS[@]}"; do runpart "$1" "$f" || { echo "$2: $(basename "$f") فشل"; cat "$DIR/err"; return 1; }; done; }
+for C in $(printf '%s\n' ${PART_CASES:-0 59 60 $N} log59 | awk '!seen[$0]++'); do
+  K="${C#log}"
+  db="part_$C"
+  psql -q -v ON_ERROR_STOP=1 "$P/postgres" -c "create database $db template tpl"
+  for ((i = 0; i < K; i++)); do psql -q -v ON_ERROR_STOP=1 "$P/$db" -f "${FILES[$i]}" >/dev/null 2>&1; done
+  if [ "$C" != "$K" ]; then
+    # المشروع اترقّى قبل كده بالملف الواحد: سجل الترقية فيه أول K ملفات
+    psql -q -v ON_ERROR_STOP=1 "$P/$db" -c "create table public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null)"
+    for ((i = 0; i < K; i++)); do psql -q -v ON_ERROR_STOP=1 "$P/$db" -c "insert into public.app_migrations(version, how) values ('$(basename "${FILES[$i]}")', 'applied')"; done
+  fi
+  allparts "$db" "parts C=$C" || { fail=1; continue; }
+  GOT="$(psql -At "$P/$db" -c "$FP")"
+  if [ "$GOT" != "$REF" ]; then echo "parts C=$C: الشكل مختلف عن قاعدة جديدة"; diff <(echo "$REF") <(echo "$GOT") | head -20; fail=1; continue; fi
+  [ "$(psql -At "$P/$db" -c "select count(*) from public.app_migrations")" = "$N" ] || { echo "parts C=$C: السجل ناقص"; fail=1; continue; }
+  # الأجزاء كلها تاني، وآخر جزء مرة تالتة: ولا حاجة بتتغير
+  allparts "$db" "parts C=$C (تاني)" || { fail=1; continue; }
+  runpart "$db" "${PARTS[-1]}" || { echo "parts C=$C: آخر جزء تالت مرة فشل"; cat "$DIR/err"; fail=1; continue; }
+  [ "$(psql -At "$P/$db" -c "$FP")" = "$REF" ] || { echo "parts C=$C: التكرار غيّر حاجة"; fail=1; continue; }
+  echo "parts C=$C: تمام (${#PARTS[@]} أجزاء، اتطبق $((N - K)) ملف، والتكرار من غير تغيير)"
+done
+# الترتيب: جزء قبل اللي قبله على مشروع فاضي ← بيقف من غير ما يغيّر حاجة
+if [ "${#PARTS[@]}" -ge 2 ]; then
+  psql -q -v ON_ERROR_STOP=1 "$P/postgres" -c "create database ord template tpl"
+  before="$(psql -At "$P/ord" -c "$FP")"
+  if runpart ord "${PARTS[-1]}"; then echo "order: كان لازم يقف"; fail=1
+  elif grep -q "E_UPGRADE_ORDER.*upgrade_part_1.sql" "$DIR/err" && [ "$(psql -At "$P/ord" -c "$FP")" = "$before" ]; then echo "order: وقف برسالة (شغّل upgrade_part_1 الأول) ومن غير تغيير"
+  else echo "order: وقف بس غلط"; cat "$DIR/err"; fail=1; fi
+fi
+# الترتيب لجزء في النص: الجزء 1 بس اتطبق، وبعدين الجزء 3 ← بيقف ويقول شغّل الجزء 2
+if [ "${#PARTS[@]}" -ge 3 ]; then
+  psql -q -v ON_ERROR_STOP=1 "$P/postgres" -c "create database ord2 template tpl"
+  runpart ord2 "${PARTS[0]}" || { echo "order mid: الجزء 1 فشل"; cat "$DIR/err"; fail=1; }
+  before="$(psql -At "$P/ord2" -c "$FP")"
+  if runpart ord2 "${PARTS[2]}"; then echo "order mid: كان لازم يقف"; fail=1
+  elif grep -q "E_UPGRADE_ORDER.*upgrade_part_2.sql" "$DIR/err" && [ "$(psql -At "$P/ord2" -c "$FP")" = "$before" ]; then echo "order mid: الجزء 3 بعد 1 بس وقف (شغّل upgrade_part_2 الأول) ومن غير تغيير"
+  else echo "order mid: وقف بس غلط"; cat "$DIR/err"; fail=1; fi
+fi
+# الفجوة بالأجزاء كمان
+gapfp="$(psql -At "$P/gap" -c "$FP")"
+if runpart gap "${PARTS[0]}"; then echo "parts gap: كان لازم يقف"; fail=1
+elif grep -q E_UPGRADE_GAP "$DIR/err" && [ "$(psql -At "$P/gap" -c "$FP")" = "$gapfp" ]; then echo "parts gap: وقف برسالة ومن غير تغيير"
+else echo "parts gap: وقف بس غلط"; cat "$DIR/err"; fail=1; fi
 exit $fail
