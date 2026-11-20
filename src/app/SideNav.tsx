@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import {
-  BarChart3, Bot, Boxes, ChevronDown, LayoutGrid, ClipboardCheck, ClipboardList, Contact, Film, Gauge, Handshake, History, Landmark, MessagesSquare, PackageMinus, PackagePlus,
+  BarChart3, Bot, Boxes, ChevronDown, LayoutGrid, ClipboardCheck, ClipboardList, Clock, Contact, Film, Gauge, Handshake, History, Landmark, MessagesSquare, PackageMinus, PackagePlus,
   Receipt, Settings, ShieldCheck, ShoppingCart, Smartphone, Star, Store, TrendingUp, Truck, Users, Wallet, Wrench, type LucideIcon,
 } from 'lucide-react';
 import { useMe } from './auth';
@@ -13,7 +13,7 @@ import { Tip } from '../ui/Tooltip';
 import { cn } from '../ui/cn';
 
 export const NAV_ICONS: Record<string, LucideIcon> = {
-  BarChart3, Bot, Boxes, LayoutGrid, ClipboardCheck, ClipboardList, Contact, Film, Gauge, Handshake, History, Landmark, MessagesSquare, PackageMinus, PackagePlus,
+  BarChart3, Bot, Boxes, LayoutGrid, ClipboardCheck, ClipboardList, Clock, Contact, Film, Gauge, Handshake, History, Landmark, MessagesSquare, PackageMinus, PackagePlus,
   Receipt, Settings, ShieldCheck, ShoppingCart, Smartphone, Store, TrendingUp, Truck, Users, Wallet, Wrench,
 };
 
