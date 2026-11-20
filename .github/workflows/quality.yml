@@ -1,0 +1,83 @@
+# بوابة الجودة على كل PR (ونفس الشيء بعد الدمج على main).
+# - checks: typecheck وlint والوحدة و audit:prod
+# - db: اختبارات قاعدة البيانات على PostgreSQL 16 مؤقت، واختبار ملف الترقية
+# - e2e: Playwright على الأربع مشاريع (كل مشروع في job لوحده بالتوازي) على Supabase محلي (Docker)
+# مفيش أي أسرار مستخدمة: Supabase المحلي بمفاتيحه الافتراضية للاختبار بس.
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_CLI: supabase@3.2.0
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run audit:prod
+
+  db:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: PostgreSQL 16
+        run: |
+          if [ ! -x /usr/lib/postgresql/16/bin/initdb ]; then sudo apt-get update && sudo apt-get install -y postgresql-16; fi
+          /usr/lib/postgresql/16/bin/postgres --version
+      - run: npm run test:db
+      - run: npm run test:upgrade
+
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop-dark, desktop-light, mobile-dark, mobile-light]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Supabase محلي
+        run: |
+          npx -y $SUPABASE_CLI start -x studio,imgproxy,logflare,vector,supavisor,postgres-meta
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -v ON_ERROR_STOP=1 -q -f supabase/setup_all.sql
+          npx -y $SUPABASE_CLI status -o env | grep -E '^(API_URL|ANON_KEY)=' | sed -e 's/^API_URL=/E2E_SUPABASE_URL=/' -e 's/^ANON_KEY=/E2E_SUPABASE_ANON_KEY=/' -e 's/"//g' >> "$GITHUB_ENV"
+      - name: Playwright (${{ matrix.project }})
+        run: npx playwright test --project=${{ matrix.project }} --workers=2 --reporter=line --trace off
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-${{ matrix.project }}
+          path: test-results/
+          retention-days: 7
