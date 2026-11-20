@@ -144,9 +144,11 @@ d('فاتورة البيع (سطور البيع)', () => {
   it('بيع قديم (من غير سطور): الأصناف والكميات من حركة المخزون، والإجمالي من الدفتر، ومن غير سعر كل صنف', async () => {
     const e = (await as(O, `select record_sale($1, $2::jsonb, $3) e`, [id(), JSON.stringify([{ item: part, qty: 1, price: 140000 }, { item: acc, qty: 1, price: 9900 }]), cash], main)).rows[0].e;
     // تمثيل بيع اتعمل قبل 0060: من غير سطور (الحماية مقفولة لحظة بس في الاختبار)
-    await admin(`set session_replication_role = replica`);
+    // set local: جوه transaction واحدة بس، عشان الاتصال ما يفضلش من غير حماية لو حاجة فشلت
+    await admin('begin');
+    await admin(`set local session_replication_role = replica`);
     await admin(`delete from sale_lines where entry_id = $1`, [e]);
-    await admin(`set session_replication_role = origin`);
+    await admin('commit');
     const i = await inv(O, e);
     expect(i).toMatchObject({ legacy: true, total: 149900, paid: 149900 });
     expect(i.lines).toEqual([
