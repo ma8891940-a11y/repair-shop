@@ -125,10 +125,10 @@ test('المرحلة 3: رأس مال ← مصروف ← تحويل ← الوض
     const e = (await db.query(`select e.id, e.entry_no, l.account_id from journal_entries e join journal_lines l on l.entry_id = e.id where e.shop_id = $1 limit 1`, [shop])).rows[0];
     broken.id = e.id;
     broken.no = String(e.entry_no);
+    // replica: من غير الـ triggers للجلسة دي بس، ومن غير ما الجدول يتقفل على باقي الاختبارات (alter table كان بيقفله)
     await db.query('begin');
-    await db.query('alter table journal_lines disable trigger entry_balanced');
+    await db.query('set local session_replication_role = replica');
     await db.query(`insert into journal_lines(shop_id, entry_id, account_id, debit) values ($1, $2, $3, 1)`, [shop, e.id, e.account_id]);
-    await db.query('alter table journal_lines enable trigger entry_balanced');
     await db.query('commit');
   } finally {
     await db.end();

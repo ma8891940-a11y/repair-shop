@@ -29,11 +29,12 @@ export default defineConfig({
   webServer: {
     // E2E_PROD=1: نفس الاختبارات على النسخة النهائية (build ثم preview) بدل سيرفر التطوير
     command: process.env.E2E_PROD
-      ? `npx vite build --outDir dist-e2e --emptyOutDir && npx vite preview --outDir dist-e2e --port ${PORT} --strictPort`
-      : `npx vite --port ${PORT} --strictPort`,
+      ? `npx vite build --outDir dist-e2e --emptyOutDir && npx vite preview --outDir dist-e2e --host 127.0.0.1 --port ${PORT} --strictPort`
+      : `npx vite --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}/`,
     reuseExistingServer: true,
     env: { VITE_SUPABASE_URL: url, VITE_SUPABASE_ANON_KEY: anon },
-    timeout: process.env.E2E_PROD ? 180_000 : 60_000,
+    // على GitHub أول تشغيل لـ vite بيجهّز المكتبات، فالمهلة أطول
+    timeout: process.env.E2E_PROD ? 180_000 : process.env.CI ? 180_000 : 60_000,
   },
 });
