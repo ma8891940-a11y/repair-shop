@@ -26,7 +26,8 @@ test('من غير حفظ: الاستلام بيسأل قبل الخروج ومس
   await page.getByLabel('اسم العميل').fill('عميل المسودة');
   await page.getByLabel('الموديل').fill('Note 13');
   await page.getByLabel('العطل زي ما العميل وصفه').fill('مش بيفتح');
-  await page.waitForTimeout(700); // الحفظ التلقائي كل نص ثانية
+  // الحفظ التلقائي (بعد نص ثانية من آخر كتابة): نستنى المسودة نفسها تتحفظ بآخر قيمة، مش وقت ثابت
+  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith('draft:intake:') && (localStorage.getItem(k) ?? '').includes('مش بيفتح')))).toBe(true);
   if (mobile) await page.getByRole('navigation', { name: 'القائمة' }).getByRole('link').first().click();
   else await page.getByTestId('side-nav').getByTestId('nav-dashboard').click();
   await expect(page.getByRole('dialog', { name: 'فيه بيانات ما اتحفظتش' })).toBeVisible();
