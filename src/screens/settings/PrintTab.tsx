@@ -64,10 +64,17 @@ export function PrintTab() {
     const prev = (ex.print && typeof ex.print === 'object' ? ex.print : {}) as Record<string, unknown>;
     const all = { ...prev, ...next };
     const anyAuto = ACTIONS.some((a) => all.auto[a as PrintAction]);
-    const { error } = await supabase.from('shops').update({ extras: { ...ex, print: all, auto_print: anyAuto } }).eq('id', shop.id);
-    if (error) return toast({ tone: 'danger', title: errorMessage(error) });
-    await refresh();
-    toast({ tone: 'ok', title: t('settings.saved') });
+    try {
+      const { error } = await supabase.from('shops').update({ extras: { ...ex, print: all, auto_print: anyAuto } }).eq('id', shop.id);
+      if (error) throw error;
+      await refresh();
+      toast({ tone: 'ok', title: t('settings.saved') });
+    } catch (e) {
+      // الحفظ فشل: الحفظ اللي بعده ما يبنيش عليه، والشاشة بترجع للمحفوظ فعلًا
+      latest.current = null;
+      setSt(readPrint(extras.current).sticker);
+      toast({ tone: 'danger', title: errorMessage(e) });
+    }
   }
   /** الإرسال التلقائي: بيبني على آخر قيمة (حتى لو لسه بتتحفظ) */
   const autoNow = () => latest.current?.auto ?? p.auto;
