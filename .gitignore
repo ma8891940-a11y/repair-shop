@@ -8,3 +8,5 @@ dev-dist/
 test-results/
 playwright-report/
 dist-e2e/
+# مواد البحث المحلية (صور وصفحات المنافسين): ما بتترفعش
+research/

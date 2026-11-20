@@ -1,6 +1,6 @@
 # PROGRESS — النسخة 2
 
-آخر تحديث: 2026-11-18
+آخر تحديث: 2026-11-20
 
 ## جدول المهام (Claude مدير المشروع، وCodex مطوّر)
 - Claude بس هو اللي بيحدّث الجدول.
@@ -19,6 +19,14 @@
 | 6ب | U5: فاتورة البيع (سطور كل بيع بسعرها الفعلي: `0060_sale_lines.sql`، وتعديل `record_sale`) | claude | اتدمج (#8) | `claude/sale-invoice` |
 | 6ج | U5: قوالب الملصقات (ملصق الباركود في المصمم) | claude (بدل codex لحد 2026-12-18) | اتدمج (#9) | `claude/label-template` |
 | 7 | U5: الطباعة المباشرة بـ QZ Tray | — | متوقف | محتاج موافقة صاحب المشروع على المكتبة |
+| 8 | بوابة الجودة على GitHub Actions لكل PR (typecheck، lint، unit، DB، Playwright على الأربع مشاريع) | claude | مستني PR (#10) | `claude/ci` |
+| 9 | دراسة المنافسين، النسخة 2 (`docs/competitor-research-v2.md`) | claude | مستني PR | `claude/research` |
+| 10 | R1: الحضور والانصراف (جدول ودوال وصلاحيات وفروع: `0061_attendance.sql`) | claude | مستني PR | `claude/attendance` |
+| 11 | R2: شاشة الحضور وزرار "حضوري" (`codex-002`) | claude (بدل codex: مش متاح من الجلسة السحابية) | مستني PR | `claude/attendance-ui` |
+| 12 | R3: استيراد العملاء من Excel (`codex-003`) | codex | جاهزة لـ Codex | `docs/tasks/codex-003-customers-import.md` |
+| 13 | R5: ضريبة القيمة المضافة الاختيارية (فصل الضريبة في القيود والفاتورة) | claude | لسه | — |
+| 14 | R6: تقرير الضريبة للفترة (ملفه يتكتب بعد R5) | codex | لسه | — |
+| 15 | R7: الشيكات (تحت التحصيل وبميعاد) | claude | لسه | — |
 
 ### ملاحظات تشغيل Codex على جهاز صاحب المشروع (2026-11-18)
 - **الأمر الصح (codex-cli 0.169):** `--full-auto` اتشال من الإصدار ده، والبديل `--sandbox workspace-write`.
