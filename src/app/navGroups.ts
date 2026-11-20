@@ -118,6 +118,7 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
         ...e(g('finance'), { key: 'finance', to: '/finance', path: '/finance', end: true, icon: 'Landmark', shortcut: 'nav.finance' }),
         ...e(g('finance'), { key: 'cashboxes', to: '/finance?focus=cashboxes', path: '/finance?focus=cashboxes', icon: 'Wallet' }),
         ...e(front && !owner, { key: 'drawer', to: '/drawer', path: '/drawer', icon: 'Wallet' }),
+        ...e(g('finance'), { key: 'cheques', to: '/finance/cheques', path: '/finance/cheques', icon: 'Banknote' }),
         ...e(g('expenses', 'add'), { key: 'expenses', to: '/finance?do=expense', path: '/finance?do=expense', icon: 'Receipt' }),
         ...e(owner, { key: 'partners', to: '/partners', path: '/partners', icon: 'Handshake' }),
       ],
