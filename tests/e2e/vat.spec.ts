@@ -34,7 +34,7 @@ async function seedSale(email: string) {
   }
 }
 
-// R5: ضريبة القيمة المضافة: الإعداد ← بيع شامل ← الفاتورة بالصافي والضريبة ورقم التسجيل ← المستحقة في الوضع المالي ← السداد
+// R5 وR6: ضريبة القيمة المضافة: الإعداد ← بيع شامل ← الفاتورة بالصافي والضريبة ورقم التسجيل ← المستحقة في الوضع المالي ← السداد
 test('ضريبة القيمة المضافة: الإعداد ← الفاتورة بالصافي والضريبة ← المستحق ← السداد', async ({ page }, info) => {
   test.setTimeout(240_000);
   await prefs(page, info);
@@ -79,4 +79,15 @@ test('ضريبة القيمة المضافة: الإعداد ← الفاتور�
   await expect(page.getByText('اتسجل سداد الضريبة')).toBeVisible();
   await expect(due.getByTestId('vat-due-amount')).toContainText('0');
   await expect(due.getByTestId('vat-pay')).toHaveCount(0);
+
+  // 4) R6: تقرير الضريبة للفترة: الصافي 200، والضريبة 28، والمدفوع 28، والمستحق 0
+  await due.getByTestId('vat-report-link').click();
+  const rep = page.getByTestId('vat-report');
+  await expect(rep.getByTestId('vat-row-salesNet')).toContainText('200');
+  await expect(rep.getByTestId('vat-row-salesVat')).toContainText('28');
+  await expect(rep.getByTestId('vat-row-collected')).toContainText('28');
+  await expect(rep.getByTestId('vat-row-paid')).toContainText('-28');
+  await expect(rep.getByTestId('vat-row-due')).toContainText('0');
+  await expect(rep).toContainText('النسبة الحالية 14%');
+  await noHorizontalScroll(page);
 });
