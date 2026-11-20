@@ -151,9 +151,13 @@ d('فاتورة البيع (سطور البيع)', () => {
     await admin('commit');
     const i = await inv(O, e);
     expect(i).toMatchObject({ legacy: true, total: 149900, paid: 149900 });
-    expect(i.lines).toEqual([
-      { name: 'شاشة A35', qty: 1, price: null, amount: null },
-      { name: 'جراب', qty: 1, price: null, amount: null },
-    ]);
+    // الصنفين اتسجلوا في نفس اللحظة (نفس الـ transaction)، فترتيبهم في البيع القديم مش مضمون: بنقارن من غير الترتيب
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+    expect([...i.lines].sort(byName)).toEqual(
+      [
+        { name: 'شاشة A35', qty: 1, price: null, amount: null },
+        { name: 'جراب', qty: 1, price: null, amount: null },
+      ].sort(byName),
+    );
   });
 });
