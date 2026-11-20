@@ -48,10 +48,15 @@ test('الاستيكر: المقاسات السبعة كل البيانات جو
   await ps.getByRole('button', { name: 'احفظ المقاس' }).click();
   await expect(ps.getByTestId('preview-sticker')).toHaveAttribute('data-size', '45x28');
   await ps.getByRole('checkbox', { name: 'طباعة الإطار حوالين الاستيكر' }).click();
+  // كل تغيير بيتحفظ على السيرفر بالترتيب: نستنى آخر حفظ يوصل (مش وقت ثابت)
+  const saved = () => page.waitForResponse((r) => r.url().includes('/rest/v1/shops') && r.request().method() === 'PATCH');
+  let done = saved();
   await ps.getByTestId('sticker-dx').fill('1.5');
   await ps.getByTestId('sticker-dx').blur();
+  await done;
+  done = saved();
   await ps.getByTestId('sticker-copies').fill('2');
-  await page.waitForTimeout(600);
+  await done;
   await page.reload();
   await afterSplash(page);
   await expect(page.getByTestId('preview-sticker')).toHaveAttribute('data-size', '45x28');

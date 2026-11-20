@@ -239,13 +239,22 @@ export async function pickItem(scope: Page | Locator, query: string | null, opts
   opt = opt.first();
   await expect(opt).toBeVisible();
   if (opts.qty != null) await expect(opt.getByTestId('picker-qty')).toContainText(String(opts.qty));
-  // بالكيبورد (الأسهم وEnter) زي المستخدم: من غير ما نستنى القايمة تثبت مكانها
-  const names = await all.allInnerTexts();
+  // بالكيبورد (الأسهم وEnter) زي المستخدم. بس الأول نستنى القايمة تثبت (البيانات ممكن لسه بتوصل
+  // تحت الضغط)، عشان Enter ما يقعش على "صنف جديد" بدل الصنف المطلوب
+  let names = await all.allInnerTexts();
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    const now = await all.allInnerTexts();
+    if (now.join('|') === names.join('|')) break;
+    names = now;
+  }
   const target = await opt.innerText();
   const at = Math.max(0, names.indexOf(target));
   for (let i = 0; i < at; i++) await box.press('ArrowDown');
   await box.press('Enter');
   await expect(page.getByTestId('picker-option')).toHaveCount(0);
+  // الصنف اتختار فعلًا، مش فورم "صنف جديد"
+  await expect(page.getByTestId('si-qty')).toHaveCount(0);
 }
 
 /**

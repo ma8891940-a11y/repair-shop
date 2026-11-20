@@ -76,6 +76,9 @@ jobs:
           npx -y $SUPABASE_CLI status -o env | grep -E '^(API_URL|ANON_KEY)=' | sed -e 's/^API_URL=/E2E_SUPABASE_URL=/' -e 's/^ANON_KEY=/E2E_SUPABASE_ANON_KEY=/' -e 's/"//g' >> "$GITHUB_ENV"
       - name: Playwright (${{ matrix.project }})
         run: npx playwright test --project=${{ matrix.project }} --workers=2 --reporter=line --trace off
+      - name: تفاصيل الفشل (شكل الصفحة وقت الفشل)
+        if: failure()
+        run: for f in test-results/*/error-context.md; do [ -f "$f" ] && { echo "::group::$f"; head -c 20000 "$f"; echo "::endgroup::"; }; done; true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

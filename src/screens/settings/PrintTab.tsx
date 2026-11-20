@@ -41,7 +41,14 @@ export function PrintTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(p.sticker)]);
 
-  async function save(patch: Partial<PrintSettings>) {
+  // الحفظ بالترتيب: كل حفظ بيستنى اللي قبله، عشان حفظ قديم ما يوصلش متأخر ويكتب فوق الأحدث
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  function save(patch: Partial<PrintSettings>) {
+    const run = queue.current.then(() => saveNow(patch));
+    queue.current = run.catch(() => undefined);
+    return run;
+  }
+  async function saveNow(patch: Partial<PrintSettings>) {
     const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
     const prev = (ex.print && typeof ex.print === 'object' ? ex.print : {}) as Record<string, unknown>;
     const next = { ...prev, deliveryPaper: p.deliveryPaper, auto: p.auto, sticker: st, ...patch };
