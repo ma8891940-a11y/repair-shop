@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { Fragment, useEffect, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useBackground } from '../../app/stage';
 import { useTranslation } from 'react-i18next';
@@ -381,6 +381,10 @@ interface SaleInvoice {
   lines: { name: string; qty: number; price: number | null; amount: number | null }[];
   legacy: boolean;
   total: number;
+  /** R5: الضريبة جوه الإجمالي (0 لو المحل مش مسجّل أو البيع قبل ما تتفتح) */
+  vat?: number;
+  net?: number;
+  vat_no?: string | null;
   paid: number;
   due: number;
   customer: string | null;
@@ -485,7 +489,17 @@ export function SaleInvoicePrint() {
           </table>
         );
       case 'total':
-        return row(x, t('fin.total'), money(v.total), 'sale-total', true);
+        // R5: لو فيه ضريبة: الصافي، والضريبة، والإجمالي الشامل، ورقم التسجيل الضريبي
+        return Number(v.vat ?? 0) > 0 ? (
+          <Fragment key="total">
+            {row({ ...x, key: 'net' as BlockKey, bold: false }, t('vat.net'), money(Number(v.net)), 'sale-net', true)}
+            {row({ ...x, key: 'vat' as BlockKey, bold: false }, t('vat.line'), money(Number(v.vat)), 'sale-vat', true)}
+            {row(x, t('vat.totalIncl'), money(v.total), 'sale-total', true)}
+            {v.vat_no && row({ ...x, key: 'vatNo' as BlockKey, bold: false }, t('vat.reg'), v.vat_no, 'sale-vat-no', true)}
+          </Fragment>
+        ) : (
+          row(x, t('fin.total'), money(v.total), 'sale-total', true)
+        );
       case 'paid':
         return row(x, t('print.paid'), money(v.paid), 'sale-paid', true);
       case 'remaining':

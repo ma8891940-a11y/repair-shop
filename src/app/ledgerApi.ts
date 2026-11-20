@@ -36,6 +36,8 @@ export interface Position {
   fixed_assets?: number;
   /** أرباح اتوزعت على الشركاء ولسه ما اتسحبتش (حقوق ملكية) */
   partners_due?: number;
+  /** R5: ضريبة القيمة المضافة المستحقة للمصلحة (من ضمن "عليّا") */
+  vat_due?: number;
   equity_parts?: { owner_capital: number; drawings: number; retained: number; partners: { id: string; name: string; share_bp: number; capital: number; current: number }[] };
   revenue: number;
   expenses: number;

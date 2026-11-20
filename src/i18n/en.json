@@ -1372,7 +1372,8 @@
       "netting": "Customer/supplier netting",
       "commission": "Technician commission",
       "bonus": "Bonus",
-      "penalty": "Penalty"
+      "penalty": "Penalty",
+      "vat_payment": "VAT payment"
     },
     "excel": "Excel",
     "pdf": "PDF / Print",
@@ -1439,7 +1440,8 @@
       "wastage": "Wastage",
       "partners_capital": "Partners’ capital",
       "partners_current": "Partners’ current",
-      "retained": "Retained earnings"
+      "retained": "Retained earnings",
+      "vat_payable": "VAT payable"
     }
   },
   "inv": {
@@ -3733,5 +3735,28 @@
     "print": "Print invoice",
     "legacy": "Sale recorded before invoice lines: items and quantities from stock, total from the ledger (per-item prices were not recorded).",
     "due": "Remaining (on credit at sale time)"
+  },
+  "vat": {
+    "title": "VAT",
+    "hint": "If the shop is VAT-registered: prices stay tax-inclusive, and the app separates the tax in the books and invoices. Changes apply to sales and deliveries from now on; past records stay as they were.",
+    "enable": "The shop is VAT-registered",
+    "rate": "Rate",
+    "reg": "Tax registration no.",
+    "regHint": "Printed on the invoice",
+    "errRate": "Rate must be between 0.01 and 30",
+    "errReg": "Enter the tax registration number",
+    "net": "Net before VAT",
+    "line": "VAT",
+    "totalIncl": "Total incl. VAT",
+    "due": "VAT due to the tax authority",
+    "pay": "Pay VAT",
+    "payHint": "The amount leaves the cashbox and reduces the VAT due.",
+    "amount": "Amount",
+    "from": "From cashbox",
+    "note": "Note (e.g. return for month X)",
+    "paid": "VAT payment recorded",
+    "errAmount": "Enter a valid amount",
+    "errBox": "Pick a cashbox",
+    "report": "VAT report"
   }
 }
