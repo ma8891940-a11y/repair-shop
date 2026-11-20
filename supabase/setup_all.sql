@@ -14639,8 +14639,14 @@ begin
   -- نفس الطلب مرتين (النت قطع ورجع): نفس السجل
   if exists (select 1 from public.attendance where id = p_id and profile_id = me) then return p_id; end if;
   if exists (select 1 from public.attendance where profile_id = me and clock_out is null and deleted_at is null) then raise exception 'E_ALREADY_IN'; end if;
-  insert into public.attendance(id, shop_id, branch_id, profile_id, clock_in, note)
-  values (p_id, s, public.op_branch(), me, now(), nullif(trim(left(p_note, 300)), ''));
+  -- طلبين في نفس اللحظة (الطابور بيعيد والأول لسه ماشي): نفس الـ id = نفس السجل، وسجل مفتوح تاني = E_ALREADY_IN
+  begin
+    insert into public.attendance(id, shop_id, branch_id, profile_id, clock_in, note)
+    values (p_id, s, public.op_branch(), me, now(), nullif(trim(left(p_note, 300)), ''));
+  exception when unique_violation then
+    if exists (select 1 from public.attendance where id = p_id and profile_id = me) then return p_id; end if;
+    raise exception 'E_ALREADY_IN';
+  end;
   return p_id;
 end $$;
 revoke execute on function public.clock_in(uuid, text) from public, anon;
@@ -14674,14 +14680,17 @@ begin
   if p_from is null or p_to is null or p_to <= p_from or p_to - p_from > interval '400 days' then raise exception 'E_BAD_INPUT'; end if;
   all_staff := not p_me and (r = 'owner' or public.has_perm('staff', 'view'));
   if not p_me and not all_staff then raise exception 'E_FORBIDDEN'; end if;
-  select sh.extras -> 'attendance' ->> 'start', coalesce((sh.extras -> 'attendance' ->> 'grace_min')::int, 15)
+  -- السماح: رقم صحيح من 0 لـ 600، وأي قيمة تانية (فاضية أو بكسر) = 15، عشان إعداد غلط ما يوقّعش التقرير
+  select sh.extras -> 'attendance' ->> 'start',
+         case when (sh.extras -> 'attendance' ->> 'grace_min') ~ '^[0-9]{1,3}$' then least((sh.extras -> 'attendance' ->> 'grace_min')::int, 600) else 15 end
     into st, grace from public.shops sh where sh.id = s;
   if st !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then st := null; end if;
   return query
   select a.id, a.profile_id, p.full_name, a.branch_id, a.clock_in, a.clock_out,
-         case when a.clock_out is null then null else (extract(epoch from a.clock_out - a.clock_in) / 60)::int end,
+         -- دقايق كاملة (من غير تقريب لفوق)
+         case when a.clock_out is null then null else floor(extract(epoch from a.clock_out - a.clock_in) / 60)::int end,
          case when st is null then 0
-              else greatest(0, (extract(epoch from (a.clock_in at time zone 'Africa/Cairo') - ((a.clock_in at time zone 'Africa/Cairo')::date + st::time)) / 60)::int - grace) end,
+              else greatest(0, floor(extract(epoch from (a.clock_in at time zone 'Africa/Cairo') - ((a.clock_in at time zone 'Africa/Cairo')::date + st::time)) / 60)::int - grace) end,
          a.note, a.fix_reason
   from public.attendance a join public.profiles p on p.id = a.profile_id
   where a.shop_id = s and a.deleted_at is null and a.clock_in >= p_from and a.clock_in < p_to
@@ -14709,13 +14718,27 @@ revoke execute on function public.attendance_report(timestamptz, timestamptz, uu
 grant execute on function public.attendance_report(timestamptz, timestamptz, uuid) to authenticated;
 
 -- ---------- صاحب المحل بس: تصليح، أو إضافة، أو إلغاء (بسبب، وفي سجل النشاط) ----------
+-- سجلين لنفس الموظف ما يتداخلوش (عشان الساعات ما تتحسبش مرتين). المفتوح لحد دلوقتي
+create or replace function public.attendance_overlaps(p_profile uuid, p_in timestamptz, p_out timestamptz, p_except uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.attendance a
+    where a.profile_id = p_profile and a.deleted_at is null and a.id is distinct from p_except
+      and tstzrange(a.clock_in, coalesce(a.clock_out, greatest(now(), a.clock_in + interval '1 second')), '[)')
+          && tstzrange(p_in, coalesce(p_out, greatest(now(), p_in + interval '1 second')), '[)'))
+$$;
+revoke execute on function public.attendance_overlaps(uuid, timestamptz, timestamptz, uuid) from public, anon, authenticated;
 create or replace function public.attendance_fix(p_id uuid, p_in timestamptz, p_out timestamptz, p_reason text) returns void
 language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id();
+declare s uuid := public.current_shop_id(); pr uuid;
 begin
   perform public.ledger_require(array['owner']::public.app_role[]);
   if coalesce(trim(p_reason), '') = '' then raise exception 'E_REASON_REQUIRED'; end if;
   if p_in is null or (p_out is not null and (p_out <= p_in or p_out - p_in > interval '24 hours')) then raise exception 'E_BAD_INPUT'; end if;
+  select profile_id into pr from public.attendance where id = p_id and shop_id = s and deleted_at is null;
+  if pr is null then raise exception 'E_NOT_FOUND'; end if;
+  if public.attendance_overlaps(pr, p_in, p_out, p_id) then raise exception 'E_ATT_OVERLAP'; end if;
+  -- سيبه مفتوح وهو عنده سجل مفتوح تاني
+  if p_out is null and exists (select 1 from public.attendance where profile_id = pr and clock_out is null and deleted_at is null and id <> p_id) then raise exception 'E_ALREADY_IN'; end if;
   update public.attendance set clock_in = p_in, clock_out = p_out, fixed_by = auth.uid(), fix_reason = left(trim(p_reason), 300)
    where id = p_id and shop_id = s and deleted_at is null;
   if not found then raise exception 'E_NOT_FOUND'; end if;
@@ -14732,6 +14755,7 @@ begin
   if coalesce(trim(p_reason), '') = '' then raise exception 'E_REASON_REQUIRED'; end if;
   if p_in is null or p_out is null or p_out <= p_in or p_out - p_in > interval '24 hours' then raise exception 'E_BAD_INPUT'; end if;
   if not exists (select 1 from public.profiles where id = p_profile and shop_id = s) then raise exception 'E_NOT_FOUND'; end if;
+  if public.attendance_overlaps(p_profile, p_in, p_out, null) then raise exception 'E_ATT_OVERLAP'; end if;
   -- فرع الموظف (أول فرع ليه، أو الرئيسي)
   b := coalesce((select sb.branch_id from public.staff_branches sb where sb.profile_id = p_profile and sb.deleted_at is null order by sb.created_at limit 1), public.main_branch(s));
   insert into public.attendance(id, shop_id, branch_id, profile_id, clock_in, clock_out, fixed_by, fix_reason)
