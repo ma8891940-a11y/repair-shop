@@ -97,6 +97,15 @@ if [ "${#PARTS[@]}" -ge 2 ]; then
   elif grep -q "E_UPGRADE_ORDER.*upgrade_part_1.sql" "$DIR/err" && [ "$(psql -At "$P/ord" -c "$FP")" = "$before" ]; then echo "order: وقف برسالة (شغّل upgrade_part_1 الأول) ومن غير تغيير"
   else echo "order: وقف بس غلط"; cat "$DIR/err"; fail=1; fi
 fi
+# الترتيب لجزء في النص: الجزء 1 بس اتطبق، وبعدين الجزء 3 ← بيقف ويقول شغّل الجزء 2
+if [ "${#PARTS[@]}" -ge 3 ]; then
+  psql -q -v ON_ERROR_STOP=1 "$P/postgres" -c "create database ord2 template tpl"
+  runpart ord2 "${PARTS[0]}" || { echo "order mid: الجزء 1 فشل"; cat "$DIR/err"; fail=1; }
+  before="$(psql -At "$P/ord2" -c "$FP")"
+  if runpart ord2 "${PARTS[2]}"; then echo "order mid: كان لازم يقف"; fail=1
+  elif grep -q "E_UPGRADE_ORDER.*upgrade_part_2.sql" "$DIR/err" && [ "$(psql -At "$P/ord2" -c "$FP")" = "$before" ]; then echo "order mid: الجزء 3 بعد 1 بس وقف (شغّل upgrade_part_2 الأول) ومن غير تغيير"
+  else echo "order mid: وقف بس غلط"; cat "$DIR/err"; fail=1; fi
+fi
 # الفجوة بالأجزاء كمان
 gapfp="$(psql -At "$P/gap" -c "$FP")"
 if runpart gap "${PARTS[0]}"; then echo "parts gap: كان لازم يقف"; fail=1
