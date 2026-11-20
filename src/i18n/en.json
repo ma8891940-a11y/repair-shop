@@ -538,7 +538,10 @@
       "E_TOO_MANY": "Too many orders today, try tomorrow or call the shop",
       "E_BAD_TOKEN": "Invalid token (it looks like 123456789:AA...)",
       "E_CATEGORY_DEPTH": "Categories have two levels only (main and sub)",
-      "E_CATEGORY_NOT_EMPTY": "The category has items or sub-categories. Move them first"
+      "E_CATEGORY_NOT_EMPTY": "The category has items or sub-categories. Move them first",
+      "E_ALREADY_IN": "You are already clocked in. Clock out first.",
+      "E_NOT_IN": "You are not clocked in. Clock in first.",
+      "E_OPEN_TOO_LONG": "This clock-in has been open for over 24 hours. The owner can fix it from the attendance screen."
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -778,7 +781,8 @@
       "categories": "Categories",
       "push_subscriptions": "Device notification subscription",
       "push_sent": "Notification sent to device",
-      "sale_lines": "Sale line"
+      "sale_lines": "Sale line",
+      "attendance": "Attendance"
     },
     "actions": {
       "insert": "add",
