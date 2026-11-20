@@ -9,6 +9,8 @@ async function intakeWithImei(page: Page, phone: string, issue: string, newCusto
   await page.goto('/#/intake');
   await page.locator('#intake-phone').fill(phone);
   if (newCustomer) await page.getByLabel('اسم العميل').fill('عميل الصور');
+  // عميل موجود: نستنى البحث يلاقيه (اسمه يظهر) قبل الحفظ، زي المستخدم
+  else await expect(page.getByText('عميل الصور').first()).toBeVisible();
   await page.getByRole('button', { name: 'Samsung', exact: true }).click();
   await page.getByLabel('الموديل').fill('A35');
   await page.getByLabel('IMEI', { exact: true }).fill(IMEI);
