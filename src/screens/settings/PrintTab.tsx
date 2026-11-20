@@ -41,28 +41,36 @@ export function PrintTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(p.sticker)]);
 
-  // الحفظ بالترتيب: كل حفظ بيستنى اللي قبله، عشان حفظ قديم ما يوصلش متأخر ويكتب فوق الأحدث
+  // الحفظ بالترتيب: كل حفظ بيستنى اللي قبله، عشان حفظ قديم ما يوصلش متأخر ويكتب فوق الأحدث.
+  // latest = آخر إعدادات طباعة اتبعتت (أو لسه مستنية)، عشان كل حفظ يبني على اللي قبله مش على بيانات قديمة
   const queue = useRef<Promise<void>>(Promise.resolve());
+  const latest = useRef<PrintSettings | null>(null);
+  const extras = useRef(shop.extras);
+  extras.current = shop.extras;
   function save(patch: Partial<PrintSettings>) {
-    const run = queue.current.then(() => saveNow(patch));
+    const base = latest.current ?? { ...p, sticker: st };
+    const next = { ...base, ...patch };
+    latest.current = next;
+    pending.current += 1;
+    const run = queue.current.then(() => saveNow(next)).finally(() => {
+      pending.current -= 1;
+      if (pending.current === 0) latest.current = null;
+    });
     queue.current = run.catch(() => undefined);
     return run;
   }
-  async function saveNow(patch: Partial<PrintSettings>) {
-    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
+  async function saveNow(next: PrintSettings) {
+    const ex = (extras.current && typeof extras.current === 'object' ? extras.current : {}) as Record<string, unknown>;
     const prev = (ex.print && typeof ex.print === 'object' ? ex.print : {}) as Record<string, unknown>;
-    const next = { ...prev, deliveryPaper: p.deliveryPaper, auto: p.auto, sticker: st, ...patch };
-    const anyAuto = ACTIONS.some((a) => next.auto[a as PrintAction]);
-    pending.current += 1;
-    try {
-      const { error } = await supabase.from('shops').update({ extras: { ...ex, print: next, auto_print: anyAuto } }).eq('id', shop.id);
-      if (error) return toast({ tone: 'danger', title: errorMessage(error) });
-      await refresh();
-    } finally {
-      pending.current -= 1;
-    }
+    const all = { ...prev, ...next };
+    const anyAuto = ACTIONS.some((a) => all.auto[a as PrintAction]);
+    const { error } = await supabase.from('shops').update({ extras: { ...ex, print: all, auto_print: anyAuto } }).eq('id', shop.id);
+    if (error) return toast({ tone: 'danger', title: errorMessage(error) });
+    await refresh();
     toast({ tone: 'ok', title: t('settings.saved') });
   }
+  /** الإرسال التلقائي: بيبني على آخر قيمة (حتى لو لسه بتتحفظ) */
+  const autoNow = () => latest.current?.auto ?? p.auto;
   const saveSticker = (s: Partial<StickerSettings>) => {
     const v = readSticker({ ...st, ...s });
     setSt(v);
@@ -78,7 +86,7 @@ export function PrintTab() {
           <p className="text-xs text-fg-3">{t('printSet.autoHint')}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {ACTIONS.map((a) => (
-              <Checkbox key={a} checked={p.auto[a]} onChange={(v) => void save({ auto: { ...p.auto, [a]: v } })} label={t(`printSend.actions.${a}`)} />
+              <Checkbox key={a} checked={p.auto[a]} onChange={(v) => void save({ auto: { ...autoNow(), [a]: v } })} label={t(`printSend.actions.${a}`)} />
             ))}
           </div>
           <div className="border-t border-glass-border pt-3">

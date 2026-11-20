@@ -254,7 +254,7 @@ export async function pickItem(scope: Page | Locator, query: string | null, opts
   await box.press('Enter');
   await expect(page.getByTestId('picker-option')).toHaveCount(0);
   // الصنف اتختار فعلًا، مش فورم "صنف جديد"
-  await expect(page.getByTestId('si-qty')).toHaveCount(0);
+  await expect(page.getByTestId('new-item-inline')).toHaveCount(0);
 }
 
 /**
