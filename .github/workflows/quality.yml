@@ -55,7 +55,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -86,7 +86,9 @@ jobs:
         # E2E_PROD: على النسخة النهائية (build ثم preview) زي اللي بيتنشر، بدل سيرفر التطوير اللي بيبطّأ تحت الضغط
         env:
           E2E_PROD: '1'
-        run: npx playwright test --project=${{ matrix.project }} --workers=2 --reporter=line --trace off
+        # متصفح واحد في المرة: جهاز GitHub للمستودعات الخاصة (2 معالج) مش مستحمل اتنين مع Supabase كامل
+        # (القاعدة كانت بتلغي استعلامات بسيطة بعد 8 ثواني من الضغط، ونظام الدخول كان بيدّي request_timeout)
+        run: npx playwright test --project=${{ matrix.project }} --workers=1 --reporter=line --trace off
       - name: اختبار سلوك سيرفر التطوير (بيتخطى على النسخة النهائية، فبيشتغل هنا لوحده)
         run: npx playwright test tests/e2e/splash.spec.ts -g "npm run dev" --project=${{ matrix.project }} --reporter=line --trace off
       - name: تفاصيل الفشل (شكل الصفحة وقت الفشل)
