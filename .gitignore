@@ -8,3 +8,5 @@ dev-dist/
 test-results/
 playwright-report/
 dist-e2e/
+supabase/.branches/
+supabase/.temp/
