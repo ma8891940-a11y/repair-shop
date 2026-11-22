@@ -1,11 +1,12 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import QRCode from 'qrcode';
 import { useBackground } from '../app/stage';
 import { trackingUrl, waLink } from '../lib/messages';
 import { appBase } from '../lib/publicUrl';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { pageSize, readPrint, type PrintDoc } from '../lib/printPlan';
-import { defaultBlocks, normalizeBlocks, pageCss, type Block, type Size, type TemplateDoc } from '../lib/printTemplate';
+import { defaultBlocks, normalizeBlocks, pageCss, type Block, type BlockKey, type Size, type TemplateDoc } from '../lib/printTemplate';
+import { readVat } from '../lib/vat';
 import { cn } from '../ui/cn';
 import { StickerLabel, StickerTest } from '../app/print/StickerLabel';
 import { useTranslation } from 'react-i18next';
@@ -68,6 +69,8 @@ export function PrintScreen() {
     const parts = kind === 'invoice' ? ((await supabase.rpc('device_parts', { p_device: id })).data ?? []) as { item_id: string; name: string; qty: number }[] : [];
     // المدفوع والفاضل (الاستيكر والفاتورة)
     const money = kind === 'sticker' || kind === 'invoice' ? ((await supabase.rpc('device_money', { p_device: id })).data as { final: number | null; paid: number; due: number } | null) : null;
+    // R5: الضريبة من قيد التسليم نفسه (لو المحل مسجّل والجهاز اتسلّم)
+    const vat = kind === 'invoice' ? ((await supabase.rpc('device_vat', { p_device: id })).data as { vat: number; gross: number; net: number } | null) : null;
     // U5: قالب الفرع (أو المحل) الافتراضي لنوع الورقة ده، وملف الطابعة بتاعه
     let tpl: Block[] | null = null;
     let printer: { width_mm: number; height_mm: number | null; margin_mm: number } | null = null;
@@ -88,7 +91,7 @@ export function PrintScreen() {
       // مقاس الصفحة من ملف الطابعة (في المعاينة كمان)
       if (pick?.printer_id) printer = ((await supabase.from('printers').select('width_mm, height_mm, margin_mm').eq('id', pick.printer_id).is('deleted_at', null).maybeSingle()).data as typeof printer) ?? null;
     }
-    return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null, parts, money, tpl, printer };
+    return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null, parts, money, vat, tpl, printer };
   }, [id, kind, preview, previewV]);
 
   // الـ QR بيفتح صفحة تتبع العميل بالرمز السري بتاع الجهاز (الإيصال وملصق الـ QR بس، الاستيكر من غيره)
@@ -270,7 +273,20 @@ export function PrintScreen() {
                 case 'parts':
                   return !isReceipt && data.parts.length > 0 ? row(x, t('print.parts'), data.parts.map((p) => `${p.name} × ${Number(p.qty)}`).join(t('common.sep'))) : null;
                 case 'total':
-                  return !isReceipt ? row(x, t('print.total'), data.k?.final_cost != null ? `${f.money(data.k.final_cost)} ${cur}` : t('common.none'), { mono: true, testid: 'invoice-total' }) : null;
+                  if (isReceipt) return null;
+                  // R5: الصافي والضريبة قبل الإجمالي الشامل، ورقم التسجيل
+                  if (data.vat && Number(data.vat.vat) > 0) {
+                    const vr = readVat(shop.extras);
+                    return (
+                      <Fragment key="total">
+                        {row({ ...x, key: 'net' as BlockKey, bold: false }, t('vat.net'), `${f.money(Number(data.vat.net))} ${cur}`, { mono: true, testid: 'invoice-net' })}
+                        {row({ ...x, key: 'vat' as BlockKey, bold: false }, t('vat.line'), `${f.money(Number(data.vat.vat))} ${cur}`, { mono: true, testid: 'invoice-vat' })}
+                        {row(x, t('vat.totalIncl'), `${f.money(Number(data.vat.gross))} ${cur}`, { mono: true, testid: 'invoice-total' })}
+                        {vr.reg_no && row({ ...x, key: 'vatNo' as BlockKey, bold: false }, t('vat.reg'), vr.reg_no, { mono: true, testid: 'invoice-vat-no' })}
+                      </Fragment>
+                    );
+                  }
+                  return row(x, t('print.total'), data.k?.final_cost != null ? `${f.money(data.k.final_cost)} ${cur}` : t('common.none'), { mono: true, testid: 'invoice-total' });
                 case 'paid':
                   return !isReceipt && data.money ? row(x, t('print.paid'), `${f.money(Number(data.money.paid))} ${cur}`, { mono: true, testid: 'invoice-paid' }) : null;
                 case 'remaining':

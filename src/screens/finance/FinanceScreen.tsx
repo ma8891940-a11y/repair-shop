@@ -27,6 +27,7 @@ import { CountUp, Sparkline } from '../../ui/viz';
 import { DailyChart } from '../../ui/DailyChart';
 import { Alert, EmptyState, ErrorState, Skeleton } from '../../ui/Feedback';
 import { Button } from '../../ui/Button';
+import { VatDuePanel } from '../../app/finance/VatDuePanel';
 import { IntegrityAlert } from '../../app/IntegrityAlert';
 import { cn } from '../../ui/cn';
 
@@ -173,6 +174,7 @@ export function FinanceScreen() {
           )}
           <IntegrityAlert className="mb-4" />
           {p && <ResultLine r={resultSentence(p, data?.prev ?? null)} money={money} cur={cur} />}
+          {p && <VatDuePanel due={Number(p.vat_due ?? 0)} onPaid={reload} />}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             {kpis.map((k, i) => (
               <motion.div key={k.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: i * 0.04 }}>

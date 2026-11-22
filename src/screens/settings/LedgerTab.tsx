@@ -12,6 +12,7 @@ import { Field, Input, Select } from '../../ui/Field';
 import { Alert, Skeleton } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 import { PricingSettings } from './PricingSettings';
+import { VatSettings } from './VatSettings';
 
 /** الخزن وبنود المصروفات: صاحب المحل بيضيف خزن، ويحدد مسؤول الدرج، ويضيف بنود مصروفات */
 export function LedgerTab() {
@@ -49,6 +50,7 @@ export function LedgerTab() {
   return (
     <div className="flex flex-col gap-4">
       <PricingSettings />
+      <VatSettings />
       <Panel>
         <PanelHeader title={t('ledgerSettings.cashboxes')} />
         <ul className="divide-y divide-glass-border">
