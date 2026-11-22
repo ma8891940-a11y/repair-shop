@@ -14,12 +14,21 @@ test('الحضور والانصراف: حضور ← انصراف ← الفري�
   await prefs(page, info);
   await registerShop(page, uniq('att'), 'محل الحضور');
 
-  // 1) حضور من الشريط العلوي
+  const mobile = info.project.name.startsWith('mobile');
+  // 1) حضور من الشريط العلوي (على الموبايل الزرار مش في الشريط، عشان الصفحة ما تعرضش لبرّه: من شاشة الحضور)
   const top = page.getByTestId('att-button');
-  await expect(top).toHaveAttribute('data-state', 'out');
-  await top.click();
+  if (mobile) {
+    await expect(top).toBeHidden();
+    await noHorizontalScroll(page);
+    await page.goto('/#/attendance');
+    await afterSplash(page);
+    await page.getByTestId('att-button-page').click();
+  } else {
+    await expect(top).toHaveAttribute('data-state', 'out');
+    await top.click();
+  }
   await expect(page.getByText('اتسجّل حضورك')).toBeVisible();
-  await expect(top).toHaveAttribute('data-state', 'in');
+  if (!mobile) await expect(top).toHaveAttribute('data-state', 'in');
 
   // 2) الشاشة: السجل المفتوح في "حضوري" وفي الفريق، والزرارين متزامنين
   await page.goto('/#/attendance');
@@ -30,7 +39,7 @@ test('الحضور والانصراف: حضور ← انصراف ← الفري�
   await expect(page.getByTestId('att-team').getByTestId('att-total')).toHaveCount(1);
   await page.getByTestId('att-button-page').click();
   await expect(page.getByText('اتسجّل انصرافك')).toBeVisible();
-  await expect(top).toHaveAttribute('data-state', 'out');
+  if (!mobile) await expect(top).toHaveAttribute('data-state', 'out');
   await expect(mine.getByTestId('att-minutes')).not.toHaveText('لسه حاضر');
 
   // 3) تصليح السجل: من غير سبب مرفوض، وبالسبب المدة بتتحسب من السيرفر

@@ -50,7 +50,8 @@ export function AttendanceButton({ compact }: { compact?: boolean }) {
       onClick={() => void toggle()}
       disabled={busy || data === undefined}
       className={cn(
-        'flex h-9 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-raised disabled:opacity-60',
+        // في الشريط العلوي: من الشاشات المتوسطة وطالع بس (على الموبايل الشريط بيضيق والصفحة كانت بتعرض لبرّه، والحضور من القايمة أو شاشة الحضور)
+        compact ? 'hidden h-9 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-raised disabled:opacity-60 sm:flex' : 'flex h-9 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-raised disabled:opacity-60',
         !compact && 'glass px-3',
         open ? 'text-accent' : 'text-fg-2 hover:text-fg',
       )}
