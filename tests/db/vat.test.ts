@@ -9,9 +9,10 @@ const url = process.env.TEST_DATABASE_URL;
 const d = url ? describe : describe.skip;
 let db: pg.Client;
 const admin = (sql: string, params: unknown[] = []) => db.query(sql, params);
-async function as(uid: string, sql: string, params: unknown[] = []) {
+async function as(uid: string, sql: string, params: unknown[] = [], branch?: string) {
   await db.query('begin');
   try {
+    await db.query(`select set_config('request.headers', $1, true)`, [JSON.stringify(branch ? { 'x-branch-id': branch } : {})]);
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid, role: 'authenticated' })]);
     await db.query('set local role authenticated');
     const r = await db.query(sql, params);
@@ -161,10 +162,50 @@ d('ضريبة القيمة المضافة (اختيارية)', () => {
     const p = (await as(O, `select financial_position($1, $2) p`, [FROM(), TO()])).rows[0].p;
     expect(p.balanced).toBe(true);
     expect(Number(p.vat_due)).toBe(Number(r1.due));
-    // الإيراد في الوضع المالي صافي من الضريبة: مجموع الصافي في التقرير جزء منه
-    expect(Number(p.revenue)).toBeGreaterThanOrEqual(Number(r1.sales_net) + Number(r1.repair_net));
+    // صافي المبيعات قبل الضريبة في التقرير = إيراد قيود البيع الأصلية اللي فيها ضريبة (من الدفتر مباشرة)
+    const direct = (
+      await admin(
+        `select coalesce(sum(l.credit - l.debit), 0)::bigint v from journal_lines l join accounts a on a.id = l.account_id join journal_entries e on e.id = l.entry_id
+         where e.shop_id = $1 and e.source_type = 'sale' and e.reverses_id is null and a.kind = 'revenue' and e.occurred_at >= $2 and e.occurred_at < $3
+           and exists (select 1 from journal_lines t join accounts ta on ta.id = t.account_id where t.entry_id = e.id and ta.kind = 'tax')`,
+        [shop, FROM(), TO()],
+      )
+    ).rows[0].v;
+    expect(Number(r1.sales_net)).toBe(Number(direct));
     // الاستقبال من غير صلاحية المالية ما يشوفش التقرير
     await expect(as(R, `select vat_report($1, $2)`, [FROM(), TO()])).rejects.toThrow(/E_FORBIDDEN/);
+  });
+
+  it('مرتجع من عميل: الضريبة بترجع من حساب الضريبة (مش من الإيراد كله)، والقيد متوازن، والتقرير بيحسبها مرتجعة', async () => {
+    const before = await report();
+    const e = (await as(O, `select sale_return($1, $2, 1, 11400, $3, null, true, 'العميل رجّع الجراب') e`, [id(), acc, cash])).rows[0].e;
+    expect(await balanced(e)).toBe(true);
+    const l = await lines(e);
+    expect(l.find((x) => x.c === 'rev_accessories')).toMatchObject({ dr: 10000 });
+    expect(l.find((x) => x.c === 'vat_payable')).toMatchObject({ dr: 1400 });
+    expect(l.find((x) => x.c === 'cash_cash')).toMatchObject({ cr: 11400 });
+    const after = await report();
+    expect(Number(after.reversed_vat) - Number(before.reversed_vat)).toBe(1400);
+    expect(Number(after.due)).toBe(Number(before.due) - 1400);
+    expect(Number(after.due)).toBe(Number(after.sales_vat) + Number(after.repair_vat) - Number(after.reversed_vat) - Number(after.paid));
+  });
+
+  it('الضريبة المستحقة على المحل كله: نفس الرقم من أي فرع في الوضع المالي وفي التقرير', async () => {
+    const B2 = id();
+    await as(O, `select save_branch($1, 'فرع الضريبة', 'V2', null, null)`, [B2]);
+    const cash2 = (await admin(`select id from accounts where shop_id = $1 and branch_id = $2 and method = 'cash'`, [shop, B2])).rows[0].id;
+    await as(O, `select record_sale($1, $2::jsonb, $3) e`, [id(), JSON.stringify([{ item: srv, qty: 1, price: 22800 }]), cash2], B2);
+    const main = (await admin(`select id from branches where shop_id = $1 and is_main`, [shop])).rows[0].id;
+    const dueAll = Number((await report()).due);
+    for (const b of [null, main, B2]) {
+      const p = (await as(O, `select financial_position($1, $2, $3) p`, [FROM(), TO(), b])).rows[0].p;
+      expect(Number(p.vat_due), String(b)).toBe(dueAll);
+      const r = (await as(O, `select vat_report($1, $2, $3) r`, [FROM(), TO(), b])).rows[0].r;
+      expect(Number(r.due), String(b)).toBe(dueAll);
+    }
+    // السداد من خزنة فرع: بيظهر في تقرير أي فرع (على المحل كله)
+    await as(O, `select pay_vat($1, $2, 1000)`, [id(), cash2], B2);
+    expect(Number((await as(O, `select vat_report($1, $2, $3) r`, [FROM(), TO(), main])).rows[0].r.paid)).toBe(Number((await report()).paid));
   });
 
   it('نسبة مش سليمة بتتعامل كـ 14%، وأكتر من 30% بتتقص. والقفل بيرجّع البيع من غير ضريبة', async () => {

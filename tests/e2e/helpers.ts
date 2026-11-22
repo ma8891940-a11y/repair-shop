@@ -32,7 +32,18 @@ function watchNetwork(page: Page, info: TestInfo) {
   const short = (u: string) => u.replace(/^https?:\/\/[^/]+/, '').slice(0, 140);
   page.on('requestfailed', (r) => log.push(`${at()} FAILED ${r.method()} ${short(r.url())} ${r.failure()?.errorText ?? ''}`));
   page.on('response', (r) => {
-    if (r.status() >= 500 || (r.status() >= 400 && r.url().includes('/rest/v1/'))) log.push(`${at()} HTTP ${r.status()} ${r.request().method()} ${short(r.url())}`);
+    if (r.status() >= 500 || (r.status() >= 400 && r.url().includes('/rest/v1/'))) {
+      const line = `${at()} HTTP ${r.status()} ${r.request().method()} ${short(r.url())}`;
+      log.push(line);
+      // رسالة السيرفر نفسها (كود الخطأ من PostgreSQL) عشان السبب يبان من غير إعادة تشغيل
+      void r
+        .text()
+        .then((b) => {
+          const i = log.indexOf(line);
+          if (i >= 0) log[i] = `${line} ${b.replace(/\s+/g, ' ').slice(0, 240)}`;
+        })
+        .catch(() => undefined);
+    }
   });
   page.on('console', (m) => m.type() === 'error' && log.push(`${at()} CONSOLE ${m.text().slice(0, 200)}`));
   page.on('pageerror', (e) => log.push(`${at()} PAGEERROR ${String(e).slice(0, 200)}`));
@@ -239,13 +250,22 @@ export async function pickItem(scope: Page | Locator, query: string | null, opts
   opt = opt.first();
   await expect(opt).toBeVisible();
   if (opts.qty != null) await expect(opt.getByTestId('picker-qty')).toContainText(String(opts.qty));
-  // بالكيبورد (الأسهم وEnter) زي المستخدم: من غير ما نستنى القايمة تثبت مكانها
-  const names = await all.allInnerTexts();
+  // بالكيبورد (الأسهم وEnter) زي المستخدم. بس الأول نستنى القايمة تثبت (البيانات ممكن لسه بتوصل
+  // تحت الضغط)، عشان Enter ما يقعش على "صنف جديد" بدل الصنف المطلوب
+  let names = await all.allInnerTexts();
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    const now = await all.allInnerTexts();
+    if (now.join('|') === names.join('|')) break;
+    names = now;
+  }
   const target = await opt.innerText();
   const at = Math.max(0, names.indexOf(target));
   for (let i = 0; i < at; i++) await box.press('ArrowDown');
   await box.press('Enter');
   await expect(page.getByTestId('picker-option')).toHaveCount(0);
+  // الصنف اتختار فعلًا، مش فورم "صنف جديد"
+  await expect(page.getByTestId('new-item-inline')).toHaveCount(0);
 }
 
 /**
