@@ -1,9 +1,9 @@
--- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 2 من 5 (الملفات 0020_admin_paging.sql لـ 0033_assistant.sql).
+-- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 2 من 5 (الملفات 0019_extras.sql لـ 0033_assistant.sql).
 -- بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك.
 -- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql ثم upgrade_part_5.sql.
 -- آمن تشغّل أي جزء أكتر من مرة: اللي اتطبق قبل كده بيتخطى. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّل نفس الجزء تاني.
 -- لو لقى ملف أحدث موجود وأقدم منه ناقص بيقف (E_UPGRADE_GAP). ولو جزء قبله لسه ما اتطبقش بيقف (E_UPGRADE_ORDER). الاتنين من غير تغيير.
--- ملفات الجزء ده: 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql
+-- ملفات الجزء ده: 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -199,9 +199,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0062_vat.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'vat_bp' and position('when (sh.extras -> ''vat'' -> ''enabled'') is distinct from ''true''::jsonb then 0' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0062_vat.sql', 'found: function vat_bp');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0063_cheques.sql') and (to_regclass('public.cheques') is not null) then
+    insert into public.app_migrations(version, how) values ('0063_cheques.sql', 'found: table cheques');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -209,15 +212,83 @@ end $chk$;
 -- 2) الأجزاء اللي قبل الجزء ده لازم تكون اتطبقت
 do $ord$
 declare
-  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql'];
-  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5];
+  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql'];
+  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5];
   miss text;
 begin
-  select min(v) into miss from unnest(files) v where v < '0020_admin_paging.sql' and v not in (select version from public.app_migrations);
+  select min(v) into miss from unnest(files) v where v < '0019_extras.sql' and v not in (select version from public.app_migrations);
   if miss is not null then raise exception 'E_UPGRADE_ORDER: الملف % لسه ما اتطبقش. شغّل upgrade_part_%.sql الأول، وبعدين الجزء ده (2).', miss, parts[array_position(files, miss)]; end if;
 end $ord$;
 
 -- 3) ملفات الجزء 2 بالترتيب، كل ملف في transaction لوحده
+-- ============================== 0019_extras.sql ==============================
+begin;
+do $run$ begin
+  if exists (select 1 from public.app_migrations where version = '0019_extras.sql') then return; end if;
+  execute $m0019$
+-- ميزات إضافية مجانية (بعد المرحلة 6). كلها إضافة فوق الموجود، ولكل واحدة مفتاح تشغيل في الإعدادات.
+-- 1) أعطال جاهزة للاستلام: صاحب المحل بيكتب الأعطال المتكررة وسعرها التقريبي، والاستقبال بيختار بضغطة.
+-- 2) مفاتيح التشغيل في shops.extras (صاحب المحل بس بيعدّلها، من سياسة shops_update الموجودة).
+-- مفيش أي بيانات عملاء هنا.
+
+alter table public.shops add column if not exists extras jsonb not null
+  default '{"quick_issues": true, "day_summary": true, "auto_print": false}'::jsonb;
+
+create table public.issue_presets (
+  id uuid primary key,
+  shop_id uuid not null references public.shops(id),
+  label text not null check (length(trim(label)) between 1 and 60),
+  issue text not null check (length(trim(issue)) between 1 and 300),
+  est_cost integer check (est_cost is null or est_cost between 0 and 100000000), -- بالقروش
+  sort integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+create index issue_presets_shop on public.issue_presets(shop_id, sort) where deleted_at is null;
+alter table public.issue_presets enable row level security;
+revoke all on public.issue_presets from public, anon, authenticated;
+create trigger set_updated_at before update on public.issue_presets for each row execute function public.tg_set_updated_at();
+create trigger block_delete before delete on public.issue_presets for each row execute function public.tg_block_delete();
+create trigger a_force_shop_id before insert or update on public.issue_presets for each row execute function public.tg_force_shop_id();
+create trigger zz_audit after insert or update on public.issue_presets for each row execute function public.tg_audit();
+
+-- الاستقبال وصاحب المحل بيقروا (الفني مش محتاجها، وفيها أسعار)، وصاحب المحل بس بيكتب
+create policy presets_select on public.issue_presets for select to authenticated
+  using (shop_id = public.current_shop_id() and public.current_app_role() in ('owner', 'reception'));
+create policy presets_insert on public.issue_presets for insert to authenticated
+  with check (shop_id = public.current_shop_id() and public.current_app_role() = 'owner');
+create policy presets_update on public.issue_presets for update to authenticated
+  using (shop_id = public.current_shop_id() and public.current_app_role() = 'owner')
+  with check (shop_id = public.current_shop_id());
+grant select, insert, update on public.issue_presets to authenticated;
+
+-- النسخة الاحتياطية: كانت ناقصة جداول المرحلة 6 (الفيديوهات والتقييمات)، ودلوقتي فيها كمان الأعطال الجاهزة
+create or replace function public.backup_snapshot(p_shop uuid) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare
+  res jsonb := jsonb_build_object('format', 'warsha-backup', 'version', 1, 'generated_at', now(), 'shop_id', p_shop);
+  t text;
+  rows jsonb;
+begin
+  foreach t in array array['shops', 'shop_branding', 'profiles', 'customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_photos', 'device_checks',
+                           'quote_decisions', 'message_templates', 'message_log', 'accounts', 'journal_entries', 'journal_lines', 'payments', 'drawer_closings',
+                           'suppliers', 'items', 'stock_moves', 'purchases', 'labor_rates', 'specialties', 'staff_specialties', 'routes', 'repair_steps',
+                           'repair_videos', 'device_ratings', 'issue_presets', 'audit_log'] loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(x)), ''[]''::jsonb) from public.%I x where x.shop_id = $1', t) into rows using p_shop;
+    res := res || jsonb_build_object(t, rows);
+  end loop;
+  select coalesce(jsonb_agg(jsonb_build_object('device_id', device_id, 'kind', kind, 'erased_at', erased_at)), '[]'::jsonb)
+    into rows from public.device_passcodes where shop_id = p_shop;
+  return res || jsonb_build_object('device_passcodes', rows);
+end $$;
+revoke execute on function public.backup_snapshot(uuid) from public, anon, authenticated;
+$m0019$;
+  insert into public.app_migrations(version, how) values ('0019_extras.sql', 'applied');
+  raise notice 'applied %', '0019_extras.sql';
+end $run$;
+commit;
+
 -- ============================== 0020_admin_paging.sql ==============================
 begin;
 do $run$ begin

@@ -76,6 +76,14 @@ export function IntakeScreen() {
 
   const [phone, setPhone] = useState('');
   const [lookup, setLookup] = useState<Lookup>({ state: 'idle' });
+  // Enter في الموبايل قبل ما البحث يخلص: الاسم بياخد التركيز أول ما يظهر
+  const wantName = useRef(false);
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (lookup.state === 'loading' || lookup.state === 'idle') return;
+    if (wantName.current && lookup.state === 'new') nameRef.current?.focus();
+    wantName.current = false;
+  }, [lookup.state]);
   const [custName, setCustName] = useState('');
   useSensitiveNames([custName]);
   const [custArea, setCustArea] = useState('');
@@ -384,6 +392,13 @@ export function IntakeScreen() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   onBlur={() => normPhone && normPhone !== phone && setPhone(normPhone)}
+                  onKeyDown={(e) => {
+                    // Enter والبحث عن العميل لسه شغال: خانة الاسم لسه ما ظهرتش، فنستناها بدل ما Enter ينقل لخانة تانية
+                    if (e.key === 'Enter' && normPhone && (lookup.state === 'loading' || lookup.state === 'idle')) {
+                      e.preventDefault();
+                      wantName.current = true;
+                    }
+                  }}
                   placeholder="01xxxxxxxxx"
                   className="text-start"
                 />
@@ -422,7 +437,7 @@ export function IntakeScreen() {
                   {lookup.state === 'new' && (
                     <motion.div key="n" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="grid gap-3 sm:grid-cols-2">
                       <Field label={t('intake.custName')} required error={errors.custName} aside={<span className="text-2xs text-accent">{t('intake.newCustomer')}</span>}>
-                        <Input value={custName} onChange={(e) => setCustName(e.target.value)} maxLength={120} autoFocus />
+                        <Input ref={nameRef} value={custName} onChange={(e) => setCustName(e.target.value)} maxLength={120} autoFocus />
                       </Field>
                       <Field label={t('intake.area')}>
                         <Input value={custArea} onChange={(e) => setCustArea(e.target.value)} />

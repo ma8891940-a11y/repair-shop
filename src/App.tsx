@@ -54,6 +54,7 @@ const EntryScreen = lazyScreen(() => import('./screens/finance/EntryScreen').the
 const StatementScreen = lazyScreen(() => import('./screens/finance/StatementScreen').then((m) => m.StatementScreen));
 const TrialBalanceScreen = lazyScreen(() => import('./screens/finance/TrialBalanceScreen').then((m) => m.TrialBalanceScreen));
 const BalancesScreen = lazyScreen(() => import('./screens/finance/BalancesScreen').then((m) => m.BalancesScreen));
+const ChequesScreen = lazyScreen(() => import('./screens/finance/ChequesScreen').then((m) => m.ChequesScreen));
 const VatReportScreen = lazyScreen(() => import('./screens/finance/VatReportScreen').then((m) => m.VatReportScreen));
 const ProfitScreen = lazyScreen(() => import('./screens/finance/BalancesScreen').then((m) => m.ProfitScreen));
 const InventoryScreen = lazyScreen(() => import('./screens/finance/InventoryScreen').then((m) => m.InventoryScreen));
@@ -72,7 +73,7 @@ const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) =>
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AttendanceScreen, AdminScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, ChequesScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AttendanceScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
@@ -233,6 +234,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
           {grant('finance') && <Route path="finance/trial" element={<TrialBalanceScreen />} />}
           {grant('finance') && <Route path="finance/pl" element={<ProfitScreen />} />}
           {grant('finance') && <Route path="finance/vat" element={<VatReportScreen />} />}
+          {grant('finance') && <Route path="finance/cheques" element={<ChequesScreen />} />}
           {grant('finance') && <Route path="finance/balances/:kind" element={<BalancesScreen />} />}
           {owner && <Route path="opening" element={<OpeningScreen />} />}
           {owner && <Route path="partners" element={<PartnersScreen />} />}

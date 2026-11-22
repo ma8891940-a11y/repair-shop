@@ -74,7 +74,8 @@
     "analytics": "Performance & analytics",
     "used": "Used devices",
     "categories": "Categories",
-    "attendance": "Attendance"
+    "attendance": "Attendance",
+    "cheques": "Cheques"
   },
   "roles": {
     "owner": "Owner",
@@ -543,7 +544,9 @@
       "E_ALREADY_IN": "You are already clocked in. Clock out first.",
       "E_NOT_IN": "You are not clocked in. Clock in first.",
       "E_OPEN_TOO_LONG": "This clock-in has been open for over 24 hours. The owner can fix it from the attendance screen.",
-      "E_ATT_OVERLAP": "This record overlaps another record for the same employee"
+      "E_ATT_OVERLAP": "This record overlaps another record for the same employee",
+      "E_CHEQUE_DONE": "This cheque was already cleared or bounced",
+      "E_CHEQUE_REVERSAL": "Cheque entries can't be reversed. If the cheque didn't clear, mark it as bounced from the Cheques screen"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -784,7 +787,8 @@
       "push_subscriptions": "Device notification subscription",
       "push_sent": "Notification sent to device",
       "sale_lines": "Sale line",
-      "attendance": "Attendance"
+      "attendance": "Attendance",
+      "cheques": "Cheques"
     },
     "actions": {
       "insert": "add",
@@ -1375,7 +1379,11 @@
       "commission": "Technician commission",
       "bonus": "Bonus",
       "penalty": "Penalty",
-      "vat_payment": "VAT payment"
+      "vat_payment": "VAT payment",
+      "cheque_in": "Customer cheque",
+      "cheque_out": "Supplier cheque",
+      "cheque_clear": "Cheque cleared",
+      "cheque_bounce": "Cheque bounced"
     },
     "excel": "Excel",
     "pdf": "PDF / Print",
@@ -1443,7 +1451,9 @@
       "partners_capital": "Partners’ capital",
       "partners_current": "Partners’ current",
       "retained": "Retained earnings",
-      "vat_payable": "VAT payable"
+      "vat_payable": "VAT payable",
+      "cheques_in": "Cheques receivable",
+      "cheques_out": "Cheques payable"
     }
   },
   "inv": {
@@ -3844,6 +3854,59 @@
       "collected": "Net VAT collected in the period",
       "paid": "Paid to the tax authority in the period (whole shop)",
       "due": "Due to the tax authority at period end"
+    }
+  },
+  "cheques": {
+    "title": "Cheques",
+    "sub": "Customer cheques awaiting collection and supplier cheques due, with their dates.",
+    "addIn": "Receive a customer cheque",
+    "addOut": "Cheque to supplier",
+    "hintIn": "The customer's balance drops right away; the cheque waits for collection until it clears.",
+    "hintOut": "The supplier's balance drops right away; the cheque waits to be paid from a cashbox.",
+    "pendingIn": "Customer cheques awaiting collection",
+    "pendingOut": "Supplier cheques not cleared yet",
+    "list": "Cheques",
+    "filter": "Show",
+    "filterPending": "Pending only",
+    "filterAll": "All",
+    "empty": "No cheques",
+    "saved": "Cheque recorded",
+    "clear": "Cleared",
+    "bounce": "Bounced",
+    "cleared": "Cheque marked as cleared",
+    "bounced": "Cheque marked as bounced",
+    "toBox": "Into cashbox",
+    "reason": "Reason",
+    "needReason": "A reason is required",
+    "clearHint": {
+      "in": "The money goes into the cashbox (usually the bank).",
+      "out": "The money leaves the cashbox (usually the bank)."
+    },
+    "bounceHint": {
+      "in": "The amount goes back on the customer's balance.",
+      "out": "The amount goes back to the supplier's balance."
+    },
+    "errParty": "Pick the party",
+    "errNo": "Enter the cheque number",
+    "errDue": "Pick the due date",
+    "errAmount": "Enter a valid amount",
+    "dir": {
+      "in": "From customer",
+      "out": "To supplier"
+    },
+    "status": {
+      "pending": "Pending",
+      "cleared": "Cleared",
+      "bounced": "Bounced"
+    },
+    "cols": {
+      "dir": "Type",
+      "party": "Party",
+      "no": "Cheque no.",
+      "bank": "Bank",
+      "due": "Due date",
+      "amount": "Amount",
+      "status": "Status"
     }
   }
 }
