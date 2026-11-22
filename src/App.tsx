@@ -72,11 +72,7 @@ const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) =>
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-<<<<<<< HEAD
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AdminScreen];
-=======
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AttendanceScreen, AdminScreen];
->>>>>>> claude/vat
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AttendanceScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
