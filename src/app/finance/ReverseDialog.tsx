@@ -15,10 +15,12 @@ export function ReverseDialog({ move, onOpenChange, onDone }: { move: Pick<Move,
   const undoable = useUndoable();
   const [reason, setReason] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  // بتتمسح لما القيد نفسه يتغير بس (مش مع كل رسم: اللي بيفتحها ممكن يبعت object جديد كل مرة، والسبب كان بيتمسح وانت بتكتب)
+  const entryId = move?.entry_id ?? null;
   useEffect(() => {
     setReason('');
     setErr(null);
-  }, [move]);
+  }, [entryId]);
   /** التأكيد: الديالوج بيتقفل، والقيد العكسي بيتسجل بعد ثواني التراجع */
   function submit() {
     if (!move) return;
