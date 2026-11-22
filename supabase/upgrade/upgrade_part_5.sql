@@ -672,8 +672,14 @@ begin
   -- نفس الطلب مرتين (النت قطع ورجع): نفس السجل
   if exists (select 1 from public.attendance where id = p_id and profile_id = me) then return p_id; end if;
   if exists (select 1 from public.attendance where profile_id = me and clock_out is null and deleted_at is null) then raise exception 'E_ALREADY_IN'; end if;
-  insert into public.attendance(id, shop_id, branch_id, profile_id, clock_in, note)
-  values (p_id, s, public.op_branch(), me, now(), nullif(trim(left(p_note, 300)), ''));
+  -- طلبين في نفس اللحظة (الطابور بيعيد والأول لسه ماشي): نفس الـ id = نفس السجل، وسجل مفتوح تاني = E_ALREADY_IN
+  begin
+    insert into public.attendance(id, shop_id, branch_id, profile_id, clock_in, note)
+    values (p_id, s, public.op_branch(), me, now(), nullif(trim(left(p_note, 300)), ''));
+  exception when unique_violation then
+    if exists (select 1 from public.attendance where id = p_id and profile_id = me) then return p_id; end if;
+    raise exception 'E_ALREADY_IN';
+  end;
   return p_id;
 end $$;
 revoke execute on function public.clock_in(uuid, text) from public, anon;
@@ -707,14 +713,17 @@ begin
   if p_from is null or p_to is null or p_to <= p_from or p_to - p_from > interval '400 days' then raise exception 'E_BAD_INPUT'; end if;
   all_staff := not p_me and (r = 'owner' or public.has_perm('staff', 'view'));
   if not p_me and not all_staff then raise exception 'E_FORBIDDEN'; end if;
-  select sh.extras -> 'attendance' ->> 'start', coalesce((sh.extras -> 'attendance' ->> 'grace_min')::int, 15)
+  -- السماح: رقم صحيح من 0 لـ 600، وأي قيمة تانية (فاضية أو بكسر) = 15، عشان إعداد غلط ما يوقّعش التقرير
+  select sh.extras -> 'attendance' ->> 'start',
+         case when (sh.extras -> 'attendance' ->> 'grace_min') ~ '^[0-9]{1,3}$' then least((sh.extras -> 'attendance' ->> 'grace_min')::int, 600) else 15 end
     into st, grace from public.shops sh where sh.id = s;
   if st !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then st := null; end if;
   return query
   select a.id, a.profile_id, p.full_name, a.branch_id, a.clock_in, a.clock_out,
-         case when a.clock_out is null then null else (extract(epoch from a.clock_out - a.clock_in) / 60)::int end,
+         -- دقايق كاملة (من غير تقريب لفوق)
+         case when a.clock_out is null then null else floor(extract(epoch from a.clock_out - a.clock_in) / 60)::int end,
          case when st is null then 0
-              else greatest(0, (extract(epoch from (a.clock_in at time zone 'Africa/Cairo') - ((a.clock_in at time zone 'Africa/Cairo')::date + st::time)) / 60)::int - grace) end,
+              else greatest(0, floor(extract(epoch from (a.clock_in at time zone 'Africa/Cairo') - ((a.clock_in at time zone 'Africa/Cairo')::date + st::time)) / 60)::int - grace) end,
          a.note, a.fix_reason
   from public.attendance a join public.profiles p on p.id = a.profile_id
   where a.shop_id = s and a.deleted_at is null and a.clock_in >= p_from and a.clock_in < p_to
@@ -742,13 +751,27 @@ revoke execute on function public.attendance_report(timestamptz, timestamptz, uu
 grant execute on function public.attendance_report(timestamptz, timestamptz, uuid) to authenticated;
 
 -- ---------- صاحب المحل بس: تصليح، أو إضافة، أو إلغاء (بسبب، وفي سجل النشاط) ----------
+-- سجلين لنفس الموظف ما يتداخلوش (عشان الساعات ما تتحسبش مرتين). المفتوح لحد دلوقتي
+create or replace function public.attendance_overlaps(p_profile uuid, p_in timestamptz, p_out timestamptz, p_except uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.attendance a
+    where a.profile_id = p_profile and a.deleted_at is null and a.id is distinct from p_except
+      and tstzrange(a.clock_in, coalesce(a.clock_out, greatest(now(), a.clock_in + interval '1 second')), '[)')
+          && tstzrange(p_in, coalesce(p_out, greatest(now(), p_in + interval '1 second')), '[)'))
+$$;
+revoke execute on function public.attendance_overlaps(uuid, timestamptz, timestamptz, uuid) from public, anon, authenticated;
 create or replace function public.attendance_fix(p_id uuid, p_in timestamptz, p_out timestamptz, p_reason text) returns void
 language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id();
+declare s uuid := public.current_shop_id(); pr uuid;
 begin
   perform public.ledger_require(array['owner']::public.app_role[]);
   if coalesce(trim(p_reason), '') = '' then raise exception 'E_REASON_REQUIRED'; end if;
   if p_in is null or (p_out is not null and (p_out <= p_in or p_out - p_in > interval '24 hours')) then raise exception 'E_BAD_INPUT'; end if;
+  select profile_id into pr from public.attendance where id = p_id and shop_id = s and deleted_at is null;
+  if pr is null then raise exception 'E_NOT_FOUND'; end if;
+  if public.attendance_overlaps(pr, p_in, p_out, p_id) then raise exception 'E_ATT_OVERLAP'; end if;
+  -- سيبه مفتوح وهو عنده سجل مفتوح تاني
+  if p_out is null and exists (select 1 from public.attendance where profile_id = pr and clock_out is null and deleted_at is null and id <> p_id) then raise exception 'E_ALREADY_IN'; end if;
   update public.attendance set clock_in = p_in, clock_out = p_out, fixed_by = auth.uid(), fix_reason = left(trim(p_reason), 300)
    where id = p_id and shop_id = s and deleted_at is null;
   if not found then raise exception 'E_NOT_FOUND'; end if;
@@ -765,6 +788,7 @@ begin
   if coalesce(trim(p_reason), '') = '' then raise exception 'E_REASON_REQUIRED'; end if;
   if p_in is null or p_out is null or p_out <= p_in or p_out - p_in > interval '24 hours' then raise exception 'E_BAD_INPUT'; end if;
   if not exists (select 1 from public.profiles where id = p_profile and shop_id = s) then raise exception 'E_NOT_FOUND'; end if;
+  if public.attendance_overlaps(p_profile, p_in, p_out, null) then raise exception 'E_ATT_OVERLAP'; end if;
   -- فرع الموظف (أول فرع ليه، أو الرئيسي)
   b := coalesce((select sb.branch_id from public.staff_branches sb where sb.profile_id = p_profile and sb.deleted_at is null order by sb.created_at limit 1), public.main_branch(s));
   insert into public.attendance(id, shop_id, branch_id, profile_id, clock_in, clock_out, fixed_by, fix_reason)
@@ -785,6 +809,35 @@ begin
 end $$;
 revoke execute on function public.attendance_void(uuid, text) from public, anon;
 grant execute on function public.attendance_void(uuid, text) to authenticated;
+
+-- ---------- سرعة الـ RLS: دالة المحل والدور مرة واحدة في الاستعلام، مش مع كل صف ----------
+-- current_shop_id() وcurrent_app_role() بيقروا الملف الشخصي (وcurrent_shop_id بيتأكد من التحقق بخطوتين كمان) مع كل صف.
+-- مع كتر المحلات، استعلام بسيط كان بيعدّي مهلة الـ 8 ثواني. الحل اللي Supabase بيوصي بيه: (select ...) حوالين الدالة،
+-- فبتتحسب مرة واحدة. نفس الشروط بالظبط، والنتيجة نفسها. وآمن يتعاد (السياسة اللي اتلفّت قبل كده بتتخطى).
+create or replace function public.rls_wrap(t text) returns text
+language plpgsql immutable as $$
+begin
+  if t is null then return null; end if;
+  -- الملفوفة قبل كده (شكلها المحفوظ: SELECT current_shop_id() AS current_shop_id) بتتعلّم الأول عشان ما تتلفّش تاني
+  t := regexp_replace(t, 'SELECT (public\.)?(current_shop_id|current_app_role)\(\) AS (current_shop_id|current_app_role)', 'SELECT @@\2@@ AS \3', 'g');
+  t := regexp_replace(t, '\m(public\.)?(current_shop_id|current_app_role)\(\)', '(select public.\2())', 'g');
+  -- بترجع زي ما Postgres بيحفظها بالظبط (من غير public.)، فالسياسة الملفوفة قبل كده بتتخطى فعلًا
+  return regexp_replace(t, '@@(current_shop_id|current_app_role)@@', '\1()', 'g');
+end $$;
+revoke execute on function public.rls_wrap(text) from public, anon, authenticated;
+do $rls$
+declare p record; q text; c text;
+begin
+  for p in select schemaname, tablename, policyname, qual, with_check from pg_policies where schemaname = 'public' loop
+    q := public.rls_wrap(p.qual);
+    c := public.rls_wrap(p.with_check);
+    if q is distinct from p.qual or c is distinct from p.with_check then
+      execute format('alter policy %I on %I.%I', p.policyname, p.schemaname, p.tablename)
+        || case when p.qual is not null then format(' using (%s)', q) else '' end
+        || case when p.with_check is not null then format(' with check (%s)', c) else '' end;
+    end if;
+  end loop;
+end $rls$;
 
 
 -- ---------- النسخة الاحتياطية والاسترجاع ----------
@@ -1088,9 +1141,10 @@ begin
     join public.accounts a on a.id = l.account_id
     left join public.journal_entries o on o.id = e.reverses_id
     where e.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to
-      and (p_branch is null or e.branch_id = p_branch)
+      -- السداد على المحل كله (الضريبة على المحل مش الفرع)، والباقي بفلتر الفرع
+      and (p_branch is null or e.branch_id = p_branch or coalesce(o.source_type, e.source_type) = 'vat_payment')
       and a.kind in ('tax', 'revenue')
-      and coalesce(o.source_type, e.source_type) in ('sale', 'delivery', 'vat_payment')
+      and coalesce(o.source_type, e.source_type) in ('sale', 'delivery', 'vat_payment', 'sale_return')
   ),
   -- الحركات اللي فيها ضريبة بس (الصافي قبل الضريبة = إيراد نفس القيود)
   tx as (
@@ -1099,17 +1153,18 @@ begin
     group by e.id
   ),
   net as (
-    select coalesce(o.source_type, e.source_type) as src, coalesce(sum(l.credit - l.debit), 0)::bigint as v
+    -- الصافي قبل الضريبة من البيع والتسليم الأصليين بس (زي ضريبتهم). الإلغاء والمرتجع في سطر "ضريبة مرتجعة"
+    select e.source_type as src, coalesce(sum(l.credit - l.debit), 0)::bigint as v
     from tx join public.journal_entries e on e.id = tx.id
     join public.journal_lines l on l.entry_id = e.id join public.accounts a on a.id = l.account_id
-    left join public.journal_entries o on o.id = e.reverses_id
-    where a.kind = 'revenue' group by 1
+    where a.kind = 'revenue' and e.reverses_id is null and e.source_type in ('sale', 'delivery') group by 1
   )
   select jsonb_build_object(
     'from', p_from, 'to', p_to, 'branch', p_branch, 'rate_bp', public.vat_bp(s),
     'sales_vat', coalesce(sum(credit) filter (where kind = 'tax' and src = 'sale' and own <> 'reversal'), 0),
     'repair_vat', coalesce(sum(credit) filter (where kind = 'tax' and src = 'delivery' and own <> 'reversal'), 0),
-    'reversed_vat', coalesce(sum(debit - credit) filter (where kind = 'tax' and own = 'reversal' and src in ('sale', 'delivery')), 0),
+    -- المرتجع: إلغاء بيع أو تسليم بقيد عكسي، أو مرتجع من عميل
+    'reversed_vat', coalesce(sum(debit - credit) filter (where kind = 'tax' and ((own = 'reversal' and src in ('sale', 'delivery')) or src = 'sale_return')), 0),
     'paid', coalesce(sum(debit) filter (where kind = 'tax' and src = 'vat_payment' and own <> 'reversal'), 0)
       - coalesce(sum(credit) filter (where kind = 'tax' and src = 'vat_payment' and own = 'reversal'), 0),
     'sales_net', coalesce((select v from net where src = 'sale'), 0),
@@ -1375,7 +1430,8 @@ begin
     'expenses', per.expenses,
     'profit', per.revenue - per.expenses,
     'fixed_assets', p.fixed_assets,
-    'vat_due', coalesce((select sum(b) from acc where kind = 'tax'), 0),
+    -- الضريبة على المحل كله (مش الفرع المختار)
+    'vat_due', (select coalesce(sum(l.credit - l.debit), 0)::bigint from public.journal_lines l join public.accounts a on a.id = l.account_id where l.shop_id = s and a.kind = 'tax'),
     'partners_due', p.partners_due,
     -- قيمة المحل = الأصول − الالتزامات اللي لناس من بره بس (رأس مال الشركاء وأرباحهم حقوق ملكية، فما بتقللهاش)
     'net_worth', p.cash + p.receivables + p.payables_debit + p.fixed_assets - p.payables
@@ -1419,6 +1475,50 @@ begin
   ) into res
   from parts p, per, tot, unb, eq, eq_all;
   return res;
+end $$;
+
+-- sale_return: (src: 0036_roles.sql) + الضريبة من المبلغ المرتجع
+create or replace function public.sale_return(p_id uuid, p_item uuid, p_qty integer, p_refund bigint, p_cashbox uuid default null, p_customer uuid default null, p_restock boolean default true, p_reason text default null) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); e uuid; it public.items; cost bigint; cb uuid; rev uuid; v bigint;
+begin
+  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
+  perform public.perm_require('sales', 'edit');
+  e := public.ledger_idem(p_id);
+  if e is not null then return e; end if;
+  if nullif(trim(p_reason), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
+  if p_qty is null or p_qty <= 0 or p_refund is null or p_refund < 0 then raise exception 'E_BAD_AMOUNT'; end if;
+  select * into it from public.items where id = p_item and shop_id = s and deleted_at is null for update;
+  if not found then raise exception 'E_NOT_FOUND'; end if;
+  if p_cashbox is null and p_refund > 0 and p_customer is null then raise exception 'E_BAD_INPUT'; end if;
+  if p_customer is not null and not exists (select 1 from public.customers where id = p_customer and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if p_cashbox is not null then cb := (public.ledger_cashbox(p_cashbox)).id; end if;
+  rev := public.ledger_acc(case when it.kind = 'part' then 'rev_parts' else 'rev_accessories' end);
+  cost := public.item_last_cost(p_item) * p_qty;
+  if p_refund = 0 and (cost = 0 or not p_restock) then raise exception 'E_BAD_AMOUNT'; end if;
+  e := gen_random_uuid();
+  insert into public.journal_entries(id, shop_id, source_type, source_id, memo, idem_key, created_by)
+  values (e, s, 'sale_return', p_item, trim(p_reason), p_id, auth.uid());
+  if p_refund > 0 then
+    -- R5: المبلغ المرتجع شامل الضريبة: الضريبة بترجع من حساب الضريبة المستحقة، والباقي من الإيراد
+    v := public.vat_of(p_refund, public.vat_bp(s));
+    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, rev, p_refund - v, 0);
+    if v > 0 then insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, public.ledger_acc('vat_payable'), v, 0); end if;
+    if cb is not null then
+      insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, cb, 0, p_refund);
+    else
+      insert into public.journal_lines(shop_id, entry_id, account_id, party_type, party_id, debit, credit) values (s, e, public.ledger_acc('ar'), 'customer', p_customer, 0, p_refund);
+    end if;
+  end if;
+  -- القطعة السليمة بترجع المخزون بتكلفتها (والتكلفة بتخرج من تكلفة البضاعة). البايظة ما بترجعش، وتكلفتها فضلت مصروف.
+  if p_restock and cost > 0 then
+    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values
+      (s, e, public.ledger_acc('inventory'), cost, 0), (s, e, public.ledger_acc('cogs'), 0, cost);
+    insert into public.stock_moves(shop_id, item_id, entry_id, qty, value) values (s, p_item, e, p_qty, cost);
+  elsif p_restock then
+    insert into public.stock_moves(shop_id, item_id, entry_id, qty, value) values (s, p_item, e, p_qty, 0);
+  end if;
+  return e;
 end $$;
 $m0062$;
   insert into public.app_migrations(version, how) values ('0062_vat.sql', 'applied');

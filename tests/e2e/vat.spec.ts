@@ -87,7 +87,9 @@ test('ضريبة القيمة المضافة: الإعداد ← الفاتور�
   await expect(rep.getByTestId('vat-row-salesVat')).toContainText('28');
   await expect(rep.getByTestId('vat-row-collected')).toContainText('28');
   await expect(rep.getByTestId('vat-row-paid')).toContainText('-28');
-  await expect(rep.getByTestId('vat-row-due')).toContainText('0');
+  // المبلغ نفسه (مش أي رقم فيه صفر)
+  await expect(rep.getByTestId('vat-val-reversed')).toHaveText(/^-?0(\.00)?\s/);
+  await expect(rep.getByTestId('vat-val-due')).toHaveText(/^0(\.00)?\s/);
   await expect(rep).toContainText('النسبة الحالية 14%');
   await noHorizontalScroll(page);
 });

@@ -389,7 +389,7 @@ export function IntakeScreen() {
                 />
               </Field>
               <div className="min-h-[60px]">
-                <AnimatePresence mode="wait">
+                {/* من غير AnimatePresence mode="wait": التغيير السريع (فاضي ← بيدوّر ← عميل جديد) كان ممكن يعلّق المكان ده فاضي، فخانة الاسم ما تظهرش */}
                   {lookup.state === 'loading' && (
                     <motion.div key="l" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex h-full flex-col justify-end gap-2 pb-1">
                       <Skeleton className="h-4 w-40" />
@@ -435,7 +435,7 @@ export function IntakeScreen() {
                       {t('intake.phoneHint')}
                     </motion.div>
                   )}
-                </AnimatePresence>
+
               </div>
             </div>
           </Panel>
@@ -786,19 +786,17 @@ function SummaryRow({ label, value, mono, warn }: { label: string; value: string
   return (
     <div className="flex items-baseline justify-between gap-3 px-4 py-2">
       <dt className="shrink-0 text-xs text-fg-3">{label}</dt>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.dd
+      {/* القيمة بتتغير مع كل حرف: دخول بس من غير انتظار خروج القديمة (mode="wait" كان ممكن يعلّق) */}
+      <motion.dd
           key={value ?? '-'}
           initial={{ opacity: 0, y: 3 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -3 }}
           transition={{ duration: 0.14 }}
           className={cn('min-w-0 truncate text-end', value ? 'text-fg' : 'text-fg-3', mono && 'num', warn && 'text-warn')}
           dir={mono ? 'ltr' : undefined}
         >
           {value || t('common.none')}
         </motion.dd>
-      </AnimatePresence>
     </div>
   );
 }

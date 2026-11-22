@@ -134,13 +134,38 @@ d('الحضور والانصراف', () => {
     expect(row).toMatchObject({ minutes: 120, fix_reason: 'نسي ينصرف' });
     const audit = (await admin(`select count(*)::int n from audit_log where entity = 'attendance' and entity_id = $1 and action = 'update'`, [a])).rows[0].n;
     expect(audit).toBeGreaterThanOrEqual(1);
-    // الموظف ما يقدرش يعدّل الجدول مباشرة
-    expect((await as(T, `update attendance set clock_out = now() where id = $1 returning id`, [a]).catch(() => ({ rowCount: 0 }))).rowCount).toBe(0);
+    // الموظف ما يقدرش يعدّل الجدول مباشرة (مرفوض، والقيمة زي ما هي)
+    await expect(as(T, `update attendance set clock_out = now() where id = $1 returning id`, [a])).rejects.toThrow(/permission denied/);
+    expect((await admin(`select fix_reason from attendance where id = $1`, [a])).rows[0].fix_reason).toBe('نسي ينصرف');
+    // سجل متداخل مع سجل تاني لنفس الموظف مرفوض (الساعات ما تتحسبش مرتين)، في الإضافة والتصليح
+    const inside = new Date(Date.now() - 2 * 3600_000).toISOString();
+    await expect(as(O, `select attendance_add($1, $2, $3, $4, 'مكرر')`, [id(), T, inside, outAt])).rejects.toThrow(/E_ATT_OVERLAP/);
+    const b = id();
+    await as(O, `select attendance_add($1, $2, $3, $4, 'وردية الصبح')`, [b, T, new Date(Date.now() - 6 * 3600_000).toISOString(), new Date(Date.now() - 5 * 3600_000).toISOString()]);
+    await expect(as(O, `select attendance_fix($1, $2, $3, 'غلط')`, [b, new Date(Date.now() - 6 * 3600_000).toISOString(), inside])).rejects.toThrow(/E_ATT_OVERLAP/);
+    await as(O, `select attendance_void($1, 'تنظيف')`, [b]);
     // الإلغاء soft delete
     await as(O, `select attendance_void($1, 'سجل غلط')`, [a]);
     expect((await report(O)).some((r) => r.id === a)).toBe(false);
     expect((await admin(`select deleted_at is not null d from attendance where id = $1`, [a])).rows[0].d).toBe(true);
     await expect(admin(`delete from attendance where id = $1`, [a])).rejects.toThrow();
+  });
+
+  it('أكتر من 24 ساعة مفتوح: الانصراف مرفوض لحد ما صاحب المحل يصلّحه. والدقايق كاملة من غير تقريب. والزائر ما يشوفش التقرير', async () => {
+    const a = id();
+    await as(R2, `select clock_in($1)`, [a], B2);
+    await admin(`update attendance set clock_in = now() - interval '25 hours' where id = $1`, [a]);
+    await expect(as(R2, `select clock_out()`, [], B2)).rejects.toThrow(/E_OPEN_TOO_LONG/);
+    // 59 دقيقة و50 ثانية = 59 دقيقة (مش 60)
+    const inAt = new Date(Date.now() - 30 * 3600_000);
+    await as(O, `select attendance_fix($1, $2, $3, 'نسي ينصرف')`, [a, inAt.toISOString(), new Date(inAt.getTime() + 59 * 60_000 + 50_000).toISOString()]);
+    expect((await as(O, `select minutes from attendance_rows($1, $2, null, false) where id = $3`, [new Date(inAt.getTime() - 60_000).toISOString(), TO(), a])).rows[0].minutes).toBe(59);
+    // سماح مش رقم صحيح ما يوقّعش التقرير (بيرجع 15)
+    await admin(`update shops set extras = jsonb_set(coalesce(extras, '{}'), '{attendance}', '{"start": "09:00", "grace_min": "15.5"}') where id = $1`, [shop]);
+    expect((await report(O)).length).toBeGreaterThan(0);
+    await admin(`update shops set extras = extras - 'attendance' where id = $1`, [shop]);
+    await expect(as(null, `select * from attendance_report($1, $2)`, [FROM(), TO()])).rejects.toThrow(/permission denied/);
+    await expect(as(null, `select attendance_fix($1, now(), null, 'x')`, [a])).rejects.toThrow(/permission denied/);
   });
 
   it('محل تاني ما يشوفش أي حاجة', async () => {
