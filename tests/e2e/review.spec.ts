@@ -89,6 +89,8 @@ test('الحالات الغلط: حقول فاضية، ومبالغ كبيرة،
   await expect(page.getByText('اكتب العطل زي ما العميل قاله')).toBeVisible();
   // الرقم اتكتب وطلع عميل جديد: دلوقتي الاسم مطلوب
   await page.locator('#intake-phone').fill('01066667777');
+  // زي المستخدم: البحث عن العميل يخلص (تظهر خانة الاسم) قبل الحفظ. لو داس حفظ وهو لسه بيدوّر بيتقاله "استنى"
+  await expect(page.getByLabel('اسم العميل')).toBeVisible();
   await page.getByRole('button', { name: 'حفظ الاستلام' }).click();
   await expect(page.getByText('اكتب اسم العميل')).toBeVisible();
   await expect(page).toHaveURL(/#\/intake/);
