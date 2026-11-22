@@ -18,19 +18,33 @@ export function useDraft<T>(key: string, value: T, enabled = true, filled = hasC
   const first = useRef(true);
   // الحفظ المتأخر (نص ثانية): بيتلغي مع "clear" عشان ما يرجّعش المسودة بعد الحفظ الناجح
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // آخر قيمة لسه ما اتحفظتش: لو المستخدم خرج من الشاشة قبل نص الثانية، بتتحفظ ساعة الخروج (ما تضيعش)
+  const unsaved = useRef<(() => void) | null>(null);
+  useEffect(
+    () => () => {
+      unsaved.current?.();
+    },
+    [],
+  );
   useEffect(() => {
     // أول رسم: الفورم فاضي، فما نمسحش المسودة القديمة قبل ما المستخدم يقرر
     if (first.current) {
       first.current = false;
       return;
     }
-    if (!enabled) return;
-    const tm = setTimeout(() => {
+    if (!enabled) {
+      unsaved.current = null;
+      return;
+    }
+    const flush = () => {
       timer.current = null;
+      unsaved.current = null;
       if (filled) saveDraft(key, value);
       else if (!pending) clearDraft(key);
-    }, 500);
+    };
+    const tm = setTimeout(flush, 500);
     timer.current = tm;
+    unsaved.current = flush;
     return () => clearTimeout(tm);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, json, enabled, filled]);
@@ -50,6 +64,7 @@ export function useDraft<T>(key: string, value: T, enabled = true, filled = hasC
     clear() {
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
+      unsaved.current = null;
       clearDraft(key);
       setPending(null);
     },

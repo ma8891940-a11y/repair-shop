@@ -1,0 +1,111 @@
+# بوابة الجودة (دقايق GitHub Actions محدودة: حوالي 2000 دقيقة في الشهر للمستودع الخاص، ومحسوبة لكل job):
+# - على كل PR (فتح أو push جديد): checks (typecheck وlint والوحدة و audit:prod) وdb (PostgreSQL 16 مؤقت، واختبار الترقية) بس.
+# - e2e (Playwright على الأربع مشاريع، Supabase محلي) مرة واحدة قبل الدمج بس، بطريقتين:
+#     1) label اسمه e2e على الـ PR (لو عايز تعيده: شيل الـ label وحطه تاني)، أو
+#     2) Actions ← quality ← Run workflow على الفرع (يدوي).
+#   الـ push اللي بعد كده ما بيشغّلش e2e تاني لوحده.
+# - مفيش تشغيل على main بعد الدمج (اتختبر في الـ PR).
+# - أي run قديم على نفس الـ PR بيتلغي لو جه push جديد (concurrency).
+# مفيش أي أسرار مستخدمة: Supabase المحلي بمفاتيحه الافتراضية للاختبار بس.
+name: quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+
+concurrency:
+  # label تاني غير e2e ما بيلغيش الشغال (ليه group لوحده)
+  group: quality-${{ github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'e2e' && format('-{0}', github.run_id) || '' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_CLI: supabase@3.2.0
+
+jobs:
+  checks:
+    if: github.event.action != 'labeled' || github.event.label.name == 'e2e'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run audit:prod
+
+  db:
+    if: github.event.action != 'labeled' || github.event.label.name == 'e2e'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: PostgreSQL 16
+        run: |
+          if [ ! -x /usr/lib/postgresql/16/bin/initdb ]; then sudo apt-get update && sudo apt-get install -y postgresql-16; fi
+          /usr/lib/postgresql/16/bin/postgres --version
+      - run: npm run test:db
+      - run: npm run test:upgrade
+
+  e2e:
+    # مرة واحدة قبل الدمج: label e2e أو تشغيل يدوي
+    if: github.event_name == 'workflow_dispatch' || (github.event.action == 'labeled' && github.event.label.name == 'e2e')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop-dark, desktop-light, mobile-dark, mobile-light]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Supabase محلي
+        shell: bash
+        run: |
+          # supabase start بيطبّق كل ملفات supabase/migrations بالترتيب لوحده (نفس محتوى setup_all.sql)
+          npx -y $SUPABASE_CLI start -x studio,imgproxy,logflare,vector,supavisor,postgres-meta
+          # الملفات اتطبّقت فعلًا (لو لأ، الخطوة بتفشل هنا مش بعدين بأخطاء مش مفهومة)
+          n=$(PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -tAc "select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('sale_lines', 'push_subscriptions', 'devices')")
+          [ "$n" = 3 ] || { echo "migrations ناقصة: $n من 3"; exit 1; }
+          npx -y $SUPABASE_CLI status -o env > /tmp/sb.env
+          url=$(grep -E '^API_URL=' /tmp/sb.env | cut -d= -f2- | tr -d '"')
+          key=$(grep -E '^ANON_KEY=' /tmp/sb.env | cut -d= -f2- | tr -d '"')
+          [ -n "$url" ] && [ -n "$key" ] || { echo "API_URL أو ANON_KEY مش موجودين في supabase status"; exit 1; }
+          echo "E2E_SUPABASE_URL=$url" >> "$GITHUB_ENV"
+          echo "E2E_SUPABASE_ANON_KEY=$key" >> "$GITHUB_ENV"
+      - name: Playwright (${{ matrix.project }})
+        # E2E_PROD: على النسخة النهائية (build ثم preview) زي اللي بيتنشر، بدل سيرفر التطوير اللي بيبطّأ تحت الضغط
+        env:
+          E2E_PROD: '1'
+        # متصفح واحد في المرة: جهاز GitHub للمستودعات الخاصة (2 معالج) مش مستحمل اتنين مع Supabase كامل
+        # (القاعدة كانت بتلغي استعلامات بسيطة بعد 8 ثواني من الضغط، ونظام الدخول كان بيدّي request_timeout)
+        run: npx playwright test --project=${{ matrix.project }} --workers=1 --reporter=line --trace off
+      - name: اختبار سلوك سيرفر التطوير (بيتخطى على النسخة النهائية، فبيشتغل هنا لوحده)
+        run: npx playwright test tests/e2e/splash.spec.ts -g "npm run dev" --project=${{ matrix.project }} --reporter=line --trace off
+      - name: تفاصيل الفشل (شكل الصفحة وقت الفشل)
+        if: failure()
+        run: for f in test-results/*/error-context.md; do [ -f "$f" ] && { echo "::group::$f"; head -c 20000 "$f"; echo "::endgroup::"; }; done; true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-${{ matrix.project }}
+          path: test-results/
+          retention-days: 7
