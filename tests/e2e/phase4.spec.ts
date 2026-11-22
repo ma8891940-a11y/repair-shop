@@ -102,7 +102,11 @@ test('المرحلة 4: مسار IC بين فنيين بالترتيب ← نف�
   await page.goto('/#/reports');
   await expect(page.getByTestId('report-tech')).toContainText('أحمد الفك');
   await expect(page.getByTestId('report-tech')).toContainText('محمد الميكرو');
-  await page.getByTestId('report-tech-export').click();
+  // القايمة ممكن تتقفل لو التقرير اتحدّث لحظة الفتح: نفتحها لحد ما اختيار CSV يبان، وبعدين نضغطه
+  await expect(async () => {
+    if (!(await page.getByTestId('report-tech-export-csv').isVisible())) await page.getByTestId('report-tech-export').click();
+    await expect(page.getByTestId('report-tech-export-csv')).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('report-tech-export-csv').click()]);
   const csv = readFileSync(await dl.path(), 'utf8');
   expect(csv).toContain('أحمد الفك');
