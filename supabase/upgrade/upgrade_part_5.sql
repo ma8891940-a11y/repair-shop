@@ -1138,9 +1138,10 @@ begin
     join public.accounts a on a.id = l.account_id
     left join public.journal_entries o on o.id = e.reverses_id
     where e.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to
-      and (p_branch is null or e.branch_id = p_branch)
+      -- السداد على المحل كله (الضريبة على المحل مش الفرع)، والباقي بفلتر الفرع
+      and (p_branch is null or e.branch_id = p_branch or coalesce(o.source_type, e.source_type) = 'vat_payment')
       and a.kind in ('tax', 'revenue')
-      and coalesce(o.source_type, e.source_type) in ('sale', 'delivery', 'vat_payment')
+      and coalesce(o.source_type, e.source_type) in ('sale', 'delivery', 'vat_payment', 'sale_return')
   ),
   -- الحركات اللي فيها ضريبة بس (الصافي قبل الضريبة = إيراد نفس القيود)
   tx as (
@@ -1149,17 +1150,18 @@ begin
     group by e.id
   ),
   net as (
-    select coalesce(o.source_type, e.source_type) as src, coalesce(sum(l.credit - l.debit), 0)::bigint as v
+    -- الصافي قبل الضريبة من البيع والتسليم الأصليين بس (زي ضريبتهم). الإلغاء والمرتجع في سطر "ضريبة مرتجعة"
+    select e.source_type as src, coalesce(sum(l.credit - l.debit), 0)::bigint as v
     from tx join public.journal_entries e on e.id = tx.id
     join public.journal_lines l on l.entry_id = e.id join public.accounts a on a.id = l.account_id
-    left join public.journal_entries o on o.id = e.reverses_id
-    where a.kind = 'revenue' group by 1
+    where a.kind = 'revenue' and e.reverses_id is null and e.source_type in ('sale', 'delivery') group by 1
   )
   select jsonb_build_object(
     'from', p_from, 'to', p_to, 'branch', p_branch, 'rate_bp', public.vat_bp(s),
     'sales_vat', coalesce(sum(credit) filter (where kind = 'tax' and src = 'sale' and own <> 'reversal'), 0),
     'repair_vat', coalesce(sum(credit) filter (where kind = 'tax' and src = 'delivery' and own <> 'reversal'), 0),
-    'reversed_vat', coalesce(sum(debit - credit) filter (where kind = 'tax' and own = 'reversal' and src in ('sale', 'delivery')), 0),
+    -- المرتجع: إلغاء بيع أو تسليم بقيد عكسي، أو مرتجع من عميل
+    'reversed_vat', coalesce(sum(debit - credit) filter (where kind = 'tax' and ((own = 'reversal' and src in ('sale', 'delivery')) or src = 'sale_return')), 0),
     'paid', coalesce(sum(debit) filter (where kind = 'tax' and src = 'vat_payment' and own <> 'reversal'), 0)
       - coalesce(sum(credit) filter (where kind = 'tax' and src = 'vat_payment' and own = 'reversal'), 0),
     'sales_net', coalesce((select v from net where src = 'sale'), 0),
@@ -1425,7 +1427,8 @@ begin
     'expenses', per.expenses,
     'profit', per.revenue - per.expenses,
     'fixed_assets', p.fixed_assets,
-    'vat_due', coalesce((select sum(b) from acc where kind = 'tax'), 0),
+    -- الضريبة على المحل كله (مش الفرع المختار)
+    'vat_due', (select coalesce(sum(l.credit - l.debit), 0)::bigint from public.journal_lines l join public.accounts a on a.id = l.account_id where l.shop_id = s and a.kind = 'tax'),
     'partners_due', p.partners_due,
     -- قيمة المحل = الأصول − الالتزامات اللي لناس من بره بس (رأس مال الشركاء وأرباحهم حقوق ملكية، فما بتقللهاش)
     'net_worth', p.cash + p.receivables + p.payables_debit + p.fixed_assets - p.payables
@@ -1469,6 +1472,50 @@ begin
   ) into res
   from parts p, per, tot, unb, eq, eq_all;
   return res;
+end $$;
+
+-- sale_return: (src: 0036_roles.sql) + الضريبة من المبلغ المرتجع
+create or replace function public.sale_return(p_id uuid, p_item uuid, p_qty integer, p_refund bigint, p_cashbox uuid default null, p_customer uuid default null, p_restock boolean default true, p_reason text default null) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); e uuid; it public.items; cost bigint; cb uuid; rev uuid; v bigint;
+begin
+  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
+  perform public.perm_require('sales', 'edit');
+  e := public.ledger_idem(p_id);
+  if e is not null then return e; end if;
+  if nullif(trim(p_reason), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
+  if p_qty is null or p_qty <= 0 or p_refund is null or p_refund < 0 then raise exception 'E_BAD_AMOUNT'; end if;
+  select * into it from public.items where id = p_item and shop_id = s and deleted_at is null for update;
+  if not found then raise exception 'E_NOT_FOUND'; end if;
+  if p_cashbox is null and p_refund > 0 and p_customer is null then raise exception 'E_BAD_INPUT'; end if;
+  if p_customer is not null and not exists (select 1 from public.customers where id = p_customer and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if p_cashbox is not null then cb := (public.ledger_cashbox(p_cashbox)).id; end if;
+  rev := public.ledger_acc(case when it.kind = 'part' then 'rev_parts' else 'rev_accessories' end);
+  cost := public.item_last_cost(p_item) * p_qty;
+  if p_refund = 0 and (cost = 0 or not p_restock) then raise exception 'E_BAD_AMOUNT'; end if;
+  e := gen_random_uuid();
+  insert into public.journal_entries(id, shop_id, source_type, source_id, memo, idem_key, created_by)
+  values (e, s, 'sale_return', p_item, trim(p_reason), p_id, auth.uid());
+  if p_refund > 0 then
+    -- R5: المبلغ المرتجع شامل الضريبة: الضريبة بترجع من حساب الضريبة المستحقة، والباقي من الإيراد
+    v := public.vat_of(p_refund, public.vat_bp(s));
+    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, rev, p_refund - v, 0);
+    if v > 0 then insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, public.ledger_acc('vat_payable'), v, 0); end if;
+    if cb is not null then
+      insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, cb, 0, p_refund);
+    else
+      insert into public.journal_lines(shop_id, entry_id, account_id, party_type, party_id, debit, credit) values (s, e, public.ledger_acc('ar'), 'customer', p_customer, 0, p_refund);
+    end if;
+  end if;
+  -- القطعة السليمة بترجع المخزون بتكلفتها (والتكلفة بتخرج من تكلفة البضاعة). البايظة ما بترجعش، وتكلفتها فضلت مصروف.
+  if p_restock and cost > 0 then
+    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values
+      (s, e, public.ledger_acc('inventory'), cost, 0), (s, e, public.ledger_acc('cogs'), 0, cost);
+    insert into public.stock_moves(shop_id, item_id, entry_id, qty, value) values (s, p_item, e, p_qty, cost);
+  elsif p_restock then
+    insert into public.stock_moves(shop_id, item_id, entry_id, qty, value) values (s, p_item, e, p_qty, 0);
+  end if;
+  return e;
 end $$;
 $m0062$;
   insert into public.app_migrations(version, how) values ('0062_vat.sql', 'applied');
