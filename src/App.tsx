@@ -67,12 +67,13 @@ const VoucherPrint = lazyScreen(() => import('./screens/finance/FinancePrint').t
 const SaleInvoicePrint = lazyScreen(() => import('./screens/finance/FinancePrint').then((m) => m.SaleInvoicePrint));
 const TablePrint = lazyScreen(() => import('./screens/TablePrint').then((m) => m.TablePrint));
 const VideosScreen = lazyScreen(() => import('./screens/VideosScreen').then((m) => m.VideosScreen));
+const AttendanceScreen = lazyScreen(() => import('./screens/AttendanceScreen').then((m) => m.AttendanceScreen));
 const CommunityScreen = lazyScreen(() => import('./screens/CommunityScreen').then((m) => m.CommunityScreen));
 const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) => m.AdminScreen));
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, ChequesScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AdminScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, ChequesScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AttendanceScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
@@ -252,6 +253,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
           <Route path="settings" element={<SettingsScreen />} />
           {role !== 'reception' && <Route path="videos" element={<VideosScreen />} />}
           <Route path="community" element={<CommunityScreen />} />
+          <Route path="attendance" element={<AttendanceScreen />} />
           {admin && <Route path="admin" element={<AdminScreen />} />}
           {/* لحد ما الصلاحيات توصل: الرابط ما يترجعش للرئيسية (ممكن يكون لشاشة متاحة بصلاحية زيادة) */}
           <Route path="*" element={loaded ? <Navigate to="/" replace /> : null} />
