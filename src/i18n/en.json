@@ -3770,6 +3770,9 @@
     "clockOut": "Clock out",
     "inSince": "In since {{time}}",
     "inDone": "Clocked in",
-    "outDone": "Clocked out"
+    "outDone": "Clocked out",
+    "needPerson": "Pick the employee",
+    "needTimes": "Enter the clock-in and clock-out times",
+    "fixed": "Edited"
   }
 }

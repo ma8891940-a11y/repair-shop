@@ -34,7 +34,12 @@ export function AttendanceButton({ compact }: { compact?: boolean }) {
     setBusy(true);
     const { error } = open ? await supabase.rpc('clock_out', {}) : await supabase.rpc('clock_in', { p_id: crypto.randomUUID() });
     setBusy(false);
-    if (error) return toast({ tone: 'danger', title: errorMessage(error) });
+    if (error) {
+      toast({ tone: 'danger', title: errorMessage(error) });
+      // الحالة ممكن تكون اتغيرت (حضور من جهاز تاني، أو الرد ضاع والطلب وصل): نجيبها من جديد
+      window.dispatchEvent(new Event(ATT_CHANGED));
+      return;
+    }
     toast({ tone: 'ok', title: t(open ? 'att.outDone' : 'att.inDone') });
     window.dispatchEvent(new Event(ATT_CHANGED));
   }

@@ -46,6 +46,8 @@ test('الحضور والانصراف: حضور ← انصراف ← الفري�
   await dlg.getByTestId('att-save').click();
   await expect(dlg).toHaveCount(0);
   await expect(team.getByTestId('att-team-table').getByTestId('att-minutes').first()).toHaveText('2 س 30 د');
+  // السجل المتصلّح عليه علامة بالسبب
+  await expect(team.getByTestId('att-team-table').getByTestId('att-fixed').first()).toHaveAttribute('title', 'نسي يسجّل الانصراف');
 
   // 4) ميعاد بداية الشغل
   await page.getByTestId('att-start').fill('09:00');

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '../app/AppShell';
@@ -12,6 +12,7 @@ import { ExportMenu } from '../app/exporting';
 import { ATT_CHANGED, AttendanceButton } from '../app/AttendanceButton';
 import { supabase } from '../lib/supabase';
 import { errorMessage } from '../lib/errors';
+import { toLatinDigits } from '../lib/digits';
 import { hm, totalsByPerson, type AttendanceRow } from '../lib/attendance';
 import { useFormat } from '../i18n/format';
 import { Panel, PanelHeader } from '../ui/Panel';
@@ -55,14 +56,16 @@ export function AttendanceScreen() {
     const x = hm(m);
     return x ? t('att.hm', { h: f.number(x.h), m: f.number(x.m) }) : t('att.open');
   };
-  const reloadAll = () => {
-    mine.reload();
-    all.reload();
-  };
+  const { reload: reloadMine } = mine;
+  const { reload: reloadTeam } = all;
+  const reloadAll = useCallback(() => {
+    reloadMine();
+    reloadTeam();
+  }, [reloadMine, reloadTeam]);
   useEffect(() => {
     window.addEventListener(ATT_CHANGED, reloadAll);
     return () => window.removeEventListener(ATT_CHANGED, reloadAll);
-  });
+  }, [reloadAll]);
   const periodLine = `${f.date(range.from)} - ${f.date(new Date(range.to.getTime() - 1))}`;
   const totals = all.data ? totalsByPerson(all.data) : [];
 
@@ -88,7 +91,14 @@ export function AttendanceScreen() {
                   <bdi>{r.full_name}</bdi>
                 </td>
               )}
-              <td className="num whitespace-nowrap">{f.dateTime(r.clock_in)}</td>
+              <td className="num whitespace-nowrap">
+                {f.dateTime(r.clock_in)}
+                {r.fix_reason && (
+                  <span className="ms-2 text-2xs text-warn" title={r.fix_reason} data-testid="att-fixed">
+                    {t('att.fixed')}
+                  </span>
+                )}
+              </td>
               <td className="num whitespace-nowrap">{r.clock_out ? f.dateTime(r.clock_out) : '—'}</td>
               <td className="num" data-testid="att-minutes">
                 {dur(r.minutes)}
@@ -227,6 +237,8 @@ function EditDialog({ mode, row, staff, onClose, onDone }: { mode: 'fix' | 'add'
   async function submit() {
     setErr(null);
     if (!reason.trim()) return setErr(t('att.needReason'));
+    if (mode === 'add' && !person) return setErr(t('att.needPerson'));
+    if (mode !== 'void' && (!inAt || (mode === 'add' && !outAt))) return setErr(t('att.needTimes'));
     setBusy(true);
     const r =
       mode === 'void'
@@ -296,7 +308,7 @@ function StartTimePanel({ extras, shopId, onSaved }: { extras: unknown; shopId: 
   const [start, setStart] = useState(cur.start ?? '');
   const [grace, setGrace] = useState(String(cur.grace_min ?? 15));
   async function save() {
-    const g = Math.min(Math.max(Math.trunc(Number(grace)) || 0, 0), 120);
+    const g = Math.min(Math.max(Math.trunc(Number(toLatinDigits(grace.trim()))) || 0, 0), 120);
     const { error } = await supabase
       .from('shops')
       .update({ extras: { ...raw, attendance: { start: start || null, grace_min: g } } })
