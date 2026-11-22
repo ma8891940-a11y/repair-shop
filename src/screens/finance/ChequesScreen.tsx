@@ -4,6 +4,7 @@ import { ArrowDownLeft, ArrowUpRight, Check, X } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useMe } from '../../app/auth';
 import { useBranch } from '../../app/branch';
+import { usePerms } from '../../app/perms';
 import { useLoad, must } from '../../app/useLoad';
 import { cashboxesFor, loadCashboxes, opId, rpc, useAccountName } from '../../app/ledgerApi';
 import { ExportMenu } from '../../app/exporting';
@@ -44,6 +45,8 @@ export function ChequesScreen() {
   const f = useFormat();
   const { shop } = useMe();
   const br = useBranch();
+  // التسجيل والصرف والرفض: صاحب المحل أو "المالية ← يضيف" (زي قاعدة البيانات). الباقي بيشوف بس
+  const canAct = usePerms().grant('finance', 'add');
   const [filter, setFilter] = useState<Filter>('pending');
   const [add, setAdd] = useState<'in' | 'out' | null>(null);
   const [act, setAct] = useState<{ kind: 'clear' | 'bounce'; c: Cheque } | null>(null);
@@ -63,12 +66,16 @@ export function ChequesScreen() {
         sub={t('cheques.sub')}
         actions={
           <span className="flex flex-wrap gap-2">
-            <Button icon={<ArrowDownLeft className="size-4" />} onClick={() => setAdd('in')} data-testid="cheque-add-in">
-              {t('cheques.addIn')}
-            </Button>
-            <Button icon={<ArrowUpRight className="size-4" />} onClick={() => setAdd('out')} data-testid="cheque-add-out">
-              {t('cheques.addOut')}
-            </Button>
+            {canAct && (
+              <>
+                <Button icon={<ArrowDownLeft className="size-4" />} onClick={() => setAdd('in')} data-testid="cheque-add-in">
+                  {t('cheques.addIn')}
+                </Button>
+                <Button icon={<ArrowUpRight className="size-4" />} onClick={() => setAdd('out')} data-testid="cheque-add-out">
+                  {t('cheques.addOut')}
+                </Button>
+              </>
+            )}
             <ExportMenu
               testid="cheques-export"
               disabled={!data?.length}
@@ -157,7 +164,7 @@ export function ChequesScreen() {
                       <td className={cn('text-xs', c.status === 'cleared' ? 'text-ok' : c.status === 'bounced' ? 'text-danger' : 'text-fg-2')}>{t(`cheques.status.${c.status}`)}</td>
                       {br.multi && <td>{br.name(c.branch_id)}</td>}
                       <td className="whitespace-nowrap">
-                        {c.status === 'pending' && (
+                        {c.status === 'pending' && canAct && (
                           <span className="flex gap-1">
                             <Button size="sm" variant="outline" icon={<Check className="size-3.5" />} onClick={() => setAct({ kind: 'clear', c })} data-testid="cheque-clear">
                               {t('cheques.clear')}

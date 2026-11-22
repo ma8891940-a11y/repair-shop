@@ -160,7 +160,11 @@ d('الشيكات', () => {
     await expect(as(R1, `select cheque_bounce($1, $2, 'x')`, [id(), c], main)).rejects.toThrow(/E_NOT_FOUND|E_FORBIDDEN/);
     const mine = (await as(R2, `select id, party_name, status from cheques_list('pending')`, [], B2)).rows;
     expect(mine.find((r) => r.id === c)).toMatchObject({ party_name: 'عميل الشيك', status: 'pending' });
-    await as(R2, `select cheque_bounce($1, $2, 'تجربة')`, [id(), c], B2);
+    // الصرف بخزنة فرع تاني مرفوض، والرفض من صاحب المحل وهو فاتح فرع تاني بيتسجل في فرع الشيك نفسه
+    const mainBank = (await admin(`select id from accounts where shop_id = $1 and branch_id = $2 and method = 'cash'`, [shop, main])).rows[0].id;
+    await expect(as(O, `select cheque_clear($1, $2, $3)`, [id(), c, mainBank], main)).rejects.toThrow(/E_BRANCH/);
+    const be = (await as(O, `select cheque_bounce($1, $2, 'تجربة') e`, [id(), c], main)).rows[0].e;
+    expect((await admin(`select branch_id from journal_entries where id = $1`, [be])).rows[0].branch_id).toBe(B2);
     for (const u of [R1, R2]) for (const op of ['view', 'add']) await as(O, `select set_staff_override($1, 'finance', $2, null)`, [u, op]);
   });
 

@@ -51,7 +51,7 @@ create table public.cheques (
 create index cheques_due on public.cheques(shop_id, status, due_date) where deleted_at is null;
 alter table public.cheques enable row level security;
 create policy cheques_select on public.cheques for select to authenticated
-  using (shop_id = public.current_shop_id() and (public.current_app_role() = 'owner' or (public.has_perm('finance', 'view') and public.can_branch(branch_id))));
+  using (shop_id = (select public.current_shop_id()) and ((select public.current_app_role()) = 'owner' or (public.has_perm('finance', 'view') and public.can_branch(branch_id))));
 -- الكتابة من الدوال بس
 revoke all on public.cheques from public, anon, authenticated;
 grant select on public.cheques to authenticated;
@@ -114,6 +114,8 @@ begin
   select * into c from public.cheques where id = p_cheque and shop_id = public.current_shop_id() and deleted_at is null for update;
   if not found then raise exception 'E_NOT_FOUND'; end if;
   if public.current_app_role() <> 'owner' and not public.can_branch(c.branch_id) then raise exception 'E_FORBIDDEN'; end if;
+  -- الصرف والرفض بيتسجلوا في فرع الشيك نفسه (مش الفرع المفتوح على الشاشة)، وخزنة فرع تاني بتترفض (E_BRANCH_CASHBOX)
+  perform public.pin_branch(c.branch_id);
   return c;
 end $$;
 revoke execute on function public.cheque_lock(uuid) from public, anon, authenticated;
@@ -330,9 +332,10 @@ begin
     'expenses', per.expenses,
     'profit', per.revenue - per.expenses,
     'fixed_assets', p.fixed_assets,
-    'vat_due', coalesce((select sum(b) from acc where kind = 'tax'), 0),
     'cheques_in', coalesce((select sum(b) from acc where kind = 'cheque_in'), 0),
     'cheques_out', coalesce((select sum(b) from acc where kind = 'cheque_out'), 0),
+    -- الضريبة على المحل كله (مش الفرع المختار)
+    'vat_due', (select coalesce(sum(l.credit - l.debit), 0)::bigint from public.journal_lines l join public.accounts a on a.id = l.account_id where l.shop_id = s and a.kind = 'tax'),
     'partners_due', p.partners_due,
     -- قيمة المحل = الأصول − الالتزامات اللي لناس من بره بس (رأس مال الشركاء وأرباحهم حقوق ملكية، فما بتقللهاش)
     'net_worth', p.cash + p.receivables + p.payables_debit + p.fixed_assets - p.payables
