@@ -102,13 +102,15 @@ test('المرحلة 4: مسار IC بين فنيين بالترتيب ← نف�
   await page.goto('/#/reports');
   await expect(page.getByTestId('report-tech')).toContainText('أحمد الفك');
   await expect(page.getByTestId('report-tech')).toContainText('محمد الميكرو');
-  // القايمة ممكن تتقفل لو التقرير اتحدّث لحظة الفتح: نفتحها لحد ما اختيار CSV يبان، وبعدين نضغطه
+  // التقرير بيتحدّث لوحده (مباشر): لو اتحدّث لحظة الضغط، القايمة بتترسم من جديد والضغطة بتضيع. زي المستخدم: نعيد لحد ما الملف ينزل
+  let dl: import('@playwright/test').Download | null = null;
   await expect(async () => {
     if (!(await page.getByTestId('report-tech-export-csv').isVisible())) await page.getByTestId('report-tech-export').click();
-    await expect(page.getByTestId('report-tech-export-csv')).toBeVisible({ timeout: 2000 });
-  }).toPass({ timeout: 20_000 });
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('report-tech-export-csv').click()]);
-  const csv = readFileSync(await dl.path(), 'utf8');
+    const [d] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), page.getByTestId('report-tech-export-csv').click({ timeout: 3000 })]);
+    dl = d;
+  }).toPass({ timeout: 40_000 });
+  if (!dl) throw new Error('no download');
+  const csv = readFileSync(await (dl as import('@playwright/test').Download).path(), 'utf8');
   expect(csv).toContain('أحمد الفك');
   await noHorizontalScroll(page);
 });

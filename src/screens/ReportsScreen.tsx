@@ -47,6 +47,26 @@ function download(name: string, rows: (string | number | null)[][]) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+/**
+ * قسم تقرير بزرار تصدير. برّه الشاشة عشان يفضل نفس المكوّن مع كل تحديث:
+ * لو اتعرّف جوه الشاشة، أي تحديث (التحديث المباشر) كان بيهد القسم ويبنيه من جديد، فقايمة التصدير المفتوحة كانت بتتقفل والضغطة بتضيع.
+ */
+function Section({ title, onCsv, table, children, testid, periodLine }: { title: string; onCsv: () => void; table: () => Omit<ExportTable, 'title'>; children: React.ReactNode; testid: string; periodLine: string }) {
+  return (
+    <Panel className="break-inside-avoid overflow-hidden" data-testid={testid}>
+      <PanelHeader
+        title={title}
+        actions={
+          <span className="print:hidden">
+            <ExportMenu testid={`${testid}-export`} csv={onCsv} table={() => ({ title, ...table(), meta: [periodLine] })} />
+          </span>
+        }
+      />
+      <div className="overflow-x-auto">{children}</div>
+    </Panel>
+  );
+}
+
 /** التقارير (صاحب المحل): أداء الفنيين، وربحية كل نوع عطل، والأعطال والموديلات، والمخزون والنواقص. كل تقرير بيتصدّر Excel أو PDF */
 export function ReportsScreen() {
   const { t } = useTranslation();
@@ -80,19 +100,6 @@ export function ReportsScreen() {
 
   const periodLine = t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) });
   // كل تقرير: Excel وPDF بنفس الصفوف اللي ظاهرة، وCSV زي ما كان
-  const Section = ({ title, onCsv, table, children, testid }: { title: string; onCsv: () => void; table: () => Omit<ExportTable, 'title'>; children: React.ReactNode; testid: string }) => (
-    <Panel className="break-inside-avoid overflow-hidden" data-testid={testid}>
-      <PanelHeader
-        title={title}
-        actions={
-          <span className="print:hidden">
-            <ExportMenu testid={`${testid}-export`} csv={onCsv} table={() => ({ title, ...table(), meta: [periodLine] })} />
-          </span>
-        }
-      />
-      <div className="overflow-x-auto">{children}</div>
-    </Panel>
-  );
   const th = '[&_th]:px-3 [&_th]:py-2 [&_th]:text-start [&_th]:font-medium';
   const td = '[&_td]:px-3 [&_td]:py-2';
 
@@ -144,7 +151,7 @@ export function ReportsScreen() {
               />
             );
           })()}
-          <Section
+          <Section periodLine={periodLine}
             testid="report-tech"
             title={t('reports.tech')}
             table={() => ({
@@ -203,7 +210,7 @@ export function ReportsScreen() {
             </table>
           </Section>
 
-          <Section
+          <Section periodLine={periodLine}
             testid="report-issue"
             title={t('reports.issue')}
             table={() => ({
@@ -256,7 +263,7 @@ export function ReportsScreen() {
 
           <div className="grid gap-4 md:grid-cols-2">
             {(['model', 'route'] as const).map((k) => (
-              <Section
+              <Section periodLine={periodLine}
                 key={k}
                 testid={`report-${k}`}
                 title={t(`reports.top.${k}`)}
@@ -280,7 +287,7 @@ export function ReportsScreen() {
             ))}
           </div>
 
-          <Section
+          <Section periodLine={periodLine}
             testid="report-short"
             title={t('reports.short')}
             table={() => ({
