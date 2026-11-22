@@ -25,6 +25,7 @@ import { Dialog } from '../ui/Dialog';
 import { ConnectionBadge } from './ConnectionBadge';
 import { BranchSwitcher } from './BranchSwitcher';
 import { NotificationsBell } from './NotificationsBell';
+import { AttendanceButton } from './AttendanceButton';
 import { usePerms } from './perms';
 import { useBranch } from './branch';
 import { supabase } from '../lib/supabase';
@@ -240,6 +241,7 @@ export function AppShell() {
             </button>
             <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
               <BranchSwitcher />
+              {profile.role !== 'marketing' && <AttendanceButton compact />}
               {profile.role !== 'marketing' && <NotificationsBell />}
               <ConnectionBadge live={live} />
               <div className="flex items-center md:hidden">
