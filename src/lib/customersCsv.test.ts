@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { chunks, parseCustomersCsv } from './customersCsv';
+import { tableToCsv } from '../app/exporting';
+import ar from '../i18n/ar.json';
 
 describe('استيراد العملاء من CSV', () => {
   it('عناوين عربي (زي ملف التصدير)، والموبايل بيتوحّد، والمنطقة اختيارية', () => {
@@ -73,5 +75,19 @@ describe('استيراد العملاء من CSV', () => {
     ).toEqual([100, 100, 50]);
     expect(chunks([], 100)).toEqual([]);
     expect(() => chunks([1], 0)).toThrow();
+  });
+  it('ملف التصدير من البرنامج نفسه بيرجع يدخل (العنوان واسم المحل والتاريخ فوق العناوين)', () => {
+    const exported = tableToCsv({
+      title: 'العملاء',
+      meta: ['محل التجربة', 'اتطبع: 20/11/2026'],
+      columns: [{ header: ar.customers.cols.name }, { header: ar.customers.cols.phone }, { header: ar.customers.cols.area }, { header: ar.customers.cols.devices, type: 'int' }],
+      rows: [['أحمد', '01012345678', 'المعادي', 3], ['منى', '01112345678', null, 0]],
+    });
+    const r = parseCustomersCsv(exported);
+    expect(r.missingHeaders).toEqual([]);
+    expect(r.rows.map((x) => [x.name, x.phone, x.area])).toEqual([
+      ['أحمد', '01012345678', 'المعادي'],
+      ['منى', '01112345678', null],
+    ]);
   });
 });

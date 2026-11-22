@@ -60,13 +60,19 @@ export function parseCustomersCsv(text: string, existingPhones: ReadonlySet<stri
     missingHeaders: [],
   };
   if (!all.length) return out;
-  const cols = columns(all[0]);
+  // ملف التصدير من البرنامج فيه العنوان واسم المحل والتاريخ فوق العناوين: بندوّر على سطر العناوين في أول 10 سطور
+  const found = all.slice(0, 10).findIndex((r) => {
+    const c = columns(r);
+    return c.name != null && c.phone != null;
+  });
+  const h = Math.max(found, 0);
+  const cols = columns(all[h]);
   if (cols.name == null) out.missingHeaders.push('name');
   if (cols.phone == null) out.missingHeaders.push('phone');
   if (out.missingHeaders.length) return out;
   const seen = new Set<string>();
-  all.slice(1).forEach((r, k) => {
-    const line = k + 2;
+  all.slice(h + 1).forEach((r, k) => {
+    const line = h + k + 2;
     const get = (f: Field) => (cols[f] == null ? '' : (r[cols[f]!] ?? '').trim());
     const name = get('name').replace(/\s+/g, ' ');
     const rawPhone = get('phone');

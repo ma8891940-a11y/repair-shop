@@ -15,7 +15,11 @@ const PREVIEW = 50;
 
 /** أرقام عملاء المحل الموجودين من بين أرقام الملف (على دفعات، من غير ما نحمّل كل العملاء) */
 async function existingPhones(text: string): Promise<Set<string>> {
-  const phones = [...new Set(parseCsv(text).flatMap((r) => r.map((c) => normalizeEgyptPhone(c)).filter((x): x is string => !!x)))];
+  return lookupPhones([...new Set(parseCsv(text).flatMap((r) => r.map((c) => normalizeEgyptPhone(c)).filter((x): x is string => !!x)))]);
+}
+
+/** الأرقام دي، أنهي منها متسجّل فعلًا لعميل في المحل */
+async function lookupPhones(phones: string[]): Promise<Set<string>> {
   const out = new Set<string>();
   for (const part of chunks(phones, 200)) {
     const { data, error } = await supabase.from('customers').select('phone').in('phone', part).is('deleted_at', null);
@@ -78,8 +82,20 @@ export function CustomersImportDialog({ open, onOpenChange, onDone }: { open: bo
     if (done > 0) onDone();
     if (fail) {
       setErr(done ? t('custImport.partial', { n: done, why: fail }) : fail);
-      // اللي اتحفظ ما يتبعتش تاني لو داس استيراد تاني
-      if (done) setRes({ ...res, rows: res.rows.slice(done) });
+      // اللي اتحفظ ما يتبعتش تاني لو داس استيراد تاني. واللي اتسجّل في النص (مستخدم تاني، أو حفظ وصل والرد ضاع)
+      // بيتشال من الباقي ويتعلّم "موجود"، عشان المحاولة التانية تنجح
+      const left = res.rows.slice(done);
+      let now = new Set<string>();
+      try {
+        now = await lookupPhones(left.map((r) => r.phone));
+      } catch {
+        now = new Set();
+      }
+      setRes({
+        ...res,
+        rows: left.filter((r) => !now.has(r.phone)),
+        errors: [...res.errors, ...left.filter((r) => now.has(r.phone)).map((r) => ({ line: r.line, reason: 'exists' as const, name: r.name, phone: r.phone }))],
+      });
       return;
     }
     toast({ tone: 'ok', title: t('custImport.done', { n: done }) });
@@ -126,6 +142,7 @@ export function CustomersImportDialog({ open, onOpenChange, onDone }: { open: bo
       <div className="flex flex-col gap-3">
         <input
           type="file"
+          disabled={busy}
           accept=".csv,text/csv"
           aria-label={t('custImport.file')}
           onChange={(e) => e.target.files?.[0] && void read(e.target.files[0])}
