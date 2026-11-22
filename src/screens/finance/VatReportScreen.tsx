@@ -100,7 +100,7 @@ export function VatReportScreen() {
             {rows.map((r) => (
               <li key={r.key} className={cn('flex justify-between gap-3 px-4 py-2 text-sm', r.strong && 'bg-raised/40 font-semibold')} data-testid={`vat-row-${r.key}`}>
                 <span className={r.strong ? 'text-fg' : 'text-fg-2'}>{t(`vatReport.rows.${r.key}`)}</span>
-                <span className={cn('num', r.tone ?? (r.strong ? 'text-fg' : 'text-fg-2'))} dir="ltr">
+                <span className={cn('num', r.tone ?? (r.strong ? 'text-fg' : 'text-fg-2'))} dir="ltr" data-testid={`vat-val-${r.key}`}>
                   {f.money(r.v)} {cur}
                 </span>
               </li>

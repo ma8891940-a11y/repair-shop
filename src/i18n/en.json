@@ -3766,15 +3766,15 @@
     "off": "VAT is off in the shop settings. The report only shows VAT recorded earlier.",
     "summary": "Period summary",
     "rate": "Current rate {{r}}%",
-    "note": "The amount due covers the whole shop up to the end of the period. A reversal entry returns the VAT automatically.",
+    "note": "Reversal entries and customer returns give the VAT back automatically. Payments and the amount due cover the whole shop (not the selected branch), and the amount due is up to the end of the period.",
     "rows": {
       "salesNet": "Sales before VAT",
       "salesVat": "VAT on sales",
       "repairNet": "Repairs before VAT (at delivery)",
       "repairVat": "VAT on repairs",
-      "reversed": "VAT reversed (cancellations)",
+      "reversed": "VAT returned (cancellations and returns)",
       "collected": "Net VAT collected in the period",
-      "paid": "Paid to the tax authority in the period",
+      "paid": "Paid to the tax authority in the period (whole shop)",
       "due": "Due to the tax authority at period end"
     }
   }
