@@ -126,6 +126,7 @@ export function navGroups({ role, isAdmin, perms, branchKind }: NavAccess): NavG
       key: 'people',
       items: [
         ...e(front, { key: 'customers', to: '/customers', path: '/customers', icon: 'Contact', shortcut: 'nav.customers' }),
+        ...e(staff, { key: 'attendance', to: '/attendance', path: '/attendance', icon: 'Clock' }),
         ...e(g('purchases'), { key: 'suppliers', to: '/inventory?tab=suppliers', path: '/inventory?tab=suppliers', icon: 'Store' }),
       ],
     },
