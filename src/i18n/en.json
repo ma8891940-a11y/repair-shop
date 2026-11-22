@@ -3827,5 +3827,23 @@
     "errAmount": "Enter a valid amount",
     "errBox": "Pick a cashbox",
     "report": "VAT report"
+  },
+  "vatReport": {
+    "title": "VAT report",
+    "sub": "From the books for the period: VAT on sales and repairs, reversals, payments to the tax authority, and the amount due.",
+    "off": "VAT is off in the shop settings. The report only shows VAT recorded earlier.",
+    "summary": "Period summary",
+    "rate": "Current rate {{r}}%",
+    "note": "Reversal entries and customer returns give the VAT back automatically. Payments and the amount due cover the whole shop (not the selected branch), and the amount due is up to the end of the period.",
+    "rows": {
+      "salesNet": "Sales before VAT",
+      "salesVat": "VAT on sales",
+      "repairNet": "Repairs before VAT (at delivery)",
+      "repairVat": "VAT on repairs",
+      "reversed": "VAT returned (cancellations and returns)",
+      "collected": "Net VAT collected in the period",
+      "paid": "Paid to the tax authority in the period (whole shop)",
+      "due": "Due to the tax authority at period end"
+    }
   }
 }

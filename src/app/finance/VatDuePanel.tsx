@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Receipt } from 'lucide-react';
 import { useMe } from '../auth';
@@ -16,7 +17,7 @@ import { Field, Input, Select, Textarea } from '../../ui/Field';
 import { Alert } from '../../ui/Feedback';
 import { useToast } from '../../ui/Toast';
 
-/** R5: الضريبة المستحقة في الوضع المالي (من ضمن "عليّا")، وسدادها للمصلحة (صاحب المحل) */
+/** R5: الضريبة المستحقة في الوضع المالي (من ضمن "عليّا")، وسدادها للمصلحة (صاحب المحل)، ورابط تقرير الضريبة */
 export function VatDuePanel({ due, onPaid }: { due: number; onPaid: () => void }) {
   const { t } = useTranslation();
   const f = useFormat();
@@ -31,6 +32,9 @@ export function VatDuePanel({ due, onPaid }: { due: number; onPaid: () => void }
         {f.money(due)} {f.currency()}
       </span>
       <span className="ms-auto flex flex-wrap gap-2">
+        <Link to="/finance/vat" className="inline-flex h-7 items-center rounded-sm border border-line px-2.5 text-sm text-fg-2 hover:border-accent hover:text-fg" data-testid="vat-report-link">
+          {t('vat.report')}
+        </Link>
         {profile.role === 'owner' && due > 0 && (
           <Button size="sm" onClick={() => setOpen(true)} data-testid="vat-pay">
             {t('vat.pay')}

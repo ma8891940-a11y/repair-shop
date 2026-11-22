@@ -146,25 +146,14 @@ export function BalancesScreen() {
 }
 
 /** صافي الربح: الإيرادات والمصروفات لكل بند في الفترة */
-export function ProfitScreen() {
+type PlRow = { account_id: string; code: string | null; name: string | null; type: 'revenue' | 'expense'; amount: number };
+/** قسم الإيرادات أو المصروفات. برّه الشاشة عشان قايمة التصدير ما تتقفلش مع التحديث المباشر (المكوّن كان بيتبني من جديد كل مرة) */
+function PlBlock({ title, items, tone, testid, periodLine }: { title: string; items: PlRow[]; tone: string; testid: string; periodLine: string }) {
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop } = useMe();
   const accName = useAccountName();
-  const br = useBranch();
-  const { period, range, set } = usePeriod();
-  const { data, error, loading, reload } = useLoad(
-    () => rpc<{ account_id: string; code: string | null; name: string | null; type: 'revenue' | 'expense'; amount: number }[]>('pl_breakdown', { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter }),
-    [range.from.getTime(), range.to.getTime(), br.filter],
-  );
-  useLiveRefresh(reload);
-  const rows = (data ?? []).map((r) => ({ ...r, amount: Number(r.amount) }));
-  const rev = rows.filter((r) => r.type === 'revenue');
-  const exp = rows.filter((r) => r.type === 'expense');
-  const sum = (x: typeof rows) => x.reduce((a, r) => a + r.amount, 0);
-  const cur = f.currency(shop.currency);
-  const periodLine = t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) });
-  const Block = ({ title, items, tone, testid }: { title: string; items: typeof rows; tone: string; testid: string }) => (
+  const sum = (x: PlRow[]) => x.reduce((a, r) => a + r.amount, 0);
+  return (
     <Panel className="overflow-hidden">
       <PanelHeader
         title={title}
@@ -189,6 +178,26 @@ export function ProfitScreen() {
       )}
     </Panel>
   );
+}
+
+export function ProfitScreen() {
+  const { t } = useTranslation();
+  const f = useFormat();
+  const { shop } = useMe();
+  const accName = useAccountName();
+  const br = useBranch();
+  const { period, range, set } = usePeriod();
+  const { data, error, loading, reload } = useLoad(
+    () => rpc<{ account_id: string; code: string | null; name: string | null; type: 'revenue' | 'expense'; amount: number }[]>('pl_breakdown', { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter }),
+    [range.from.getTime(), range.to.getTime(), br.filter],
+  );
+  useLiveRefresh(reload);
+  const rows = (data ?? []).map((r) => ({ ...r, amount: Number(r.amount) }));
+  const rev = rows.filter((r) => r.type === 'revenue');
+  const exp = rows.filter((r) => r.type === 'expense');
+  const sum = (x: typeof rows) => x.reduce((a, r) => a + r.amount, 0);
+  const cur = f.currency(shop.currency);
+  const periodLine = t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) });
   return (
     <div className="max-w-4xl">
       <Back />
@@ -217,8 +226,8 @@ export function ProfitScreen() {
         <Skeleton className="h-40 w-full" />
       ) : (
         <div className="flex flex-col gap-4">
-          <Block title={t('fin.revenue')} items={rev} tone="text-ok" testid="pl-export-revenue" />
-          <Block title={t('fin.expenses')} items={exp} tone="text-danger" testid="pl-export-expenses" />
+          <PlBlock periodLine={periodLine} title={t('fin.revenue')} items={rev} tone="text-ok" testid="pl-export-revenue" />
+          <PlBlock periodLine={periodLine} title={t('fin.expenses')} items={exp} tone="text-danger" testid="pl-export-expenses" />
           <Panel className="flex items-center justify-between p-4">
             <span className="font-semibold text-fg">{t('fin.kpi.profit')}</span>
             <span className={cn('num text-xl font-semibold', sum(rev) - sum(exp) < 0 ? 'text-danger' : 'text-ok')} data-testid="pl-profit">
