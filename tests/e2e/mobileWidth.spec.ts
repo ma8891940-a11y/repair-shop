@@ -70,7 +70,13 @@ for (const lang of ['ar', 'en'] as const) {
     await registerShop(page, email, 'محل اختبار عرض الموبايل الطويل');
     const device = await quickIntake(page, '01012345678', 'عميل باسم طويل شوية عشان الاختبار');
     await seed(email, device);
-    if (lang === 'en') await page.evaluate(() => localStorage.setItem('lang', 'en'));
+    if (lang === 'en') {
+      // اللغة بتتقري مرة واحدة وقت تحميل الصفحة، والتنقل بالـ hash ما بيعيدش التحميل
+      await page.evaluate(() => localStorage.setItem('lang', 'en'));
+      await page.reload();
+      await afterSplash(page);
+    }
+    expect(await page.evaluate(() => document.documentElement.dir)).toBe(lang === 'en' ? 'ltr' : 'rtl');
 
     const fails: string[] = [];
     // كل مشكلة بتتطبع على طول، عشان لو الاختبار وقف في النص يبان اللي اتقاس
@@ -81,7 +87,7 @@ for (const lang of ['ar', 'en'] as const) {
     const check = async (what: string) => {
       await page.waitForTimeout(300);
       const m = await measure(page);
-      if (m.scroll > m.client) note(`${what}: scrollWidth ${m.scroll} > ${m.client}\n    ${m.out.join('\n    ')}`);
+      if (m.scroll > m.client || m.out.length) note(`${what}: scrollWidth ${m.scroll} / ${m.client}\n    ${m.out.join('\n    ')}`);
     };
     const pages = ['/#/', '/#/devices', device, '/#/intake', '/#/customers', '/#/inventory', '/#/finance', '/#/settings'];
     for (const w of WIDTHS) {
@@ -101,8 +107,17 @@ for (const lang of ['ar', 'en'] as const) {
           const dlg = page.getByRole('dialog');
           await expect(dlg).toBeVisible();
           await check(`${w}px نافذة البيع`);
+          // جسم النافذة بيتسحب لوحده (overflow auto)، فبنقيسه هو نفسه
+          const body = await dlg.evaluate((el) =>
+            Array.from(el.querySelectorAll<HTMLElement>('*'))
+              .filter((x) => getComputedStyle(x).overflowY === 'auto' && x.scrollWidth > x.clientWidth + 1)
+              .map((x) => `${x.scrollWidth} > ${x.clientWidth} ${String(x.className).split(' ').slice(0, 3).join('.')}`),
+          );
+          if (body.length) note(`${w}px نافذة البيع: المحتوى أعرض من النافذة ${body.join(' | ')}`);
           // زرار الحفظ ظاهر جوه الشاشة من غير سحب أفقي
           const save = dlg.getByTestId('lines-save');
+          // الزرار بيبقى disabled (pointer-events none) لحد ما الخزن توصل، وelementFromPoint بيعدّيه
+          await expect(save).toBeEnabled();
           await save.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
           const b = await save.boundingBox({ timeout: 5000 }).catch(() => null);
           if (!b || b.x < 0 || b.x + b.width > w + 1) note(`${w}px نافذة البيع: زرار الحفظ بره الشاشة (${JSON.stringify(b)})`);
