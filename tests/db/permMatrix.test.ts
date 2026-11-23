@@ -267,6 +267,45 @@ d('(34) مصفوفة الصلاحيات', () => {
     }
   });
 
+  it('جهاز في الطريق لفرع الموظف: بيشوفه وبيستلمه، وما يعدّلوش قبل الاستلام', async () => {
+    await as(O, `select send_device($1, $2)`, [devB, main]);
+    try {
+      expect(await tryAs(U.reception, `select device_money($1)`, [devB])).toBeNull();
+      for (const [sql, p] of [
+        [`select set_route($1, $2)`, [devB, route]],
+        [`select set_device_passcode($1, 'pin', '1111')`, [devB]],
+        [`select apply_status_lww($1, 'inspecting', now() + interval '1 hour')`, [devB]],
+        [`select device_manual_part($1, $2, 'قطعة', 1000, $3)`, [id(), devB, cash]],
+      ] as [string, unknown[]][])
+        expect(await tryAs(U.reception, sql, p), sql).toMatch(/E_FORBIDDEN/);
+      expect(await tryAs(U.branch_manager, `select soft_delete('device', $1, 'غلط')`, [devB])).toMatch(/E_FORBIDDEN/);
+      for (const r of [C, A, T] as Role[]) expect(await tryAs(U[r], `select receive_device($1)`, [devB]), r).toMatch(DENIED);
+      expect(await tryAs(U.reception, `select receive_device($1)`, [devB])).toBeNull();
+      // نوع الفرع ما يحبسش الجهاز في الطريق
+      await as(O, `select set_branch_kind($1, 'sales')`, [main]);
+      expect(await tryAs(U.reception, `select receive_device($1)`, [devB])).toBeNull();
+      for (const r of [C, A, T] as Role[]) expect(await tryAs(U[r], `select cancel_device_transfer($1)`, [devB]), r).toMatch(DENIED);
+      expect(await tryAs(U.reception, `select cancel_device_transfer($1)`, [devB])).toBeNull();
+      expect(await tryAs(U.reception, `select * from marketing_due()`)).toBeNull();
+    } finally {
+      await as(O, `select set_branch_kind($1, 'both')`, [main]);
+      await as(O, `select cancel_device_transfer($1)`, [devB]);
+    }
+  });
+
+  it('سداد الضريبة لصاحب المحل بس، فإلغاؤه كمان', async () => {
+    const shopId = (await as(O, `select current_shop_id() s`)).rows[0].s;
+    const e = id();
+    const tax = (await admin(`select id from accounts where shop_id = $1 and code = 'vat_payable'`, [shopId])).rows[0].id;
+    // قيد سداد ضريبة زي اللي pay_vat بيعمله
+    await db.query('begin');
+    await db.query(`insert into journal_entries(id, shop_id, source_type, source_id, created_by, branch_id) values ($1, $2, 'vat_payment', $1, $3, $4)`, [e, shopId, O, main]);
+    await db.query(`insert into journal_lines(shop_id, entry_id, account_id, debit, credit) values ($1, $2, $3, 500, 0), ($1, $2, $4, 0, 500)`, [shopId, e, tax, cash]);
+    await db.query('commit');
+    expect(await tryAs(U.branch_manager, `select reverse_entry($1, 'غلط')`, [e])).toMatch(/E_FORBIDDEN/);
+    expect(await tryAs(O, `select reverse_entry($1, 'غلط')`, [e])).toBeNull();
+  });
+
   it('رصيد الصنف في الفروع: القيمة (التكلفة) لأصحاب صلاحية المبالغ بس، والفني ما يشوفهاش', async () => {
     const val = async (u: string) => (await as(u, `select value from item_branch_stock($1) where branch_id = $2`, [item, main])).rows[0].value;
     expect(await val(O)).toBe('36000');
