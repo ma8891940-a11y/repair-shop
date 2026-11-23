@@ -16935,7 +16935,9 @@ do $run$ begin
 alter table public.cheques alter column entry_id drop not null;
 alter table public.cheques add column if not exists device_id uuid references public.devices(id);
 -- رقم عملية الرفض للشيك الجديد (مالوش قيد): نفس الطلب لو اتبعت تاني (من غير نت) ما يطلعش خطأ
-alter table public.cheques add column if not exists settle_op uuid unique;
+alter table public.cheques add column if not exists settle_op uuid;
+-- فريد جوه المحل بس: الاسترجاع بينسخ القيمة لمحل جديد (زي idem_key)
+create unique index if not exists cheques_settle_op on public.cheques(shop_id, settle_op) where settle_op is not null;
 -- الرفض الجديد ما لوش قيد: الحالة مربوطة بتاريخ التسوية مش بالقيد
 do $c$
 declare n text;
@@ -16946,8 +16948,10 @@ begin
     execute format('alter table public.cheques drop constraint %I', n);
   end loop;
 end $c$;
+alter table public.cheques drop constraint if exists cheques_settled_check;
 alter table public.cheques add constraint cheques_settled_check check ((status = 'pending') = (settled_at is null));
 -- الشيك الجديد (من غير قيد استلام) لعميل بس
+alter table public.cheques drop constraint if exists cheques_entry_check;
 alter table public.cheques add constraint cheques_entry_check check (entry_id is not null or direction = 'in');
 
 -- ---------- استلام شيك من عميل (src: 0063_cheques.sql) + من غير قيد، وجهاز اختياري ----------
@@ -16962,7 +16966,7 @@ begin
   perform public.ledger_amount(p_amount);
   if coalesce(trim(p_no), '') = '' or p_due is null then raise exception 'E_BAD_INPUT'; end if;
   if not exists (select 1 from public.customers where id = p_customer and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
-  if p_device is not null and not exists (select 1 from public.devices where id = p_device and shop_id = s and customer_id = p_customer and deleted_at is null) then
+  if p_device is not null and not exists (select 1 from public.devices where id = p_device and shop_id = s and customer_id = p_customer and deleted_at is null and public.can_branch(branch_id)) then
     raise exception 'E_NOT_FOUND';
   end if;
   insert into public.cheques(id, shop_id, branch_id, direction, party_type, party_id, cheque_no, bank, due_date, amount, entry_id, device_id, note, created_by)
@@ -17017,6 +17021,8 @@ begin
   if exists (select 1 from public.cheques where settle_op = p_op and shop_id = public.current_shop_id()) then return null; end if;
   if coalesce(trim(p_reason), '') = '' then raise exception 'E_REASON_REQUIRED'; end if;
   c := public.cheque_lock(p_cheque);
+  -- نفس الطلب اتبعت مرتين في نفس اللحظة: التاني بيستنى القفل، وبعدها يرجع من غير خطأ
+  if c.settle_op = p_op then return null; end if;
   if c.status <> 'pending' then raise exception 'E_CHEQUE_DONE'; end if;
   if c.direction = 'in' and c.entry_id is null then
     -- جديد: الدين ما اتغيرش أصلًا، فمفيش قيد. السبب في الملاحظة وفي سجل النشاط (zz_audit)
