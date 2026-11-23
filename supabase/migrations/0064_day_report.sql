@@ -14,17 +14,24 @@ declare
   res jsonb;
 begin
   perform public.grant_require('finance', 'view');
-  if not public.all_my_branches() and (p_branch is null or not public.can_branch(p_branch)) then p_branch := public.op_branch(); end if;
+  if not public.all_my_branches() and (p_branch is null or not public.can_branch(p_branch)) then
+    p_branch := public.op_branch();
+    -- موظف من غير فرع: ما يشوفش خزن المحل كله
+    if p_branch is null then raise exception 'E_FORBIDDEN'; end if;
+  end if;
   with boxes as (
     select a.id, a.code, a.name, a.method, a.branch_id from public.accounts a
     where a.shop_id = s and a.kind = 'cash' and (p_branch is null or a.branch_id = p_branch)
   ),
   mv as (
     select l.account_id, e.id as entry_id, e.entry_no, e.source_type, e.memo, e.occurred_at, l.debit, l.credit,
-           (e.reverses_id is not null or exists (select 1 from public.journal_entries r where r.reverses_id = e.id)) as cancelled
+           -- الإلغاء اللي حصل بعد الفترة ما يغيّرش تقرير يوم قديم
+           (e.reverses_id is not null or exists (select 1 from public.journal_entries r where r.reverses_id = e.id and r.occurred_at < p_to)) as cancelled
     from public.journal_lines l join public.journal_entries e on e.id = l.entry_id
     where l.shop_id = s and l.account_id in (select id from boxes) and e.occurred_at >= p_from and e.occurred_at < p_to
   ),
+  -- طريقة الدفع = طريقة الخزنة (record_payment بيسجل p_method، بس الواجهة ما بتبعتهوش، فهي نفس طريقة الخزنة)
+  -- شيك العميل: بيتحسب تحصيل يوم ما يتصرف (cheque_clear)، وبيظهر في التسوية بس
   col as (
     select b.method,
            coalesce(sum(m.debit) filter (where m.source_type = 'payment'), 0)::bigint as payments,

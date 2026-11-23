@@ -1241,19 +1241,7 @@
     "unbalancedText": "{{n}} unbalanced entries. Total debits {{d}}, credits {{c}}. Stop recording and contact support now.",
     "cashboxes": "Cashboxes",
     "dailyChart": "Revenue, expenses and profit by day",
-    "day": {
-      "collections": "Customer collections (repairs + sales) by method",
-      "method": "Method",
-      "repairs": "Repairs",
-      "sales": "Sales",
-      "refunds": "Refunds",
-      "collectionsHint": "Revenue is not collection: a credit sale is revenue without cash, and a payment on an old balance is cash without revenue. The cashbox reconciliation below shows the difference.",
-      "reconcile": "Cashbox reconciliation",
-      "opening": "Opening balance",
-      "in": "In",
-      "out": "Out",
-      "closing": "Closing balance"
-    },
+    "day": "Day",
     "revenue": "Revenue",
     "expenses": "Expenses",
     "profit": "Profit",
@@ -1431,7 +1419,20 @@
     "oldest": "Oldest debt {{d}} ago",
     "reverseQueued": "A reversal will be recorded for operation #{{no}}",
     "cancelledTag": "Cancelled",
-    "reverseQueuedBare": "A reversal will be recorded for this payment"
+    "reverseQueuedBare": "A reversal will be recorded for this payment",
+    "dayCash": {
+      "collections": "Customer collections (repairs + sales) by method",
+      "method": "Method",
+      "repairs": "Repairs",
+      "sales": "Sales",
+      "refunds": "Refunds",
+      "collectionsHint": "Revenue is not collection: a credit sale is revenue without cash, and a payment on an old balance is cash without revenue. The cashbox reconciliation below shows the difference. A customer cheque is counted when it clears, and shows in the reconciliation.",
+      "reconcile": "Cashbox reconciliation",
+      "opening": "Opening balance",
+      "in": "In",
+      "out": "Out",
+      "closing": "Closing balance"
+    }
   },
   "ledger": {
     "acc": {

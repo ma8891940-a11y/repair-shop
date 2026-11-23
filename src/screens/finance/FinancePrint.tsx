@@ -609,14 +609,14 @@ export function DayReportPrint() {
             </section>
             <section>
               {/* بند 1 (qa-37): التحصيل كله، صيانة + بيع، مش دفعات الصيانة بس */}
-              <h2 className="mb-1 border-b border-black font-semibold">{t('fin.day.collections')}</h2>
+              <h2 className="mb-1 border-b border-black font-semibold">{t('fin.dayCash.collections')}</h2>
               <table className="w-full" data-testid="day-collections">
                 <thead>
                   <tr className="text-start text-xs">
-                    <th className="text-start font-normal">{t('fin.day.method')}</th>
-                    <th className="text-end font-normal">{t('fin.day.repairs')}</th>
-                    <th className="text-end font-normal">{t('fin.day.sales')}</th>
-                    <th className="text-end font-normal">{t('fin.day.refunds')}</th>
+                    <th className="text-start font-normal">{t('fin.dayCash.method')}</th>
+                    <th className="text-end font-normal">{t('fin.dayCash.repairs')}</th>
+                    <th className="text-end font-normal">{t('fin.dayCash.sales')}</th>
+                    <th className="text-end font-normal">{t('fin.dayCash.refunds')}</th>
                     <th className="text-end font-normal">{t('fin.total')}</th>
                   </tr>
                 </thead>
@@ -634,17 +634,17 @@ export function DayReportPrint() {
                   {data.cash.collections.length === 0 && <Line label={t('fin.noMoves')} value="" />}
                 </tbody>
               </table>
-              <p className="mt-1 text-xs">{t('fin.day.collectionsHint')}</p>
-              <h2 className="mb-1 mt-4 border-b border-black font-semibold">{t('fin.day.reconcile')}</h2>
+              <p className="mt-1 text-xs">{t('fin.dayCash.collectionsHint')}</p>
+              <h2 className="mb-1 mt-4 border-b border-black font-semibold">{t('fin.dayCash.reconcile')}</h2>
               {data.cash.cashboxes.map((c) => (
                 <div key={c.id} className="mb-3 break-inside-avoid" data-testid="day-box" data-box={c.id}>
                   <p className="font-semibold">{accName(c)}</p>
                   <table className="w-full">
                     <tbody>
-                      <Line label={t('fin.day.opening')} value={f.money(c.opening)} />
-                      <Line label={t('fin.day.in')} value={`+ ${f.money(c.in)}`} />
-                      <Line label={t('fin.day.out')} value={`- ${f.money(c.out)}`} />
-                      <Line label={t('fin.day.closing')} value={f.money(c.closing)} bold />
+                      <Line label={t('fin.dayCash.opening')} value={f.money(c.opening)} />
+                      <Line label={t('fin.dayCash.in')} value={`+ ${f.money(c.in)}`} />
+                      <Line label={t('fin.dayCash.out')} value={`- ${f.money(c.out)}`} />
+                      <Line label={t('fin.dayCash.closing')} value={f.money(c.closing)} bold />
                     </tbody>
                   </table>
                   {c.entries.length > 0 && (

@@ -202,7 +202,7 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0063_cheques.sql') and (to_regclass('public.cheques') is not null) then
     insert into public.app_migrations(version, how) values ('0063_cheques.sql', 'found: table cheques');
   end if;
-  if not exists (select 1 from public.app_migrations where version = '0064_day_report.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'day_cash_report' and position('select a.id, a.code, a.name, a.method, a.branch_id from public.accounts a' in p.prosrc) > 0)) then
+  if not exists (select 1 from public.app_migrations where version = '0064_day_report.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'day_cash_report' and position('if p_branch is null then raise exception ''E_FORBIDDEN''; end if;' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0064_day_report.sql', 'found: function day_cash_report');
   end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
