@@ -843,7 +843,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" loading={busy || !cbsReady} onClick={() => void save()} needsNet={mode === 'purchase'}>
+          <Button variant="primary" loading={busy || !cbsReady} onClick={() => void save()} needsNet={mode === 'purchase'} data-testid="lines-save">
             {t('fin.record')}
           </Button>
         </>
