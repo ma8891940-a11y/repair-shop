@@ -3,6 +3,9 @@
 # - e2e (Playwright على الأربع مشاريع، Supabase محلي) مرة واحدة قبل الدمج بس، بطريقتين:
 #     1) label اسمه e2e على الـ PR (لو عايز تعيده: شيل الـ label وحطه تاني)، أو
 #     2) Actions ← quality ← Run workflow على الفرع (يدوي).
+#   - اختبارات معيّنة بس (قرار صاحب المشروع 2026-11-23: على كل PR اللي ليه علاقة بالتعديل):
+#     gh workflow run quality.yml --ref <الفرع> -f specs="tests/e2e/a.spec.ts tests/e2e/b.spec.ts" [-f projects='["desktop-dark","mobile-light"]']
+#     التشغيل ده ما بيعيدش checks وdb (اتعملوا على الـ PR).
 #   الـ push اللي بعد كده ما بيشغّلش e2e تاني لوحده.
 # - مفيش تشغيل على main بعد الدمج (اتختبر في الـ PR).
 # - أي run قديم على نفس الـ PR بيتلغي لو جه push جديد (concurrency).
@@ -13,6 +16,15 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
+    inputs:
+      specs:
+        description: 'ملفات Playwright معيّنة مفصولة بمسافة (فاضي = كله)'
+        required: false
+        default: ''
+      projects:
+        description: 'المشاريع بصيغة JSON'
+        required: false
+        default: '["desktop-dark","desktop-light","mobile-dark","mobile-light"]'
 
 concurrency:
   # label تاني غير e2e ما بيلغيش الشغال (ليه group لوحده)
@@ -27,7 +39,7 @@ env:
 
 jobs:
   checks:
-    if: github.event.action != 'labeled' || github.event.label.name == 'e2e'
+    if: (github.event.action != 'labeled' || github.event.label.name == 'e2e') && !inputs.specs
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -43,7 +55,7 @@ jobs:
       - run: npm run audit:prod
 
   db:
-    if: github.event.action != 'labeled' || github.event.label.name == 'e2e'
+    if: (github.event.action != 'labeled' || github.event.label.name == 'e2e') && !inputs.specs
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -68,7 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [desktop-dark, desktop-light, mobile-dark, mobile-light]
+        project: ${{ fromJSON(inputs.projects || '["desktop-dark","desktop-light","mobile-dark","mobile-light"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -95,10 +107,12 @@ jobs:
         # E2E_PROD: على النسخة النهائية (build ثم preview) زي اللي بيتنشر، بدل سيرفر التطوير اللي بيبطّأ تحت الضغط
         env:
           E2E_PROD: '1'
+          SPECS: ${{ inputs.specs }}
         # متصفح واحد في المرة: جهاز GitHub للمستودعات الخاصة (2 معالج) مش مستحمل اتنين مع Supabase كامل
         # (القاعدة كانت بتلغي استعلامات بسيطة بعد 8 ثواني من الضغط، ونظام الدخول كان بيدّي request_timeout)
-        run: npx playwright test --project=${{ matrix.project }} --workers=1 --reporter=line --trace off
+        run: npx playwright test $SPECS --project=${{ matrix.project }} --workers=1 --reporter=line --trace off
       - name: اختبار سلوك سيرفر التطوير (بيتخطى على النسخة النهائية، فبيشتغل هنا لوحده)
+        if: ${{ !inputs.specs }}
         run: npx playwright test tests/e2e/splash.spec.ts -g "npm run dev" --project=${{ matrix.project }} --reporter=line --trace off
       - name: تفاصيل الفشل (شكل الصفحة وقت الفشل)
         if: failure()

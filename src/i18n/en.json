@@ -1419,7 +1419,21 @@
     "oldest": "Oldest debt {{d}} ago",
     "reverseQueued": "A reversal will be recorded for operation #{{no}}",
     "cancelledTag": "Cancelled",
-    "reverseQueuedBare": "A reversal will be recorded for this payment"
+    "reverseQueuedBare": "A reversal will be recorded for this payment",
+    "dayCash": {
+      "collections": "Customer collections (repairs + sales) by method",
+      "method": "Method",
+      "repairs": "Repairs",
+      "sales": "Sales",
+      "cheques": "Cleared cheques",
+      "refunds": "Refunds",
+      "collectionsHint": "Revenue is not collection: a credit sale is revenue without cash, and a payment on an old balance is cash without revenue. The cashbox reconciliation below shows the difference. A customer cheque is counted when it clears, and shows in the reconciliation.",
+      "reconcile": "Cashbox reconciliation",
+      "opening": "Opening balance",
+      "in": "In",
+      "out": "Out",
+      "closing": "Closing balance"
+    }
   },
   "ledger": {
     "acc": {
