@@ -2241,6 +2241,7 @@ returns uuid
 language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id();
 begin
+  perform public.cheque_require();
   if exists (select 1 from public.cheques where id = p_id) then return p_id; end if;
   perform public.ledger_amount(p_amount);
   if coalesce(trim(p_no), '') = '' or p_due is null then raise exception 'E_BAD_INPUT'; end if;
