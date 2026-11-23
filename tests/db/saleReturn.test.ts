@@ -49,7 +49,7 @@ d('مرتجع بسطر البيع', () => {
   const srv = id();
   const vat = (bp: number | null) =>
     admin(`update shops set extras = case when $2::int is null then extras - 'vat' else jsonb_set(coalesce(extras, '{}'), '{vat}', jsonb_build_object('enabled', true, 'rate_bp', $2::int)) end where id = $1`, [shop, bp]);
-  const lines = async (e: string) =>
+  const lines = async (e: string): Promise<Record<string, number>> =>
     Object.fromEntries((await admin(`select coalesce(a.code, a.kind) c, sum(l.debit - l.credit)::bigint n from journal_lines l join accounts a on a.id = l.account_id where l.entry_id = $1 group by 1`, [e])).rows.map((r) => [r.c, Number(r.n)]));
   const bal = async (code: string) => Number((await admin(`select coalesce(sum(l.debit - l.credit), 0) n from journal_lines l join accounts a on a.id = l.account_id where a.shop_id = $1 and a.code = $2`, [shop, code])).rows[0].n);
   const stock = async (i: string) => (await admin(`select coalesce(sum(qty), 0)::int q, coalesce(sum(value), 0)::int v from stock_moves where item_id = $1`, [i])).rows[0];
@@ -149,7 +149,7 @@ d('مرتجع بسطر البيع', () => {
     await as(O, `select record_purchase($1, $2, $3::jsonb, $4)`, [id(), sup, JSON.stringify([{ item: acc, qty: 10, unit_cost: 9000 }]), cash]);
     const sum: Record<string, number> = {};
     for (const [l, q] of [[s.ln[0], 1], [s.ln[1], 1], [s.ln[0], 1], [s.ln[0], 1]] as const) {
-      for (const [k, n] of Object.entries(await lines(await ret(R, l, q)))) sum[k] = (sum[k] ?? 0) + n;
+      for (const [k, n] of Object.entries<number>(await lines(await ret(R, l, q)))) sum[k] = (sum[k] ?? 0) + n;
     }
     for (const k of Object.keys(sale)) expect(sum[k], k).toBe(-sale[k]);
     await vat(null);

@@ -21,6 +21,7 @@ import { useListLabel, useShopList } from '../../app/lists';
 import { ListCombo } from '../../app/ListCombo';
 import { ChipAdd, ChipRemove } from '../../app/ChipEdit';
 import { useToast } from '../../ui/Toast';
+import { SaleReturnDialog } from './SaleReturnDialog';
 import { cn } from '../../ui/cn';
 
 export type InvOp = 'write_off' | 'supplier_return' | 'sale_return';
@@ -84,6 +85,8 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
   const [reason, setReason] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // (3) مرتجع العميل: بفاتورة (الأساس)، أو من غير فاتورة
+  const [mode, setMode] = useState<'byInvoice' | 'noInvoice'>('byInvoice');
   const id = useMemo(() => (op ? opId() : ''), [op]);
   const cbs = useLoad(async () => (op && op !== 'write_off' ? loadCashboxes() : ([] as Cashbox[])), [op]);
   // قبل ما النافذة تترسم: اللي بيتكتب بسرعة ما يتمسحش (المبلغ الفاضي كان بيتحسب صفر)
@@ -97,6 +100,7 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
     setRestock(true);
     setReason('');
     setErr(null);
+    setMode(presetItem ? 'noInvoice' : 'byInvoice');
   }, [op, presetItem]);
   useEffect(() => {
     if (!cashbox && cbs.data?.length) setCashbox(cbs.data[0].id);
@@ -137,6 +141,17 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
     }
   }
 
+  const modes = (
+    <div className="inline-flex self-start rounded-md border border-glass-border p-0.5" role="radiogroup" aria-label={t('invop.title.sale_return')}>
+      {(['byInvoice', 'noInvoice'] as const).map((m) => (
+        <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} data-testid={`ret-${m}`} className={cn('h-7 rounded-sm px-2.5 text-xs', mode === m ? 'bg-raised text-fg' : 'text-fg-3')}>
+          {t(`invop.ret.${m}`)}
+        </button>
+      ))}
+    </div>
+  );
+  if (op === 'sale_return' && mode === 'byInvoice') return <SaleReturnDialog modes={modes} onOpenChange={onOpenChange} onDone={onDone} />;
+
   return (
     <Dialog
       open={!!op}
@@ -155,6 +170,7 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
       }
     >
       <div className="flex flex-col gap-3">
+        {op === 'sale_return' && modes}
         <ItemQty items={items} item={item} setItem={setItem} qty={qty} setQty={setQty} onlyInStock={op !== 'sale_return'} canCreate={op === 'sale_return'} />
         {op === 'supplier_return' && (
           <Field label={t('fin.supplier')} required>
@@ -211,7 +227,7 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
 }
 
 /** أسباب الهالك أو المرتجع الجاهزة (من القوايم): دوسة بتكتب السبب، والإضافة والحذف من نفس المكان */
-function ReasonChips({ list, value, onPick }: { list: 'write_off_reasons' | 'return_reasons'; value: string; onPick: (v: string) => void }) {
+export function ReasonChips({ list, value, onPick }: { list: 'write_off_reasons' | 'return_reasons'; value: string; onPick: (v: string) => void }) {
   const { t } = useTranslation();
   const label = useListLabel();
   const { items } = useShopList(list);
