@@ -89,6 +89,31 @@ for C in $(printf '%s\n' ${PART_CASES:-0 59 60 $N} log59 | awk '!seen[$0]++'); d
   [ "$(psql -At "$P/$db" -c "$FP")" = "$REF" ] || { echo "parts C=$C: التكرار غيّر حاجة"; fail=1; continue; }
   echo "parts C=$C: تمام (${#PARTS[@]} أجزاء، اتطبق $((N - K)) ملف، والتكرار من غير تغيير)"
 done
+# ============ مشروع فيه محلات وبيانات حقيقية (مش فاضي) ============
+# كل الاختبارات اللي فوق على قواعد فاضية، فأي migration بيعمل insert لكل المحلات كان بيعدّي من غير ما يتجرّب
+# (زي 0062: tg_force_shop_id رفض من SQL Editor بـ E_NO_SHOP). هنا: أول K ملفات + بيانات بدوال البرنامج، والترقية من غير مستخدم
+for K in ${DATA_CASES:-59 60 61}; do
+  [ "$K" -le "$N" ] || continue
+  for how in parts single; do
+    db="data_${K}_$how"
+    psql -q -v ON_ERROR_STOP=1 "$P/postgres" -c "create database $db template tpl"
+    for ((i = 0; i < K; i++)); do psql -q -v ON_ERROR_STOP=1 "$P/$db" -f "${FILES[$i]}" >/dev/null 2>&1; done
+    psql -q -v ON_ERROR_STOP=1 "$P/$db" -f tests/db/upgrade-seed.sql >"$DIR/seed" 2>&1 || { echo "data K=$K: البيانات ما اتعملتش"; cat "$DIR/seed"; fail=1; continue; }
+    before="$(psql -At "$P/$db" -c "select (select count(*) from public.shops) || '/' || (select count(*) from public.journal_entries) || '/' || (select count(*) from public.devices)")"
+    if [ "$how" = parts ]; then allparts "$db" "data K=$K" || { fail=1; continue; }
+    else up "$db" || { echo "data K=$K (ملف واحد): الترقية فشلت"; cat "$DIR/err"; fail=1; continue; }; fi
+    GOT="$(psql -At "$P/$db" -c "$FP")"
+    if [ "$GOT" != "$REF" ]; then echo "data K=$K ($how): الشكل مختلف عن قاعدة جديدة"; diff <(echo "$REF") <(echo "$GOT") | head -10; fail=1; continue; fi
+    after="$(psql -At "$P/$db" -c "select (select count(*) from public.shops) || '/' || (select count(*) from public.journal_entries) || '/' || (select count(*) from public.devices)")"
+    [ "$before" = "$after" ] || { echo "data K=$K ($how): البيانات اتغيرت ($before ← $after)"; fail=1; continue; }
+    # كل محل خد الحسابات الجديدة، والدفتر متوازن
+    missing="$(psql -At "$P/$db" -c "select count(*) from public.shops s cross join (values ('vat_payable'), ('cheques_in'), ('cheques_out')) v(code) where to_regclass('public.cheques') is not null and not exists (select 1 from public.accounts a where a.shop_id = s.id and a.code = v.code)")"
+    unbal="$(psql -At "$P/$db" -c "select count(*) from (select entry_id from public.journal_lines group by entry_id having sum(debit) <> sum(credit)) x")"
+    [ "$missing" = 0 ] && [ "$unbal" = 0 ] || { echo "data K=$K ($how): حسابات ناقصة ($missing) أو قيود مش متوازنة ($unbal)"; fail=1; continue; }
+    echo "data K=$K ($how): تمام (محلات وبيانات: $after، والترقية من غير مستخدم، وكل محل خد حساباته)"
+  done
+done
+
 # الترتيب: جزء قبل اللي قبله على مشروع فاضي ← بيقف من غير ما يغيّر حاجة
 if [ "${#PARTS[@]}" -ge 2 ]; then
   psql -q -v ON_ERROR_STOP=1 "$P/postgres" -c "create database ord template tpl"

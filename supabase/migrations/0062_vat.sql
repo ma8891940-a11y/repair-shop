@@ -44,10 +44,16 @@ $$;
 revoke execute on function public.vat_of(bigint, integer) from public, anon;
 grant execute on function public.vat_of(bigint, integer) to authenticated;
 
--- حساب الضريبة لكل المحلات الموجودة
-insert into public.accounts(shop_id, code, type, kind)
-select sh.id, 'vat_payable', 'liability', 'tax' from public.shops sh
-on conflict (shop_id, code) where code is not null do nothing;
+-- حساب الضريبة لكل المحلات الموجودة.
+-- warsha.system: الترقية بتشتغل من SQL Editor من غير مستخدم، وtg_force_shop_id كان بيرفض (E_NO_SHOP) لو فيه محلات
+do $vat$
+begin
+  perform set_config('warsha.system', 'on', true);
+  insert into public.accounts(shop_id, code, type, kind)
+  select sh.id, 'vat_payable', 'liability', 'tax' from public.shops sh
+  on conflict (shop_id, code) where code is not null do nothing;
+  perform set_config('warsha.system', 'off', true);
+end $vat$;
 
 -- ---------- ضريبة جهاز اتسلّم (للفاتورة والإيصال) ----------
 -- من قيد التسليم نفسه (مش من النسبة الحالية). الفني لأ (مفيش أسعار)
