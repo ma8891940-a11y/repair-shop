@@ -89,7 +89,7 @@ export function EditEntryDialog({ entry, onOpenChange, onDone }: { entry: { entr
         const q = Number(l.qty);
         const m = parsePounds(l.money);
         if (!Number.isInteger(q) || q <= 0 || m == null) return setErr(t('fin.errAmount'));
-        ls.push(a.source_type === 'sale' ? { item: l.item, qty: q, price: m } : { item: l.item, qty: q, unit_cost: m });
+        ls.push(a.source_type === 'sale' ? { item: l.item, qty: q, price: m, ...(m === 0 ? { reason: reason.trim() } : {}) } : { item: l.item, qty: q, unit_cost: m });
       }
       next.lines = ls;
       if (a.cashbox) next.cashbox = cashbox;

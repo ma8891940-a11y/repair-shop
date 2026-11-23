@@ -823,7 +823,9 @@
       "master_removed": "شال كلمة السر الرئيسية",
       "seller_viewed": "فتح بيانات بائع جهاز مستعمل",
       "demo_cleared": "مسح بيانات التجربة",
-      "telegram_set": "ظبط إشعارات تيليجرام"
+      "telegram_set": "ظبط إشعارات تيليجرام",
+      "free_sale": "بيع مجاني",
+      "stock_adjust": "تسوية مخزون"
     },
     "fields": {
       "status": "الحالة",

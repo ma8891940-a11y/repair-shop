@@ -809,7 +809,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
       if (it) return setErr(t('item.noStock', { n: f.number(Math.max(it.qty, 0)) }));
     }
     setBusy(true);
-    const saleArgs = { p_id: id, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, price: l.price })), p_cashbox: cashbox, ...(free ? { p_note: reason.trim() } : {}) };
+    const saleArgs = { p_id: id, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, price: l.price, ...(l.price === 0 ? { reason: reason.trim() } : {}) })), p_cashbox: cashbox };
     const queueSale = async () => {
       await sync.queue('sale', id, saleArgs);
       toast({ tone: 'warn', title: t('sync.queued'), description: `${f.money(total)} ${f.currency(shop.currency)}` });

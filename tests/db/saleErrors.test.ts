@@ -36,7 +36,7 @@ d('أخطاء البيع والبيع المجاني', () => {
     return u;
   }
   /** السطور كنص JSON، عشان نبعت قيم غلط زي ما أي حد يقدر يبعتها للـ API */
-  const sell = (uid: string, lines: string, note: string | null = null) => as(uid, `select record_sale($1, $2::jsonb, $3, null, $4) e`, [id(), lines, cash, note]);
+  const sell = (uid: string, lines: string) => as(uid, `select record_sale($1, $2::jsonb, $3, null) e`, [id(), lines, cash]);
   const entries = async () => (await db.query(`select count(*)::int n from journal_entries where shop_id = $1`, [shop])).rows[0].n;
 
   beforeAll(async () => {
@@ -72,24 +72,26 @@ d('أخطاء البيع والبيع المجاني', () => {
   });
 
   it('المجاني: الاستقبال ممنوعة، وصاحب المحل محتاج سبب، وبيتسجل، وبالصلاحية الاستقبال تقدر', async () => {
-    const lines = `[{"item":"${srv}","qty":1,"price":5000},{"item":"${gift}","qty":1,"price":0}]`;
+    const lines = (reason?: string) => JSON.stringify([{ item: srv, qty: 1, price: 5000 }, { item: gift, qty: 1, price: 0, reason }]);
     const n = await entries();
-    await expect(sell(R, lines, 'هدية')).rejects.toThrow('E_FREE_SALE');
-    await expect(sell(O, lines)).rejects.toThrow('E_REASON_REQUIRED');
-    await expect(sell(O, lines, '  ')).rejects.toThrow('E_REASON_REQUIRED');
+    await expect(sell(R, lines('هدية'))).rejects.toThrow('E_FREE_SALE');
+    await expect(sell(O, lines())).rejects.toThrow('E_REASON_REQUIRED');
+    await expect(sell(O, lines('  '))).rejects.toThrow('E_REASON_REQUIRED');
     expect(await entries()).toBe(n);
     expect((await db.query(`select 1 from audit_log where shop_id = $1 and action = 'free_sale'`, [shop])).rowCount).toBe(0);
-    const e = (await sell(O, lines, 'هدية لعميل دايم')).rows[0].e;
+    const e = (await sell(O, lines('هدية لعميل دايم'))).rows[0].e;
     const log = (await db.query(`select actor_id, entity_id, after from audit_log where shop_id = $1 and action = 'free_sale'`, [shop])).rows;
     expect(log).toHaveLength(1);
-    expect(log[0]).toMatchObject({ actor_id: O, entity_id: gift, after: { qty: 1, reason: 'هدية لعميل دايم', entry: e } });
+    expect(log[0]).toMatchObject({ actor_id: O, entity_id: gift, after: { name: 'لزق اسكرينة', qty: 1, reason: 'هدية لعميل دايم', entry: e } });
     await as(O, `select set_staff_override($1, 'inventory', 'amounts', true)`, [R]);
-    await sell(R, lines, 'هدية');
+    // السبب ما بيتكتبش في القيد (ملاحظة القيد بتتطبع على فاتورة العميل)
+    expect((await db.query(`select memo from journal_entries where id = $1`, [e])).rows[0].memo).toBeNull();
+    await sell(R, lines('هدية'));
     await as(O, `select set_staff_override($1, 'inventory', 'amounts', null)`, [R]);
   });
 
   it('فاتورة كلها مجانية مرفوضة، والبيع العادي من الاستقبال زي ما هو', async () => {
-    await expect(sell(O, `[{"item":"${gift}","qty":1,"price":0}]`, 'هدية')).rejects.toThrow('E_BAD_AMOUNT');
+    await expect(sell(O, `[{"item":"${gift}","qty":1,"price":0,"reason":"هدية"}]`)).rejects.toThrow('E_BAD_AMOUNT');
     await sell(R, `[{"item":"${srv}","qty":1,"price":15025}]`);
   });
 });

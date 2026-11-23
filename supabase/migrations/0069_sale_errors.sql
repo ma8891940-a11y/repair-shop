@@ -1,7 +1,8 @@
 -- ============================================================
 -- 0069: بند 13 من qa-37: أخطاء البيع برسالة الحقل، وسياسة البيع المجاني.
 -- - الكمية الغلط E_BAD_QTY، والسعر الغلط E_BAD_PRICE (بدل رسالة عامة).
--- - صنف مجاني (سعر صفر): صاحب المحل أو اللي معاه "المخزون ← المبالغ"، والسبب (ملاحظة البيع) إجباري، وبيتسجل في سجل النشاط.
+-- - صنف مجاني (سعر صفر): صاحب المحل أو اللي معاه "المخزون ← المبالغ"، والسبب (reason في السطر) إجباري.
+--   السبب في سجل النشاط بس: ملاحظة البيع بتتطبع على فاتورة العميل، فما بيتحطش فيها.
 -- - فاتورة كلها مجانية مرفوضة زي الأول (E_BAD_AMOUNT).
 -- ============================================================
 
@@ -41,9 +42,9 @@ begin
     p := (l ->> 'price')::bigint;
     if p = 0 then
       if public.current_app_role() <> 'owner' and not public.has_perm('inventory', 'amounts') then raise exception 'E_FREE_SALE'; end if;
-      if nullif(trim(p_note), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
+      if nullif(trim(l ->> 'reason'), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
       insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
-      values (s, auth.uid(), 'free_sale', 'items', it.id, jsonb_build_object('qty', q, 'reason', left(trim(p_note), 300), 'entry', e));
+      values (s, auth.uid(), 'free_sale', 'items', it.id, jsonb_build_object('name', it.name, 'qty', q, 'reason', left(trim(l ->> 'reason'), 300), 'entry', e));
     end if;
     -- 6ب: سطر البيع زي ما اتباع (الاسم والكمية والسعر) عشان فاتورة البيع
     n := n + 1;
@@ -80,5 +81,20 @@ begin
   if p_cashbox is not null and p_customer is not null then
     null; -- البيع النقدي لعميل معروف ما بيأثرش على رصيده
   end if;
+  return e;
+end $$;
+
+-- stock_in: (src: 0068_stock_adjust.sql) + اسم الصنف في سجل النشاط
+create or replace function public.stock_in(p_id uuid, p_item uuid, p_qty integer, p_unit_cost bigint, p_note text default null) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); e uuid; reason text := left(nullif(trim(p_note), ''), 300);
+begin
+  perform public.grant_require('inventory', 'amounts');
+  e := public.ledger_idem(p_id);
+  if e is not null then return e; end if;
+  if reason is null then raise exception 'E_REASON_REQUIRED'; end if;
+  e := public._stock_in(p_id, p_item, p_qty, p_unit_cost, reason);
+  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
+  values (s, auth.uid(), 'stock_adjust', 'items', p_item, jsonb_build_object('name', (select name from public.items where id = p_item), 'qty', p_qty, 'unit_cost', p_unit_cost, 'value', p_qty::bigint * p_unit_cost, 'reason', reason, 'entry', e));
   return e;
 end $$;

@@ -86,8 +86,9 @@ export function Field({ label, hint, error, required, className, children, aside
     ? cloneElement(children, {
         id,
         required,
-        'aria-invalid': error ? true : undefined,
-        'aria-describedby': hint || error ? descId : undefined,
+        // من غير error: اللي الشاشة حاطاه على الخانة نفسها بيفضل
+        'aria-invalid': error ? true : children.props['aria-invalid'],
+        'aria-describedby': hint || error ? descId : children.props['aria-describedby'],
       })
     : children;
   return (
