@@ -67,8 +67,18 @@ d('البيع من غير رصيد والتسوية', () => {
   it('الإعداد مقفول (الافتراضي): البيع من غير رصيد مرفوض، وتسجيل الكمية والتكلفة من نفس المكان وبعدين البيع', async () => {
     const it = await newItem('شاشة iPhone 13 Pro - OLED - أسود');
     await expect(sell(R, it, 1, 300000)).rejects.toThrow(/E_STOCK/);
-    // الاستقبال بيسجّل الكمية والتكلفة (2 × 1800)
-    await as(R, `select stock_in($1, $2, 2, 180000)`, [id(), it]);
+    // بند 14 (0068): الاستقبال ما تقدرش تزوّد المخزون من شاشة البيع، والتسوية محتاجة سبب، وبتتسجل في سجل النشاط
+    await expect(as(R, `select stock_in($1, $2, 2, 180000, 'جرد')`, [id(), it])).rejects.toThrow(/E_FORBIDDEN/);
+    await expect(as(O, `select stock_in($1, $2, 2, 180000)`, [id(), it])).rejects.toThrow(/E_REASON_REQUIRED/);
+    await expect(as(O, `select stock_in($1, $2, 2, 180000, '   ')`, [id(), it])).rejects.toThrow(/E_REASON_REQUIRED/);
+    expect(await stock(it)).toEqual({ q: 0, v: 0 });
+    const op = id();
+    await as(O, `select stock_in($1, $2, 2, 180000, 'لقيت كرتونة في المخزن')`, [op, it]);
+    await as(O, `select stock_in($1, $2, 2, 180000, 'لقيت كرتونة في المخزن')`, [op, it]); // نفس الطلب مرتين = مرة
+    const log = (await admin(`select actor_id, after from audit_log where action = 'stock_adjust' and entity_id = $1`, [it])).rows;
+    expect(log).toHaveLength(1);
+    expect(log[0].actor_id).toBe(O);
+    expect(log[0].after).toMatchObject({ qty: 2, unit_cost: 180000, value: 360000, reason: 'لقيت كرتونة في المخزن' });
     expect(await stock(it)).toEqual({ q: 2, v: 360000 });
     await sell(R, it, 1, 300000);
     expect(await stock(it)).toEqual({ q: 1, v: 180000 });
@@ -100,13 +110,13 @@ d('البيع من غير رصيد والتسوية', () => {
 
   it('تسوية على مراحل: موجود 1 بـ 40 واتباع 3، وبعدين دخل 1 بـ 50 ← اتسوّى 1 وفاضل 1', async () => {
     const it = await newItem('سوكت شحن');
-    await as(O, `select stock_in($1, $2, 1, 4000)`, [id(), it]);
+    await as(O, `select stock_in($1, $2, 1, 4000, 'رصيد')`, [id(), it]);
     const cogs0 = await bal('cogs');
     await sell(R, it, 3, 9000);
     expect(await bal('cogs')).toBe(cogs0 + 4000); // الواحدة اللي كانت موجودة بتكلفتها
     expect(await pend(it)).toBe(2);
     expect(await stock(it)).toEqual({ q: -2, v: 0 });
-    await as(O, `select stock_in($1, $2, 1, 5000)`, [id(), it]);
+    await as(O, `select stock_in($1, $2, 1, 5000, 'رصيد')`, [id(), it]);
     expect(await pend(it)).toBe(1);
     expect(await bal('cogs')).toBe(cogs0 + 9000);
     expect(await stock(it)).toEqual({ q: -1, v: 0 });
@@ -122,7 +132,7 @@ d('البيع من غير رصيد والتسوية', () => {
     expect(await stock(it)).toEqual({ q: 0, v: 0 });
     await clean();
     const e2 = await sell(R, it, 1, 5000);
-    await as(O, `select stock_in($1, $2, 2, 2000)`, [id(), it]);
+    await as(O, `select stock_in($1, $2, 2, 2000, 'رصيد')`, [id(), it]);
     expect(await pend(it)).toBe(0);
     await expect(as(O, `select reverse_entry($1, 'غلط')`, [e2])).rejects.toThrow(/E_SETTLED/);
     await clean();

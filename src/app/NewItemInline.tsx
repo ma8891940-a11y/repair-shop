@@ -11,6 +11,7 @@ import { useFormat } from '../i18n/format';
 import { Field, Input, Select } from '../ui/Field';
 import { Button } from '../ui/Button';
 import { Alert } from '../ui/Feedback';
+import { usePerms } from './perms';
 
 export interface ItemDetails {
   kind: 'part' | 'accessory' | 'service';
@@ -145,7 +146,7 @@ export function NewItemInline({ typed, withStock = true, onCreated, onCancel }: 
 }
 
 /**
- * البيع بكمية أكتر من الرصيد و"السماح بالبيع بدون رصيد" مقفول: سجّل الكمية والتكلفة من نفس النافذة (stock_in)، وكمّل البيع.
+ * البيع بكمية أكتر من الرصيد و"السماح بالبيع بدون رصيد" مقفول: البيع موقوف. اللي معاه "المخزون ← المبالغ" يعمل تسوية مخزون بسبب (stock_in)، وبعدين يكمّل البيع.
  */
 export function StockInInline({ item, need, onDone }: { item: StockRow; need: number; onDone: (qty: number) => void }) {
   const { t } = useTranslation();
@@ -154,16 +155,20 @@ export function StockInInline({ item, need, onDone }: { item: StockRow; need: nu
   const [cost, setCost] = useState(item.avg_cost ? String(item.avg_cost / 100) : '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
   const [id, setId] = useState(opId);
+  // بند 14: تسوية المخزون بصلاحية لوحدها (المخزون ← المبالغ) وسبب، مش جزء من البيع
+  const allowed = usePerms().grant('inventory', 'amounts');
   async function save() {
     setErr(null);
+    if (!reason.trim()) return setErr(t('errors.db.E_REASON_REQUIRED'));
     const q = Number(toLatinDigits(qty.trim()));
     if (!Number.isInteger(q) || q <= 0) return setErr(t('inv.errMin'));
     const c = parsePounds(cost);
     if (!c) return setErr(t('item.needCost'));
     setBusy(true);
     try {
-      await rpc('stock_in', { p_id: id, p_item: item.id, p_qty: q, p_unit_cost: c, p_note: null });
+      await rpc('stock_in', { p_id: id, p_item: item.id, p_qty: q, p_unit_cost: c, p_note: reason.trim() });
       setId(opId());
       onDone(q);
     } catch (e) {
@@ -174,18 +179,25 @@ export function StockInInline({ item, need, onDone }: { item: StockRow; need: nu
   }
   return (
     <section className="flex flex-col gap-2 rounded-md border border-[color-mix(in_srgb,var(--warn)_45%,transparent)] p-3" data-testid="stock-in-inline">
-      <p className="text-xs text-warn">{t('item.noStock', { n: f.number(Math.max(item.qty, 0)) })}</p>
-      <div className="grid grid-cols-[96px_minmax(0,1fr)_auto] items-end gap-2">
-        <Field label={t('inv.cols.qty')}>
-          <Input mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} data-testid="si-qty" />
-        </Field>
-        <Field label={t('item.cost')}>
-          <Input mono inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} suffix={f.currency()} data-testid="si-cost" />
-        </Field>
-        <Button size="sm" variant="primary" loading={busy} needsNet onClick={() => void save()} className="mb-0.5" data-testid="si-save">
-          {t('item.stockIn')}
-        </Button>
-      </div>
+      <p className="text-xs text-warn">{t(allowed ? 'item.noStock' : 'item.noStockBlocked', { n: f.number(Math.max(item.qty, 0)) })}</p>
+      {allowed && (
+        <>
+          <div className="grid grid-cols-[96px_minmax(0,1fr)_auto] items-end gap-2">
+            <Field label={t('inv.cols.qty')}>
+              <Input mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} data-testid="si-qty" />
+            </Field>
+            <Field label={t('item.cost')}>
+              <Input mono inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} suffix={f.currency()} data-testid="si-cost" />
+            </Field>
+            <Button size="sm" variant="primary" loading={busy} needsNet onClick={() => void save()} className="mb-0.5" data-testid="si-save">
+              {t('item.stockIn')}
+            </Button>
+          </div>
+          <Field label={t('item.adjustReason')} required>
+            <Input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} data-testid="si-reason" />
+          </Field>
+        </>
+      )}
       {err && <Alert tone="danger">{err}</Alert>}
     </section>
   );

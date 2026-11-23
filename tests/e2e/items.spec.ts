@@ -64,14 +64,18 @@ test('الأصناف: تفاصيل الصنف ← بحث عربي وإنجليز
   dlg = await openSale(page);
   await pickItem(dlg, 'شاشه 13 برو', { name: 'شاشة iPhone 13 Pro - OLED', qty: 0 });
   await expect(dlg.getByTestId('line').getByLabel('سعر البيع')).toHaveValue('1500');
-  // الإعداد مقفول (الافتراضي): ماعندوش رصيد ← سجّل الكمية والتكلفة من نفس النافذة
+  // الإعداد مقفول (الافتراضي): ماعندوش رصيد ← البيع موقوف، وصاحب المحل يعمل تسوية مخزون بسبب (بند 14)
   await expect(dlg.getByTestId('stock-in-inline')).toBeVisible();
+  await expect(dlg.getByTestId('stock-in-inline')).toContainText('متاح 0');
   await dlg.getByRole('button', { name: 'سجّل', exact: true }).click();
-  await expect(dlg.getByText('الصنف ده ماعندوش رصيد كفاية').first()).toBeVisible();
+  await expect(dlg.getByText('الكمية مش كفاية').first()).toBeVisible();
   await fillField(dlg.getByTestId('si-qty'), '2');
   await fillField(dlg.getByTestId('si-cost'), '1000');
   await dlg.getByTestId('si-save').click();
-  await expect(page.getByText('اتسجلت الكمية')).toBeVisible();
+  await expect(dlg.getByText('لازم تكتب السبب').first()).toBeVisible();
+  await fillField(dlg.getByTestId('si-reason'), 'رصيد أول المدة');
+  await dlg.getByTestId('si-save').click();
+  await expect(page.getByText('اتسجلت تسوية المخزون')).toBeVisible();
   await expect(dlg.getByTestId('stock-in-inline')).toHaveCount(0);
   await dlg.getByRole('button', { name: 'سجّل', exact: true }).click();
   await expect(page.getByText('اتسجل البيع').first()).toBeVisible();
