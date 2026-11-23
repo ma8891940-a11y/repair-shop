@@ -5,6 +5,17 @@
 لو أي طلب اتعارض مع القواعد دي، نبّه صاحب المشروع قبل التنفيذ.
 
 ## طريقة الشغل (من 2026-11-17): Claude مدير المشروع، وCodex مطوّر
+- **من 2026-11-23 (قرار صاحب المشروع): OpenCode بدل Codex.** Claude هو الجلسة الوحيدة على المشروع (مدير ومراجع)، وOpenCode بيكتب الواجهات بس:
+  - موديل مجاني دايمًا (مثلًا `opencode/qwen4-max-free`).
+  - في worktree منفصل على فرع `opencode/<اسم>` (مفيهوش `.env.local`)، ومن غير push، وما يلمسش `main`.
+  - المهمة في `docs/tasks/opencode-<رقم>-<اسم>.md` بنفس شكل مهام Codex، وبنفس قواعد `AGENTS.md`.
+  - التشغيل (من Bash، جوه فولدر الـ worktree):
+    ```
+    git worktree add ../repair-shop-oc -b opencode/<اسم> && cd ../repair-shop-oc && npm ci
+    opencode run --auto -m opencode/qwen4-max-free "اقرأ AGENTS.md والتزم بيه، ونفّذ docs/tasks/opencode-<رقم>-<اسم>.md بالظبط. اكتب الاختبارات وشغّلها، واعمل commit على الفرع ده بس. ممنوع push، وممنوع تلمس main، وفي الآخر اكتب ملخص." < /dev/null
+    ```
+  - لو فشل أو كان ضعيف: Claude يعملها بنفسه، ويكتب السبب في الـ PR.
+- **دقايق GitHub Actions:** على كل PR `checks` و`db` وPlaywright اللي ليه علاقة بالتعديل بس. الـ full run مرة بعد كل كام PR. لو الاستهلاك وصل 1700 دقيقة: وقّف وقول لصاحب المشروع.
 - **Claude هو مدير المشروع**، وبيكتب لـ Codex المهام في `docs/tasks/codex-<رقم>-<اسم>.md`. **المهمة دي هي المرجع بتاعك بالظبط**:
   - المطلوب.
   - الملفات المسموح تلمسها بس.
