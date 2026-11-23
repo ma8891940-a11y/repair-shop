@@ -18465,6 +18465,7 @@ do $run$ begin
 
 -- كل شاشة كانت بتكتب extras كله من نسختها، فتعديلين قريبين واحد يمسح التاني. هنا بيتعدّل المفاتيح المبعوتة بس.
 -- p_merge: لو القيمة القديمة والجديدة object، الجديدة بتتحط فوق القديمة (مثلًا reminders اللي شاشتين بتعدّله)
+-- shortcut: الدمج مستوى واحد، وقيمة واحدة بتتعدّل من جهازين في نفس اللحظة (مصفوفة أو اختصارات) الأخيرة تكسب. لو احتجناها: دمج أعمق
 create or replace function public.set_shop_extras(p_patch jsonb, p_merge boolean default false) returns void
 language plpgsql security definer set search_path = public as $$
 begin
@@ -18476,6 +18477,7 @@ begin
                                         then (sh.extras -> k.key) || k.value else k.value end)
     from jsonb_each(p_patch) k)
   where sh.id = public.current_shop_id();
+  if not found then raise exception 'E_FORBIDDEN'; end if;
 end $$;
 revoke execute on function public.set_shop_extras(jsonb, boolean) from public, anon;
 grant execute on function public.set_shop_extras(jsonb, boolean) to authenticated;
