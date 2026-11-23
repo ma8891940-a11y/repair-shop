@@ -71,10 +71,15 @@ for (const lang of ['ar', 'en'] as const) {
     if (lang === 'en') await page.evaluate(() => localStorage.setItem('lang', 'en'));
 
     const fails: string[] = [];
+    // كل مشكلة بتتطبع على طول، عشان لو الاختبار وقف في النص يبان اللي اتقاس
+    const note = (x: string) => {
+      fails.push(x);
+      console.log(`[mobileWidth ${lang}] ${x}`);
+    };
     const check = async (what: string) => {
       await page.waitForTimeout(300);
       const m = await measure(page);
-      if (m.scroll > m.client) fails.push(`${what}: scrollWidth ${m.scroll} > ${m.client}\n    ${m.out.join('\n    ')}`);
+      if (m.scroll > m.client) note(`${what}: scrollWidth ${m.scroll} > ${m.client}\n    ${m.out.join('\n    ')}`);
     };
     const pages = ['/#/', '/#/devices', device, '/#/intake', '/#/customers', '/#/inventory', '/#/finance', '/#/settings'];
     for (const w of WIDTHS) {
@@ -86,9 +91,8 @@ for (const lang of ['ar', 'en'] as const) {
         if (p === device) {
           // اسم الجهاز الطويل ظاهر كله (بيلف)، مش مقصوص بـ "..."
           const name = page.getByText(LONG_MODEL).first();
-          await expect(name).toBeVisible();
-          const cut = await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
-          if (cut) fails.push(`${w}px ${p}: اسم الجهاز مقصوص`);
+          if (!(await name.isVisible())) note(`${w}px ${p}: اسم الجهاز مش ظاهر`);
+          else if (await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1)) note(`${w}px ${p}: اسم الجهاز مقصوص`);
         }
         if (p === '/#/inventory') {
           await page.getByTestId('op-sale').click();
@@ -96,10 +100,10 @@ for (const lang of ['ar', 'en'] as const) {
           await expect(dlg).toBeVisible();
           await check(`${w}px نافذة البيع`);
           // زرار الحفظ ظاهر جوه الشاشة من غير سحب أفقي
-          const save = dlg.locator('button[type=submit]').last();
-          await save.scrollIntoViewIfNeeded();
-          const b = await save.boundingBox();
-          if (!b || b.x < 0 || b.x + b.width > w + 1) fails.push(`${w}px نافذة البيع: زرار الحفظ بره الشاشة (${JSON.stringify(b)})`);
+          const save = dlg.getByTestId('lines-save');
+          await save.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+          const b = await save.boundingBox({ timeout: 5000 }).catch(() => null);
+          if (!b || b.x < 0 || b.x + b.width > w + 1) note(`${w}px نافذة البيع: زرار الحفظ بره الشاشة (${JSON.stringify(b)})`);
           await page.keyboard.press('Escape');
         }
       }
