@@ -61,6 +61,8 @@ d('(34) مصفوفة الصلاحيات', () => {
     O = await user(`pm-o-${tag}@p.test`);
     const shop = (await as(O, `select (bootstrap_account('صاحب', 'محل المصفوفة')).shop_id s`)).rows[0].s;
     main = (await admin(`select id from branches where shop_id = $1 and is_main`, [shop])).rows[0].id;
+    // سبع موظفين أكتر من حد الخطة المجانية
+    await admin(`update shops set plan_code = (select code from plans where max_staff is null limit 1) where id = $1`, [shop]);
     await as(O, `select save_branch($1, 'فرع تاني', 'P2', null, null)`, [B2]);
     const acc = async (b: string, m: string) => (await admin(`select id from accounts where shop_id = $1 and branch_id = $2 and method = $3`, [shop, b, m])).rows[0].id;
     cash = await acc(main, 'cash');
