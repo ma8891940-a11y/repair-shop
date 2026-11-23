@@ -314,7 +314,7 @@ export function DevicesScreen() {
                     <StatusBadge status={d.status as DeviceStatus} size="sm" />
                   </div>
                   <DeviceBranchNote d={d} />
-                  <div className="mt-1.5 truncate text-sm text-fg">
+                  <div className="mt-1.5 break-words text-sm text-fg">
                     {d.brand} {d.model}
                     {front && d.customer_name && (
                       <span className="text-fg-3">
