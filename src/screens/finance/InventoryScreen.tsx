@@ -704,7 +704,12 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
   const [stocked, setStocked] = useState<Record<string, number>>({});
   const [creating, setCreating] = useState<{ line: number; typed: string } | null>(null);
   // قرار صاحب المشروع: "إضافة صنف جديد" صلاحية لوحدها (صاحب المحل دايمًا، والموظف لو اتفتحتله)
-  const canCreate = usePerms().grant('item_create', 'add');
+  const { grant } = usePerms();
+  const canCreate = grant('item_create', 'add');
+  // بند 13: الصنف المجاني في البيع (سعر صفر) بصلاحية وسبب، ونفس القاعدة في record_sale
+  const canFree = grant('inventory', 'amounts');
+  const [tried, setTried] = useState(false);
+  const [reason, setReason] = useState('');
   const allowNeg = readAllowNegative(shop.extras);
   useEffect(() => setStocked({}), [items]);
   const all = useMemo(() => [...extra.filter((x) => !items.some((y) => y.id === x.id)), ...items].map((x) => (stocked[x.id] ? { ...x, qty: x.qty + stocked[x.id] } : x)), [extra, items, stocked]);
@@ -730,6 +735,8 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
     setLines(preset?.lines.length ? preset.lines.map((l) => ({ item: l.item, qty: String(l.qty), price: priceOf(l.item) != null ? String(Number(priceOf(l.item)) / 100) : '' })) : [{ item: '', qty: '1', price: '' }]);
     setSupplier(preset?.supplier ?? suppliers[0]?.id ?? '');
     setErr(null);
+    setTried(false);
+    setReason('');
     setCbsReady(false);
     void loadCashboxes()
       .then((c) => {
@@ -756,6 +763,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
       }),
     [lines],
   );
+  const free = mode === 'sale' && parsed.some((l) => l.price === 0);
   const total = parsed.reduce((a, l) => a + (l.qty && l.price != null ? l.qty * l.price : 0), 0);
   const upd = (i: number, p: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...p } : l)));
   const [scan, setScan] = useState('');
@@ -779,9 +787,18 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
     scanRef.current?.focus();
   }
 
+  // أخطاء كل سطر: بتظهر بعد أول محاولة حفظ، وبتختفي مع التصحيح
+  const lineErrs = parsed.map((l) => ({
+    item: l.item ? undefined : t('inv.errItem'),
+    qty: l.qty ? undefined : t('errors.db.E_BAD_QTY'),
+    price: l.price == null ? t('errors.db.E_BAD_PRICE') : mode === 'sale' && l.price === 0 && !canFree ? t('errors.db.E_FREE_SALE') : undefined,
+  }));
   async function save() {
     setErr(null);
-    if (parsed.some((l) => !l.item || !l.qty || l.price == null)) return setErr(t('inv.errLines'));
+    setTried(true);
+    if (lineErrs.some((e) => e.item || e.qty || e.price)) return;
+    if (mode === 'sale' && total === 0) return setErr(t('inv.errAllFree'));
+    if (free && !reason.trim()) return;
     if (mode === 'purchase' && !supplier) return setErr(t('fin.errParty'));
     if (mode === 'sale' && !cashbox) return setErr(t('fin.errCashbox'));
     if (mode === 'sale' && !allowNeg) {
@@ -792,7 +809,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
       if (it) return setErr(t('item.noStock', { n: f.number(Math.max(it.qty, 0)) }));
     }
     setBusy(true);
-    const saleArgs = { p_id: id, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, price: l.price })), p_cashbox: cashbox };
+    const saleArgs = { p_id: id, p_lines: parsed.map((l) => ({ item: l.item, qty: l.qty, price: l.price, ...(l.price === 0 ? { reason: reason.trim() } : {}) })), p_cashbox: cashbox };
     const queueSale = async () => {
       await sync.queue('sale', id, saleArgs);
       toast({ tone: 'warn', title: t('sync.queued'), description: `${f.money(total)} ${f.currency(shop.currency)}` });
@@ -838,7 +855,7 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
       footer={
         <>
           <span className="me-auto text-sm text-fg-2">
-            {t('fin.total')}: <span className="num text-fg">{f.money(total)}</span>
+            {t('fin.total')}: <span className="num text-fg">{parsed.some((l) => !l.qty || l.price == null) ? '—' : f.money(total)}</span>
           </span>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
@@ -913,15 +930,25 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
                     />
                   </Field>
                   <Field label={i === 0 ? t('inv.cols.qty') : ''}>
-                    <Input aria-label={t('inv.cols.qty')} dir="ltr" inputMode="numeric" mono value={l.qty} onChange={(e) => upd(i, { qty: e.target.value })} className="text-start" />
+                    <Input aria-label={t('inv.cols.qty')} aria-invalid={(tried && !!lineErrs[i]?.qty) || undefined} aria-describedby={tried && lineErrs[i]?.qty ? `line-err-qty-${i}` : undefined} dir="ltr" inputMode="numeric" mono value={l.qty} onChange={(e) => upd(i, { qty: e.target.value })} className="text-start" />
                   </Field>
                   <Field label={i === 0 ? (mode === 'purchase' ? t('inv.unitCost') : t('inv.unitPrice')) : ''}>
-                    <Input aria-label={mode === 'purchase' ? t('inv.unitCost') : t('inv.unitPrice')} dir="ltr" inputMode="decimal" mono value={l.price} onChange={(e) => upd(i, { price: e.target.value })} placeholder="0" className="text-start" />
+                    <Input aria-label={mode === 'purchase' ? t('inv.unitCost') : t('inv.unitPrice')} aria-invalid={(tried && !!lineErrs[i]?.price) || undefined} aria-describedby={tried && lineErrs[i]?.price ? `line-err-price-${i}` : undefined} dir="ltr" inputMode="decimal" mono value={l.price} onChange={(e) => upd(i, { price: e.target.value })} placeholder="0" className="text-start" />
                   </Field>
                   <button type="button" onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((_, j) => j !== i) : ls))} className="mb-1 grid size-8 place-items-center rounded-md text-fg-3 hover:bg-raised hover:text-danger" aria-label={t('inv.removeLine')}>
                     <Trash2 className="size-4" aria-hidden />
                   </button>
                 </div>
+                {/* تحت السطر بعرضه كله: خانة الكمية ضيقة على الموبايل والرسالة جواها بتتقص */}
+                {tried &&
+                  (['item', 'qty', 'price'] as const).map(
+                    (k) =>
+                      lineErrs[i]?.[k] && (
+                        <p key={k} id={`line-err-${k}-${i}`} role="alert" className="text-xs text-danger" data-testid={`line-err-${k}`}>
+                          {lineErrs[i][k]}
+                        </p>
+                      ),
+                  )}
                 {creating?.line === i && (
                   <NewItemInline
                     key={creating.typed}
@@ -961,6 +988,11 @@ function LinesDialog({ mode, open, onOpenChange, items, suppliers, onDone, prese
             {t('inv.addLine')}
           </Button>
         </div>
+        {free && canFree && (
+          <Field label={t('inv.freeReason')} required error={tried && !reason.trim() ? t('errors.db.E_REASON_REQUIRED') : undefined}>
+            <Input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} data-testid="free-reason" />
+          </Field>
+        )}
         {err && <Alert tone="danger">{err}</Alert>}
       </div>
     </Dialog>

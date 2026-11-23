@@ -101,12 +101,16 @@ export function AuditScreen() {
               const { changes, other } = r.action === 'update' || r.action === 'soft_delete' ? readableChanges(t, r.before, r.after) : { changes: [], other: 0 };
               const who = r.actor_id ? (names[r.actor_id] ?? t('audit.someone')) : t('audit.system');
               const link = linkOf(r);
+              const why = r.action === 'free_sale' || r.action === 'stock_adjust' ? r.after?.reason : null;
               return (
                 <motion.li key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i, 20) * 0.015 }} className="grid gap-1 px-4 py-3 text-sm sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-4" data-testid="audit-row">
                   <div className="num text-xs text-fg-3">{f.dateTime(r.created_at)}</div>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 text-fg" data-testid="audit-sentence">
-                      <bdi>{auditSentence(t, r, who, show)}</bdi>
+                      <bdi>
+                        {auditSentence(t, r, who, show)}
+                        {typeof why === 'string' && `: ${why}`}
+                      </bdi>
                       {link && (
                         <Link to={link} className="inline-flex items-center gap-0.5 text-xs text-accent hover:underline" aria-label={`${t('audit.open')} ${entityLabel(t, r.entity)}`} data-testid="audit-link">
                           {t('audit.open')} <ArrowUpRight className="size-3 rtl:-scale-x-100" aria-hidden />
