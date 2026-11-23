@@ -146,7 +146,7 @@ export function NewItemInline({ typed, withStock = true, onCreated, onCancel }: 
 }
 
 /**
- * البيع بكمية أكتر من الرصيد و"السماح بالبيع بدون رصيد" مقفول: سجّل الكمية والتكلفة من نفس النافذة (stock_in)، وكمّل البيع.
+ * البيع بكمية أكتر من الرصيد و"السماح بالبيع بدون رصيد" مقفول: البيع موقوف. اللي معاه "المخزون ← المبالغ" يعمل تسوية مخزون بسبب (stock_in)، وبعدين يكمّل البيع.
  */
 export function StockInInline({ item, need, onDone }: { item: StockRow; need: number; onDone: (qty: number) => void }) {
   const { t } = useTranslation();
@@ -158,7 +158,7 @@ export function StockInInline({ item, need, onDone }: { item: StockRow; need: nu
   const [reason, setReason] = useState('');
   const [id, setId] = useState(opId);
   // بند 14: تسوية المخزون بصلاحية لوحدها (المخزون ← المبالغ) وسبب، مش جزء من البيع
-  const allowed = usePerms().can('inventory', 'amounts');
+  const allowed = usePerms().grant('inventory', 'amounts');
   async function save() {
     setErr(null);
     if (!reason.trim()) return setErr(t('errors.E_REASON_REQUIRED'));

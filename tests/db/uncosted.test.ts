@@ -132,7 +132,7 @@ d('البيع من غير رصيد والتسوية', () => {
     expect(await stock(it)).toEqual({ q: 0, v: 0 });
     await clean();
     const e2 = await sell(R, it, 1, 5000);
-    await as(O, `select stock_in($1, $2, 2, 2000)`, [id(), it]);
+    await as(O, `select stock_in($1, $2, 2, 2000, 'رصيد')`, [id(), it]);
     expect(await pend(it)).toBe(0);
     await expect(as(O, `select reverse_entry($1, 'غلط')`, [e2])).rejects.toThrow(/E_SETTLED/);
     await clean();

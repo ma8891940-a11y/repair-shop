@@ -214,8 +214,8 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0067_idem_lock.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'ledger_idem' and position('if p is null then return null; end if;' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0067_idem_lock.sql', 'found: function ledger_idem');
   end if;
-  if not exists (select 1 from public.app_migrations where version = '0068_stock_adjust.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'stock_in' and position('declare s uuid := public.current_shop_id(); e uuid; total bigint; reason text := nullif(trim(p_note), '''');' in p.prosrc) > 0)) then
-    insert into public.app_migrations(version, how) values ('0068_stock_adjust.sql', 'found: function stock_in');
+  if not exists (select 1 from public.app_migrations where version = '0068_stock_adjust.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = '_stock_in' and position('e := public.ledger_post(''opening'', p_item, left(coalesce(nullif(trim(p_memo), ''''), ''stock''), 300),' in p.prosrc) > 0)) then
+    insert into public.app_migrations(version, how) values ('0068_stock_adjust.sql', 'found: function _stock_in');
   end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
