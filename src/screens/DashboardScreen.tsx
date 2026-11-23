@@ -221,7 +221,7 @@ export function DashboardScreen() {
           <div className={front ? 'mt-4 grid gap-4 lg:grid-cols-2' : 'mt-4'}>
             <DeviceList index="03" title={t('dashboard.readyList')} rows={ready} loading={loading} showCustomer={front} empty={t('dashboard.readyEmpty')} moreTo="/devices?status=ready" />
             {front && <FollowUpPanel />}
-            {front && <MarketingPanel />}
+            {front && may('devices') && may('customers') && <MarketingPanel />}
           </div>
           </>
           )}
