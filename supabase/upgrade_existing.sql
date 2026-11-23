@@ -2,7 +2,7 @@
 -- شغّله في SQL Editor كله مرة واحدة. بيشوف إيه اللي موجود، وبيشغّل الناقص بس بالترتيب، كل ملف في transaction لوحده.
 -- آمن تشغّله أكتر من مرة: لو كله موجود، مش هيعمل حاجة. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّله تاني.
 -- لو لقى ملف أحدث موجود وملف أقدم منه ناقص، بيقف برسالة (E_UPGRADE_GAP) من غير ما يغيّر حاجة.
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -204,9 +204,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0064_day_report.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'day_cash_report' and position('if p_branch is null then raise exception ''E_FORBIDDEN''; end if;' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0064_day_report.sql', 'found: function day_cash_report');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0065_cheque_pending.sql') and (exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'cheques' and column_name = 'device_id')) then
+    insert into public.app_migrations(version, how) values ('0065_cheque_pending.sql', 'found: column cheques.device_id');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -16908,6 +16911,130 @@ grant execute on function public.day_cash_report(timestamptz, timestamptz, uuid)
 $m0064$;
   insert into public.app_migrations(version, how) values ('0064_day_report.sql', 'applied');
   raise notice 'applied %', '0064_day_report.sql';
+end $run$;
+commit;
+
+-- ============================== 0065_cheque_pending.sql ==============================
+begin;
+do $run$ begin
+  if exists (select 1 from public.app_migrations where version = '0065_cheque_pending.sql') then return; end if;
+  execute $m0065$
+-- ============================================================
+-- 0065: قرار صاحب المشروع (2026-11-23): شيك العميل "تحت التحصيل" ما بيقللش دين العميل غير لما يتصرف.
+-- - الاستلام: بيتسجل الشيك بس، من غير قيد (اللي على العميل زي ما هو).
+-- - الصرف: قيد واحد: الخزنة (مدين) / العملاء (دائن)، وصف في payments (لو الشيك على جهاز بيتحسب مدفوع للجهاز).
+-- - الرفض: الحالة بس، من غير قيد (الدين أصلًا ما اتغيرش).
+-- - التسليم قبل الصرف: الشيك مش دفعة، فـ"منع التسليم قبل السداد" (E_UNPAID) بيوقفه، وصاحب المحل بس يقدر "يسلّم بالآجل" (deliver_on_credit).
+-- - الشيكات القديمة (قبل الملف ده) ليها قيد استلام: بتكمّل بنفس طريقتها القديمة لحد ما تتصرف أو تترفض، عشان الدفتر يفضل متوازن.
+-- - شيكات الموردين ما اتغيرتش.
+-- ============================================================
+
+alter table public.cheques alter column entry_id drop not null;
+alter table public.cheques add column if not exists device_id uuid references public.devices(id);
+-- رقم عملية الرفض للشيك الجديد (مالوش قيد): نفس الطلب لو اتبعت تاني (من غير نت) ما يطلعش خطأ
+alter table public.cheques add column if not exists settle_op uuid unique;
+-- الرفض الجديد ما لوش قيد: الحالة مربوطة بتاريخ التسوية مش بالقيد
+do $c$
+declare n text;
+begin
+  -- القيد القديم ((status = 'pending') = (settle_entry_id is null)) من غير اسم صريح: بندوّر عليه بتعريفه
+  for n in select conname from pg_constraint where conrelid = 'public.cheques'::regclass and contype = 'c'
+             and pg_get_constraintdef(oid) like '%settle_entry_id IS NULL%' loop
+    execute format('alter table public.cheques drop constraint %I', n);
+  end loop;
+end $c$;
+alter table public.cheques add constraint cheques_settled_check check ((status = 'pending') = (settled_at is null));
+-- الشيك الجديد (من غير قيد استلام) لعميل بس
+alter table public.cheques add constraint cheques_entry_check check (entry_id is not null or direction = 'in');
+
+-- ---------- استلام شيك من عميل (src: 0063_cheques.sql) + من غير قيد، وجهاز اختياري ----------
+drop function if exists public.cheque_receive(uuid, uuid, text, text, date, bigint, text);
+create or replace function public.cheque_receive(p_id uuid, p_customer uuid, p_no text, p_bank text, p_due date, p_amount bigint, p_note text default null, p_device uuid default null)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id();
+begin
+  perform public.cheque_require();
+  if exists (select 1 from public.cheques where id = p_id) then return p_id; end if;
+  perform public.ledger_amount(p_amount);
+  if coalesce(trim(p_no), '') = '' or p_due is null then raise exception 'E_BAD_INPUT'; end if;
+  if not exists (select 1 from public.customers where id = p_customer and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if p_device is not null and not exists (select 1 from public.devices where id = p_device and shop_id = s and customer_id = p_customer and deleted_at is null) then
+    raise exception 'E_NOT_FOUND';
+  end if;
+  insert into public.cheques(id, shop_id, branch_id, direction, party_type, party_id, cheque_no, bank, due_date, amount, entry_id, device_id, note, created_by)
+  values (p_id, s, public.op_branch(), 'in', 'customer', p_customer, trim(p_no), nullif(trim(p_bank), ''), p_due, p_amount, null, p_device, nullif(trim(p_note), ''), auth.uid());
+  return p_id;
+end $$;
+revoke execute on function public.cheque_receive(uuid, uuid, text, text, date, bigint, text, uuid) from public, anon;
+grant execute on function public.cheque_receive(uuid, uuid, text, text, date, bigint, text, uuid) to authenticated;
+
+-- ---------- الصرف (src: 0063_cheques.sql) + شيك العميل الجديد بيقلل الدين وقت الصرف ----------
+create or replace function public.cheque_clear(p_op uuid, p_cheque uuid, p_cashbox uuid)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare c public.cheques; cb public.accounts; e uuid;
+begin
+  perform public.cheque_require();
+  e := public.ledger_idem(p_op);
+  if e is not null then return e; end if;
+  c := public.cheque_lock(p_cheque);
+  if c.status <> 'pending' then raise exception 'E_CHEQUE_DONE'; end if;
+  cb := public.ledger_cashbox(p_cashbox);
+  if c.direction = 'in' and c.entry_id is null then
+    -- جديد: دلوقتي بس الفلوس وصلت، فالدين بيقل
+    e := public.ledger_post('cheque_clear', c.id, c.cheque_no, jsonb_build_array(
+      public.ledger_line(cb.id, c.amount, 0),
+      public.ledger_line(public.ledger_acc('ar'), 0, c.amount, 'customer', c.party_id)), c.device_id, p_op);
+    insert into public.payments(id, shop_id, customer_id, device_id, cashbox_id, method, amount, entry_id, created_by)
+    values (gen_random_uuid(), c.shop_id, c.party_id, c.device_id, cb.id, cb.method, c.amount, e, auth.uid());
+  elsif c.direction = 'in' then
+    -- قديم: الدين اتخصم وقت الاستلام
+    e := public.ledger_post('cheque_clear', c.id, c.cheque_no, jsonb_build_array(
+      public.ledger_line(cb.id, c.amount, 0),
+      public.ledger_line(public.ledger_acc('cheques_in'), 0, c.amount, 'customer', c.party_id)), null, p_op);
+  else
+    e := public.ledger_post('cheque_clear', c.id, c.cheque_no, jsonb_build_array(
+      public.ledger_line(public.ledger_acc('cheques_out'), c.amount, 0, 'supplier', c.party_id),
+      public.ledger_line(cb.id, 0, c.amount)), null, p_op);
+  end if;
+  update public.cheques set status = 'cleared', settle_entry_id = e, settled_at = now() where id = c.id;
+  return e;
+end $$;
+
+-- ---------- الرفض (src: 0063_cheques.sql) + شيك العميل الجديد من غير قيد ----------
+create or replace function public.cheque_bounce(p_op uuid, p_cheque uuid, p_reason text)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare c public.cheques; e uuid;
+begin
+  perform public.cheque_require();
+  e := public.ledger_idem(p_op);
+  if e is not null then return e; end if;
+  if exists (select 1 from public.cheques where settle_op = p_op and shop_id = public.current_shop_id()) then return null; end if;
+  if coalesce(trim(p_reason), '') = '' then raise exception 'E_REASON_REQUIRED'; end if;
+  c := public.cheque_lock(p_cheque);
+  if c.status <> 'pending' then raise exception 'E_CHEQUE_DONE'; end if;
+  if c.direction = 'in' and c.entry_id is null then
+    -- جديد: الدين ما اتغيرش أصلًا، فمفيش قيد. السبب في الملاحظة وفي سجل النشاط (zz_audit)
+    update public.cheques set status = 'bounced', settled_at = now(), settle_op = p_op,
+      note = left(concat_ws(' · ', note, trim(p_reason)), 300) where id = c.id;
+    return null;
+  elsif c.direction = 'in' then
+    e := public.ledger_post('cheque_bounce', c.id, left(trim(p_reason), 300), jsonb_build_array(
+      public.ledger_line(public.ledger_acc('ar'), c.amount, 0, 'customer', c.party_id),
+      public.ledger_line(public.ledger_acc('cheques_in'), 0, c.amount, 'customer', c.party_id)), null, p_op);
+  else
+    e := public.ledger_post('cheque_bounce', c.id, left(trim(p_reason), 300), jsonb_build_array(
+      public.ledger_line(public.ledger_acc('cheques_out'), c.amount, 0, 'supplier', c.party_id),
+      public.ledger_line(public.ledger_acc('ap'), 0, c.amount, 'supplier', c.party_id)), null, p_op);
+  end if;
+  update public.cheques set status = 'bounced', settle_entry_id = e, settled_at = now() where id = c.id;
+  return e;
+end $$;
+$m0065$;
+  insert into public.app_migrations(version, how) values ('0065_cheque_pending.sql', 'applied');
+  raise notice 'applied %', '0065_cheque_pending.sql';
 end $run$;
 commit;
 

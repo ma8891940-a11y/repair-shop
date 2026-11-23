@@ -3875,7 +3875,7 @@
     "sub": "Customer cheques awaiting collection and supplier cheques due, with their dates.",
     "addIn": "Receive a customer cheque",
     "addOut": "Cheque to supplier",
-    "hintIn": "The customer's balance drops right away; the cheque waits for collection until it clears.",
+    "hintIn": "The customer balance goes down only when the cheque clears. Delivering a device before that needs \"deliver on credit\" by the owner.",
     "hintOut": "The supplier's balance drops right away; the cheque waits to be paid from a cashbox.",
     "pendingIn": "Customer cheques awaiting collection",
     "pendingOut": "Supplier cheques not cleared yet",
