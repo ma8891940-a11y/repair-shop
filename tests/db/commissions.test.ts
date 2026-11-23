@@ -112,6 +112,24 @@ d('C5: عمولات الفنيين', () => {
     expect(await owed(t1)).toBe(24000);
   });
 
+  // قرار صاحب المشروع (0066): العمولة على السعر قبل الضريبة
+  it('مع الضريبة 14%: العمولة على المصنعية من غير الضريبة، ومطابقة لقيد التسليم', async () => {
+    const shop = (await as(owner, `select current_shop_id() s`)).rows[0].s;
+    await db.query(`update shops set extras = jsonb_set(coalesce(extras, '{}'), '{vat}', '{"enabled": true, "rate_bp": 1400}'::jsonb) where id = $1`, [shop]);
+    try {
+      // فني جديد عشان أرقام الاختبارات اللي بعد كده ما تتأثرش (القاعدة العامة 30%)
+      const t3 = await staff(`t3c5-${tag}@t.test`, 'technician', 'حسن');
+      // 114,000 شامل ضريبة 14,000 ← قبل الضريبة 100,000 − قطعة 20,000 = 80,000 × 30% = 24,000 (مش 28,200)
+      const dv = await repair(t3, 114000, true);
+      expect(await owed(t3)).toBe(24000);
+      const rev = (await as(owner, `select sum(l.credit - l.debit)::bigint v from journal_lines l join journal_entries e on e.id = l.entry_id join accounts a on a.id = l.account_id where e.source_type = 'delivery' and e.source_id = $1 and a.code = 'rev_repair'`, [dv])).rows[0].v;
+      expect(Number(rev)).toBe(100000);
+      await clean();
+    } finally {
+      await db.query(`update shops set extras = extras - 'vat' where id = $1`, [shop]);
+    }
+  });
+
   it('مكافأة وجزاء (بسبب) من صاحب المحل بس، والصرف بيقلل المستحق، والتقرير مطابق للقيود', async () => {
     await expect(as(rec, `select staff_bonus($1, $2, 5000)`, [randomUUID(), t1])).rejects.toThrow(/E_FORBIDDEN|E_ROLE/);
     await as(owner, `select staff_bonus($1, $2, 5000, 'شغل ممتاز')`, [randomUUID(), t1]);

@@ -1,7 +1,7 @@
 -- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.
 -- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).
 -- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql
 
 -- ============================== 0001_phase1.sql ==============================
 -- =====================================================================
@@ -16240,3 +16240,33 @@ begin
   update public.cheques set status = 'bounced', settle_entry_id = e, settled_at = now() where id = c.id;
   return e;
 end $$;
+
+-- ============================== 0066_commission_net.sql ==============================
+-- ============================================================
+-- 0066: قرار صاحب المشروع (2026-11-23): عمولة الفني على السعر قبل الضريبة.
+-- - المصنعية = (التكلفة النهائية − الضريبة اللي جواها) − تكلفة القطع.
+-- - الضريبة بنفس طريقة قيد التسليم بالظبط (vat_of بنسبة المحل وقت التسليم)، فالعمولة والقيد دايمًا متطابقين.
+-- - المحل اللي الضريبة عنده مقفولة: مفيش أي فرق (vat_of = 0).
+-- - العمولات القديمة اللي اتسجلت قبل الملف ده ما بتتغيرش (القيود ما بتتعدلش).
+-- ============================================================
+
+-- commission_preview: (src: 0056_branch_features.sql) + المصنعية من غير الضريبة
+create or replace function public.commission_preview(p_device uuid) returns table(technician_id uuid, amount bigint)
+language plpgsql stable security definer set search_path = public as $$
+declare d public.devices; techs uuid[]; n int; base bigint; fc bigint; r public.commission_rules; t uuid; share bigint;
+begin
+  select * into d from public.devices where id = p_device;
+  if d.id is null then return; end if;
+  techs := public.device_technicians(p_device);
+  n := coalesce(array_length(techs, 1), 0);
+  if n = 0 then return; end if;
+  fc := coalesce((select c.final_cost from public.device_costs c where c.device_id = p_device and c.deleted_at is null), 0);
+  base := greatest(fc - public.vat_of(fc, public.vat_bp(d.shop_id)) - public.device_parts_cost(p_device), 0);
+  foreach t in array techs loop
+    r := public.commission_rule_for(d.shop_id, t, d.route_id, d.branch_id);
+    continue when r.id is null;
+    share := case when r.mode = 'fixed' then r.value else (base / n) * r.value / 10000 end;
+    if share > 0 then technician_id := t; amount := share; return next; end if;
+  end loop;
+end $$;
+revoke execute on function public.commission_preview(uuid) from public, anon, authenticated;
