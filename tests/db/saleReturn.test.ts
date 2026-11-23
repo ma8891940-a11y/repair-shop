@@ -162,6 +162,40 @@ d('مرتجع بسطر البيع', () => {
     await vat(null);
   });
 
+  it('إلغاء مرتجع في النص: مجموع التكلفة اللي رجعت عمره ما يزيد عن تكلفة البيع', async () => {
+    const i = id();
+    await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'accessory', 'كسور')`, [i]);
+    // 3 قطع بـ 10 قروش كلهم: 2 × 3 + 1 × 4
+    await as(O, `select record_purchase($1, $2, $3::jsonb, $4)`, [id(), sup, JSON.stringify([{ item: i, qty: 2, unit_cost: 3 }, { item: i, qty: 1, unit_cost: 4 }]), cash]);
+    const s = await sell(R, [{ item: i, qty: 3, price: 5000 }]);
+    const first = await ret(R, s.ln[0], 1);
+    await ret(R, s.ln[0], 1);
+    await ret(R, s.ln[0], 1);
+    expect(await stock(i)).toEqual({ q: 3, v: 10 });
+    await as(O, `select reverse_entry($1, 'غلط')`, [first]);
+    await ret(R, s.ln[0], 1);
+    expect(await stock(i)).toEqual({ q: 3, v: 10 });
+  });
+
+  it('صنف اتباع ما يتغيّرش نوعه، والمحذوف ما يرجعش المخزون، والبيع من غير تكلفة من غير فاتورة', async () => {
+    const i = id();
+    await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'part', 'نوع')`, [i]);
+    await as(O, `update items set kind = 'accessory' where id = $1`, [i]);
+    await as(O, `select record_purchase($1, $2, $3::jsonb, $4)`, [id(), sup, JSON.stringify([{ item: i, qty: 1, unit_cost: 100 }]), cash]);
+    const s = await sell(R, [{ item: i, qty: 1, price: 5000 }]);
+    await expect(as(O, `update items set kind = 'part' where id = $1`, [i])).rejects.toThrow(/E_ITEM_KIND/);
+    await as(O, `select soft_delete('item', $1, 'خلص')`, [i]);
+    await expect(ret(R, s.ln[0], 1)).rejects.toThrow(/E_NOT_FOUND/);
+    expect(await lines(await ret(R, s.ln[0], 1, cash, false))).toEqual({ cash_cash: -5000, rev_accessories: 5000 });
+    const u = id();
+    await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'part', 'من غير تكلفة')`, [u]);
+    await admin(`update shops set extras = coalesce(extras, '{}') || jsonb_build_object('allow_negative_stock', true) where id = $1`, [shop]);
+    const n = await sell(O, [{ item: u, qty: 1, price: 5000 }]);
+    await expect(ret(R, n.ln[0], 1)).rejects.toThrow(/E_RETURN_UNCOSTED/);
+    expect(await lines(await ret(R, n.ln[0], 1, cash, false))).toEqual({ cash_cash: -5000, rev_parts: 5000 });
+    await admin(`update shops set extras = coalesce(extras, '{}') || jsonb_build_object('allow_negative_stock', false) where id = $1`, [shop]);
+  });
+
   it('التالف: ما يرجعش المخزون وتكلفته تفضل مصروف. والخدمة: فلوس بس', async () => {
     const s = await sell(R, [{ item: part, qty: 1, price: 150000 }, { item: srv, qty: 1, price: 5000 }]);
     const before = await stock(part);

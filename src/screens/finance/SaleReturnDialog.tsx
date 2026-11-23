@@ -9,7 +9,7 @@ import { Button } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';
 import { cn } from '../../ui/cn';
 import { Dialog } from '../../ui/Dialog';
-import { Alert } from '../../ui/Feedback';
+import { Alert, ErrorState, Skeleton } from '../../ui/Feedback';
 import { Field, Input, Select, Textarea } from '../../ui/Field';
 import { useToast } from '../../ui/Toast';
 import { ReasonChips } from './InventoryOps';
@@ -28,6 +28,7 @@ interface SaleForReturn {
   branch_id: string;
   cancelled: boolean;
   credit: boolean;
+  has_customer: boolean;
   lines: ReturnLine[];
 }
 
@@ -49,7 +50,7 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
   const [id, setId] = useState(opId);
   const cbs = useLoad(loadCashboxes, []);
   const boxes = (cbs.data ?? []).filter((c) => !sale || c.branch_id === sale.branch_id);
-  const cashbox = way || (boxes[0]?.id ?? '');
+  const cashbox = way || (boxes[0]?.id ?? (sale?.has_customer ? 'account' : ''));
   const l = sale?.lines.find((x) => x.id === line);
   const n = Number(toLatinDigits(qty.trim()));
   const okQty = !!l && Number.isInteger(n) && n > 0 && n <= l.qty - l.returned;
@@ -62,13 +63,16 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
     if (!/^[0-9]{1,15}$/.test(v)) return setErr(t('invop.ret.errNo'));
     setBusy(true);
     try {
-      const s = (await rpc('sale_for_return', { p_no: Number(v) })) as SaleForReturn;
+      const s = await rpc<SaleForReturn>('sale_for_return', { p_no: Number(v) });
       if (s.cancelled) return setErr(t('invop.ret.cancelled'));
       if (!s.lines.length) return setErr(t('invop.ret.legacy'));
       setSale(s);
       setWay('');
+      setQty('1');
+      setRestock(true);
+      setReason('');
       setId(opId());
-      const open = s.lines.filter((x) => x.returned < x.qty);
+      const open = s.lines.filter((x) => x.qty > x.returned);
       if (open.length === 1) setLine(open[0].id);
     } catch (e) {
       setErr(errorMessage(e));
@@ -82,6 +86,7 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
     if (!sale || !l) return setErr(t('invop.ret.pickLine'));
     if (!okQty) return setErr(t('errors.db.E_RETURN_QTY'));
     if (!reason.trim()) return setErr(t('fin.errReason'));
+    if (!sale.credit && !cashbox) return setErr(t('errors.db.E_BAD_ACCOUNT'));
     setBusy(true);
     try {
       await rpc('sale_line_return', { p_id: id, p_line: l.id, p_qty: n, p_cashbox: sale.credit || cashbox === 'account' ? null : cashbox, p_restock: restock, p_reason: reason.trim() });
@@ -90,6 +95,9 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
       onDone();
     } catch (e) {
       setErr(errorMessage(e));
+      // الفاضل ممكن اتغيّر (مرتجع تاني، أو الطلب وصل والرد ضاع)
+      const fresh = await rpc<SaleForReturn>('sale_for_return', { p_no: sale.entry_no }).catch(() => null);
+      if (fresh) setSale(fresh);
     } finally {
       setBusy(false);
     }
@@ -106,7 +114,7 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="primary" needsNet loading={busy} disabled={!sale} onClick={() => void submit()} data-testid="invop-submit">
+          <Button variant="primary" needsNet loading={busy} disabled={!sale || (!sale.credit && cbs.loading)} onClick={() => void submit()} data-testid="invop-submit">
             {t('common.save')}
           </Button>
         </>
@@ -122,7 +130,10 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
           }}
         >
           <Field label={t('invop.ret.invNo')} required>
-            <Input mono dir="ltr" inputMode="numeric" value={no} onChange={(e) => setNo(e.target.value)} data-testid="ret-no" />
+            <Input mono dir="ltr" inputMode="numeric" value={no} onChange={(e) => {
+                setNo(e.target.value);
+                setSale(null);
+              }} data-testid="ret-no" />
           </Field>
           <Button type="submit" needsNet loading={busy && !sale} data-testid="ret-load">
             {t('invop.ret.load')}
@@ -130,6 +141,9 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
         </form>
         {sale && (
           <>
+            <div className="text-xs text-fg-3">
+              <span className="num">#{sale.entry_no}</span> · {f.dateTime(sale.at)}
+            </div>
             <div className="flex flex-col gap-1.5" role="radiogroup" aria-label={t('invop.ret.pickLine')}>
               {sale.lines.map((x) => (
                 <button
@@ -137,7 +151,7 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
                   type="button"
                   role="radio"
                   aria-checked={line === x.id}
-                  disabled={x.returned >= x.qty}
+                  disabled={x.qty <= x.returned}
                   onClick={() => {
                     setLine(x.id);
                     setQty('1');
@@ -156,7 +170,10 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
             {l && (
               <div className="grid grid-cols-2 gap-2">
                 <Field label={t('inv.cols.qty')} required>
-                  <Input mono inputMode="numeric" value={qty} onChange={(e) => setQty(e.target.value)} data-testid="ret-qty" />
+                  <Input mono inputMode="numeric" value={qty} onChange={(e) => {
+                      setQty(e.target.value);
+                      setId(opId());
+                    }} data-testid="ret-qty" />
                 </Field>
                 <div className="flex flex-col gap-1 text-sm">
                   <span className="text-fg-3">{t('invop.ret.total')}</span>
@@ -168,6 +185,10 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
             )}
             {sale.credit ? (
               <p className="text-xs text-fg-3">{t('invop.ret.credit')}</p>
+            ) : cbs.error ? (
+              <ErrorState message={cbs.error} onRetry={cbs.reload} />
+            ) : cbs.loading ? (
+              <Skeleton className="h-9 w-full" />
             ) : (
               <Field label={t('fin.cashbox')}>
                 <Select value={cashbox} onChange={(e) => setWay(e.target.value)}>
@@ -176,7 +197,7 @@ export function SaleReturnDialog({ modes, onOpenChange, onDone }: { modes: React
                       {accName(c)}
                     </option>
                   ))}
-                  <option value="account">{t('invop.ret.account')}</option>
+                  {sale.has_customer && <option value="account">{t('invop.ret.account')}</option>}
                 </Select>
               </Field>
             )}
