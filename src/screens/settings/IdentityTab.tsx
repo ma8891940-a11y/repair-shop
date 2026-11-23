@@ -291,8 +291,8 @@ export function IdentityTab() {
           <PoweredBy b={draft} />
         </div>
         <div className="readout-label">{t('identity.previewInvoice')}</div>
-        {/* zoom مش scale: بيصغّر المقاس في التخطيط نفسه، فالمعاينة ما بتطلعش بره الشاشة على الموبايل */}
-        <div className="bg-white p-5 text-[12px] text-black shadow-2" style={{ width: '160%', zoom: 0.62 }} data-testid="preview-invoice">
+        {/* zoom مش scale+عرض 160%: الخطوط والمسافات بتصغر جوه عرض الصفحة نفسه (zoom ما بيصغّرش النِسَب المئوية)، فالمعاينة ما بتطلعش بره الشاشة */}
+        <div className="bg-white p-5 text-[12px] text-black shadow-2" style={{ zoom: 0.62 }} data-testid="preview-invoice">
           <ColorHeader shop={draftShop} b={draft} title={t('print.invoice')} sub="2026-0042" />
         </div>
       </aside>
