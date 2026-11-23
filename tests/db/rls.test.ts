@@ -245,7 +245,7 @@ d('قاعدة البيانات: العزل والصلاحيات', () => {
     expect((await as(ownerB.id, `select count(*)::int as n from storage.objects`)).rows[0].n).toBe(0);
     await expect(as(ownerB.id, `insert into storage.objects(bucket_id, name) values ('device-photos', $1)`, [`${ownerA.shop}/x/b.jpg`])).rejects.toThrow();
     await expect(as(techA, `insert into storage.objects(bucket_id, name) values ('device-photos', $1)`, [`${ownerA.shop}/x/b.jpg`])).rejects.toThrow();
-    await as(recA, `insert into storage.objects(bucket_id, name) values ('device-photos', $1)`, [`${ownerA.shop}/x/c.jpg`]);
+    await as(recA, `insert into storage.objects(bucket_id, name) values ('device-photos', $1)`, [`${ownerA.shop}/${deviceA}/c.jpg`]);
   });
 
   it('تنبيه IMEI: البحث بيلاقي الجهاز في نفس المحل بس', async () => {

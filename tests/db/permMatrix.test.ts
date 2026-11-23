@@ -47,7 +47,7 @@ d('(34) مصفوفة الصلاحيات', () => {
   const [cust, dev, devB, item, sup] = [id(), id(), id(), id(), id()];
   const [chq, entryMain, entryB, capital] = [id(), id(), id(), id()];
   const E: Record<string, string> = {};
-  const [custX, supX, itemX] = [id(), id(), id()];
+  const [custX, supX, itemX, devX] = [id(), id(), id(), id()];
   let payB = '';
   let cashB = '';
   let shop = '';
@@ -99,6 +99,8 @@ d('(34) مصفوفة الصلاحيات', () => {
     await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'part', 'صنف للحذف')`, [itemX]);
     await as(O, `insert into devices(id, customer_id, brand, model, issue, branch_id) values ($1, $3, 'Oppo', 'A78', 'شحن', $4), ($2, $3, 'Vivo', 'Y20-B2', 'شحن', $5)`, [dev, devB, cust, main, B2]);
     await as(O, `insert into device_costs(shop_id, device_id, final_cost) values (gen_random_uuid(), $1, 50000), (gen_random_uuid(), $2, 60000)`, [dev, devB]);
+    // جهاز من غير فلوس للحذف
+    await as(O, `insert into devices(id, customer_id, brand, model, issue, branch_id) values ($1, $2, 'Oppo', 'F11', 'شحن', $3)`, [devX, cust, main]);
     route = (await admin(`select id from routes where shop_id = $1 and deleted_at is null and not diagnose and array_length(steps, 1) > 0 limit 1`, [shop])).rows[0].id;
     for (const x of [dev, devB]) {
       await as(O, `select set_route($1, $2)`, [x, route]);
@@ -200,7 +202,7 @@ d('(34) مصفوفة الصلاحيات', () => {
     ['reverse_entry سلفة موظف', `select reverse_entry($1, 'غلط')`, [E.advance], []],
     ['entry_args سلفة موظف', `select entry_args($1)`, [E.advance], []],
     ['reverse_entry رأس المال', `select reverse_entry($1, 'غلط')`, [E.capital], []],
-    // الجهاز عليه دفعة: صاحب المحل ومدير الفرع بيعدّوا الصلاحية ويقفوا عند E_HAS_MONEY، فالجهاز متجرب في "الفرع التاني" تحت
+    ['soft_delete جهاز', `select soft_delete('device', $1, 'غلط')`, [devX], [M]],
     ['soft_delete عميل', `select soft_delete('customer', $1, 'غلط')`, [custX], [M]],
     ['soft_delete مورد', `select soft_delete('supplier', $1, 'غلط')`, [supX], [M]],
     ['soft_delete صنف', `select soft_delete('item', $1, 'غلط')`, [itemX], [M]],
@@ -314,6 +316,9 @@ d('(34) مصفوفة الصلاحيات', () => {
     const file = async (u: string, x: string) => (await as(u, `select 1 from storage.objects where bucket_id = 'device-photos' and name = $1`, [`${shop}/${x}/a.jpg`])).rowCount;
     expect([await file(O, devB), await file(U.reception, dev), await file(tech2, dev)]).toEqual([1, 1, 1]);
     expect([await file(U.reception, devB), await file(U.cashier, dev), await file(U.technician, dev)]).toEqual([0, 0, 0]);
+    const up = (u: string, x: string) => tryAs(u, `insert into storage.objects(bucket_id, name) values ('device-photos', $1)`, [`${shop}/${x}/${id()}.jpg`]);
+    expect(await up(U.reception, dev)).toBeNull();
+    for (const [u, x] of [[U.reception, devB], [U.cashier, dev], [U.accountant, dev]]) expect(await up(u, x)).toMatch(DENIED);
   });
 
   it('الكتابة في تفاصيل جهاز فرع تاني مرفوضة، والكاشير ما يكتبش على أي جهاز', async () => {
@@ -353,7 +358,38 @@ d('(34) مصفوفة الصلاحيات', () => {
     await as(O, `insert into devices(id, customer_id, brand, model, issue, branch_id) values ($1, $2, 'Oppo', 'A5', 'شحن', $3)`, [x, cust, B2]);
     await as(O, `select set_route($1, $2)`, [x, route]);
     expect((await admin(`select count(technician_id)::int n, count(*)::int t from repair_steps where device_id = $1 and status = 'pending'`, [x])).rows[0]).toMatchObject({ n: 0 });
-    expect(await tryAs(O, `select reassign_step($1, $2)`, [stepB, tech2])).toMatch(/E_BAD_BRANCH/);
+    expect((await admin(`select count(*)::int t from repair_steps where device_id = $1 and status = 'pending'`, [x])).rows[0].t).toBeGreaterThan(0);
+    expect(await tryAs(O, `select reassign_step($1, $2)`, [stepB, tech2])).toMatch(/E_TECH_BRANCH/);
+    // اسم فني جهاز الفرع التاني
+    expect((await as(U.reception, `select device_tech_name($1) n`, [devB])).rows[0].n).toBeNull();
+    expect((await as(U.reception, `select device_tech_name($1) n`, [dev])).rows[0].n).toBe('فني');
+  });
+
+  it('جهاز اتنقل لفرع تاني واتستلم: خطواته بتخرج من فني الفرع القديم، والتحصيل الأوفلاين القديم بيتسجل', async () => {
+    const x = id();
+    await as(O, `insert into devices(id, customer_id, brand, model, issue, branch_id) values ($1, $2, 'Oppo', 'A9', 'شحن', $3)`, [x, cust, main]);
+    await as(O, `select set_route($1, $2)`, [x, route]);
+    await admin(`update repair_steps set technician_id = $2, status = case when step_no = (select min(step_no) from repair_steps where device_id = $1 and status = 'pending') then 'active' else status end where device_id = $1 and status = 'pending'`, [x, tech2]);
+    await as(O, `select send_device($1, $2)`, [x, B2]);
+    await as(O, `select receive_device($1)`, [x]);
+    const open = (await admin(`select technician_id, status from repair_steps where device_id = $1 and status in ('pending', 'active')`, [x])).rows;
+    expect(open.length).toBeGreaterThan(0);
+    for (const o of open) expect(o).toEqual({ technician_id: null, status: 'pending' });
+    // الاستقبال حصّلت كاش أوفلاين قبل النقل
+    expect(await tryAs(U.reception, `select record_payment($1, $2, $3, 500, $4)`, [id(), cust, cash, x])).toBeNull();
+  });
+
+  it('مرتجع ضمان: ما يروحش لفني اتنقل من الفرع', async () => {
+    const x = id();
+    await as(O, `insert into devices(id, customer_id, brand, model, issue, branch_id) values ($1, $2, 'Oppo', 'A3', 'شحن', $3)`, [x, cust, B2]);
+    const sp = (await admin(`select specialty_id from repair_steps where id = $1`, [step])).rows[0].specialty_id;
+    await admin(`update repair_steps set status = 'skipped' where device_id = $1`, [x]);
+    await admin(`insert into repair_steps(shop_id, device_id, route_id, step_no, specialty_id, technician_id, status) values ($1, $2, $3, 90, $4, $5, 'done')`, [shop, x, route, sp, tech2]);
+    await admin(`set session_replication_role = replica`);
+    await admin(`update devices set status = 'delivered', delivered_at = now() where id = $1`, [x]);
+    await admin(`set session_replication_role = origin`);
+    await as(O, `update devices set status = 'warranty_return' where id = $1`, [x]);
+    expect((await admin(`select technician_id from repair_steps where device_id = $1 and step_no > 90`, [x])).rows).toEqual([{ technician_id: null }]);
   });
 
   it('جهاز في الطريق لفرع الموظف: بيشوفه وبيستلمه، وما يعدّلوش قبل الاستلام', async () => {
@@ -368,6 +404,8 @@ d('(34) مصفوفة الصلاحيات', () => {
       ] as [string, unknown[]][])
         expect(await tryAs(U.reception, sql, p), sql).toMatch(/E_FORBIDDEN/);
       expect(await tryAs(U.branch_manager, `select soft_delete('device', $1, 'غلط')`, [devB])).toMatch(/E_FORBIDDEN/);
+      for (const t of ["device_costs set estimated_cost = 1", "device_checks set items = '{\"screen\":\"bad\"}'"])
+        expect(await tryAs(U.reception, `update ${t} where device_id = $1`, [devB]), t).toMatch(DENIED);
       for (const r of [C, A, T] as Role[]) expect(await tryAs(U[r], `select receive_device($1)`, [devB]), r).toMatch(DENIED);
       expect(await tryAs(U.reception, `select receive_device($1)`, [devB])).toBeNull();
       // نوع الفرع ما يحبسش الجهاز في الطريق
