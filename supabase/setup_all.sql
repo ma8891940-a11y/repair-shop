@@ -17448,7 +17448,7 @@ begin
   if exists (select 1 from public.journal_entries r where r.reverses_id = o.id) then raise exception 'E_ALREADY_REVERSED'; end if;
   -- موبايل مستعمل: بيترجع بإلغاء بيعه (عشان حالته ترجع "متاح")
   if exists (select 1 from public.used_devices u where u.sold_entry = o.id and u.item_id = sl.item_id) then raise exception 'E_USED_RETURN'; end if;
-  if p_qty is null or p_qty <= 0 then raise exception 'E_RETURN_QTY'; end if;
+  if p_qty is null or p_qty <= 0 or p_qty > sl.qty - public.sale_line_returned(sl.id) then raise exception 'E_RETURN_QTY'; end if;
   select * into it from public.items where id = sl.item_id and shop_id = s for update;
   if p_restock and it.deleted_at is not null then raise exception 'E_NOT_FOUND'; end if;
   amt := p_qty * sl.price;
@@ -17495,7 +17495,7 @@ begin
     select coalesce(sum(m.qty), 0), coalesce(sum(m.value), 0) into item_back, cost_back
       from public.stock_moves m join public.sale_lines r on r.entry_id = m.entry_id and r.item_id = m.item_id join public.sale_lines b on b.id = r.return_of
       where b.entry_id = o.id and m.item_id = sl.item_id and not exists (select 1 from public.journal_entries x where x.reverses_id = r.entry_id);
-    cost := greatest(0, div(sold_cost::numeric * (item_back + p_qty), sold::numeric)::bigint - 0);
+    cost := greatest(0, div(sold_cost::numeric * (item_back + p_qty), sold::numeric)::bigint - cost_back);
   end if;
   if amt = 0 and cost = 0 then raise exception 'E_BAD_AMOUNT'; end if;
 
