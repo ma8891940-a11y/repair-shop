@@ -267,7 +267,7 @@ begin
   perform public.ledger_require(array['owner']::public.app_role[]);
   if p_patch is null or jsonb_typeof(p_patch) <> 'object' or p_patch = '{}'::jsonb then raise exception 'E_BAD_INPUT'; end if;
   -- نفس الـ update: التعديل التاني بيستنى الأول وبيبني على اللي اتحفظ
-  update public.shops sh set extras = '{}'::jsonb || (
+  update public.shops sh set extras = coalesce(sh.extras, '{}'::jsonb) || (
     select jsonb_object_agg(k.key, case when p_merge and jsonb_typeof(k.value) = 'object' and jsonb_typeof(sh.extras -> k.key) = 'object'
                                         then (sh.extras -> k.key) || k.value else k.value end)
     from jsonb_each(p_patch) k)
@@ -315,6 +315,7 @@ begin
      or exists (select 1 from public.suppliers where shop_id = s) or exists (select 1 from public.payments where shop_id = s)
      or exists (select 1 from public.purchases where shop_id = s) or exists (select 1 from public.drawer_closings where shop_id = s)
      or exists (select 1 from public.stock_moves where shop_id = s)
+     or exists (select 1 from public.attendance where shop_id = s and deleted_at is null)
      or exists (select 1 from public.profiles where shop_id = s and id <> me) then
     raise exception 'E_RESTORE_NOT_EMPTY';
   end if;
