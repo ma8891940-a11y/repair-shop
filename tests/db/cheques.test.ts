@@ -196,6 +196,40 @@ d('الشيكات', () => {
     await expect(as(O, `select cheque_receive($1, $2, 'D-3', null, $3, 1000, null, $4)`, [id(), cust, DUE, id()], main)).rejects.toThrow(/E_NOT_FOUND/);
   });
 
+  it('الشيكات القديمة (قبل 0065، ليها قيد استلام) بتكمّل بطريقتها: الصرف من "تحت التحصيل"، والرفض بيرجّع الدين، والدفتر متوازن', async () => {
+    const before = await partyBal(cust, 'ar');
+    // شيك بالطريقة القديمة بالظبط: قيد استلام (تحت التحصيل / العملاء) والشيك مربوط بيه
+    const legacy = async (no: string, amount: number) => {
+      const c = id();
+      await db.query('begin');
+      try {
+        await db.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: O, role: 'authenticated' })]);
+        const e = (await db.query(`select ledger_post('cheque_in', $1, null, jsonb_build_array(
+            ledger_line(ledger_acc('cheques_in'), $2, 0, 'customer', $3), ledger_line(ledger_acc('ar'), 0, $2, 'customer', $3)), null, $1) e`, [c, amount, cust])).rows[0].e;
+        await db.query(`insert into cheques(id, shop_id, branch_id, direction, party_type, party_id, cheque_no, due_date, amount, entry_id)
+            values ($1, $2, $3, 'in', 'customer', $4, $5, $6, $7, $8)`, [c, shop, main, cust, no, DUE, amount, e]);
+        await db.query('commit');
+      } catch (err) {
+        await db.query('rollback');
+        throw err;
+      }
+      return c;
+    };
+    const c1 = await legacy('L-1', 30000);
+    const c2 = await legacy('L-2', 20000);
+    expect(await partyBal(cust, 'ar')).toBe(before - 50000);
+    expect(await accBal('cheques_in')).toBe(50000);
+    await as(O, `select cheque_clear($1, $2, $3)`, [id(), c1, bank], main);
+    expect(await accBal('cheques_in')).toBe(20000);
+    expect(await partyBal(cust, 'ar')).toBe(before - 50000);
+    await as(O, `select cheque_bounce($1, $2, 'رصيد')`, [id(), c2], main);
+    expect(await accBal('cheques_in')).toBe(0);
+    expect(await partyBal(cust, 'ar')).toBe(before - 30000);
+    expect((await pos()).balanced).toBe(true);
+    // صرف الشيك القديم ما بيعملش دفعة تانية (الدين اتخصم وقت الاستلام)
+    expect((await admin(`select count(*)::int n from payments p join cheques c on c.settle_entry_id = p.entry_id where c.id = $1`, [c1])).rows[0].n).toBe(0);
+  });
+
   it('محل تاني ما يشوفش شيكات المحل ده', async () => {
     const X = await user(`chq-x-${tag}@c.test`);
     await as(X, `select bootstrap_account('تاني', 'محل تاني')`);

@@ -281,7 +281,8 @@ export function VoucherPrint() {
     const cash = accs.find((a) => a.id === cashLine.account_id)!;
     // القيد اتلغى بقيد عكسي: السند بيتطبع عليه "ملغي" عشان الورقة تفضل مطابقة للدفتر
     const rev = must(await supabase.from('journal_entries').select('entry_no').eq('reverses_id', id).maybeSingle()) as { entry_no: number } | null;
-    const pay = e.source_type === 'payment' ? ((await supabase.from('payments').select('method').eq('entry_id', id).maybeSingle()).data as { method: string } | null) : null;
+    // صرف شيك العميل (0065) بيسجل دفعة برضه
+    const pay = e.source_type === 'payment' || e.source_type === 'cheque_clear' ? ((await supabase.from('payments').select('method').eq('entry_id', id).maybeSingle()).data as { method: string } | null) : null;
     const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'voucher').eq('is_default', true).is('deleted_at', null);
     const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
     const pick = list.find((x) => x.branch_id && x.branch_id === (e.branch_id ?? br.working?.id)) ?? list.find((x) => !x.branch_id);
