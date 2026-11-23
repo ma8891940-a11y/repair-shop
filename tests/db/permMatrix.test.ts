@@ -106,8 +106,9 @@ d('(34) مصفوفة الصلاحيات', () => {
       await as(O, `select set_route($1, $2)`, [x, route]);
       await as(O, `select set_device_passcode($1, 'pin', '4821')`, [x]);
     }
-    // الجهازين على الفني التاني بس
-    await admin(`update repair_steps set technician_id = $2 where device_id = any ($1) and status = 'pending'`, [[dev, devB], tech2]);
+    await as(O, `select set_route($1, $2)`, [devX, route]);
+    // الأجهزة على الفني التاني بس
+    await admin(`update repair_steps set technician_id = $2 where device_id = any ($1) and status = 'pending'`, [[dev, devB, devX], tech2]);
     const firstStep = async (x: string) => (await admin(`select id from repair_steps where device_id = $1 and status = 'pending' order by step_no limit 1`, [x])).rows[0].id;
     step = await firstStep(dev);
     stepB = await firstStep(devB);
@@ -383,9 +384,9 @@ d('(34) مصفوفة الصلاحيات', () => {
     const x = id();
     await as(O, `insert into devices(id, customer_id, brand, model, issue, branch_id) values ($1, $2, 'Oppo', 'A3', 'شحن', $3)`, [x, cust, B2]);
     const sp = (await admin(`select specialty_id from repair_steps where id = $1`, [step])).rows[0].specialty_id;
+    await admin(`set session_replication_role = replica`);
     await admin(`update repair_steps set status = 'skipped' where device_id = $1`, [x]);
     await admin(`insert into repair_steps(shop_id, device_id, route_id, step_no, specialty_id, technician_id, status) values ($1, $2, $3, 90, $4, $5, 'done')`, [shop, x, route, sp, tech2]);
-    await admin(`set session_replication_role = replica`);
     await admin(`update devices set status = 'delivered', delivered_at = now() where id = $1`, [x]);
     await admin(`set session_replication_role = origin`);
     await as(O, `update devices set status = 'warranty_return' where id = $1`, [x]);

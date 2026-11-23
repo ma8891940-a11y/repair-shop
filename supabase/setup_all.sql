@@ -17070,7 +17070,8 @@ end $$;
 -- ============================== 0071_device_children.sql ==============================
 -- 0071: (24ب) تفاصيل الجهاز (التكلفة والدفعات والصور والملاحظات والسجل والفحص والخطوات والرسايل وكلمة السر)
 -- كانت معزولة بالمحل بس. بقت: اللي بيشوف الجهاز نفسه (فرعه، والفني أجهزته بس)، والكتابة في فرع الجهاز.
--- سياسات مقيّدة فوق الموجود (بتشيل بس)، من غير أي تغيير في البيانات.
+-- سياسات مقيّدة فوق الموجود (وسياستين ملفات الصور اتعادوا أضيق)، من غير أي تغيير في البيانات.
+-- الدفعات بالخزنة مش بالجهاز: الكاشير والمحاسب بيشوفوا دفعات خزنهم، وكشف العميل محتاجها.
 
 -- الكتابة على الجهاز: فرع الموظف نفسه (مش جهاز في الطريق)، والفني أجهزته بس
 create or replace function public.device_writable(p_device uuid) returns boolean
@@ -17102,21 +17103,22 @@ create policy reach_payments_select on public.payments as restrictive for select
   using (exists (select 1 from public.accounts a where a.id = cashbox_id));
 
 -- ---------- الكتابة ----------
+-- التحديث using (true): الصف باين (القراية فوق)، والممنوع بيرجّع خطأ بدل ما يعدّي من غير ما حاجة تتحفظ
 create policy reach_device_costs_insert on public.device_costs as restrictive for insert to authenticated with check (public.device_writable(device_id));
-create policy reach_device_costs_update on public.device_costs as restrictive for update to authenticated using (public.device_writable(device_id)) with check (public.device_writable(device_id));
+create policy reach_device_costs_update on public.device_costs as restrictive for update to authenticated using (true) with check (public.device_writable(device_id));
 create policy reach_device_notes_insert on public.device_notes as restrictive for insert to authenticated
   with check ((select public.has_perm('devices', 'view')) and public.device_writable(device_id));
-create policy reach_device_notes_update on public.device_notes as restrictive for update to authenticated using (public.device_writable(device_id)) with check (public.device_writable(device_id));
+create policy reach_device_notes_update on public.device_notes as restrictive for update to authenticated using (true) with check (public.device_writable(device_id));
 create policy reach_device_photos_insert on public.device_photos as restrictive for insert to authenticated
   with check (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add'))) and public.device_writable(device_id));
 create policy reach_device_photos_update on public.device_photos as restrictive for update to authenticated
-  using ((select public.has_perm('devices', 'edit')) and public.device_writable(device_id)) with check (public.device_writable(device_id));
+  using (true) with check ((select public.has_perm('devices', 'edit')) and public.device_writable(device_id));
 create policy reach_device_checks_insert on public.device_checks as restrictive for insert to authenticated
   with check (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add'))) and public.device_writable(device_id));
 create policy reach_device_checks_update on public.device_checks as restrictive for update to authenticated
-  using (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add'))) and public.device_writable(device_id)) with check (public.device_writable(device_id));
+  using (true) with check (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add'))) and public.device_writable(device_id));
 create policy reach_message_log_insert on public.message_log as restrictive for insert to authenticated
-  with check (device_id is null or exists (select 1 from public.devices d where d.id = device_id));
+  with check (case when device_id is null then (select public.has_perm('customers', 'view')) else exists (select 1 from public.devices d where d.id = device_id) end);
 
 -- ---------- ملفات الصور نفسها ----------
 drop policy if exists device_photos_read on storage.objects;
@@ -17125,6 +17127,15 @@ create policy device_photos_read on storage.objects for select to authenticated
     bucket_id = 'device-photos'
     and (storage.foldername(name))[1] = (select public.current_shop_id())::text
     and exists (select 1 from public.devices d where d.id = case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end)
+  );
+drop policy if exists device_photos_upload on storage.objects;
+create policy device_photos_upload on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'device-photos'
+    and (storage.foldername(name))[1] = (select public.current_shop_id())::text
+    and (select public.current_app_role()) in ('owner', 'reception')
+    and ((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add')))
+    and public.device_writable(case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end)
   );
 
 -- ---------- التوزيع: الفني في فرع الجهاز بس ----------
@@ -17274,7 +17285,7 @@ begin
   if not found or s.status not in ('pending', 'active') then raise exception 'E_NOT_FOUND'; end if;
   perform public.device_require(s.device_id, 'edit');
   if p_tech is not null and not exists (select 1 from public.profiles where id = p_tech and shop_id = s.shop_id and role = 'technician' and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
-  if p_tech is not null and not public.tech_in_branch(p_tech, (select branch_id from public.devices where id = s.device_id)) then raise exception 'E_BAD_BRANCH'; end if;
+  if p_tech is not null and not public.tech_in_branch(p_tech, (select branch_id from public.devices where id = s.device_id)) then raise exception 'E_TECH_BRANCH'; end if;
   update public.repair_steps set technician_id = p_tech, status = case when status = 'active' then 'pending' else status end, started_at = null where id = s.id;
 end $$;
 
@@ -17297,7 +17308,11 @@ begin
   if p_device is not null then
     select * into dev from public.devices where id = p_device and shop_id = cb.shop_id and deleted_at is null;
     if not found or dev.customer_id <> p_customer then raise exception 'E_CROSS_SHOP'; end if;
-    if public.device_reach(p_device) is not true then raise exception 'E_FORBIDDEN'; end if;
+    -- أو كان في فرعي واتنقل: كاش اتحصّل أوفلاين قبل النقل لازم يتسجل
+    if public.device_reach(p_device) is not true and not exists (
+        select 1 from public.audit_log l where l.shop_id = cb.shop_id and l.entity = 'devices' and l.entity_id = p_device and l.action = 'device_receive' and public.can_branch((l.before ->> 'branch')::uuid)) then
+      raise exception 'E_FORBIDDEN';
+    end if;
   end if;
   e := public.ledger_post('payment', p_id, p_note, jsonb_build_array(
     public.ledger_line(cb.id, p_amount, 0),
@@ -17307,3 +17322,51 @@ begin
   values (p_id, cb.shop_id, p_customer, p_device, cb.id, coalesce(p_method, cb.method), p_amount, e, auth.uid());
   return e;
 end $$;
+
+-- receive_device: (src: 0070_perm_matrix.sql) + الخطوات المفتوحة بتتوزع على فنيين الفرع الجديد
+create or replace function public.receive_device(p_device uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); d public.devices;
+begin
+  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
+  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
+  select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
+  if not found or d.transfer_to is null then raise exception 'E_NOT_FOUND'; end if;
+  if not public.can_branch(d.transfer_to) then raise exception 'E_FORBIDDEN'; end if;
+  perform set_config('app.device_move', 'on', true);
+  update public.devices set branch_id = d.transfer_to, transfer_to = null, transfer_at = null, transfer_by = null where id = d.id;
+  perform set_config('app.device_move', 'off', true);
+  update public.repair_steps st set technician_id = public.pick_technician(d.id, st.specialty_id), status = 'pending', started_at = null
+  where st.device_id = d.id and st.status in ('pending', 'active') and st.technician_id is not null and not public.tech_in_branch(st.technician_id, d.transfer_to);
+  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
+  values (s, auth.uid(), 'device_receive', 'devices', d.id, jsonb_build_object('branch', d.branch_id), jsonb_build_object('branch', d.transfer_to));
+end $$;
+
+-- tg_device_warranty_tech: (src: 0014_technicians.sql) + الفني لازم يكون لسه في فرع الجهاز، وإلا توزيع جديد
+create or replace function public.tg_device_warranty_tech() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare t uuid; sp uuid; n int;
+begin
+  if new.status = 'warranty_return' and old.status is distinct from 'warranty_return' then
+    select s.technician_id, s.specialty_id into t, sp from public.repair_steps s
+     where s.device_id = new.id and s.status = 'done' and s.technician_id is not null order by s.step_no desc limit 1;
+    if t is not null and not public.tech_in_branch(t, new.branch_id) then t := public.pick_technician(new.id, sp); end if;
+    perform set_config('warsha.routing', 'on', true);
+    update public.devices set priority = 'warranty', return_of_tech = t where id = new.id;
+    perform set_config('warsha.routing', 'off', true);
+    if sp is not null then
+      select coalesce(max(step_no), 0) into n from public.repair_steps where device_id = new.id;
+      insert into public.repair_steps(shop_id, device_id, route_id, step_no, specialty_id, technician_id)
+      values (new.shop_id, new.id, new.route_id, n + 1, sp, t);
+    end if;
+  end if;
+  return null;
+end $$;
+
+-- device_tech_name: (src: 0014_technicians.sql) + جهاز يوصله الموظف بس
+create or replace function public.device_tech_name(p_device uuid) returns text
+language sql stable security definer set search_path = public as $$
+  select split_part(p.full_name, ' ', 1) from public.repair_steps s join public.profiles p on p.id = s.technician_id
+  where s.device_id = p_device and s.shop_id = public.current_shop_id() and public.device_reach(p_device) and s.status in ('active', 'pending', 'done')
+  order by case s.status when 'active' then 0 when 'pending' then 1 else 2 end, s.step_no desc limit 1
+$$;

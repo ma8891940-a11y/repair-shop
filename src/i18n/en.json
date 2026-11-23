@@ -515,6 +515,7 @@
       "E_DUP_NAME": "A branch with this name already exists",
       "E_BAD_PREFIX": "Prefix: 1 to 4 capital letters or digits (like B2)",
       "E_MAIN_BRANCH": "The main branch can't be closed",
+      "E_TECH_BRANCH": "This technician isn't in the device's branch",
       "E_BAD_BRANCH": "This branch isn't available",
       "E_BRANCH_CASHBOX": "This cashbox belongs to another branch. Pick one from the same branch",
       "E_BRANCH_MOVE": "A device changes branch only through \"Send to branch\"",
