@@ -16412,6 +16412,7 @@ begin
     q := (l ->> 'qty')::bigint;
     p := (l ->> 'price')::bigint;
     if p = 0 then
+      if public.current_app_role() <> 'owner' and not public.has_perm('inventory', 'amounts') then raise exception 'E_FREE_SALE'; end if;
       if nullif(trim(l ->> 'reason'), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
       insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
       values (s, auth.uid(), 'free_sale', 'items', it.id, jsonb_build_object('name', it.name, 'qty', q, 'reason', left(trim(l ->> 'reason'), 300), 'entry', e));
