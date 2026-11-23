@@ -3078,9 +3078,9 @@
     "newTitle": "New item",
     "saveAndPick": "Save & pick",
     "created": "Item «{{name}}» added",
-    "noStock": "Not enough stock for this item ({{n}} available). Record the quantity and cost first:",
-    "stockIn": "Record quantity & cost",
-    "stockInDone": "Quantity recorded",
+    "noStock": "Not enough stock ({{n}} available). The sale is blocked until you record a stock adjustment with a reason, or lower the quantity:",
+    "stockIn": "Stock adjustment",
+    "stockInDone": "Stock adjustment recorded",
     "unsettled": "Needs settlement ({{n}})",
     "unsettledHint": "Sold without stock. When you record the quantity and cost, the accounts settle automatically",
     "allowNegative": "Allow selling without stock",
@@ -3090,7 +3090,9 @@
     "allModels": "All models",
     "allQualities": "All qualities",
     "filteredTitle": "Items matching the filter now",
-    "filteredItems": "Items"
+    "filteredItems": "Items",
+    "noStockBlocked": "Not enough stock ({{n}} available). Lower the quantity, or ask the owner for a stock adjustment.",
+    "adjustReason": "Adjustment reason"
   },
   "inst": {
     "title": {
