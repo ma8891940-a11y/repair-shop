@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Send } from 'lucide-react';
 import { useMe } from './auth';
 import { useBranch } from './branch';
-import { rpc, type Position } from './ledgerApi';
+import { rpc, type DayCash, type Position } from './ledgerApi';
 import { supabase } from '../lib/supabase';
 import { cairoDay, cairoDayEnd, cairoDayStart } from '../lib/dates';
 import { daySummaryText, readExtras, waShareUrl } from '../lib/extras';
@@ -43,15 +43,16 @@ export function DaySummaryButton() {
         recQ = recQ.eq('branch_id', br.filter);
         readyQ = readyQ.eq('branch_id', br.filter);
       }
-      const [p, received, ready] = await Promise.all([
+      const [p, cash, received, ready] = await Promise.all([
         rpc<Position>('financial_position', { p_from: from, p_to: to, p_branch: br.filter }),
+        rpc<DayCash>('day_cash_report', { p_from: from, p_to: to, p_branch: br.filter }),
         count(recQ),
         count(readyQ),
       ]);
       const text = daySummaryText(
         shop.name,
         f.dateLong(new Date()),
-        { received, delivered: p.delivered, ready, revenue: p.revenue, expenses: p.expenses, byMethod: Object.fromEntries(Object.entries(p.by_method).map(([k, v]) => [k, Number(v)])) },
+        { received, delivered: p.delivered, ready, revenue: p.revenue, expenses: p.expenses, byMethod: Object.fromEntries(cash.collections.map((c) => [c.method, Number(c.total)])) },
         {
           title: t('extras.summary.title'),
           received: t('extras.summary.received'),

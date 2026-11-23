@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
 import { useLoad, must } from '../../app/useLoad';
 import { loadLink } from '../../app/finance/PartyLink';
-import { rpc, useAccountName, type Position, type Statement, type StatementKind } from '../../app/ledgerApi';
+import { rpc, useAccountName, type DayCash, type Position, type Statement, type StatementKind } from '../../app/ledgerApi';
 import { usePeriod } from '../../app/finance/PeriodFilter';
 import { supabase } from '../../lib/supabase';
 import { cairoDayEnd, cairoDayStart } from '../../lib/dates';
@@ -555,11 +555,12 @@ export function DayReportPrint() {
   const { data } = useLoad(async () => {
     const from = cairoDayStart(day).toISOString();
     const to = cairoDayEnd(day).toISOString();
-    const [p, pl] = await Promise.all([
+    const [p, pl, cash] = await Promise.all([
       rpc<Position>('financial_position', { p_from: from, p_to: to }),
       rpc<{ account_id: string; code: string | null; name: string | null; type: 'revenue' | 'expense'; amount: number }[]>('pl_breakdown', { p_from: from, p_to: to }),
+      rpc<DayCash>('day_cash_report', { p_from: from, p_to: to }),
     ]);
-    return { p, pl };
+    return { p, pl, cash };
   }, [day]);
   const Line = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
     <tr className={bold ? 'font-bold' : ''}>
@@ -607,23 +608,62 @@ export function DayReportPrint() {
               </div>
             </section>
             <section>
-              <h2 className="mb-1 border-b border-black font-semibold">{t('fin.byMethod')}</h2>
-              <table className="w-full">
+              {/* بند 1 (qa-37): التحصيل كله، صيانة + بيع، مش دفعات الصيانة بس */}
+              <h2 className="mb-1 border-b border-black font-semibold">{t('fin.day.collections')}</h2>
+              <table className="w-full" data-testid="day-collections">
+                <thead>
+                  <tr className="text-start text-xs">
+                    <th className="text-start font-normal">{t('fin.day.method')}</th>
+                    <th className="text-end font-normal">{t('fin.day.repairs')}</th>
+                    <th className="text-end font-normal">{t('fin.day.sales')}</th>
+                    <th className="text-end font-normal">{t('fin.day.refunds')}</th>
+                    <th className="text-end font-normal">{t('fin.total')}</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {Object.entries(data.p.by_method).map(([m, v]) => (
-                    <Line key={m} label={t(`payments.${m}`, { defaultValue: m })} value={f.money(Number(v))} />
+                  {data.cash.collections.map((c) => (
+                    <tr key={c.method} data-method={c.method}>
+                      <td className="py-0.5">{t(`payments.${c.method}`, { defaultValue: c.method })}</td>
+                      {[c.payments, c.sales, -c.refunds, c.total].map((v, i) => (
+                        <td key={i} className={cn('py-0.5 text-end font-mono', i === 3 && 'font-bold')} dir="ltr" data-col={i === 3 ? 'total' : undefined}>
+                          {f.money(v)}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                  {Object.keys(data.p.by_method).length === 0 && <Line label={t('fin.noMoves')} value="" />}
+                  {data.cash.collections.length === 0 && <Line label={t('fin.noMoves')} value="" />}
                 </tbody>
               </table>
-              <h2 className="mb-1 mt-4 border-b border-black font-semibold">{t('fin.cashboxes')}</h2>
-              <table className="w-full">
-                <tbody>
-                  {data.p.cashboxes.map((c) => (
-                    <Line key={c.id} label={accName(c)} value={f.money(c.balance)} />
-                  ))}
-                </tbody>
-              </table>
+              <p className="mt-1 text-xs">{t('fin.day.collectionsHint')}</p>
+              <h2 className="mb-1 mt-4 border-b border-black font-semibold">{t('fin.day.reconcile')}</h2>
+              {data.cash.cashboxes.map((c) => (
+                <div key={c.id} className="mb-3 break-inside-avoid" data-testid="day-box" data-box={c.id}>
+                  <p className="font-semibold">{accName(c)}</p>
+                  <table className="w-full">
+                    <tbody>
+                      <Line label={t('fin.day.opening')} value={f.money(c.opening)} />
+                      <Line label={t('fin.day.in')} value={`+ ${f.money(c.in)}`} />
+                      <Line label={t('fin.day.out')} value={`- ${f.money(c.out)}`} />
+                      <Line label={t('fin.day.closing')} value={f.money(c.closing)} bold />
+                    </tbody>
+                  </table>
+                  {c.entries.length > 0 && (
+                    <ul className="mt-1 text-xs">
+                      {c.entries.map((e) => (
+                        <li key={e.entry_id + (e.in ? 'd' : 'c')} className={cn('flex justify-between gap-2', e.cancelled && 'line-through')}>
+                          <a href={`#/finance/entry/${e.entry_id}`} className="underline">
+                            #{e.entry_no} · {t(`fin.src.${e.source_type}`, { defaultValue: e.source_type })}
+                          </a>
+                          <span className="font-mono" dir="ltr">
+                            {e.in ? `+ ${f.money(e.in)}` : `- ${f.money(e.out)}`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              {data.cash.cashboxes.length === 0 && <p>{t('fin.noMoves')}</p>}
               <h2 className="mb-1 mt-4 border-b border-black font-semibold">{t('fin.closings')}</h2>
               <table className="w-full">
                 <tbody>

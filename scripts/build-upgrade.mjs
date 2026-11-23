@@ -35,7 +35,8 @@ function functions(text) {
 export function markers(root = process.cwd()) {
   const dir = join(root, 'supabase', 'migrations');
   const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
-  const texts = files.map((f) => readFileSync(join(dir, f), 'utf8'));
+  // CRLF على ويندوز (autocrlf) بيكبّر حجم الملفات ويغيّر تقسيم الأجزاء
+  const texts = files.map((f) => readFileSync(join(dir, f), 'utf8').replace(/\r\n/g, '\n'));
   const res = [];
   for (let i = 0; i < files.length; i++) {
     const t = texts[i];

@@ -56,6 +56,12 @@ export interface Position {
   delivered: number;
   closings: { cashbox: string; expected: number; counted: number; diff: number; at: string; by: string | null }[];
 }
+// 0064: التقرير اليومي: التحصيل كله (صيانة + بيع) وتسوية كل خزنة
+export interface DayCash {
+  collections: { method: string; payments: number; sales: number; refunds: number; total: number }[];
+  cashboxes: (Cashbox & { opening: number; in: number; out: number; closing: number;
+    entries: { entry_id: string; entry_no: number; source_type: SourceType; memo: string | null; at: string; in: number; out: number; cancelled: boolean }[] })[];
+}
 export interface Move {
   entry_id: string;
   entry_no: number;
