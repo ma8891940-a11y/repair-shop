@@ -192,7 +192,8 @@ d('(34) مصفوفة الصلاحيات', () => {
     const wrong: string[] = [];
     for (const [name, sql, params, allowed] of matrix()) {
       const own = await tryAs(O, sql, params);
-      if (own) wrong.push(`owner ${name}: ${own}`);
+      // التسليم بالآجل: الجهاز لسه مش "جاهز"، فصاحب المحل بيعدّي الصلاحية ويقف عند الانتقال
+      if (own && own !== 'E_BAD_TRANSITION') wrong.push(`owner ${name}: ${own}`);
       for (const r of ROLES) {
         const e = await tryAs(U[r], sql, params);
         if (allowed.includes(r) ? e !== null : e === null || !DENIED.test(e)) wrong.push(`${r} ${name}: ${e ?? 'اتنفذت'}`);
