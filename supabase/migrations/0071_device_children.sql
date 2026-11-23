@@ -54,7 +54,7 @@ create policy device_photos_read on storage.objects for select to authenticated
   using (
     bucket_id = 'device-photos'
     and (storage.foldername(name))[1] = (select public.current_shop_id())::text
-    and exists (select 1 from public.devices d where d.id::text = (storage.foldername(objects.name))[2])
+    and exists (select 1 from public.devices d where d.id = case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end)
   );
 
 -- ---------- التوزيع: الفني في فرع الجهاز بس ----------
