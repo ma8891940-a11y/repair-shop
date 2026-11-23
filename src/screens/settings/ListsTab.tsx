@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
 import { LIST_KEYS, readListsEdit, useListLabel, useShopList, type ListKey } from '../../app/lists';
 import { useMe } from '../../app/auth';
-import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { Checkbox } from '../../ui/Checkbox';
 import { useToast } from '../../ui/Toast';
@@ -99,9 +99,8 @@ function ListsPermission() {
   const toast = useToast();
   const roles = readListsEdit(shop.extras);
   async function set(role: string, on: boolean) {
-    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
     const next = on ? [...new Set([...roles, role])] : roles.filter((r) => r !== role);
-    const { error } = await supabase.from('shops').update({ extras: { ...ex, lists_edit: next } }).eq('id', shop.id);
+    const { error } = await saveExtras({ lists_edit: next });
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await refresh();
     toast({ tone: 'ok', title: t('settings.saved') });

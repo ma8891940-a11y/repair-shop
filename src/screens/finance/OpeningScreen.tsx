@@ -11,6 +11,7 @@ import { useMe } from '../../app/auth';
 import { useLoad, must } from '../../app/useLoad';
 import { loadCashboxes, opId, rpc, useAccountName, type StockRow } from '../../app/ledgerApi';
 import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { parsePounds } from '../../lib/money';
 import { toLatinDigits } from '../../lib/digits';
@@ -51,9 +52,7 @@ export function OpeningScreen() {
   const [step, setStep] = useState<Step>(() => OPENING_STEPS.find((k) => !prog.steps[k]) ?? 'summary');
 
   async function mark(k: OpeningStep) {
-    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
-    const steps = { ...((ex.opening_steps as Record<string, boolean>) ?? {}), [k]: true };
-    await supabase.from('shops').update({ extras: { ...ex, opening_steps: steps } }).eq('id', shop.id);
+    await saveExtras({ opening_steps: { [k]: true } }, true);
     await refresh();
     setStep(STEPS[STEPS.indexOf(k) + 1]);
   }
@@ -600,8 +599,7 @@ function SummaryStep() {
     return Object.fromEntries(Object.entries(s).map(([k, v]) => [k, typeof v === 'boolean' ? v : Number(v)])) as unknown as Summary;
   }, []);
   async function finish() {
-    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
-    const { error: e } = await supabase.from('shops').update({ extras: { ...ex, opening_done: true } }).eq('id', shop.id);
+    const { error: e } = await saveExtras({ opening_done: true });
     if (e) return toast({ tone: 'danger', title: errorMessage(e) });
     await refresh();
     toast({ tone: 'ok', title: t('opening.finished') });

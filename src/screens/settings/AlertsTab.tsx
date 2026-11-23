@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMe } from "../../app/auth";
-import { supabase } from "../../lib/supabase";
+import { saveExtras } from "../../app/shopExtras";
 import { errorMessage } from "../../lib/errors";
 import { toLatinDigits } from "../../lib/digits";
 import { Panel, PanelHeader } from "../../ui/Panel";
@@ -40,16 +40,7 @@ export function AlertsTab() {
     const d = Number(toLatinDigits(days.trim()));
     if (!Number.isInteger(d) || d < 0 || d > 30)
       return setErr(t("notify.daysHint"));
-    const raw = (
-      shop.extras && typeof shop.extras === "object" ? shop.extras : {}
-    ) as Record<string, unknown>;
-    const prev = (
-      raw.reminders && typeof raw.reminders === "object" ? raw.reminders : {}
-    ) as Record<string, unknown>;
-    const { error } = await supabase
-      .from("shops")
-      .update({ extras: { ...raw, reminders: { ...prev, days: d } } })
-      .eq("id", shop.id);
+    const { error } = await saveExtras({ reminders: { days: d } }, true);
     if (error) return setErr(errorMessage(error));
     await refresh();
     toast({ tone: "ok", title: t("settings.saved") });

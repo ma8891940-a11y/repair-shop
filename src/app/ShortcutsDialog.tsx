@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMe } from './auth';
 import { comboFromEvent, comboProblem, SHORTCUTS, type ShortcutAction, type ShortcutDef } from './shortcutsRegistry';
-import { supabase } from '../lib/supabase';
+import { saveExtras } from './shopExtras';
 import { errorMessage } from '../lib/errors';
 import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
@@ -30,7 +30,7 @@ export function ShortcutsDialog({ open, onOpenChange, shortcuts }: { open: boole
     const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
     const cur = (ex.shortcuts && typeof ex.shortcuts === 'object' ? ex.shortcuts : {}) as Record<string, string>;
     const merged = Object.fromEntries(Object.entries({ ...cur, ...next }).filter(([, v]) => !!v)) as Record<string, string>;
-    const { error } = await supabase.from('shops').update({ extras: { ...ex, shortcuts: merged } }).eq('id', shop.id);
+    const { error } = await saveExtras({ shortcuts: merged });
     if (error) return setErr(errorMessage(error));
     await refresh();
     toast({ tone: 'ok', title: t('shortcuts.saved') });

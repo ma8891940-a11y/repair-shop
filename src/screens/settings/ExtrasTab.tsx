@@ -5,6 +5,7 @@ import { readPrint } from '../../lib/printPlan';
 import { useMe } from '../../app/auth';
 import { useLoad, must } from '../../app/useLoad';
 import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { readExtras, type Extras } from '../../lib/extras';
 import { parsePounds } from '../../lib/money';
@@ -38,16 +39,14 @@ export function ExtrasTab() {
   const presets = useLoad(async () => must(await supabase.from('issue_presets').select('id, label, issue, est_cost, sort').is('deleted_at', null).order('sort').order('created_at')) as Preset[], []);
 
   async function toggle(k: keyof Extras, v: boolean) {
-    // لازم نحافظ على باقي الإعدادات المتخزنة في نفس المكان (الاختصارات، والطباعة...): قبل كده الحفظ هنا كان بيمسحها
-    const raw = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
     const patch: Record<string, unknown> = { [k]: v };
     // "اطبع تلقائي" هو نفس خيار الإعدادات ← الطباعة
     if (k === 'auto_print') {
       // (S5) "اطبع تلقائي" هنا = الاستيكر والإيصال الورقي تلقائي بعد الاستلام (الإعدادات ← الطباعة فيها التفاصيل)
-      const cur = readPrint(raw);
-      patch.print = { ...((raw.print as object) ?? {}), auto: { ...cur.auto, sticker: v, paper: v } };
+      const cur = readPrint(shop.extras);
+      patch.print = { auto: { ...cur.auto, sticker: v, paper: v } };
     }
-    const { error } = await supabase.from('shops').update({ extras: { ...raw, ...extras, ...patch } }).eq('id', shop.id);
+    const { error } = await saveExtras(patch, true);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await refresh();
     toast({ tone: 'ok', title: t('settings.saved') });

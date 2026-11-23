@@ -11,6 +11,7 @@ import { PeriodFilter, usePeriod } from '../app/finance/PeriodFilter';
 import { ExportMenu } from '../app/exporting';
 import { ATT_CHANGED, AttendanceButton } from '../app/AttendanceButton';
 import { supabase } from '../lib/supabase';
+import { saveExtras } from '../app/shopExtras';
 import { errorMessage } from '../lib/errors';
 import { toLatinDigits } from '../lib/digits';
 import { hm, totalsByPerson, type AttendanceRow } from '../lib/attendance';
@@ -206,7 +207,7 @@ export function AttendanceScreen() {
           </Panel>
         )}
 
-        {owner && <StartTimePanel extras={shop.extras} shopId={shop.id} onSaved={refresh} />}
+        {owner && <StartTimePanel extras={shop.extras} onSaved={refresh} />}
       </div>
 
       {edit && (
@@ -300,7 +301,7 @@ function EditDialog({ mode, row, staff, onClose, onDone }: { mode: 'fix' | 'add'
 }
 
 /** ميعاد بداية الشغل والسماح (للتأخير في التقرير بس) */
-function StartTimePanel({ extras, shopId, onSaved }: { extras: unknown; shopId: string; onSaved: () => Promise<void> | void }) {
+function StartTimePanel({ extras, onSaved }: { extras: unknown; onSaved: () => Promise<void> | void }) {
   const { t } = useTranslation();
   const toast = useToast();
   const raw = (extras && typeof extras === 'object' ? extras : {}) as Record<string, unknown>;
@@ -309,10 +310,7 @@ function StartTimePanel({ extras, shopId, onSaved }: { extras: unknown; shopId: 
   const [grace, setGrace] = useState(String(cur.grace_min ?? 15));
   async function save() {
     const g = Math.min(Math.max(Math.trunc(Number(toLatinDigits(grace.trim()))) || 0, 0), 120);
-    const { error } = await supabase
-      .from('shops')
-      .update({ extras: { ...raw, attendance: { start: start || null, grace_min: g } } })
-      .eq('id', shopId);
+    const { error } = await saveExtras({ attendance: { start: start || null, grace_min: g } });
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await onSaved();
     toast({ tone: 'ok', title: t('settings.saved') });

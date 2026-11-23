@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ruler } from 'lucide-react';
 import { useMe } from '../../app/auth';
-import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { toLatinDigits } from '../../lib/digits';
 import { ACTIONS, readPrint, readSticker, STICKER_PRESETS, type PrintAction, type PrintSettings, type StickerSettings } from '../../lib/printPlan';
@@ -60,12 +60,9 @@ export function PrintTab() {
     return run;
   }
   async function saveNow(next: PrintSettings) {
-    const ex = (extras.current && typeof extras.current === 'object' ? extras.current : {}) as Record<string, unknown>;
-    const prev = (ex.print && typeof ex.print === 'object' ? ex.print : {}) as Record<string, unknown>;
-    const all = { ...prev, ...next };
-    const anyAuto = ACTIONS.some((a) => all.auto[a as PrintAction]);
+    const anyAuto = ACTIONS.some((a) => next.auto[a as PrintAction]);
     try {
-      const { error } = await supabase.from('shops').update({ extras: { ...ex, print: all, auto_print: anyAuto } }).eq('id', shop.id);
+      const { error } = await saveExtras({ print: next, auto_print: anyAuto }, true);
       if (error) throw error;
       await refresh();
       toast({ tone: 'ok', title: t('settings.saved') });

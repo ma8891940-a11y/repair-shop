@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
-import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { readAllowNegative } from '../../lib/extras';
 import { Panel, PanelHeader } from '../../ui/Panel';
@@ -14,9 +14,7 @@ export function InventoryTab() {
   const toast = useToast();
   const on = readAllowNegative(shop.extras);
   async function toggle(v: boolean) {
-    // باقي الإعدادات المتخزنة في نفس المكان بتفضل زي ما هي
-    const raw = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
-    const { error } = await supabase.from('shops').update({ extras: { ...raw, allow_negative_stock: v } }).eq('id', shop.id);
+    const { error } = await saveExtras({ allow_negative_stock: v });
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await refresh();
     toast({ tone: 'ok', title: t('settings.saved') });
