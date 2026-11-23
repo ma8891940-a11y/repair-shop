@@ -79,20 +79,23 @@ d('الشيكات', () => {
   }, 60_000);
   afterAll(async () => db?.end());
 
-  it('شيك من عميل: اللي عليه بيقل على طول، والشيك تحت التحصيل لحد الصرف، وبعد الصرف الفلوس في البنك', async () => {
+  // قرار صاحب المشروع (0065): الشيك "تحت التحصيل" ما بيقللش الدين غير لما يتصرف
+  it('شيك من عميل: الدين ما بيقلش وقت الاستلام، وبيقل وقت الصرف والفلوس في البنك', async () => {
     expect(await partyBal(cust, 'ar')).toBe(500000);
     const c = id();
     await as(O, `select cheque_receive($1, $2, '000123', 'البنك الأهلي', $3, 300000, 'دفعة')`, [c, cust, DUE], main);
     await as(O, `select cheque_receive($1, $2, '000123', 'البنك الأهلي', $3, 300000, 'دفعة')`, [c, cust, DUE], main); // نفس الطلب مرتين = مرة
-    expect(await partyBal(cust, 'ar')).toBe(200000);
-    expect(await accBal('cheques_in')).toBe(300000);
-    expect((await admin(`select status, branch_id from cheques where id = $1`, [c])).rows[0]).toEqual({ status: 'pending', branch_id: main });
-    const p0 = await pos();
-    expect(p0).toMatchObject({ balanced: true, cheques_in: 300000 });
+    expect(await partyBal(cust, 'ar')).toBe(500000);
+    expect(await accBal('cheques_in')).toBe(0);
+    expect((await admin(`select status, branch_id, entry_id from cheques where id = $1`, [c])).rows[0]).toEqual({ status: 'pending', branch_id: main, entry_id: null });
+    expect((await pos()).balanced).toBe(true);
     const op = id();
     await as(O, `select cheque_clear($1, $2, $3)`, [op, c, bank], main);
     await as(O, `select cheque_clear($1, $2, $3)`, [op, c, bank], main);
+    expect(await partyBal(cust, 'ar')).toBe(200000);
     expect(await accBal('cheques_in')).toBe(0);
+    // الصرف بيتسجل دفعة من العميل (مرة واحدة)
+    expect((await admin(`select count(*)::int n, sum(amount)::bigint a from payments where customer_id = $1`, [cust])).rows[0]).toEqual({ n: 1, a: '300000' });
     expect((await admin(`select status from cheques where id = $1`, [c])).rows[0].status).toBe('cleared');
     expect((await pos()).cashboxes.find((x: { id: string }) => x.id === bank).balance).toBe(300000);
     await expect(as(O, `select cheque_bounce($1, $2, 'متأخر')`, [id(), c], main)).rejects.toThrow(/E_CHEQUE_DONE/);
@@ -101,18 +104,23 @@ d('الشيكات', () => {
     expect(await accBal('cheques_in')).toBe(0);
   });
 
-  it('شيك مرفوض: الدين بيرجع على العميل زي ما كان، ومن غير سبب مرفوض', async () => {
+  it('شيك مرفوض: الدين فضل زي ما هو من غير قيد، والسبب متسجل، ومن غير سبب مرفوض، ونفس الطلب مرتين = مرة', async () => {
     const c = id();
     await as(O, `select cheque_receive($1, $2, '000124', null, $3, 200000)`, [c, cust, DUE], main);
-    expect(await partyBal(cust, 'ar')).toBe(0);
+    expect(await partyBal(cust, 'ar')).toBe(200000);
     await expect(as(O, `select cheque_bounce($1, $2, '  ')`, [id(), c], main)).rejects.toThrow(/E_REASON_REQUIRED/);
-    await as(O, `select cheque_bounce($1, $2, 'رصيد غير كافي')`, [id(), c], main);
+    const op = id();
+    await as(O, `select cheque_bounce($1, $2, 'رصيد غير كافي')`, [op, c], main);
+    await as(O, `select cheque_bounce($1, $2, 'رصيد غير كافي')`, [op, c], main);
+    await expect(as(O, `select cheque_bounce($1, $2, 'تاني')`, [id(), c], main)).rejects.toThrow(/E_CHEQUE_DONE/);
     expect(await partyBal(cust, 'ar')).toBe(200000);
     expect(await accBal('cheques_in')).toBe(0);
-    expect((await admin(`select status from cheques where id = $1`, [c])).rows[0].status).toBe('bounced');
-    // كشف حساب العميل بيبيّن الشيك والرفض
+    const row = (await admin(`select status, note, settle_entry_id from cheques where id = $1`, [c])).rows[0];
+    expect(row).toMatchObject({ status: 'bounced', settle_entry_id: null });
+    expect(row.note).toContain('رصيد غير كافي');
+    // كشف حساب العميل: البيع وصرف الشيك الأول بس (الشيك المرفوض ما عملش قيد)
     const st = (await admin(`select e.source_type from journal_lines l join journal_entries e on e.id = l.entry_id join accounts a on a.id = l.account_id where a.code = 'ar' and l.party_id = $1 order by e.entry_no`, [cust])).rows.map((r) => r.source_type);
-    expect(st).toEqual(['sale', 'cheque_in', 'cheque_in', 'cheque_bounce']);
+    expect(st).toEqual(['sale', 'cheque_clear']);
   });
 
   it('شيك لمورد: اللي له بيقل، والشيك مستحق الدفع، وبعد الصرف بيخرج من البنك. والمرفوض بيرجّع الدين', async () => {
@@ -137,14 +145,13 @@ d('الشيكات', () => {
   it('قيود الشيكات ما بتتلغيش بقيد عكسي (الرفض بس)، وما حدش يكتب في الجدول مباشرة، ومفيش حذف', async () => {
     const c = id();
     await as(O, `select cheque_receive($1, $2, '9001', null, $3, 1000)`, [c, cust, DUE], main);
-    const e = (await admin(`select entry_id from cheques where id = $1`, [c])).rows[0].entry_id;
+    const e = (await as(O, `select cheque_clear($1, $2, $3) e`, [id(), c, bank], main)).rows[0].e;
     await expect(as(O, `select reverse_entry($1, 'غلط')`, [e])).rejects.toThrow(/E_CHEQUE_REVERSAL/);
     expect((await as(O, `update cheques set amount = 1 where id = $1 returning id`, [c]).catch(() => ({ rowCount: 0 }))).rowCount).toBe(0);
     await expect(admin(`delete from cheques where id = $1`, [c])).rejects.toThrow();
     await expect(as(O, `select cheque_receive($1, $2, '', null, $3, 1000)`, [id(), cust, DUE])).rejects.toThrow(/E_BAD_INPUT/);
     await expect(as(O, `select cheque_receive($1, $2, '1', null, $3, 0)`, [id(), cust, DUE])).rejects.toThrow(/E_BAD_AMOUNT/);
     await expect(as(O, `select cheque_receive($1, $2, '1', null, $3, 1000)`, [id(), id(), DUE])).rejects.toThrow(/E_NOT_FOUND/);
-    await as(O, `select cheque_bounce($1, $2, 'تنظيف')`, [id(), c], main);
   });
 
   it('الصلاحيات والفروع: الاستقبال من غير صلاحية لأ، وبصلاحية المالية في فرعه بس', async () => {
@@ -163,9 +170,64 @@ d('الشيكات', () => {
     // الصرف بخزنة فرع تاني مرفوض، والرفض من صاحب المحل وهو فاتح فرع تاني بيتسجل في فرع الشيك نفسه
     const mainBank = (await admin(`select id from accounts where shop_id = $1 and branch_id = $2 and method = 'cash'`, [shop, main])).rows[0].id;
     await expect(as(O, `select cheque_clear($1, $2, $3)`, [id(), c, mainBank], main)).rejects.toThrow(/E_BRANCH/);
-    const be = (await as(O, `select cheque_bounce($1, $2, 'تجربة') e`, [id(), c], main)).rows[0].e;
+    const b2Cash = (await admin(`select id from accounts where shop_id = $1 and branch_id = $2 and method = 'cash'`, [shop, B2])).rows[0].id;
+    const be = (await as(O, `select cheque_clear($1, $2, $3) e`, [id(), c, b2Cash], main)).rows[0].e;
     expect((await admin(`select branch_id from journal_entries where id = $1`, [be])).rows[0].branch_id).toBe(B2);
     for (const u of [R1, R2]) for (const op of ['view', 'add']) await as(O, `select set_staff_override($1, 'finance', $2, null)`, [u, op]);
+  });
+
+  it('التسليم قبل صرف الشيك: ممنوع (الشيك مش دفعة)، وصاحب المحل بس يسلّم بالآجل، وبعد الصرف الجهاز مدفوع', async () => {
+    const [d1, d2] = [id(), id()];
+    await as(O, `insert into devices(id, customer_id, brand, model, issue) values ($1, $3, 'Samsung', 'A54', 'شاشة'), ($2, $3, 'Oppo', 'A78', 'شحن')`, [d1, d2, cust], main);
+    await as(O, `insert into device_costs(shop_id, device_id, final_cost) values (gen_random_uuid(), $1, 50000), (gen_random_uuid(), $2, 70000)`, [d1, d2], main);
+    for (const d of [d1, d2]) for (const st of ['inspecting', 'in_repair', 'repaired', 'ready']) await as(O, `update devices set status = $2 where id = $1`, [d, st], main);
+    const c1 = id();
+    await as(O, `select cheque_receive($1, $2, 'D-1', null, $3, 50000, null, $4)`, [c1, cust, DUE, d1], main);
+    await expect(as(O, `update devices set status = 'delivered' where id = $1`, [d1], main)).rejects.toThrow(/E_UNPAID/);
+    await as(O, `select cheque_clear($1, $2, $3)`, [id(), c1, bank], main);
+    await as(O, `update devices set status = 'delivered' where id = $1`, [d1], main);
+    // شيك على جهاز تاني لسه ما اتصرفش: الاستقبال ما تقدرش تسلّم، وصاحب المحل يقدر بالآجل
+    await as(O, `select cheque_receive($1, $2, 'D-2', null, $3, 70000, null, $4)`, [id(), cust, DUE, d2], main);
+    await expect(as(R1, `update devices set status = 'delivered' where id = $1`, [d2], main)).rejects.toThrow(/E_UNPAID/);
+    await expect(as(R1, `select deliver_on_credit($1)`, [d2], main)).rejects.toThrow(/E_FORBIDDEN/);
+    await as(O, `select deliver_on_credit($1)`, [d2], main);
+    expect((await admin(`select status from devices where id = $1`, [d2])).rows[0].status).toBe('delivered');
+    // الجهاز لازم يكون بتاع نفس العميل
+    await expect(as(O, `select cheque_receive($1, $2, 'D-3', null, $3, 1000, null, $4)`, [id(), cust, DUE, id()], main)).rejects.toThrow(/E_NOT_FOUND/);
+  });
+
+  it('الشيكات القديمة (قبل 0065، ليها قيد استلام) بتكمّل بطريقتها: الصرف من "تحت التحصيل"، والرفض بيرجّع الدين، والدفتر متوازن', async () => {
+    const before = await partyBal(cust, 'ar');
+    // شيك بالطريقة القديمة بالظبط: قيد استلام (تحت التحصيل / العملاء) والشيك مربوط بيه
+    const legacy = async (no: string, amount: number) => {
+      const c = id();
+      await db.query('begin');
+      try {
+        await db.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: O, role: 'authenticated' })]);
+        const e = (await db.query(`select ledger_post('cheque_in', $1, null, jsonb_build_array(
+            ledger_line(ledger_acc('cheques_in'), $2, 0, 'customer', $3), ledger_line(ledger_acc('ar'), 0, $2, 'customer', $3)), null, $1) e`, [c, amount, cust])).rows[0].e;
+        await db.query(`insert into cheques(id, shop_id, branch_id, direction, party_type, party_id, cheque_no, due_date, amount, entry_id)
+            values ($1, $2, $3, 'in', 'customer', $4, $5, $6, $7, $8)`, [c, shop, main, cust, no, DUE, amount, e]);
+        await db.query('commit');
+      } catch (err) {
+        await db.query('rollback');
+        throw err;
+      }
+      return c;
+    };
+    const c1 = await legacy('L-1', 30000);
+    const c2 = await legacy('L-2', 20000);
+    expect(await partyBal(cust, 'ar')).toBe(before - 50000);
+    expect(await accBal('cheques_in')).toBe(50000);
+    await as(O, `select cheque_clear($1, $2, $3)`, [id(), c1, bank], main);
+    expect(await accBal('cheques_in')).toBe(20000);
+    expect(await partyBal(cust, 'ar')).toBe(before - 50000);
+    await as(O, `select cheque_bounce($1, $2, 'رصيد')`, [id(), c2], main);
+    expect(await accBal('cheques_in')).toBe(0);
+    expect(await partyBal(cust, 'ar')).toBe(before - 30000);
+    expect((await pos()).balanced).toBe(true);
+    // صرف الشيك القديم ما بيعملش دفعة تانية (الدين اتخصم وقت الاستلام)
+    expect((await admin(`select count(*)::int n from payments p join cheques c on c.settle_entry_id = p.entry_id where c.id = $1`, [c1])).rows[0].n).toBe(0);
   });
 
   it('محل تاني ما يشوفش شيكات المحل ده', async () => {
