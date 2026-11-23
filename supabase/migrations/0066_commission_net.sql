@@ -17,7 +17,7 @@ begin
   n := coalesce(array_length(techs, 1), 0);
   if n = 0 then return; end if;
   fc := coalesce((select c.final_cost from public.device_costs c where c.device_id = p_device and c.deleted_at is null), 0);
-  base := greatest(fc - public.vat_of(fc, public.vat_bp(d.shop_id)) - public.device_parts_cost(p_device), 0);
+  base := greatest(fc - public.device_parts_cost(p_device), 0);
   foreach t in array techs loop
     r := public.commission_rule_for(d.shop_id, t, d.route_id, d.branch_id);
     continue when r.id is null;
