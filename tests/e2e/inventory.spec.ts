@@ -72,6 +72,7 @@ test('المخزون: استيراد Excel ← شراء ← هالك ← مرت�
   await expect(page.getByText('اتسجل البيع')).toBeVisible();
   await page.getByTestId('op-sale_return').click();
   dlg = page.getByRole('dialog');
+  await dlg.getByTestId('ret-noInvoice').click();
   await pickItem(dlg, 'جراب شفاف', { qty: 5 });
   await fillField(dlg.getByLabel('المبلغ اللي هيرجع للعميل'), '50');
   await fillField(dlg.getByLabel('السبب'), 'غيّر رأيه');
