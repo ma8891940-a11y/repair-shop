@@ -1,7 +1,7 @@
 -- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.
 -- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).
 -- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql, 0070_perm_matrix.sql, 0071_device_children.sql, 0072_sale_line_return.sql, 0073_shop_extras.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql, 0070_perm_matrix.sql, 0071_device_children.sql, 0072_sale_line_return.sql, 0073_shop_extras.sql, 0074_idem_cheque_plan.sql
 
 -- ============================== 0001_phase1.sql ==============================
 -- =====================================================================
@@ -17757,4 +17757,79 @@ begin
   insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
   values (s, me, 'backup_restore', 'shops', s, jsonb_build_object('from_shop', old_shop, 'generated_at', p_data->>'generated_at', 'counts', counts));
   return jsonb_build_object('restored', true, 'counts', counts);
+end $$;
+
+-- ============================== 0074_idem_cheque_plan.sql ==============================
+-- 0074: (22ب) ضغطتين متزامنتين على استلام شيك أو إصداره أو حفظ خطة أقساط: التاني بيستنى الأول ويرجّع نفس الرقم من غير خطأ.
+-- ledger_idem (0067) بياخد القفل على رقم العملية قبل ما الدالة تبص هي موجودة ولا لأ.
+
+-- cheque_receive: (src: 0065_cheque_pending.sql) + القفل
+create or replace function public.cheque_receive(p_id uuid, p_customer uuid, p_no text, p_bank text, p_due date, p_amount bigint, p_note text default null, p_device uuid default null)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id();
+begin
+  perform public.cheque_require();
+  perform public.ledger_idem(p_id);
+  if exists (select 1 from public.cheques where id = p_id) then return p_id; end if;
+  perform public.ledger_amount(p_amount);
+  if coalesce(trim(p_no), '') = '' or p_due is null then raise exception 'E_BAD_INPUT'; end if;
+  if not exists (select 1 from public.customers where id = p_customer and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if p_device is not null and not exists (select 1 from public.devices where id = p_device and shop_id = s and customer_id = p_customer and deleted_at is null and public.can_branch(branch_id)) then
+    raise exception 'E_NOT_FOUND';
+  end if;
+  insert into public.cheques(id, shop_id, branch_id, direction, party_type, party_id, cheque_no, bank, due_date, amount, entry_id, device_id, note, created_by)
+  values (p_id, s, public.op_branch(), 'in', 'customer', p_customer, trim(p_no), nullif(trim(p_bank), ''), p_due, p_amount, null, p_device, nullif(trim(p_note), ''), auth.uid());
+  return p_id;
+end $$;
+
+-- cheque_issue: (src: 0063_cheques.sql) + القفل
+create or replace function public.cheque_issue(p_id uuid, p_supplier uuid, p_no text, p_bank text, p_due date, p_amount bigint, p_note text default null)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); e uuid;
+begin
+  perform public.cheque_require();
+  perform public.ledger_idem(p_id);
+  if exists (select 1 from public.cheques where id = p_id) then return p_id; end if;
+  perform public.ledger_amount(p_amount);
+  if coalesce(trim(p_no), '') = '' or p_due is null then raise exception 'E_BAD_INPUT'; end if;
+  if not exists (select 1 from public.suppliers where id = p_supplier and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  e := public.ledger_post('cheque_out', p_id, nullif(trim(p_note), ''), jsonb_build_array(
+    public.ledger_line(public.ledger_acc('ap'), p_amount, 0, 'supplier', p_supplier),
+    public.ledger_line(public.ledger_acc('cheques_out'), 0, p_amount, 'supplier', p_supplier)), null, p_id);
+  insert into public.cheques(id, shop_id, branch_id, direction, party_type, party_id, cheque_no, bank, due_date, amount, entry_id, note, created_by)
+  values (p_id, s, public.op_branch(), 'out', 'supplier', p_supplier, trim(p_no), nullif(trim(p_bank), ''), p_due, p_amount, e, nullif(trim(p_note), ''), auth.uid());
+  return p_id;
+end $$;
+
+-- save_plan: (src: 0039_payment_plans.sql) + القفل
+create or replace function public.save_plan(p_id uuid, p_party_type text, p_party uuid, p_rows jsonb, p_title text default null, p_note text default null) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); r jsonb; n integer := 0; tot bigint := 0; a bigint; d date;
+begin
+  perform public.grant_require('finance', 'add');
+  perform public.ledger_idem(p_id);
+  if exists (select 1 from public.payment_plans where id = p_id) then
+    if exists (select 1 from public.payment_plans where id = p_id and shop_id = s) then return p_id; end if;
+    raise exception 'E_NOT_FOUND';
+  end if;
+  if p_party_type not in ('customer', 'supplier') then raise exception 'E_BAD_INPUT'; end if;
+  if p_party_type = 'customer' and not exists (select 1 from public.customers where id = p_party and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if p_party_type = 'supplier' and not exists (select 1 from public.suppliers where id = p_party and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) not between 1 and 120 then raise exception 'E_BAD_INPUT'; end if;
+  insert into public.payment_plans(id, shop_id, branch_id, party_type, party_id, title, total, note, created_by)
+  values (p_id, s, public.op_branch(), p_party_type, p_party, nullif(trim(p_title), ''), 1, nullif(trim(p_note), ''), auth.uid());
+  for r in select * from jsonb_array_elements(p_rows) loop
+    n := n + 1;
+    a := (r ->> 'amount')::bigint;
+    d := (r ->> 'due')::date;
+    if a is null or a <= 0 or d is null then raise exception 'E_BAD_AMOUNT'; end if;
+    perform public.ledger_amount(a);
+    tot := tot + a;
+    insert into public.plan_installments(shop_id, plan_id, seq, due_date, amount) values (s, p_id, n, d, a);
+  end loop;
+  perform public.ledger_amount(tot);
+  update public.payment_plans set total = tot where id = p_id;
+  return p_id;
 end $$;
