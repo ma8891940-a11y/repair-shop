@@ -2,6 +2,7 @@
 // الاستخدام: npm run db:setup-file
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export function buildSetup(root = process.cwd()) {
   const dir = join(root, 'supabase', 'migrations');
@@ -13,11 +14,12 @@ export function buildSetup(root = process.cwd()) {
     `-- الملفات: ${files.join(', ')}`,
     '',
   ].join('\n');
-  const body = files.map((f) => `-- ============================== ${f} ==============================\n${readFileSync(join(dir, f), 'utf8').trimEnd()}\n`).join('\n');
+  const body = files.map((f) => `-- ============================== ${f} ==============================\n${readFileSync(join(dir, f), 'utf8').replace(/\r\n/g, '\n').trimEnd()}\n`).join('\n');
   return head + '\n' + body;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL: عشان يشتغل على ويندوز كمان (file:///E:/...)
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   writeFileSync(join(process.cwd(), 'supabase', 'setup_all.sql'), buildSetup());
   console.log('supabase/setup_all.sql');
   // ترقية مشروع شغّال (بيشوف الموجود ويشغّل الناقص بس)
