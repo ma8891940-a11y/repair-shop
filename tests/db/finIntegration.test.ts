@@ -155,6 +155,26 @@ d('تكامل مالي (بند 2)', () => {
     expect((await admin(`select count(*)::int n from payments where id = $1 or entry_id in (select id from journal_entries where idem_key = $1)`, [pay])).rows[0].n).toBe(1);
   });
 
+  it('(22ب) شيك مستلم وشيك صادر وخطة أقساط متزامنين بنفس الرقم: مرة واحدة من غير خطأ', async () => {
+    const sup2 = id();
+    await as(O, `insert into suppliers(id, shop_id, name) values ($1, gen_random_uuid(), 'مورد الشيك')`, [sup2]);
+    const a = await snap();
+    const [c1, c2, pl] = [id(), id(), id()];
+    const rows = JSON.stringify([{ due: '2026-12-30', amount: 1000 }, { due: '2027-01-30', amount: 2500 }]);
+    for (const [op, sql, params] of [
+      [c1, `select cheque_receive($1, $2, 'T-1', null, '2026-12-31', 1000) r`, [c1, cust]],
+      [c2, `select cheque_issue($1, $2, 'T-2', null, '2026-12-31', 1000) r`, [c2, sup2]],
+      [pl, `select save_plan($1, 'customer', $2, $3::jsonb) r`, [pl, cust, rows]],
+    ] as [string, string, unknown[]][]) {
+      const [r1, r2] = await twice(O, sql, params, main);
+      expect([r1.rows[0].r, r2.rows[0].r]).toEqual([op, op]);
+    }
+    const b = await snap();
+    expect(b.entries - a.entries).toBe(1); // الشيك الصادر بس ليه قيد وقت الإصدار
+    expect((await admin(`select count(*)::int n from cheques where id in ($1, $2)`, [c1, c2])).rows[0].n).toBe(2);
+    expect((await admin(`select amount::int a from plan_installments where plan_id = $1 order by seq`, [pl])).rows.map((x) => x.a)).toEqual([1000, 2500]);
+  });
+
   it('إلغاء البيع: بيرجّع الخزنة والمخزون والإيراد والتكلفة بالظبط، ومرة واحدة بس', async () => {
     const a = await snap();
     const e = (await as(O, `select record_sale($1, $2::jsonb, $3) e`, [id(), JSON.stringify([{ item: acc, qty: 3, price: 15025 }]), cash], main)).rows[0].e;
