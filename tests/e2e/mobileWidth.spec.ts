@@ -90,8 +90,8 @@ for (const lang of ['ar', 'en'] as const) {
         await check(`${w}px ${p}`);
         if (p === device) {
           // اسم الجهاز الطويل ظاهر كله (بيلف)، مش مقصوص بـ "..."
-          const name = page.getByText(LONG_MODEL).first();
-          if (!(await name.isVisible())) note(`${w}px ${p}: اسم الجهاز مش ظاهر`);
+          const name = page.getByTestId('device-title');
+          if (!(await name.isVisible()) || !(await name.innerText()).includes(LONG_MODEL)) note(`${w}px ${p}: اسم الجهاز مش ظاهر كله`);
           else if (await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1)) note(`${w}px ${p}: اسم الجهاز مقصوص`);
         }
         if (p === '/#/inventory') {
@@ -104,6 +104,8 @@ for (const lang of ['ar', 'en'] as const) {
           await save.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
           const b = await save.boundingBox({ timeout: 5000 }).catch(() => null);
           if (!b || b.x < 0 || b.x + b.width > w + 1) note(`${w}px نافذة البيع: زرار الحفظ بره الشاشة (${JSON.stringify(b)})`);
+          // ومش متغطي (بالشريط اللي تحت مثلًا): أول عنصر في نص الزرار هو الزرار نفسه
+          else if (!(await save.evaluate((el) => { const r = el.getBoundingClientRect(); const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!top && el.contains(top); }))) note(`${w}px نافذة البيع: زرار الحفظ متغطي`);
           await page.keyboard.press('Escape');
         }
       }
