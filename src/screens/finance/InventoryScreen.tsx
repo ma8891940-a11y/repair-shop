@@ -190,7 +190,7 @@ export function InventoryScreen() {
         actions={
           <div className="flex flex-wrap gap-2">
             {front && (
-              <Button size="sm" icon={<ShoppingCart className="size-4" />} onClick={() => setDlg('sale')}>
+              <Button size="sm" icon={<ShoppingCart className="size-4" />} onClick={() => setDlg('sale')} data-testid="op-sale">
                 {t('inv.sale')}
               </Button>
             )}
