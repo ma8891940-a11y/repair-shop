@@ -286,7 +286,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
               </motion.div>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-lg font-semibold text-fg">
+              <div className="break-words text-lg font-semibold text-fg" data-testid="device-title">
                 {d.brand} {d.model}
               </div>
               <div className="text-sm text-fg-3">
