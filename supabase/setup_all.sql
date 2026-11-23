@@ -15039,10 +15039,16 @@ $$;
 revoke execute on function public.vat_of(bigint, integer) from public, anon;
 grant execute on function public.vat_of(bigint, integer) to authenticated;
 
--- حساب الضريبة لكل المحلات الموجودة
-insert into public.accounts(shop_id, code, type, kind)
-select sh.id, 'vat_payable', 'liability', 'tax' from public.shops sh
-on conflict (shop_id, code) where code is not null do nothing;
+-- حساب الضريبة لكل المحلات الموجودة.
+-- warsha.system: الترقية بتشتغل من SQL Editor من غير مستخدم، وtg_force_shop_id كان بيرفض (E_NO_SHOP) لو فيه محلات
+do $vat$
+begin
+  perform set_config('warsha.system', 'on', true);
+  insert into public.accounts(shop_id, code, type, kind)
+  select sh.id, 'vat_payable', 'liability', 'tax' from public.shops sh
+  on conflict (shop_id, code) where code is not null do nothing;
+  perform set_config('warsha.system', 'off', true);
+end $vat$;
 
 -- ---------- ضريبة جهاز اتسلّم (للفاتورة والإيصال) ----------
 -- من قيد التسليم نفسه (مش من النسبة الحالية). الفني لأ (مفيش أسعار)
@@ -15501,10 +15507,16 @@ alter table public.journal_entries add constraint journal_entries_source_type_ch
   'partner_capital', 'partner_withdrawal', 'profit_distribution', 'netting', 'stock_transfer', 'commission', 'bonus', 'penalty', 'vat_payment',
   'cheque_in', 'cheque_out', 'cheque_clear', 'cheque_bounce']));
 
-insert into public.accounts(shop_id, code, type, kind)
-select sh.id, v.code, v.type::public.account_type, v.kind from public.shops sh
-cross join (values ('cheques_in', 'asset', 'cheque_in'), ('cheques_out', 'liability', 'cheque_out')) as v(code, type, kind)
-on conflict (shop_id, code) where code is not null do nothing;
+-- حسابات الشيكات لكل المحلات الموجودة (warsha.system: الترقية من SQL Editor من غير مستخدم)
+do $chq$
+begin
+  perform set_config('warsha.system', 'on', true);
+  insert into public.accounts(shop_id, code, type, kind)
+  select sh.id, v.code, v.type::public.account_type, v.kind from public.shops sh
+  cross join (values ('cheques_in', 'asset', 'cheque_in'), ('cheques_out', 'liability', 'cheque_out')) as v(code, type, kind)
+  on conflict (shop_id, code) where code is not null do nothing;
+  perform set_config('warsha.system', 'off', true);
+end $chq$;
 
 -- ---------- الجدول ----------
 create table public.cheques (
