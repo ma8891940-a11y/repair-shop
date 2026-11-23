@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
-import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { cleanBase, readPublicUrl, urlProblem } from '../../lib/publicUrl';
 import { trackingUrl } from '../../lib/messages';
@@ -28,8 +28,7 @@ export function PublicUrlPanel() {
   async function save() {
     if (v.trim() && typedProblem) return;
     setBusy(true);
-    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
-    const { error } = await supabase.from('shops').update({ extras: { ...ex, public_url: v.trim() ? cleanBase(v) : null } }).eq('id', shop.id);
+    const { error } = await saveExtras({ public_url: v.trim() ? cleanBase(v) : null });
     setBusy(false);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await refresh();

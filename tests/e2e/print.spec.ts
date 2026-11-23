@@ -50,7 +50,7 @@ test('الاستيكر: المقاسات السبعة كل البيانات جو
   await ps.getByRole('checkbox', { name: 'طباعة الإطار حوالين الاستيكر' }).click();
   // كل تغيير بيتحفظ على السيرفر بالترتيب: نستنى الحفظ اللي فيه القيمة الجديدة يوصل (مش وقت ثابت ولا أي حفظ)
   const saved = (has: string) =>
-    page.waitForResponse((r) => r.url().includes('/rest/v1/shops') && r.request().method() === 'PATCH' && (r.request().postData() ?? '').includes(has) && r.ok());
+    page.waitForResponse((r) => r.url().includes('/rest/v1/rpc/set_shop_extras') && (r.request().postData() ?? '').includes(has) && r.ok());
   let done = saved('"dx":1.5');
   await ps.getByTestId('sticker-dx').fill('1.5');
   await ps.getByTestId('sticker-dx').blur();

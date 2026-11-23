@@ -4,7 +4,7 @@ import { useMe } from '../../app/auth';
 import { rpc } from '../../app/ledgerApi';
 import { AssistantStateNote } from '../../app/AssistantPanel';
 import { useAssistServer } from '../../app/assist';
-import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { toLatinDigits } from '../../lib/digits';
 import { AREAS, readAssistant, type AssistantSettings, type AssistArea } from '../../lib/assistantSettings';
@@ -35,9 +35,7 @@ export function AssistantTab() {
   }, [shop.extras]);
 
   async function save(patch: Partial<AssistantSettings>) {
-    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
-    const next = { ...s, ...patch };
-    const { error } = await supabase.from('shops').update({ extras: { ...ex, assistant: next } }).eq('id', shop.id);
+    const { error } = await saveExtras({ assistant: patch }, true);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     await refresh();
     toast({ tone: 'ok', title: t('settings.saved') });

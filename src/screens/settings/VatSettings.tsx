@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
-import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { bpToPercent, parsePercentBp, readVat } from '../../lib/vat';
 import { Panel, PanelHeader } from '../../ui/Panel';
@@ -37,11 +37,7 @@ export function VatSettings() {
     if (bp == null || (on && bp === 0)) return setErr(t('vat.errRate'));
     if (on && !reg.trim()) return setErr(t('vat.errReg'));
     setBusy(true);
-    const ex = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
-    const { error } = await supabase
-      .from('shops')
-      .update({ extras: { ...ex, vat: { enabled: on, rate_bp: bp, reg_no: reg.trim().slice(0, 40) } } })
-      .eq('id', shop.id);
+    const { error } = await saveExtras({ vat: { enabled: on, rate_bp: bp, reg_no: reg.trim().slice(0, 40) } });
     setBusy(false);
     if (error) return setErr(errorMessage(error));
     await refresh();

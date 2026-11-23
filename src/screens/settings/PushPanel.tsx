@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BellRing } from 'lucide-react';
 import { useMe } from '../../app/auth';
-import { supabase } from '../../lib/supabase';
+import { saveExtras } from '../../app/shopExtras';
 import { errorMessage } from '../../lib/errors';
 import { disablePush, enablePush, pushState, sendTestPush, type PushState } from '../../lib/push';
 import { readPushWindow } from '../../lib/pushWindow';
@@ -85,12 +85,7 @@ export function PushPanel() {
   }
   async function saveWindow() {
     setNote(null);
-    const raw = (shop.extras && typeof shop.extras === 'object' ? shop.extras : {}) as Record<string, unknown>;
-    const prev = (raw.reminders && typeof raw.reminders === 'object' ? raw.reminders : {}) as Record<string, unknown>;
-    const { error } = await supabase
-      .from('shops')
-      .update({ extras: { ...raw, reminders: { ...prev, push_from: Number(from), push_to: Number(to) } } })
-      .eq('id', shop.id);
+    const { error } = await saveExtras({ reminders: { push_from: Number(from), push_to: Number(to) } }, true);
     if (error) return setNote({ tone: 'danger', text: errorMessage(error) });
     await refresh();
     toast({ tone: 'ok', title: t('settings.saved') });
