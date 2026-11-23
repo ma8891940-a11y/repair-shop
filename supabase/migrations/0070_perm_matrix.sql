@@ -17,14 +17,16 @@ language plpgsql stable security definer set search_path = public as $$
 begin
   if (public.has_perm('devices', p_op) or (p_intake and public.has_perm('intake', 'add'))) is not true then raise exception 'E_FORBIDDEN'; end if;
   if public.device_reach(p_device) is not true then raise exception 'E_FORBIDDEN'; end if;
+  -- جهاز في الطريق لفرعي: أشوفه بس، والتعديل بعد الاستلام (زي سياسة devices_update)
+  if p_op = 'edit' and not exists (select 1 from public.devices d where d.id = p_device and (public.current_app_role() = 'owner' or public.can_branch(d.branch_id))) then raise exception 'E_FORBIDDEN'; end if;
 end $$;
 
--- التصحيح: الموظف (حتى لو معاه "يحذف") في فروعه بس، والمرتبات والشركاء ورأس المال لصاحب المحل بس
+-- التصحيح: الموظف (حتى لو معاه "يحذف") في فروعه بس، والمرتبات والشركاء ورأس المال وسداد الضريبة لصاحب المحل بس
 create or replace function public.entry_require(p_entry uuid) returns void
 language plpgsql stable security definer set search_path = public as $$
 begin
   if public.current_app_role() = 'owner' then return; end if;
-  if exists (select 1 from public.journal_entries e where e.id = p_entry and not public.can_branch(e.branch_id))
+  if exists (select 1 from public.journal_entries e where e.id = p_entry and (e.source_type = 'vat_payment' or not public.can_branch(e.branch_id)))
      or exists (select 1 from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = p_entry
                 and (a.kind in ('advances', 'salaries', 'partner_capital', 'partner_current', 'capital', 'drawings') or (a.kind = 'cash' and not public.can_branch(a.branch_id))))
      or exists (select 1 from public.stock_moves m where m.entry_id = p_entry and not public.can_branch(m.branch_id)) then
@@ -39,7 +41,7 @@ language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); d public.devices;
 begin
   perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  perform public.perm_require('devices', 'edit');
+  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
   select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
   if not found or not public.can_branch(d.branch_id) then raise exception 'E_NOT_FOUND'; end if;
   if d.status = 'delivered' then raise exception 'E_DELIVERED'; end if;
@@ -58,7 +60,7 @@ language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); d public.devices;
 begin
   perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  perform public.perm_require('devices', 'edit');
+  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
   select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
   if not found or d.transfer_to is null then raise exception 'E_NOT_FOUND'; end if;
   if not (public.can_branch(d.branch_id) or public.can_branch(d.transfer_to)) then raise exception 'E_FORBIDDEN'; end if;
@@ -75,7 +77,7 @@ language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); d public.devices;
 begin
   perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  perform public.perm_require('devices', 'edit');
+  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
   select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
   if not found or d.transfer_to is null then raise exception 'E_NOT_FOUND'; end if;
   if not public.can_branch(d.transfer_to) then raise exception 'E_FORBIDDEN'; end if;
@@ -187,7 +189,7 @@ begin
   having -sum(m.qty) > 0;
 end $$;
 
--- device_manual_part: (src: 0036_roles.sql) + الفرع
+-- device_manual_part: (src: 0036_roles.sql) + الفرع والجهاز نفسه
 create or replace function public.device_manual_part(p_id uuid, p_device uuid, p_name text, p_cost bigint, p_cashbox uuid default null, p_supplier uuid default null) returns uuid
 language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); e uuid; credit_line jsonb;
@@ -279,7 +281,7 @@ begin
   values (shop, auth.uid(), 'passcode_set', 'device_passcodes', p_device_id, jsonb_build_object('kind', p_kind));
 end $$;
 
--- reveal_device_passcode: (src: 0005_device_passcode.sql) + الفني أجهزته بس، وفي فرعه
+-- reveal_device_passcode: (src: 0005_device_passcode.sql) + صلاحية "يشوف" في الأجهزة، والفني أجهزته بس، وفي فرعه
 create or replace function public.reveal_device_passcode(p_device_id uuid)
 returns table(kind text, value text)
 language plpgsql security definer set search_path = public as $$
@@ -415,8 +417,7 @@ language plpgsql stable security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); days integer := greatest(30, least(coalesce(p_days, 180), 720));
 begin
   if public.current_app_role() not in ('owner', 'reception') then raise exception 'E_FORBIDDEN'; end if;
-  perform public.perm_require('devices', 'view');
-  perform public.perm_require('customers', 'view');
+  if (public.has_perm('devices', 'view') and public.has_perm('customers', 'view')) is not true then raise exception 'E_FORBIDDEN'; end if;
   return query
   with last_dev as (
     select distinct on (d.customer_id) d.*
@@ -579,7 +580,7 @@ begin
     tbl := 'devices';
     select to_jsonb(x) into before from public.devices x where id = p_id and shop_id = s and deleted_at is null for update;
     if before is null then raise exception 'E_NOT_FOUND'; end if;
-    if public.device_reach(p_id) is not true then raise exception 'E_FORBIDDEN'; end if;
+    if public.current_app_role() <> 'owner' and not public.can_branch((before ->> 'branch_id')::uuid) then raise exception 'E_FORBIDDEN'; end if;
     if exists (select 1 from public.journal_entries e where e.device_id = p_id and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id) and e.source_type not in ('reversal', 'cost_adjust')) then
       raise exception 'E_HAS_MONEY';
     end if;
