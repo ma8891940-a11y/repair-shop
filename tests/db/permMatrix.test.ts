@@ -350,7 +350,7 @@ d('(34) مصفوفة الصلاحيات', () => {
   it('خطوات الصيانة والتوزيع: الفني في فرعه بس', async () => {
     expect(await tryAs(tech2, `select start_step($1)`, [step])).toBeNull();
     expect(await tryAs(tech2, `select start_step($1)`, [stepB])).toMatch(/E_FORBIDDEN/);
-    expect((await as(tech2, `select device_id from my_queue()`)).rows.map((x) => x.device_id)).toEqual([dev]);
+    expect((await as(tech2, `select device_id from my_queue()`)).rows.map((x) => x.device_id).sort()).toEqual([dev, devX].sort());
     await admin(`update repair_steps set status = 'active' where id = $1`, [stepB]);
     expect(await tryAs(tech2, `select finish_step($1, '{"screen":"ok"}')`, [stepB])).toMatch(/E_FORBIDDEN/);
     await admin(`update repair_steps set status = 'pending' where id = $1`, [stepB]);

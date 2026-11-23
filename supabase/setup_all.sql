@@ -17070,7 +17070,7 @@ end $$;
 -- ============================== 0071_device_children.sql ==============================
 -- 0071: (24ب) تفاصيل الجهاز (التكلفة والدفعات والصور والملاحظات والسجل والفحص والخطوات والرسايل وكلمة السر)
 -- كانت معزولة بالمحل بس. بقت: اللي بيشوف الجهاز نفسه (فرعه، والفني أجهزته بس)، والكتابة في فرع الجهاز.
--- سياسات مقيّدة فوق الموجود (وسياستين ملفات الصور اتعادوا أضيق)، من غير أي تغيير في البيانات.
+-- سياسات مقيّدة فوق الموجود (وسياسة قراية ملفات الصور اتعادت أضيق)، من غير أي تغيير في البيانات.
 -- الدفعات بالخزنة مش بالجهاز: الكاشير والمحاسب بيشوفوا دفعات خزنهم، وكشف العميل محتاجها.
 
 -- الكتابة على الجهاز: فرع الموظف نفسه (مش جهاز في الطريق)، والفني أجهزته بس
@@ -17128,14 +17128,13 @@ create policy device_photos_read on storage.objects for select to authenticated
     and (storage.foldername(name))[1] = (select public.current_shop_id())::text
     and exists (select 1 from public.devices d where d.id = case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end)
   );
-drop policy if exists device_photos_upload on storage.objects;
-create policy device_photos_upload on storage.objects for insert to authenticated
+-- الرفع: مقيّدة فوق سياسة 0002 (جلسة الرفع من الموبايل بـ token ليها فحصها)
+create policy device_photos_upload_reach on storage.objects as restrictive for insert to authenticated
   with check (
-    bucket_id = 'device-photos'
-    and (storage.foldername(name))[1] = (select public.current_shop_id())::text
-    and (select public.current_app_role()) in ('owner', 'reception')
-    and ((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add')))
-    and public.device_writable(case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end)
+    bucket_id <> 'device-photos'
+    or public.photo_upload_allowed(name)
+    or (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add')))
+        and public.device_writable(case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end))
   );
 
 -- ---------- التوزيع: الفني في فرع الجهاز بس ----------
