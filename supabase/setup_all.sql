@@ -16332,7 +16332,6 @@ create or replace function public.stock_in(p_id uuid, p_item uuid, p_qty integer
 language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); e uuid; reason text := left(nullif(trim(p_note), ''), 300);
 begin
-  perform public.grant_require('inventory', 'amounts');
   e := public.ledger_idem(p_id);
   if e is not null then return e; end if;
   if reason is null then raise exception 'E_REASON_REQUIRED'; end if;
