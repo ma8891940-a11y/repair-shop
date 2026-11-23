@@ -161,7 +161,7 @@ export function StockInInline({ item, need, onDone }: { item: StockRow; need: nu
   const allowed = usePerms().grant('inventory', 'amounts');
   async function save() {
     setErr(null);
-    if (!reason.trim()) return setErr(t('errors.E_REASON_REQUIRED'));
+    if (!reason.trim()) return setErr(t('errors.db.E_REASON_REQUIRED'));
     const q = Number(toLatinDigits(qty.trim()));
     if (!Number.isInteger(q) || q <= 0) return setErr(t('inv.errMin'));
     const c = parsePounds(cost);

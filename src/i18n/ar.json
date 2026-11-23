@@ -935,6 +935,7 @@
       "device_receive": "{{who}} استلم {{target}} في الفرع",
       "device_transfer_cancel": "{{who}} لغى إرسال {{target}} لفرع تاني",
       "stock_transfer": "{{who}} حوّل {{target}} بين الفروع",
+      "stock_adjust": "{{who}} عمل تسوية مخزون لـ {{target}}",
       "staff_roles": "{{who}} غيّر أدوار {{target}}",
       "seller_viewed": "{{who}} فتح بيانات بائع {{target}}",
       "master_set": "{{who}} حدد كلمة السر الرئيسية",

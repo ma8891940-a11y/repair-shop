@@ -931,6 +931,7 @@
       "device_receive": "{{who}} received {{target}} at the branch",
       "device_transfer_cancel": "{{who}} cancelled sending {{target}} to another branch",
       "stock_transfer": "{{who}} transferred {{target}} between branches",
+      "stock_adjust": "{{who}} recorded a stock adjustment for {{target}}",
       "staff_roles": "{{who}} changed {{target}}'s roles",
       "seller_viewed": "{{who}} opened the seller details of {{target}}",
       "master_set": "{{who}} set the master password",
