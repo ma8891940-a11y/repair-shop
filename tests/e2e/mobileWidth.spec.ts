@@ -16,26 +16,28 @@ async function measure(page: Page) {
     const de = document.documentElement;
     const w = de.clientWidth;
     const out: string[] = [];
-    if (de.scrollWidth > w) {
-      for (const el of Array.from(document.querySelectorAll<HTMLElement>('body *'))) {
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 || (r.right <= w + 1 && r.left >= -1)) continue;
-        // العنصر اللي جوه حاوية بتتسحب لوحدها (جدول عريض مثلًا) مش مشكلة
-        let p = el.parentElement;
-        let scrolls = false;
-        while (p && p !== document.body) {
-          const o = getComputedStyle(p).overflowX;
-          if (o === 'auto' || o === 'scroll' || o === 'hidden' || o === 'clip') {
-            scrolls = true;
-            break;
-          }
-          p = p.parentElement;
+    // بنفحص كل عنصر دايمًا (مش بس لو scrollWidth زاد): في RTL اللي طالع ناحية اليمين ما بيبانش في scrollWidth،
+    // واللي جوه حاوية overflow-hidden بيتقص من غير ما الصفحة تتسحب
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>('body *'))) {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 1 || r.height <= 1 || (r.right <= w + 1 && r.left >= -1)) continue;
+      // الزخرفة (الخلفية والتوهج) aria-hidden، ومش محتوى
+      if (el.closest('[aria-hidden="true"]') || getComputedStyle(el).visibility === 'hidden') continue;
+      // جوه حاوية بتتسحب لوحدها (جدول عريض مثلًا): مقصود. النوافذ بتتفحص لوحدها
+      let p = el.parentElement;
+      let scrolls = false;
+      while (p && p !== document.body) {
+        const o = getComputedStyle(p).overflowX;
+        if (o === 'auto' || o === 'scroll') {
+          scrolls = true;
+          break;
         }
-        if (scrolls) continue;
-        const id = el.dataset.testid ? `[data-testid=${el.dataset.testid}]` : '';
-        out.push(`${el.tagName.toLowerCase()}${id}.${String(el.className).split(' ').slice(0, 4).join('.')} (${Math.round(r.left)}..${Math.round(r.right)})`);
-        if (out.length >= 6) break;
+        p = p.parentElement;
       }
+      if (scrolls) continue;
+      const id = el.dataset.testid ? `[data-testid=${el.dataset.testid}]` : '';
+      out.push(`${el.tagName.toLowerCase()}${id}.${String(el.className).split(' ').slice(0, 4).join('.')} (${Math.round(r.left)}..${Math.round(r.right)})`);
+      if (out.length >= 8) break;
     }
     return { scroll: de.scrollWidth, client: w, out };
   });
