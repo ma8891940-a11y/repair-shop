@@ -16873,20 +16873,21 @@ begin
     where l.shop_id = s and l.account_id in (select id from boxes) and e.occurred_at >= p_from and e.occurred_at < p_to
   ),
   -- طريقة الدفع = طريقة الخزنة (record_payment بيسجل p_method، بس الواجهة ما بتبعتهوش، فهي نفس طريقة الخزنة)
-  -- شيك العميل: بيتحسب تحصيل يوم ما يتصرف (cheque_clear)، وبيظهر في التسوية بس
+  -- شيك العميل: بيتحسب تحصيل يوم ما يتصرف (cheque_clear لخزنة = فلوس دخلت). شيك المورد بيخرج من الخزنة (دائن) فما بيدخلش
   col as (
     select b.method,
            coalesce(sum(m.debit) filter (where m.source_type = 'payment'), 0)::bigint as payments,
            coalesce(sum(m.debit) filter (where m.source_type = 'sale'), 0)::bigint as sales,
+           coalesce(sum(m.debit) filter (where m.source_type = 'cheque_clear'), 0)::bigint as cheques,
            coalesce(sum(m.credit) filter (where m.source_type = 'sale_return'), 0)::bigint as refunds
     from mv m join boxes b on b.id = m.account_id
-    where not m.cancelled and m.source_type in ('payment', 'sale', 'sale_return')
+    where not m.cancelled and m.source_type in ('payment', 'sale', 'cheque_clear', 'sale_return')
     group by b.method
   )
   select jsonb_build_object(
     'branch', p_branch,
-    'collections', coalesce((select jsonb_agg(jsonb_build_object('method', method, 'payments', payments, 'sales', sales, 'refunds', refunds,
-        'total', payments + sales - refunds) order by method) from col where payments + sales + refunds > 0), '[]'::jsonb),
+    'collections', coalesce((select jsonb_agg(jsonb_build_object('method', method, 'payments', payments, 'sales', sales, 'cheques', cheques, 'refunds', refunds,
+        'total', payments + sales + cheques - refunds) order by method) from col where payments + sales + cheques + refunds > 0), '[]'::jsonb),
     'cashboxes', coalesce((select jsonb_agg(x order by x ->> 'code' nulls last, x ->> 'name') from (
       select jsonb_build_object('id', b.id, 'code', b.code, 'name', b.name, 'method', b.method, 'branch_id', b.branch_id,
         'opening', o.opening, 'in', coalesce(t.d, 0), 'out', coalesce(t.c, 0), 'closing', o.opening + coalesce(t.d, 0) - coalesce(t.c, 0),

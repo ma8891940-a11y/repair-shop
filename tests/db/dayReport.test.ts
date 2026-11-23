@@ -32,7 +32,7 @@ const id = () => randomUUID();
 const tag = randomUUID().slice(0, 6);
 
 type Cash = {
-  collections: { method: string; payments: number; sales: number; refunds: number; total: number }[];
+  collections: { method: string; payments: number; sales: number; cheques: number; refunds: number; total: number }[];
   cashboxes: { id: string; opening: number; in: number; out: number; closing: number; entries: { entry_id: string; source_type: string; in: number; out: number; cancelled: boolean }[] }[];
 };
 
@@ -97,7 +97,7 @@ d('التقرير اليومي (day_cash_report)', () => {
 
   it('الكاش = 3750.25 (صيانة 3000 + بيع 750.25)، مش 3000 بس', async () => {
     const r = await report(O);
-    expect(cashRow(r)).toEqual({ method: 'cash', payments: 300000, sales: 75025, refunds: 0, total: 375025 });
+    expect(cashRow(r)).toEqual({ method: 'cash', payments: 300000, sales: 75025, cheques: 0, refunds: 0, total: 375025 });
   });
 
   it('تسوية الخزنة: افتتاحي + وارد − صادر = ختامي، وكل رقم ليه قيده', async () => {
@@ -148,6 +148,23 @@ d('التقرير اليومي (day_cash_report)', () => {
       expect(r.cashboxes.map((c) => c.id)).toEqual([cash2]);
       expect(cashRow(r)!.sales).toBe(20000);
     }
+  });
+
+  it('شيك العميل بيتحسب تحصيل يوم ما يتصرف في الخزنة، وشيك المورد لأ', async () => {
+    const before = cashRow(await report(O))!.total;
+    const c = id();
+    await as(O, `select cheque_receive($1, $2, 'CH-1', null, current_date + 30, 40000)`, [c, cust], main);
+    expect(cashRow(await report(O))!.total).toBe(before);
+    await as(O, `select cheque_clear($1, $2, $3)`, [id(), c, cash], main);
+    const r = cashRow(await report(O))!;
+    expect(r.cheques).toBe(40000);
+    expect(r.total).toBe(before + 40000);
+    const sup = id();
+    await as(O, `insert into suppliers(id, shop_id, name) values ($1, gen_random_uuid(), 'مورد')`, [sup]);
+    const o = id();
+    await as(O, `select cheque_issue($1, $2, 'CH-2', null, current_date + 30, 10000)`, [o, sup], main);
+    await as(O, `select cheque_clear($1, $2, $3)`, [id(), o, cash], main);
+    expect(cashRow(await report(O))!.cheques).toBe(40000);
   });
 
   it('الفني، أو الاستقبال من غير "المالية ← يشوف"، ما يشوفوش التقرير', async () => {

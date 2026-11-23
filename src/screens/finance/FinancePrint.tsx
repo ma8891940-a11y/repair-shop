@@ -616,6 +616,7 @@ export function DayReportPrint() {
                     <th className="text-start font-normal">{t('fin.dayCash.method')}</th>
                     <th className="text-end font-normal">{t('fin.dayCash.repairs')}</th>
                     <th className="text-end font-normal">{t('fin.dayCash.sales')}</th>
+                    <th className="text-end font-normal">{t('fin.dayCash.cheques')}</th>
                     <th className="text-end font-normal">{t('fin.dayCash.refunds')}</th>
                     <th className="text-end font-normal">{t('fin.total')}</th>
                   </tr>
@@ -624,8 +625,8 @@ export function DayReportPrint() {
                   {data.cash.collections.map((c) => (
                     <tr key={c.method} data-method={c.method}>
                       <td className="py-0.5">{t(`payments.${c.method}`, { defaultValue: c.method })}</td>
-                      {[c.payments, c.sales, -c.refunds, c.total].map((v, i) => (
-                        <td key={i} className={cn('py-0.5 text-end font-mono', i === 3 && 'font-bold')} dir="ltr" data-col={i === 3 ? 'total' : undefined}>
+                      {[c.payments, c.sales, c.cheques, -c.refunds, c.total].map((v, i) => (
+                        <td key={i} className={cn('py-0.5 text-end font-mono', i === 4 && 'font-bold')} dir="ltr" data-col={i === 4 ? 'total' : undefined}>
                           {f.money(v)}
                         </td>
                       ))}

@@ -1425,6 +1425,7 @@
       "method": "Method",
       "repairs": "Repairs",
       "sales": "Sales",
+      "cheques": "Cleared cheques",
       "refunds": "Refunds",
       "collectionsHint": "Revenue is not collection: a credit sale is revenue without cash, and a payment on an old balance is cash without revenue. The cashbox reconciliation below shows the difference. A customer cheque is counted when it clears, and shows in the reconciliation.",
       "reconcile": "Cashbox reconciliation",
