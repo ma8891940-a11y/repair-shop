@@ -546,7 +546,10 @@
       "E_OPEN_TOO_LONG": "This clock-in has been open for over 24 hours. The owner can fix it from the attendance screen.",
       "E_ATT_OVERLAP": "This record overlaps another record for the same employee",
       "E_CHEQUE_DONE": "This cheque was already cleared or bounced",
-      "E_CHEQUE_REVERSAL": "Cheque entries can't be reversed. If the cheque didn't clear, mark it as bounced from the Cheques screen"
+      "E_CHEQUE_REVERSAL": "Cheque entries can't be reversed. If the cheque didn't clear, mark it as bounced from the Cheques screen",
+      "E_BAD_QTY": "Quantity must be a whole number above zero",
+      "E_BAD_PRICE": "Invalid price",
+      "E_FREE_SALE": "A free sale (zero price) needs the \"Inventory: amounts\" permission"
     },
     "waitSeconds": "Wait {{s}} seconds and try again (protection against repeated sending).",
     "emailRate": "Too many emails were sent this hour (Supabase’s free limit, about 2 per hour). Wait a while, or set up a free custom email (Brevo) to raise the limit to 300 a day.",
@@ -937,7 +940,8 @@
       "master_set": "{{who}} set the master password",
       "master_removed": "{{who}} removed the master password",
       "demo_cleared": "{{who}} cleared the demo data",
-      "telegram_set": "{{who}} set up Telegram notifications"
+      "telegram_set": "{{who}} set up Telegram notifications",
+      "free_sale": "{{who}} sold {{target}} for free"
     },
     "otherChanges": "and other data ({{n}})",
     "yes": "yes",
@@ -1545,7 +1549,10 @@
     "buyShort": "Buy shortages from {{s}}",
     "errCustomer": "No customer with this phone",
     "brand": "Brand",
-    "allBrands": "All brands"
+    "allBrands": "All brands",
+    "errItem": "Choose an item",
+    "errAllFree": "The whole sale is free: at least one item needs a price",
+    "freeReason": "Reason for the free sale"
   },
   "ledgerSettings": {
     "cashboxes": "Cashboxes",
