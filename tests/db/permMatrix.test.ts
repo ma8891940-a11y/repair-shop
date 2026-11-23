@@ -322,7 +322,7 @@ d('(34) مصفوفة الصلاحيات', () => {
       ['update الفحص', `update device_checks set items = '{"screen":"bad"}' where device_id = $1 returning 1`, [x]],
       ['insert الفحص', `insert into device_checks(id, shop_id, device_id, stage, items) values ($1, $2, $3, 'delivery', '{"screen":"ok"}')`, [id(), shop, x]],
       ['insert ملاحظة', `insert into device_notes(id, shop_id, device_id, body) values ($1, gen_random_uuid(), $2, 'x')`, [id(), x]],
-      ['insert صورة', `insert into device_photos(id, shop_id, device_id, storage_path) values ($1, gen_random_uuid(), $2, 'p')`, [id(), x]],
+      ['insert صورة', `insert into device_photos(id, shop_id, device_id, storage_path) values ($1, gen_random_uuid(), $2, $3)`, [id(), x, `${shop}/${x}/${id()}.jpg`]],
       ['إخفاء صورة', `update device_photos set deleted_at = now() where device_id = $1`, [x]],
       ['insert رسالة', `insert into message_log(id, shop_id, device_id, customer_id, template_key, body) values ($1, $2, $3, $4, 'ready', 'x')`, [id(), shop, x, cust]],
     ];
