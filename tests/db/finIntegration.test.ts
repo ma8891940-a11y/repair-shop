@@ -26,6 +26,33 @@ async function on(c: pg.Client, uid: string, sql: string, params: unknown[] = []
   }
 }
 const as = (uid: string, sql: string, params: unknown[] = [], branch?: string) => on(db, uid, sql, params, branch);
+/**
+ * ضغطتين متزامنتين بجد: الطلب الأول بيفضل جوه الـ transaction (لسه ما اتحفظش) لحد ما القاعدة تقول
+ * إن الطلب التاني (اتصال تاني) واقف مستنيه. بعدين الأول بيتحفظ والتاني بيكمّل. من غير ده Promise.all ممكن ما يتداخلش.
+ */
+async function twice(uid: string, sql: string, params: unknown[], branch?: string) {
+  await db.query('begin');
+  try {
+    await db.query(`select set_config('request.headers', $1, true)`, [JSON.stringify(branch ? { 'x-branch-id': branch } : {})]);
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid, role: 'authenticated' })]);
+    await db.query('set local role authenticated');
+    const r1 = await db.query(sql, params);
+    const p2 = on(db2, uid, sql, params, branch);
+    let waited = false;
+    for (let i = 0; i < 250 && !waited; i++) {
+      waited = (await db.query(`select exists (select 1 from pg_locks where pid = $1 and not granted) w`, [pid2])).rows[0].w;
+      if (!waited) await new Promise((r) => setTimeout(r, 20));
+    }
+    await db.query('commit');
+    const r2 = await p2;
+    expect(waited, 'الطلب التاني ما استناش الأول (مفيش تداخل)').toBe(true);
+    return [r1, r2] as const;
+  } catch (e) {
+    await db.query('rollback').catch(() => {});
+    throw e;
+  }
+}
+let pid2 = 0;
 const id = () => randomUUID();
 const tag = randomUUID().slice(0, 6);
 
@@ -58,6 +85,7 @@ d('تكامل مالي (بند 2)', () => {
     db = new pg.Client({ connectionString: url });
     db2 = new pg.Client({ connectionString: url });
     await Promise.all([db.connect(), db2.connect()]);
+    pid2 = (await db2.query('select pg_backend_pid() p')).rows[0].p;
     O = randomUUID();
     await admin('insert into auth.users(id, email, email_confirmed_at) values ($1, $2, now())', [O, `fi-o-${tag}@f.test`]);
     shop = (await as(O, `select (bootstrap_account('صاحب', 'محل التكامل')).shop_id s`)).rows[0].s;
@@ -101,7 +129,7 @@ d('تكامل مالي (بند 2)', () => {
     const op = id();
     const lines = JSON.stringify([{ item: acc, qty: 2, price: 15025 }]);
     const sql = `select record_sale($1, $2::jsonb, $3) e`;
-    const [r1, r2] = await Promise.all([on(db, O, sql, [op, lines, cash], main), on(db2, O, sql, [op, lines, cash], main)]);
+    const [r1, r2] = await twice(O, sql, [op, lines, cash], main);
     expect(r1.rows[0].e).toBe(r2.rows[0].e);
     const b = await snap();
     expect(b.entries - a.entries).toBe(1);
@@ -119,14 +147,8 @@ d('تكامل مالي (بند 2)', () => {
     const pay = id();
     const exp = id();
     const rent = (await admin(`select id from accounts where shop_id = $1 and code = 'exp_rent'`, [shop])).rows[0].id;
-    await Promise.all([
-      on(db, O, `select record_payment($1, $2, $3, 20000)`, [pay, cust, cash], main),
-      on(db2, O, `select record_payment($1, $2, $3, 20000)`, [pay, cust, cash], main),
-    ]);
-    await Promise.all([
-      on(db, O, `select record_expense($1, $2, $3, 7000)`, [exp, rent, cash], main),
-      on(db2, O, `select record_expense($1, $2, $3, 7000)`, [exp, rent, cash], main),
-    ]);
+    await twice(O, `select record_payment($1, $2, $3, 20000)`, [pay, cust, cash], main);
+    await twice(O, `select record_expense($1, $2, $3, 7000)`, [exp, rent, cash], main);
     const b = await snap();
     expect(b.cash - a.cash).toBe(20000 - 7000);
     expect(b.entries - a.entries).toBe(2);
@@ -157,7 +179,7 @@ d('تكامل مالي (بند 2)', () => {
     const a = await snap();
     const op = id();
     const sql = `select transfer_stock($1, $2, 2, $3, $4) e`;
-    await Promise.all([on(db, O, sql, [op, acc, main, B2], main), on(db2, O, sql, [op, acc, main, B2], main)]);
+    await twice(O, sql, [op, acc, main, B2], main);
     const b = await snap();
     expect(b.stock).toBe(a.stock);
     expect(b.entries - a.entries).toBe(1);
