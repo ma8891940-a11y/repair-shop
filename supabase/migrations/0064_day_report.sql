@@ -38,7 +38,7 @@ begin
            coalesce(sum(m.debit) filter (where m.source_type = 'sale'), 0)::bigint as sales,
            coalesce(sum(m.credit) filter (where m.source_type = 'sale_return'), 0)::bigint as refunds
     from mv m join boxes b on b.id = m.account_id
-    where not m.cancelled and m.source_type in ('payment', 'sale', 'sale_return')
+    where not m.cancelled and m.source_type in ('payment', 'sale_return')
     group by b.method
   )
   select jsonb_build_object(
