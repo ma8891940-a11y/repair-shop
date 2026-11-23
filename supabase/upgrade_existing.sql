@@ -17108,7 +17108,7 @@ language plpgsql volatile security definer set search_path = public as $$
 declare r uuid;
 begin
   if p is null then return null; end if;
-  perform pg_advisory_xact_lock(hashtextextended(p::text, 0));
+  -- (مؤقت) من غير قفل
   select id into r from public.journal_entries where idem_key = p and shop_id = public.current_shop_id();
   return r;
 end $$;
