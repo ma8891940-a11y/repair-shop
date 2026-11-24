@@ -241,50 +241,6 @@ d('الفروع', () => {
     await as(O, `select save_branch($1, 'فرع جديد', 'B3')`, [id()]);
   });
 
-  it('(35ج) بادئة اتستخدمت قبل كده (جهاز أو فاتورة) ما تتعادش، لا لفرع جديد ولا لفرع موجود ولا بعد قفل الفرع', async () => {
-    const x = id();
-    const y = id();
-    await as(O, `select save_branch($1, 'فرع اكس', 'PX')`, [x]);
-    await as(O, `select save_branch($1, 'فرع واي', 'PY')`, [y]);
-    expect((await newDevice(O, x)).order_no).toBe(`PX-${year}-0001`);
-    // تعديل الاسم بنفس البادئة المستخدمة عادي
-    await as(O, `select save_branch($1, 'فرع اكس 2', 'PX')`, [x]);
-    await as(O, `select save_branch($1, 'فرع اكس 2', 'PZ')`, [x]);
-    await expect(as(O, `select save_branch($1, 'جديد', 'px')`, [id()])).rejects.toThrow(/E_PREFIX_USED/);
-    await expect(as(O, `select save_branch($1, 'فرع واي', 'PX')`, [y])).rejects.toThrow(/E_PREFIX_USED/);
-    // العدّاد كمّل للفرع نفسه بالبادئة الجديدة
-    expect((await newDevice(O, x)).order_no).toBe(`PZ-${year}-0002`);
-    // بادئة شبه السنة ما بتتلخبطش مع أرقام الرئيسي
-    await as(O, `select save_branch($1, 'فرع واي', $2)`, [y, String(year)]);
-    // محل تاني مالوش دعوة
-    const X = await user(`br-px-${tag}@b.test`);
-    await as(X, `select bootstrap_account('تاني', 'محل البادئة')`);
-    await as(X, `select save_branch($1, 'فرع', 'PX')`, [id()]);
-  });
-
-  it('(35ج) محل وقع فيها خلاص: الاستلام بيعدّي الأرقام المستخدمة ويكمّل', async () => {
-    const x = id();
-    const y = id();
-    await as(O, `select save_branch($1, 'قديم', 'QA')`, [x]);
-    await newDevice(O, x);
-    await newDevice(O, x);
-    // الحالة القديمة قبل 0082: البادئة اتنقلت لفرع تاني
-    await admin(`update branches set prefix = 'QB' where id = $1`, [x]);
-    await as(O, `select save_branch($1, 'وارث', 'QC')`, [y]);
-    await admin(`update branches set prefix = 'QA' where id = $1`, [y]);
-    expect((await newDevice(O, y)).order_no).toBe(`QA-${year}-0003`);
-    expect((await newDevice(O, y)).order_no).toBe(`QA-${year}-0004`);
-  });
-
-  it('(35ج) الرقم بعد 9999 بيكمّل 5 خانات من غير قص', async () => {
-    const x = id();
-    await as(O, `select save_branch($1, 'كبير', 'BG')`, [x]);
-    await newDevice(O, x);
-    await admin(`update order_counters set last_value = 9998 where branch_id = $1`, [x]);
-    expect((await newDevice(O, x)).order_no).toBe(`BG-${year}-9999`);
-    expect((await newDevice(O, x)).order_no).toBe(`BG-${year}-10000`);
-  });
-
   it('النقل للفرع الرئيسي: نسخة قديمة (من غير فروع) بترجع كلها في الرئيسي، والأرصدة زي ما هي بالظبط', async () => {
     const b = (await as(O, `select export_backup() b`)).rows[0].b as Record<string, unknown[]>;
     // شكل البيانات قبل الفروع: من غير جداول الفروع ولا عمود الفرع، وكله في الرئيسي
@@ -426,5 +382,49 @@ d('الفروع', () => {
     await expect(as(R2, `select save_goal($1, $2, 'revenue', 1)`, [B2, m], B2)).rejects.toThrow(/E_FORBIDDEN/);
     await as(O, `select save_goal($1, $2, 'revenue', 0)`, [B2, m]);
     expect((await as(O, `select * from branch_kpis($1, $2)`, [m, T])).rows.find((r) => r.branch_id === B2).goal_revenue).toBeNull();
+  });
+
+  it('(35ج) بادئة اتستخدمت قبل كده ما تتعادش، لا لفرع جديد ولا لفرع موجود', async () => {
+    const x = id();
+    const y = id();
+    await as(O, `select save_branch($1, 'فرع اكس', 'PX')`, [x]);
+    await as(O, `select save_branch($1, 'فرع واي', 'PY')`, [y]);
+    expect((await newDevice(O, x)).order_no).toBe(`PX-${year}-0001`);
+    // تعديل الاسم بنفس البادئة المستخدمة عادي
+    await as(O, `select save_branch($1, 'فرع اكس 2', 'PX')`, [x]);
+    await as(O, `select save_branch($1, 'فرع اكس 2', 'PZ')`, [x]);
+    await expect(as(O, `select save_branch($1, 'جديد', 'px')`, [id()])).rejects.toThrow(/E_PREFIX_USED/);
+    await expect(as(O, `select save_branch($1, 'فرع واي', 'PX')`, [y])).rejects.toThrow(/E_PREFIX_USED/);
+    // العدّاد كمّل للفرع نفسه بالبادئة الجديدة
+    expect((await newDevice(O, x)).order_no).toBe(`PZ-${year}-0002`);
+    // بادئة شبه السنة ما بتتلخبطش مع أرقام الرئيسي
+    await as(O, `select save_branch($1, 'فرع واي', $2)`, [y, String(year)]);
+    // محل تاني مالوش دعوة
+    const X = await user(`br-px-${tag}@b.test`);
+    await as(X, `select bootstrap_account('تاني', 'محل البادئة')`);
+    await as(X, `select save_branch($1, 'فرع', 'PX')`, [id()]);
+  });
+
+  it('(35ج) محل وقع فيها خلاص: الاستلام بيعدّي الأرقام المستخدمة ويكمّل', async () => {
+    const x = id();
+    const y = id();
+    await as(O, `select save_branch($1, 'قديم', 'QA')`, [x]);
+    await newDevice(O, x);
+    await newDevice(O, x);
+    // الحالة القديمة قبل 0082: البادئة اتنقلت لفرع تاني
+    await admin(`update branches set prefix = 'QB' where id = $1`, [x]);
+    await as(O, `select save_branch($1, 'وارث', 'QC')`, [y]);
+    await admin(`update branches set prefix = 'QA' where id = $1`, [y]);
+    expect((await newDevice(O, y)).order_no).toBe(`QA-${year}-0003`);
+    expect((await newDevice(O, y)).order_no).toBe(`QA-${year}-0004`);
+  });
+
+  it('(35ج) الرقم بعد 9999 بيكمّل 5 خانات من غير قص', async () => {
+    const x = id();
+    await as(O, `select save_branch($1, 'كبير', 'BG')`, [x]);
+    await newDevice(O, x);
+    await admin(`update order_counters set last_value = 9998 where branch_id = $1`, [x]);
+    expect((await newDevice(O, x)).order_no).toBe(`BG-${year}-9999`);
+    expect((await newDevice(O, x)).order_no).toBe(`BG-${year}-10000`);
   });
 });
