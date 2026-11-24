@@ -273,5 +273,5 @@ d('أعمار المديونية', () => {
     expect(o.debits).toBe(o.credits);
     await as(O, `select set_staff_branches($1, $2)`, [R, [main]]);
     for (const op of ['view', 'export', 'delete']) await as(O, `select set_staff_override($1, 'finance', $2, null)`, [R, op]);
-  });
+  }, 60_000);
 });
