@@ -35,14 +35,15 @@ export interface Position {
   /** أصول ثابتة (معدات) */
   fixed_assets?: number;
   /** أرباح اتوزعت على الشركاء ولسه ما اتسحبتش (حقوق ملكية) */
-  partners_due?: number;
+  partners_due?: number | null;
   /** R5: ضريبة القيمة المضافة المستحقة للمصلحة (من ضمن "عليّا") */
   vat_due?: number;
-  equity_parts?: { owner_capital: number; drawings: number; retained: number; partners: { id: string; name: string; share_bp: number; capital: number; current: number }[] };
+  equity_parts?: null | { owner_capital: number; drawings: number; retained: number; partners: { id: string; name: string; share_bp: number; capital: number; current: number }[] };
   revenue: number;
   expenses: number;
   profit: number;
-  net_worth: number;
+  /** صاحب المحل بس (0086) */
+  net_worth: number | null;
   /** المحل كله: لصاحب المحل بس (0085) */
   equation: { assets: number; liabilities: number; equity: number; earnings: number } | null;
   debits: number;

@@ -274,4 +274,29 @@ d('أعمار المديونية', () => {
     await as(O, `select set_staff_branches($1, $2)`, [R, [main]]);
     for (const op of ['view', 'export', 'delete']) await as(O, `select set_staff_override($1, 'finance', $2, null)`, [R, op]);
   }, 60_000);
+
+  it('(0086) الموظف: من غير صافي القيمة ولا حقوق الملكية، و"ليّا" و"عليّا" من غير المرتبات والسلف ومطابقين لتفاصيلهم', async () => {
+    const pos = async (u: string, b: string | null) => (await as(u, `select financial_position('2000-01-01', '2999-01-01', $1) v`, [b])).rows[0].v;
+    await as(O, `select set_staff_override($1, 'finance', 'view', true)`, [R]);
+    await as(O, `select owner_capital($1, $2, 5000000)`, [id(), cash], main);
+    const r0 = await pos(R, main);
+    const o0 = await pos(O, main);
+    // مرتب مستحق 3000 ج، وسلفة 1000 ج لموظف
+    const emp = (await admin(`select id from profiles where shop_id = $1 and role = 'technician'`, [shop])).rows[0].id;
+    await as(O, `select accrue_salary($1, $2, 300000)`, [id(), emp], main);
+    await as(O, `select give_advance($1, $2, $3, 100000)`, [id(), emp, cash], main);
+    const r1 = await pos(R, main);
+    const o1 = await pos(O, main);
+    expect([r1.payables, r1.receivables]).toEqual([r0.payables, r0.receivables]);
+    expect([o1.payables, o1.receivables]).toEqual([o0.payables + 300000, o0.receivables + 100000]);
+    for (const k of ['net_worth', 'equity_parts', 'partners_due']) expect(r1[k]).toBeNull();
+    expect(o1.net_worth).toEqual(expect.any(Number));
+    expect(o1.equity_parts.owner_capital).toBe(5000000);
+    // الكارت = مجموع اللي بيفتح (الموردين، ومن غير مرتبات)
+    const sup2 = (await as(R, `select balance from party_balances('suppliers')`)).rows.map((x) => Number(x.balance)).filter((b) => b > 0);
+    const custs = (await as(R, `select balance from party_balances('customers')`)).rows.map((x) => Number(x.balance)).filter((b) => b < 0);
+    expect(r1.payables).toBe(sup2.reduce((a, b) => a + b, 0) - custs.reduce((a, b) => a + b, 0));
+    await expect(as(R, `select * from party_balances('employees')`)).rejects.toThrow(/E_FORBIDDEN/);
+    await as(O, `select set_staff_override($1, 'finance', 'view', null)`, [R]);
+  }, 30_000);
 });
