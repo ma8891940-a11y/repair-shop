@@ -93,6 +93,10 @@ d('قفل الفترة المحاسبية', () => {
     const inside = await expense(`${day(-5)} 23:59:59`);
     const outside = await expense(`${day(-4)} 00:00:00`);
     await expect(as(O, `select reverse_entry($1, 'غلط')`, [inside])).rejects.toThrow(/E_PERIOD_LOCKED/);
+    // والموظف اللي معاه إذن التصحيح الكامل
+    await as(O, `select set_can_correct($1, true)`, [R]);
+    await expect(as(R, `select reverse_entry($1, 'غلط')`, [inside])).rejects.toThrow(/E_PERIOD_LOCKED/);
+    await as(O, `select set_can_correct($1, false)`, [R]);
     const args = (await as(O, `select entry_args($1) a`, [inside])).rows[0].a;
     await expect(as(O, `select edit_entry($1, 'غلط', $2::jsonb)`, [inside, JSON.stringify({ ...args, id: id(), amount: 700 })])).rejects.toThrow(/E_PERIOD_LOCKED/);
     expect((await admin(`select count(*)::int n from journal_entries where reverses_id = $1`, [inside])).rows[0].n).toBe(0);
@@ -139,7 +143,6 @@ d('قفل الفترة المحاسبية', () => {
     expect((await as(X, `select books_locked_until l from shops`)).rows).toEqual([{ l: null }]);
     expect((await admin(`select has_function_privilege('anon', 'public.set_period_lock(date,text)', 'execute') x`)).rows[0].x).toBe(false);
     await as(O, `select set_master_password(null, 'secret77')`);
-    await admin(`update master_unlocks set deleted_at = now() where shop_id = $1`, [shop]).catch(() => undefined);
     await expect(lock(O, null, 'سبب')).rejects.toThrow(/E_MASTER_REQUIRED/);
     await as(O, `select verify_master('secret77')`);
     expect(await lock(O, null, 'سبب')).toBeNull();
