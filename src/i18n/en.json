@@ -1388,7 +1388,9 @@
       "amount": "Amount",
       "balance": "Balance after"
     },
+    "privateNote": "Salaries and capital are not included (owner, or the \"Salaries and capital\" permission), so these figures are not the full picture.",
     "src": {
+      "private": "Private movement",
       "payment": "Customer payment",
       "delivery": "Device delivered",
       "purchase": "Purchase from supplier",
@@ -3057,7 +3059,8 @@
       "settings": "Settings",
       "audit": "Activity log",
       "item_create": "Add new item",
-      "print_templates": "Print templates"
+      "print_templates": "Print templates",
+      "private_finance": "Salaries and capital"
     },
     "ops": {
       "view": "View",

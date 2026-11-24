@@ -84,7 +84,7 @@ describe('ترتيب الخزن', () => {
 });
 
 describe('أنواع الأرصدة', () => {
-  it('المرتبات والسلف لصاحب المحل بس', () => {
+  it('المرتبات والسلف لصاحب المحل أو بالصلاحية', () => {
     expect(balanceKinds(true)).toEqual(['customers', 'suppliers', 'employees']);
     expect(balanceKinds(false)).toEqual(['customers', 'suppliers']);
   });

@@ -46,7 +46,7 @@ export function StatementScreen() {
   const kind = (KINDS.includes(k as StatementKind) ? k : 'cashbox') as StatementKind;
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop } = useMe();
+  const { shop, profile } = useMe();
   const accName = useAccountName();
   const navigate = useNavigate();
   const location = useLocation();
@@ -152,7 +152,7 @@ export function StatementScreen() {
         ? [{ op: 'payment', icon: HandCoins }]
         : kind === 'supplier'
           ? [{ op: 'supplier_payment', icon: HandCoins }]
-          : kind === 'partner' || kind === 'linked'
+          : kind === 'partner' || kind === 'linked' || profile.role !== 'owner'
             ? []
             : [
               { op: 'salary', icon: Users },
@@ -288,9 +288,13 @@ export function StatementScreen() {
                       </td>
                       <td className="max-w-[260px]">
                         <div className="text-fg">
-                          <Link to={`/finance/entry/${m.entry_id}`} className="hover:text-accent hover:underline">
-                            {label(m)}
-                          </Link>
+                          {m.source_type === 'private' ? (
+                            label(m)
+                          ) : (
+                            <Link to={`/finance/entry/${m.entry_id}`} className="hover:text-accent hover:underline">
+                              {label(m)}
+                            </Link>
+                          )}
                           {m.reversed && (
                             <span className="ms-2 inline-block rounded-full border border-line px-1.5 text-2xs text-fg-3 no-underline" data-testid="move-cancelled">
                               {t('fin.cancelledTag')}
@@ -308,7 +312,7 @@ export function StatementScreen() {
                           <span className="text-fg-3">{t('common.none')}</span>
                         )}
                       </td>
-                      <td className="text-fg-2">{m.by ?? t('fin.system')}</td>
+                      <td className="text-fg-2">{m.by ?? (m.source_type === 'private' ? '' : t('fin.system'))}</td>
                       <td className={cn('num whitespace-nowrap text-end', m.amount > 0 ? 'text-ok' : 'text-danger')} dir="ltr">
                         {m.amount > 0 ? '+' : ''}
                         {f.money(m.amount)}
@@ -322,7 +326,7 @@ export function StatementScreen() {
                             <Pencil className="size-3.5" aria-hidden />
                           </button>
                         )}
-                        {!m.reversed && canCorrect(entrySection(m.source_type)) && m.source_type !== 'reversal' && m.source_type !== 'cost_adjust' && (
+                        {!m.reversed && m.source_type !== 'private' && canCorrect(entrySection(m.source_type)) && m.source_type !== 'reversal' && m.source_type !== 'cost_adjust' && (
                           <button type="button" onClick={() => setReverse(m)} className="rounded-sm p-1 text-fg-3 hover:bg-raised hover:text-danger" aria-label={t('fin.reverse')} title={t('fin.reverse')}>
                             <Undo2 className="size-3.5" aria-hidden />
                           </button>

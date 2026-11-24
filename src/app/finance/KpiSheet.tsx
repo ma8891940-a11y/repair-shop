@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowUpRight, Search } from 'lucide-react';
 import { balanceKinds } from '../../lib/ledger';
 import { useMe } from '../auth';
+import { usePerms } from '../perms';
 import { useLoad } from '../useLoad';
 import { rpc, sortCashboxes, useAccountName, type Position, type StockRow } from '../ledgerApi';
 import { ExportMenu } from '../exporting';
@@ -35,7 +36,8 @@ type Sort = 'amount_desc' | 'amount_asc' | 'name';
 export function KpiSheet({ kpi, onClose, p, range, query, page }: { kpi: KpiKey | null; onClose: () => void; p: Position | undefined; range: { from: Date; to: Date; days: string[] }; query: string; page: string }) {
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop, profile } = useMe();
+  const { shop } = useMe();
+  const full = usePerms().grant('private_finance');
   const accName = useAccountName();
   const [q, setQ] = useState('');
   const [group, setGroup] = useState('');
@@ -47,7 +49,7 @@ export function KpiSheet({ kpi, onClose, p, range, query, page }: { kpi: KpiKey 
     const args = { p_from: range.from.toISOString(), p_to: range.to.toISOString() };
     if (kpi === 'cash') return sortCashboxes(p.cashboxes).map((cb) => ({ id: cb.id, label: accName(cb), group: t(`payments.${cb.method}`, { defaultValue: cb.method }), amount: Number(cb.balance), to: `/finance/cashbox/${cb.id}${query}` }));
     if (kpi === 'receivables' || kpi === 'payables') {
-      const kinds = kpi === 'receivables' ? ['customers'] : balanceKinds(profile.role === 'owner').filter((k) => k !== 'customers');
+      const kinds = kpi === 'receivables' ? ['customers'] : balanceKinds(full).filter((k) => k !== 'customers');
       const all = await Promise.all(kinds.map((k) => rpc<{ party_type: string; party_id: string; name: string | null; account: string; balance: number; oldest: string | null }[]>('party_balances', { p_kind: k })));
       return all.flat().map((r) => ({ id: `${r.party_id}-${r.account}`, label: r.name ?? '', group: t(`fin.kinds.${r.party_type}`), amount: Number(r.balance), date: r.oldest, to: `/finance/${r.party_type}/${r.party_id}` }));
     }
@@ -104,7 +106,7 @@ export function KpiSheet({ kpi, onClose, p, range, query, page }: { kpi: KpiKey 
           table={() => ({
             title,
             file: `finance-${kpi}`,
-            meta: [period, group ? t('export.filter', { v: group }) : '', q.trim() ? t('export.search', { v: q.trim() }) : ''].filter(Boolean),
+            meta: [period, kpi === 'profit' && !full ? t('fin.privateNote') : '', group ? t('export.filter', { v: group }) : '', q.trim() ? t('export.search', { v: q.trim() }) : ''].filter(Boolean),
             columns: [
               { header: t('export.cols.item') },
               { header: t('export.cols.kind') },
@@ -118,6 +120,7 @@ export function KpiSheet({ kpi, onClose, p, range, query, page }: { kpi: KpiKey 
       }
     >
       <div className="flex flex-col gap-3">
+        {kpi === 'profit' && !full && <p className=" text-xs text-fg-3" data-testid="private-note">{t('fin.privateNote')}</p>}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[180px] flex-1">
             <Search className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-3" aria-hidden />

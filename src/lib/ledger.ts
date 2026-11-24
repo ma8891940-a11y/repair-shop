@@ -2,7 +2,7 @@ import { assertPiasters, type Piasters } from './money';
 import { cairoDay, cairoDayEnd, cairoDayStart } from './dates';
 
 /** أنواع مصادر القيود (لازم تطابق journal_entries.source_type) */
-export const SOURCE_TYPES = ['payment', 'delivery', 'purchase', 'supplier_payment', 'part_use', 'sale', 'expense', 'salary', 'salary_payment', 'advance', 'advance_settle', 'capital', 'drawing', 'transfer', 'drawer_close', 'reversal', 'cost_adjust', 'stock_count'] as const;
+export const SOURCE_TYPES = ['payment', 'delivery', 'purchase', 'supplier_payment', 'part_use', 'sale', 'expense', 'salary', 'salary_payment', 'advance', 'advance_settle', 'capital', 'drawing', 'transfer', 'drawer_close', 'reversal', 'cost_adjust', 'stock_count', 'private'] as const;
 export type SourceType = (typeof SOURCE_TYPES)[number];
 /** العمليات اللي بتتعدل (قيد عكسي + نفس العملية بأرقام جديدة). لازم تطابق edit_entry في 0026 */
 export const EDITABLE_SOURCES: readonly SourceType[] = ['payment', 'expense', 'transfer', 'capital', 'drawing', 'advance', 'salary', 'salary_payment', 'supplier_payment', 'purchase', 'sale'];
@@ -94,5 +94,5 @@ export function matchMove(m: { memo?: string | null; order_no?: string | null; b
 export const VOUCHER_SOURCES: string[] = ['payment', 'capital', 'expense', 'supplier_payment', 'salary_payment', 'advance', 'drawing'];
 
 export type BalKind = 'customers' | 'suppliers' | 'employees';
-/** أرصدة الموظفين (المرتبات والسلف) لصاحب المحل بس، نفس القاعدة في party_balances */
-export const balanceKinds = (owner: boolean): BalKind[] => (owner ? ['customers', 'suppliers', 'employees'] : ['customers', 'suppliers']);
+/** أرصدة الموظفين (المرتبات والسلف): لصاحب المحل أو بصلاحية private_finance، نفس القاعدة في party_balances */
+export const balanceKinds = (canPrivate: boolean): BalKind[] => (canPrivate ? ['customers', 'suppliers', 'employees'] : ['customers', 'suppliers']);
