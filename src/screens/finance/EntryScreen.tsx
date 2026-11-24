@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { CheckCircle2, AlertTriangle, Pencil, Printer, Undo2 } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { ReverseDialog } from '../../app/finance/ReverseDialog';
+import { entrySection, useCanCorrect } from '../../app/correct';
 import { EditEntryDialog } from '../../app/finance/EditEntryDialog';
 import { EDITABLE_SOURCES, VOUCHER_SOURCES, type SourceType } from '../../lib/ledger';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
@@ -73,6 +74,7 @@ export function EntryScreen() {
     };
   }, [id]);
   useLiveRefresh(reload);
+  const canCorrect = useCanCorrect();
 
   const debit = data?.lines.reduce((a, l) => a + Number(l.debit), 0) ?? 0;
   const credit = data?.lines.reduce((a, l) => a + Number(l.credit), 0) ?? 0;
@@ -98,14 +100,16 @@ export function EntryScreen() {
                   <Printer className="size-4" aria-hidden /> {t('voucher.print')}
                 </Link>
               )}
-              {EDITABLE_SOURCES.includes(data.e.source_type as SourceType) && (
+              {canCorrect(entrySection(data.e.source_type)) && EDITABLE_SOURCES.includes(data.e.source_type as SourceType) && (
                 <Button size="sm" icon={<Pencil className="size-4" />} onClick={() => setMode('edit')} data-testid="entry-edit">
                   {t('edit.edit')}
                 </Button>
               )}
-              <Button size="sm" variant="danger" icon={<Undo2 className="size-4" />} onClick={() => setMode('cancel')} data-testid="entry-cancel">
-                {t('edit.cancel')}
-              </Button>
+              {canCorrect(entrySection(data.e.source_type)) && (
+                <Button size="sm" variant="danger" icon={<Undo2 className="size-4" />} onClick={() => setMode('cancel')} data-testid="entry-cancel">
+                  {t('edit.cancel')}
+                </Button>
+              )}
             </div>
           ) : undefined
         }

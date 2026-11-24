@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMe } from './auth';
+import { usePerms } from './perms';
 import { useToast } from '../ui/Toast';
 import { errorMessage } from '../lib/errors';
 import { deferUndoable, UNDO_MS } from '../lib/undo';
 
-/** يقدر يعدّل ويلغي العمليات ويحذف؟ صاحب المحل دايمًا، والموظف لو صاحب المحل اداله الإذن */
+/** القيد بتاع أنهي قسم: نفس entry_section في قاعدة البيانات (0075) */
+export function entrySection(source: string): string {
+  if (['sale', 'sale_return'].includes(source)) return 'sales';
+  if (['payment', 'transfer', 'drawer_close'].includes(source)) return 'cashbox';
+  if (source === 'expense') return 'expenses';
+  if (['purchase', 'supplier_payment', 'supplier_return'].includes(source)) return 'purchases';
+  if (['write_off', 'stock_transfer'].includes(source)) return 'inventory';
+  if (['part_use', 'delivery'].includes(source)) return 'devices';
+  return 'finance';
+}
+
+/** يقدر يعدّل ويلغي ويحذف في القسم ده؟ صاحب المحل دايمًا، أو إذن "يصحح ويحذف" الكامل، أو "يحذف" في القسم نفسه */
 export function useCanCorrect() {
   const { profile } = useMe();
-  return profile.role === 'owner' || !!profile.can_correct;
+  const { grant } = usePerms();
+  return (section: string) => profile.role === 'owner' || !!profile.can_correct || grant(section, 'delete');
 }
 
 function Countdown({ ms }: { ms: number }) {

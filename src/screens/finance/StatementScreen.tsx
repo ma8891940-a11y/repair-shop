@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { PlansPanel } from '../../app/finance/PlansPanel';
+import { entrySection, useCanCorrect } from '../../app/correct';
 import { ArrowLeft, ArrowDownUp, HandCoins, Lock, Pencil, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
@@ -312,12 +313,12 @@ export function StatementScreen() {
                         {f.money(m.balance)}
                       </td>
                       <td className="text-end">
-                        {!m.reversed && EDITABLE_SOURCES.includes(m.source_type) && (
+                        {!m.reversed && canCorrect(entrySection(m.source_type)) && EDITABLE_SOURCES.includes(m.source_type) && (
                           <button type="button" onClick={() => setEdit(m)} className="rounded-sm p-1 text-fg-3 hover:bg-raised hover:text-accent" aria-label={t('edit.edit')} title={t('edit.edit')} data-testid="move-edit">
                             <Pencil className="size-3.5" aria-hidden />
                           </button>
                         )}
-                        {!m.reversed && m.source_type !== 'reversal' && m.source_type !== 'cost_adjust' && (
+                        {!m.reversed && canCorrect(entrySection(m.source_type)) && m.source_type !== 'reversal' && m.source_type !== 'cost_adjust' && (
                           <button type="button" onClick={() => setReverse(m)} className="rounded-sm p-1 text-fg-3 hover:bg-raised hover:text-danger" aria-label={t('fin.reverse')} title={t('fin.reverse')}>
                             <Undo2 className="size-3.5" aria-hidden />
                           </button>
