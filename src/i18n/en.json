@@ -512,6 +512,7 @@
       "E_ALREADY_LINKED": "This customer or supplier is already linked. Unlink first",
       "E_NETTING_LIMIT": "Netting can’t exceed the smaller balance (nothing to net if either is zero)",
       "E_DUP_PREFIX": "This prefix is used by another branch",
+      "E_PREFIX_USED": "This prefix was already used in order or invoice numbers. Choose a new one",
       "E_DUP_NAME": "A branch with this name already exists",
       "E_BAD_PREFIX": "Prefix: 1 to 4 capital letters or digits (like B2)",
       "E_MAIN_BRANCH": "The main branch can't be closed",
