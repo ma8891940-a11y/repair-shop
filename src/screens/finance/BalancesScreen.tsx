@@ -48,12 +48,13 @@ export function BalancesScreen() {
   const accName = useAccountName();
   const kinds: BalKind[] = ['customers', 'suppliers', 'employees'];
   const kind = (kinds.includes(k as BalKind) ? k : 'customers') as BalKind;
+  const br = useBranch();
   const { data, error, loading, reload } = useLoad(async () => {
     const rows = await rpc<Row[]>('party_balances', { p_kind: kind });
     const ids = rows.filter((r) => r.party_type === 'customer').map((r) => r.party_id);
     const phones = ids.length ? must(await supabase.from('customers').select('id, phone').in('id', ids)) as { id: string; phone: string }[] : [];
     return { rows, phones: new Map(phones.map((p) => [p.id, p.phone])) };
-  }, [kind]);
+  }, [kind, br.working?.id]);
   const [wa, setWa] = useState<MessageTarget | null>(null);
   useLiveRefresh(reload);
   const rows = (data?.rows ?? []).map((r) => ({ ...r, balance: Number(r.balance) }));

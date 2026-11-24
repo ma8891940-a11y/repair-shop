@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { setBranchHeader } from '../lib/branchHeader';
 import { cacheGet, cacheSet, localDb } from '../offline/outbox';
@@ -107,7 +107,8 @@ export function BranchProvider({ children }: { children: ReactNode }) {
   const viewOk = view === 'all' ? owner && multi : mine.some((b) => b.id === view);
   const effView: string = !multi ? (working?.id ?? 'all') : viewOk ? view : (working?.id ?? 'all');
 
-  useEffect(() => {
+  // layout: قبل ما الشاشات تعيد التحميل بعد تغيير الفرع
+  useLayoutEffect(() => {
     // محل بفرع واحد: مفيش هيدر (قاعدة البيانات بتشتغل على الرئيسي)
     setBranchHeader(multi ? (working?.id ?? null) : null);
   }, [multi, working?.id]);

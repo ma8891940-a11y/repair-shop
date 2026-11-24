@@ -477,7 +477,7 @@ language plpgsql stable security definer set search_path = public as $$
 declare
   s uuid := public.current_shop_id();
   res jsonb;
-  own boolean := public.current_app_role() = 'owner';
+  whole boolean := public.current_app_role() = 'owner';
 begin
   perform public.grant_require('finance', 'view');
   if p_from is null or p_to is null or p_to <= p_from then raise exception 'E_BAD_INPUT'; end if;
@@ -491,7 +491,7 @@ begin
     left join public.journal_entries o on o.id = e.reverses_id
     where e.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to
       -- السداد على المحل كله لصاحب المحل (الضريبة على المحل مش الفرع)، والباقي بفلتر الفرع
-      and (p_branch is null or e.branch_id = p_branch or own and coalesce(o.source_type, e.source_type) = 'vat_payment')
+      and (p_branch is null or e.branch_id = p_branch or whole and coalesce(o.source_type, e.source_type) = 'vat_payment')
       and a.kind in ('tax', 'revenue')
       and coalesce(o.source_type, e.source_type) in ('sale', 'delivery', 'vat_payment', 'sale_return')
   ),
@@ -520,7 +520,7 @@ begin
     'repair_net', coalesce((select v from net where src = 'delivery'), 0),
     -- المستحق لحد آخر الفترة (صاحب المحل: كل الفروع، والموظف فرعه)
     'due', coalesce((select sum(l.credit - l.debit) from public.journal_lines l join public.journal_entries e on e.id = l.entry_id
-                     join public.accounts a on a.id = l.account_id where e.shop_id = s and a.kind = 'tax' and e.occurred_at < p_to and (own or e.branch_id = p_branch)), 0)::bigint
+                     join public.accounts a on a.id = l.account_id where e.shop_id = s and a.kind = 'tax' and e.occurred_at < p_to and (whole or e.branch_id = p_branch)), 0)::bigint
   ) into res from ln;
   return res;
 end $$;
@@ -768,7 +768,7 @@ end $$;
 drop policy plans_select on public.payment_plans;
 create policy plans_select on public.payment_plans for select to authenticated
   using (shop_id = (select public.current_shop_id()) and ((select public.current_app_role()) = 'owner'
-    or ((select public.current_app_role()) = 'reception' and (select public.has_perm('finance', 'view')) and public.can_branch(coalesce(branch_id, public.main_branch(shop_id))))));
+    or ((select public.current_app_role()) = 'reception' and (select public.has_perm('finance', 'view')) and (branch_id in (select unnest(public.my_branch_ids())) or branch_id is null and (select public.all_my_branches())))));
 drop policy installments_select on public.plan_installments;
 create policy installments_select on public.plan_installments for select to authenticated
   using (shop_id = (select public.current_shop_id()) and exists (select 1 from public.payment_plans p where p.id = plan_id));

@@ -171,9 +171,9 @@ export function FinanceScreen() {
         </Panel>
       ) : (
         <>
-          {p && !p.balanced && (
+          {owner && p && !p.balanced && (
             <Alert tone="danger" className="mb-4" title={t('fin.unbalancedTitle')}>
-              <span data-testid="ledger-unbalanced">{owner && t('fin.unbalancedText', { n: p.unbalanced_entries, d: f.money(p.debits), c: f.money(p.credits) })}</span>
+              <span data-testid="ledger-unbalanced">{t('fin.unbalancedText', { n: p.unbalanced_entries, d: f.money(p.debits), c: f.money(p.credits) })}</span>
             </Alert>
           )}
           <IntegrityAlert className="mb-4" />

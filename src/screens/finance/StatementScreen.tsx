@@ -6,6 +6,7 @@ import { useCanCorrect } from '../../app/correct';
 import { entrySection } from '../../lib/entrySection';
 import { ArrowLeft, ArrowDownUp, HandCoins, Lock, Pencil, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
+import { useBranch } from '../../app/branch';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
 import { rpc, useAccountName, type Move, type Statement, type StatementKind } from '../../app/ledgerApi';
@@ -61,6 +62,7 @@ export function StatementScreen() {
   const [wa, setWa] = useState(false);
   const cur = f.currency(shop.currency);
 
+  const br = useBranch();
   const { data, error, loading, reload } = useLoad(async () => {
     const st = await rpc<Statement>('statement', { p_kind: kind, p_id: id, p_from: range.from.toISOString(), p_to: range.to.toISOString() });
     const all = await rpc<Statement>('statement', { p_kind: kind, p_id: id, p_from: range.from.toISOString(), p_to: new Date(Date.now() + 86_400_000).toISOString() });
@@ -86,7 +88,7 @@ export function StatementScreen() {
       head = { title: p?.full_name ?? '', sub: p ? t(`roles.${p.role}`) : '', balance, fixed: p ? { employee: { id: p.id, name: p.full_name } } : {} };
     }
     return { st, head };
-  }, [kind, id, range.from.getTime(), range.to.getTime()]);
+  }, [kind, id, range.from.getTime(), range.to.getTime(), br.working?.id]);
   useLiveRefresh(reload);
 
   const label = (m: Move) => (m.source_type === 'reversal' ? t('fin.src.reversal') : t(`fin.src.${m.source_type}`));
