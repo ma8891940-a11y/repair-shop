@@ -126,6 +126,20 @@ d('أعمار المديونية', () => {
     expect(await one(c, before(4).slice(0, 10))).toMatchObject({ balance: 2000, d0: 1000, d60: 1000 });
   });
 
+  it('مرتجع بفاتورة من بيع جديد بيقلّله هو مش الدين القديم، وإلغاء دفعة بيرجّع الدين بعمره', async () => {
+    const c = await customer();
+    await sell(c, 1000, before(80));
+    const e = await sell(c, 5000, before(10));
+    const line = (await admin(`select id from sale_lines where entry_id = $1`, [e])).rows[0].id;
+    await at((await as(O, `select sale_line_return($1, $2, 1, null, false, 'رجع') e`, [id(), line], main)).rows[0].e, before(2));
+    expect(await one(c)).toMatchObject({ balance: 1000, d0: 0, d60: 1000 });
+    expect(await one(c, before(3).slice(0, 10))).toMatchObject({ balance: 6000, d0: 5000, d60: 1000 });
+    const p = await pay(c, 400, before(1));
+    expect(await one(c)).toMatchObject({ balance: 600, d60: 600 });
+    await at((await as(O, `select reverse_entry($1, 'غلط') r`, [p])).rows[0].r, before(0));
+    expect(await one(c)).toMatchObject({ balance: 1000, d60: 1000 });
+  });
+
   it('الموردين: الشرا الآجل، والسداد بيغطي الأقدم', async () => {
     const buy = async (q: number, when: string) => at((await as(O, `select record_purchase($1, $2, $3::jsonb, null) e`, [id(), sup, JSON.stringify([{ item: part, qty: q, unit_cost: 1000 }])], main)).rows[0].e, when);
     await buy(5, before(65));
@@ -155,6 +169,7 @@ d('أعمار المديونية', () => {
     expect((await aging(O, 'customers', AS_OF, B2)).map((r) => r.party_id)).toEqual([c]);
     expect((await aging(O)).find((r) => r.party_id === c)).toMatchObject({ balance: 4600 });
     expect(await aging(X)).toEqual([]);
+    await expect(aging(O, 'customers', '2999-01-01')).rejects.toThrow(/E_BAD_INPUT/);
     for (const k of ['employees', '', null]) await expect(aging(O, k as string)).rejects.toThrow(/E_BAD_INPUT/);
   });
 });

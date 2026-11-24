@@ -238,7 +238,7 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0075_delete_by_section.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'can_delete' and position('select public.current_app_role() in (''owner'', ''reception'')' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0075_delete_by_section.sql', 'found: function can_delete');
   end if;
-  if not exists (select 1 from public.app_migrations where version = '0076_debt_aging.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'debt_aging' and position('declare s uuid := public.current_shop_id(); d date := coalesce(p_as_of, (now() at time zone ''Africa/Cairo'')::date);' in p.prosrc) > 0)) then
+  if not exists (select 1 from public.app_migrations where version = '0076_debt_aging.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'debt_aging' and position('declare s uuid := public.current_shop_id(); today date := (now() at time zone ''Africa/Cairo'')::date; d date := coalesce(p_as_of, today);' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0076_debt_aging.sql', 'found: function debt_aging');
   end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
@@ -252,7 +252,7 @@ end $chk$;
 do $ord$
 declare
   files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql'];
-  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6];
+  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6];
   miss text;
 begin
   select min(v) into miss from unnest(files) v where v < '0072_sale_line_return.sql' and v not in (select version from public.app_migrations);
@@ -895,16 +895,21 @@ do $run$ begin
   execute $m0076$
 -- 0076: (5) أعمار المديونية: رصيد كل عميل أو مورد متقسم على عمر العملية اللي عملته (0–29، 30–59، 60 يوم أو أكتر).
 -- - من القيود بس، لحد تاريخ معيّن (as-of) بتوقيت القاهرة. مفيش رصيد متخزن.
--- - الدفعة والمرتجع بيغطوا الأقدم الأول (زي party_balances). القيد الملغي وعكسه بيتشالوا الاتنين، فإلغاء بيع جديد ما يغطيش دين قديم.
+-- - الدفعة بتغطي الأقدم الأول (زي party_balances)، والمرتجع بفاتورة من بيع آجل بيقلّل بيعه هو.
+-- - العمر من تاريخ القيد: شيك مرفوض أو رصيد افتتاحي أو قيد اتعدّل عمره من يوم القيد الجديد.
+-- القيد الملغي وعكسه بيتشالوا الاتنين، فإلغاء بيع جديد ما يغطيش دين قديم.
 -- - اللي رصيده صفر أو ليه فلوس عندنا مش في الكشف. مجموع الشرايح = الرصيد بالظبط.
 create or replace function public.debt_aging(p_kind text, p_as_of date default null, p_branch uuid default null)
 returns table(party_id uuid, name text, balance bigint, d0 bigint, d30 bigint, d60 bigint, oldest date, as_of date)
 language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
-declare s uuid := public.current_shop_id(); d date := coalesce(p_as_of, (now() at time zone 'Africa/Cairo')::date);
+declare s uuid := public.current_shop_id(); today date := (now() at time zone 'Africa/Cairo')::date; d date := coalesce(p_as_of, today);
+  upto timestamptz := (d + 1)::timestamp at time zone 'Africa/Cairo';  -- أول لحظة بعد التاريخ
 begin
   perform public.grant_require('finance', 'view');
   if p_kind is null or p_kind not in ('customers', 'suppliers') then raise exception 'E_BAD_INPUT'; end if;
+  if d > today then raise exception 'E_BAD_INPUT'; end if;
+  -- الموظف اللي مش معاه كل الفروع: فرعه هو، حتى لو طلب غيره (زي باقي التقارير)
   if not public.all_my_branches() and (p_branch is null or not public.can_branch(p_branch)) then
     p_branch := public.op_branch();
     if p_branch is null then raise exception 'E_FORBIDDEN'; end if;
@@ -913,16 +918,29 @@ begin
   with ent as (
     select e.id, e.entry_no, e.occurred_at, (e.occurred_at at time zone 'Africa/Cairo')::date as day
     from public.journal_entries e
-    where e.shop_id = s and (e.occurred_at at time zone 'Africa/Cairo')::date <= d and (p_branch is null or e.branch_id = p_branch)
+    where e.shop_id = s and e.occurred_at < upto and (p_branch is null or e.branch_id = p_branch)
       and e.reverses_id is null
-      and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id and (r.occurred_at at time zone 'Africa/Cairo')::date <= d)
+      and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id and r.occurred_at < upto)
   ),
-  ln as (
-    select l.party_id, ent.day, ent.occurred_at, ent.entry_no, l.id as line_id,
+  raw as (
+    select l.party_id, ent.id as entry_id, ent.day, ent.occurred_at, ent.entry_no, l.id as line_id,
            (case when p_kind = 'customers' then l.debit else l.credit end)::bigint as plus,
            (case when p_kind = 'customers' then l.credit else l.debit end)::bigint as minus
     from ent join public.journal_lines l on l.entry_id = ent.id join public.accounts a on a.id = l.account_id
     where l.party_id is not null and a.kind = case when p_kind = 'customers' then 'receivable' else 'payable' end
+  ),
+  -- مرتجع بفاتورة من بيع آجل: بيقلّل دين البيع نفسه (مش الأقدم)
+  ret as (
+    select distinct x.line_id, sale.line_id as sale_line
+    from raw x join public.sale_lines rl on rl.entry_id = x.entry_id join public.sale_lines b on b.id = rl.return_of
+    join raw sale on sale.entry_id = b.entry_id and sale.party_id = x.party_id and sale.plus > 0
+    where p_kind = 'customers' and x.minus > 0
+  ),
+  ln as (
+    select x.party_id, x.day, x.occurred_at, x.entry_no, x.line_id,
+           x.plus - coalesce((select sum(q.minus) from ret join raw q on q.line_id = ret.line_id where ret.sale_line = x.line_id), 0)::bigint as plus,
+           case when exists (select 1 from ret where ret.line_id = x.line_id) then 0 else x.minus end as minus
+    from raw x
   ),
   paid as (select ln.party_id, sum(ln.minus) as m, sum(ln.plus) as p from ln group by 1 having sum(ln.plus) > sum(ln.minus)),
   cum as (

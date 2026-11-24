@@ -1,15 +1,20 @@
 -- 0076: (5) أعمار المديونية: رصيد كل عميل أو مورد متقسم على عمر العملية اللي عملته (0–29، 30–59، 60 يوم أو أكتر).
 -- - من القيود بس، لحد تاريخ معيّن (as-of) بتوقيت القاهرة. مفيش رصيد متخزن.
--- - الدفعة والمرتجع بيغطوا الأقدم الأول (زي party_balances). القيد الملغي وعكسه بيتشالوا الاتنين، فإلغاء بيع جديد ما يغطيش دين قديم.
+-- - الدفعة بتغطي الأقدم الأول (زي party_balances)، والمرتجع بفاتورة من بيع آجل بيقلّل بيعه هو.
+-- - العمر من تاريخ القيد: شيك مرفوض أو رصيد افتتاحي أو قيد اتعدّل عمره من يوم القيد الجديد.
+-- القيد الملغي وعكسه بيتشالوا الاتنين، فإلغاء بيع جديد ما يغطيش دين قديم.
 -- - اللي رصيده صفر أو ليه فلوس عندنا مش في الكشف. مجموع الشرايح = الرصيد بالظبط.
 create or replace function public.debt_aging(p_kind text, p_as_of date default null, p_branch uuid default null)
 returns table(party_id uuid, name text, balance bigint, d0 bigint, d30 bigint, d60 bigint, oldest date, as_of date)
 language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
-declare s uuid := public.current_shop_id(); d date := coalesce(p_as_of, (now() at time zone 'Africa/Cairo')::date);
+declare s uuid := public.current_shop_id(); today date := (now() at time zone 'Africa/Cairo')::date; d date := coalesce(p_as_of, today);
+  upto timestamptz := (d + 1)::timestamp at time zone 'Africa/Cairo';  -- أول لحظة بعد التاريخ
 begin
   perform public.grant_require('finance', 'view');
   if p_kind is null or p_kind not in ('customers', 'suppliers') then raise exception 'E_BAD_INPUT'; end if;
+  if d > today then raise exception 'E_BAD_INPUT'; end if;
+  -- الموظف اللي مش معاه كل الفروع: فرعه هو، حتى لو طلب غيره (زي باقي التقارير)
   if not public.all_my_branches() and (p_branch is null or not public.can_branch(p_branch)) then
     p_branch := public.op_branch();
     if p_branch is null then raise exception 'E_FORBIDDEN'; end if;
@@ -18,16 +23,29 @@ begin
   with ent as (
     select e.id, e.entry_no, e.occurred_at, (e.occurred_at at time zone 'Africa/Cairo')::date as day
     from public.journal_entries e
-    where e.shop_id = s and (e.occurred_at at time zone 'Africa/Cairo')::date <= d and (p_branch is null or e.branch_id = p_branch)
+    where e.shop_id = s and e.occurred_at < upto and (p_branch is null or e.branch_id = p_branch)
       and e.reverses_id is null
-      and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id and (r.occurred_at at time zone 'Africa/Cairo')::date <= d)
+      and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id and r.occurred_at < upto)
   ),
-  ln as (
-    select l.party_id, ent.day, ent.occurred_at, ent.entry_no, l.id as line_id,
+  raw as (
+    select l.party_id, ent.id as entry_id, ent.day, ent.occurred_at, ent.entry_no, l.id as line_id,
            (case when p_kind = 'customers' then l.debit else l.credit end)::bigint as plus,
            (case when p_kind = 'customers' then l.credit else l.debit end)::bigint as minus
     from ent join public.journal_lines l on l.entry_id = ent.id join public.accounts a on a.id = l.account_id
     where l.party_id is not null and a.kind = case when p_kind = 'customers' then 'receivable' else 'payable' end
+  ),
+  -- مرتجع بفاتورة من بيع آجل: بيقلّل دين البيع نفسه (مش الأقدم)
+  ret as (
+    select distinct x.line_id, sale.line_id as sale_line
+    from raw x join public.sale_lines rl on rl.entry_id = x.entry_id join public.sale_lines b on b.id = rl.return_of
+    join raw sale on sale.entry_id = b.entry_id and sale.party_id = x.party_id and sale.plus > 0
+    where p_kind = 'customers' and x.minus > 0
+  ),
+  ln as (
+    select x.party_id, x.day, x.occurred_at, x.entry_no, x.line_id,
+           x.plus - coalesce((select sum(q.minus) from ret join raw q on q.line_id = ret.line_id where ret.sale_line = x.line_id), 0)::bigint as plus,
+           case when exists (select 1 from ret where ret.line_id = x.line_id) then 0 else x.minus end as minus
+    from raw x
   ),
   paid as (select ln.party_id, sum(ln.minus) as m, sum(ln.plus) as p from ln group by 1 having sum(ln.plus) > sum(ln.minus)),
   cum as (
