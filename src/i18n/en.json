@@ -3056,7 +3056,8 @@
       "staff": "Staff",
       "settings": "Settings",
       "audit": "Activity log",
-      "item_create": "Add new item"
+      "item_create": "Add new item",
+      "print_templates": "Print templates"
     },
     "ops": {
       "view": "View",

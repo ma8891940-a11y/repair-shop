@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowUp, Eye, EyeOff, GripVertical, Plus, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { useBranch } from '../../app/branch';
+import { usePerms } from '../../app/perms';
 import { useLoad, must } from '../../app/useLoad';
 import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
@@ -16,6 +17,7 @@ import { cn } from '../../ui/cn';
 
 interface PrinterRow {
   id: string;
+  branch_id: string | null;
   name: string;
   kind: PrinterKind;
   model: string | null;
@@ -34,6 +36,9 @@ interface TplRow {
 }
 const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice', 'statement', 'voucher', 'sale', 'barcode'];
 
+/** RLS بيتجاهل التعديل الممنوع من غير خطأ (صفر صفوف) */
+const denied = (rows: unknown[] | null) => (rows?.length ? null : new Error('E_FORBIDDEN'));
+
 /**
  * U5: الإعدادات ← الطابعات: ملفات الطابعات (بقوالب جاهزة لأشهر الموديلات) ومصمم الطباعة لكل نوع ورقة.
  * المتصفح ما بيعرضش الطابعات المتوصلة: الملف بيحدد المقاس والهوامش، والطباعة بتفتح نافذة الطباعة على المقاس الصح.
@@ -42,9 +47,12 @@ export function PrintersTab() {
   const { t } = useTranslation();
   const toast = useToast();
   const br = useBranch();
+  // 50.1: اللي مش معاه كل الفروع: قوالب وطابعات فروعه بس (نفس القاعدة في can_edit_print)
+  const wide = br.all.length > 0 && br.all.every((b) => br.mine.some((m) => m.id === b.id));
+  const mayEdit = (branch: string | null) => (branch ? br.mine.some((m) => m.id === branch) : wide);
   const { data, reload } = useLoad(async () => {
     const [p, tp, dev, cash, ent, sale, bc] = await Promise.all([
-      supabase.from('printers').select('id, name, kind, model, width_mm, height_mm, margin_mm').is('deleted_at', null).order('created_at'),
+      supabase.from('printers').select('id, branch_id, name, kind, model, width_mm, height_mm, margin_mm').is('deleted_at', null).order('created_at'),
       supabase.from('print_templates').select('id, doc, branch_id, printer_id, name, blocks, is_default').is('deleted_at', null).order('created_at'),
       supabase.from('devices').select('id').is('deleted_at', null).order('created_at', { ascending: false }).limit(1),
       // كشف الحساب: المعاينة على أول خزنة
@@ -69,12 +77,13 @@ export function PrintersTab() {
   const [preset, setPreset] = useState(0);
   async function addPrinter() {
     const p = PRINTER_PRESETS[preset];
-    const { error } = await supabase.from('printers').insert({ id: crypto.randomUUID(), shop_id: crypto.randomUUID(), name: p.model, kind: p.kind, model: p.model, width_mm: p.width_mm, height_mm: p.height_mm, margin_mm: p.margin_mm });
+    const { error } = await supabase.from('printers').insert({ id: crypto.randomUUID(), shop_id: crypto.randomUUID(), branch_id: wide ? null : br.working?.id, name: p.model, kind: p.kind, model: p.model, width_mm: p.width_mm, height_mm: p.height_mm, margin_mm: p.margin_mm });
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     reload();
   }
   async function updPrinter(x: PrinterRow, patch: Partial<PrinterRow>) {
-    const { error } = await supabase.from('printers').update(patch).eq('id', x.id);
+    const { data: done, error: e } = await supabase.from('printers').update(patch).eq('id', x.id).select('id');
+    const error = e ?? denied(done);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     reload();
   }
@@ -103,7 +112,8 @@ export function PrintersTab() {
           ) : (
             <ul className="flex flex-col divide-y divide-glass-border rounded-md border border-glass-border">
               {data.printers.map((x) => (
-                <li key={x.id} className="grid grid-cols-2 items-end gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto_80px_80px_80px_auto]" data-testid="printer-row">
+                <li key={x.id}>
+                  <fieldset disabled={!mayEdit(x.branch_id)} className="m-0 grid min-w-0 border-0 grid-cols-2 items-end gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto_80px_80px_80px_auto] disabled:opacity-60" data-testid="printer-row">
                   <Input defaultValue={x.name} onBlur={(e) => e.target.value.trim() && e.target.value !== x.name && void updPrinter(x, { name: e.target.value.trim() })} aria-label={t('printers.name')} maxLength={60} />
                   <span className="text-2xs text-fg-3">{t(`printers.kinds.${x.kind}`)}</span>
                   <Input mono inputMode="numeric" defaultValue={x.width_mm} onBlur={(e) => Number(e.target.value) !== x.width_mm && void updPrinter(x, { width_mm: Number(e.target.value) })} aria-label={t('printers.width')} suffix="mm" />
@@ -112,6 +122,7 @@ export function PrintersTab() {
                   <button type="button" onClick={() => void updPrinter(x, { deleted_at: new Date().toISOString() } as Partial<PrinterRow>)} className="mb-1 grid size-8 place-items-center rounded-md text-fg-3 hover:text-danger" aria-label={t('printers.remove', { name: x.name })}>
                     <Trash2 className="size-4" aria-hidden />
                   </button>
+                  </fieldset>
                 </li>
               ))}
             </ul>
@@ -119,16 +130,18 @@ export function PrintersTab() {
           <Alert tone="info">{t('printers.direct')}</Alert>
         </div>
       </Panel>
-      {data && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} lastVoucher={data.lastVoucher} lastSale={data.lastSale} lastBarcode={data.lastBarcode} branches={br.multi ? br.all : []} onSaved={reload} />}
+      {data && br.ready && <Designer printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} lastVoucher={data.lastVoucher} lastSale={data.lastSale} lastBarcode={data.lastBarcode} branches={br.all.length > 1 ? (wide ? br.all : br.mine) : []} wide={wide} onSaved={reload} />}
     </div>
   );
 }
 
-function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastSale, lastBarcode, branches, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; lastVoucher: string | null; lastSale: string | null; lastBarcode: string | null; branches: { id: string; name: string }[]; onSaved: () => void }) {
+function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastSale, lastBarcode, branches, wide, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; lastVoucher: string | null; lastSale: string | null; lastBarcode: string | null; branches: { id: string; name: string }[]; wide: boolean; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
+  // كشف الحساب والسند ليهم صفحة طباعة لصاحب صلاحية الوضع المالي بس
+  const finance = usePerms().grant('finance');
   const [doc, setDoc] = useState<TemplateDoc>('receipt');
-  const [branch, setBranch] = useState<string>('');
+  const [branch, setBranch] = useState<string>(wide ? '' : (branches[0]?.id ?? ''));
   const current = templates.find((x) => x.doc === doc && x.is_default && (x.branch_id ?? '') === branch) ?? null;
   const [blocks, setBlocks] = useState<Block[]>(() => (current ? normalizeBlocks(doc, current.blocks) : defaultBlocks(doc)));
   const [printer, setPrinter] = useState<string>(current?.printer_id ?? '');
@@ -154,16 +167,18 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
   const upd = (i: number, p: Partial<Block>) => setBlocks((bs) => bs.map((b, j) => (j === i ? { ...b, ...p } : b)));
   async function save() {
     const row = { doc, branch_id: branch || null, printer_id: printer || null, name: t(`printers.docs.${doc}`), blocks, is_default: true };
-    const { error } = current
-      ? await supabase.from('print_templates').update(row).eq('id', current.id)
-      : await supabase.from('print_templates').insert({ id: crypto.randomUUID(), shop_id: crypto.randomUUID(), ...row });
+    const { data: done, error: e } = current
+      ? await supabase.from('print_templates').update(row).eq('id', current.id).select('id')
+      : await supabase.from('print_templates').insert({ id: crypto.randomUUID(), shop_id: crypto.randomUUID(), ...row }).select('id');
+    const error = e ?? denied(done);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     toast({ tone: 'ok', title: t('printers.saved') });
     onSaved();
   }
   async function reset() {
     if (current) {
-      const { error } = await supabase.from('print_templates').update({ deleted_at: new Date().toISOString(), is_default: false }).eq('id', current.id);
+      const { data: done, error: e } = await supabase.from('print_templates').update({ deleted_at: new Date().toISOString(), is_default: false }).eq('id', current.id).select('id');
+      const error = e ?? denied(done);
       if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     }
     setBlocks(defaultBlocks(doc));
@@ -173,11 +188,11 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
   // الورقة اللي بتتعاين وبتتطبع تجربة: آخر جهاز، وكشف الحساب على أول خزنة
   const sample =
     doc === 'statement'
-      ? cashbox
+      ? finance && cashbox
         ? `print/statement/cashbox/${cashbox}`
         : null
       : doc === 'voucher'
-        ? lastVoucher
+        ? finance && lastVoucher
           ? `print/voucher/${lastVoucher}`
           : null
         : doc === 'sale'
@@ -221,10 +236,10 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
                 ))}
               </Select>
             </Field>
-            {branches.length > 1 && (
+            {branches.length > 0 && (
               <Field label={t('printers.forBranch')}>
                 <Select value={branch} onChange={(e) => setBranch(e.target.value)} data-testid="tpl-branch">
-                  <option value="">{t('printers.allBranches')}</option>
+                  {wide && <option value="">{t('printers.allBranches')}</option>}
                   {branches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}

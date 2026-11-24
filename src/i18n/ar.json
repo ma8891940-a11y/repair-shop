@@ -3072,7 +3072,8 @@
       "staff": "الموظفين",
       "settings": "الإعدادات",
       "audit": "سجل النشاط",
-      "item_create": "إضافة صنف جديد"
+      "item_create": "إضافة صنف جديد",
+      "print_templates": "قوالب الطباعة"
     },
     "ops": {
       "view": "يشوف",

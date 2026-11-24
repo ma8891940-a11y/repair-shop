@@ -14,18 +14,20 @@ import { useToast } from '../../ui/Toast';
 import DB_DEFAULTS from '../../data/dbDefaults.json';
 import { cn } from '../../ui/cn';
 
-export const SECTIONS = ['devices', 'intake', 'customers', 'technicians', 'inventory', 'item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'audit'] as const;
+export const SECTIONS = ['devices', 'intake', 'customers', 'technicians', 'inventory', 'item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'print_templates', 'audit'] as const;
 export const OPS = ['view', 'add', 'edit', 'delete', 'amounts', 'export'] as const;
 export type PermMap = Record<string, string[]>;
 
 /** لصاحب المحل بس (مش بتتدي لحد): الشركاء، والمرتبات والفريق، والإعدادات */
 export const OWNER_ONLY = ['partners', 'staff', 'settings'];
 /** الدور المبني على "فني": ما يشوفش أسعار ولا أرباح ولا بيبيع ولا بيشتري (نفس القاعدة في قاعدة البيانات) */
-const TECH_LOCKED = ['item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'reports', 'audit', 'customers'];
+const TECH_LOCKED = ['item_create', 'print_templates', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'reports', 'audit', 'customers'];
 export function permLocked(base: 'reception' | 'technician', section: string, op: string): 'owner' | 'tech' | 'na' | null {
   if (OWNER_ONLY.includes(section)) return 'owner';
   // "إضافة صنف جديد": خانة "يضيف" بس
   if (section === 'item_create' && op !== 'add') return 'na';
+  // "قوالب الطباعة": خانة "يعدّل" بس
+  if (section === 'print_templates' && op !== 'edit') return 'na';
   if (base === 'technician' && (TECH_LOCKED.includes(section) || op === 'amounts')) return 'tech';
   return null;
 }
