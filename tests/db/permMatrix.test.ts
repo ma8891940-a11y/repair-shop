@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { cleanupAfterFile } from './purge';
+import { entrySection } from '../../src/lib/entrySection';
 
 cleanupAfterFile();
 const url = process.env.TEST_DATABASE_URL;
@@ -49,6 +50,7 @@ d('(34) مصفوفة الصلاحيات', () => {
   const E: Record<string, string> = {};
   const [custX, supX, itemX, devX] = [id(), id(), id(), id()];
   let payB = '';
+  let saleLine = '';
   let cashB = '';
   let shop = '';
   let step = '';
@@ -94,6 +96,8 @@ d('(34) مصفوفة الصلاحيات', () => {
     await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'accessory', 'جراب')`, [item]);
     await as(O, `select record_purchase($1, $2, $3::jsonb)`, [id(), sup, JSON.stringify([{ item, qty: 20, unit_cost: 2000 }])]);
     E.sale = (await as(O, `select record_sale($1, $2::jsonb, null, $3) e`, [id(), JSON.stringify([{ item, qty: 2, price: 50000 }]), cust])).rows[0].e;
+    const cs = (await as(O, `select record_sale($1, $2::jsonb, $3) e`, [id(), JSON.stringify([{ item, qty: 1, price: 5000 }]), cash])).rows[0].e;
+    saleLine = (await admin(`select id from sale_lines where entry_id = $1`, [cs])).rows[0].id;
     await as(O, `insert into customers(id, shop_id, name, phone) values ($1, gen_random_uuid(), 'عميل للحذف', '01077778888')`, [custX]);
     await as(O, `insert into suppliers(id, shop_id, name) values ($1, gen_random_uuid(), 'مورد للحذف')`, [supX]);
     await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'part', 'صنف للحذف')`, [itemX]);
@@ -113,6 +117,7 @@ d('(34) مصفوفة الصلاحيات', () => {
     step = await firstStep(dev);
     stepB = await firstStep(devB);
     await as(O, `select cheque_receive($1, $2, 'P-1', null, '2026-12-31', 1000)`, [chq, cust]);
+    E.waste = (await as(O, `select write_off($1, $2, 1, 'اتكسر') e`, [id(), item])).rows[0].e;
     E.main = (await as(O, `select record_expense($1, $2, $3, 1000) e`, [entryMain, rent, cash])).rows[0].e;
     E.b2 = (await as(O, `select record_expense($1, $2, $3, 1000) e`, [entryB, rent, cashB])).rows[0].e;
     // تفاصيل الجهازين في كل الجداول
@@ -171,7 +176,8 @@ d('(34) مصفوفة الصلاحيات', () => {
     ['supplier_return', `select supplier_return($1, $2, $3, 1, 2000, null, 'عيب')`, [id(), sup, item], [M]],
     // البيع والخزن
     ['record_sale', `select record_sale($1, $2::jsonb, $3)`, [id(), sale(5000), cash], [R, M, C]],
-    ['sale_return', `select sale_return($1, $2, 1, 5000, $3, null, true, 'رجع')`, [id(), item, cash], [R, M, C]],
+    ['sale_return من غير فاتورة (قرار 2026-11-24)', `select sale_return($1, $2, 1, 5000, $3, null, true, 'رجع')`, [id(), item, cash], []],
+    ['sale_line_return بفاتورة', `select sale_line_return($1, $2, 1, $3, true, 'رجع')`, [id(), saleLine, cash], [R, M, C]],
     ['record_payment', `select record_payment($1, $2, $3, 1000)`, [id(), cust, cash], [R, M, C]],
     ['record_expense', `select record_expense($1, $2, $3, 1000)`, [id(), rent, cash], [M, A]],
     ['transfer_cash', `select transfer_cash($1, $2, $3, 100)`, [id(), cash, bank], [M]],
@@ -197,15 +203,16 @@ d('(34) مصفوفة الصلاحيات', () => {
     ['give_advance', `select give_advance($1, $2, $3, 100)`, [id(), U.technician, cash], []],
     ['set_staff_override', `select set_staff_override($1, 'finance', 'view', true)`, [U.reception], []],
     ['set_can_correct', `select set_can_correct($1, true)`, [U.reception], []],
-    // التصحيح والحذف: "يحذف" في أي قسم (مدير الفرع معاه حذف المخزون)
-    ['reverse_entry', `select reverse_entry($1, 'غلط')`, [E.main], [M]],
-    ['entry_args', `select entry_args($1)`, [E.main], [M]],
+    // التصحيح والحذف: كل قسم بيحذف حاجته بس (مدير الفرع معاه حذف المخزون بس)
+    ['reverse_entry مصروف', `select reverse_entry($1, 'غلط')`, [E.main], []],
+    ['entry_args مصروف', `select entry_args($1)`, [E.main], []],
+    ['reverse_entry هالك', `select reverse_entry($1, 'غلط')`, [E.waste], [M]],
     ['reverse_entry سلفة موظف', `select reverse_entry($1, 'غلط')`, [E.advance], []],
     ['entry_args سلفة موظف', `select entry_args($1)`, [E.advance], []],
     ['reverse_entry رأس المال', `select reverse_entry($1, 'غلط')`, [E.capital], []],
-    ['soft_delete جهاز', `select soft_delete('device', $1, 'غلط')`, [devX], [M]],
-    ['soft_delete عميل', `select soft_delete('customer', $1, 'غلط')`, [custX], [M]],
-    ['soft_delete مورد', `select soft_delete('supplier', $1, 'غلط')`, [supX], [M]],
+    ['soft_delete جهاز', `select soft_delete('device', $1, 'غلط')`, [devX], []],
+    ['soft_delete عميل', `select soft_delete('customer', $1, 'غلط')`, [custX], []],
+    ['soft_delete مورد', `select soft_delete('supplier', $1, 'غلط')`, [supX], []],
     ['soft_delete صنف', `select soft_delete('item', $1, 'غلط')`, [itemX], [M]],
     ['طباعة فاتورة البيع', `select sale_invoice($1)`, [E.sale], [R, M, C, A]],
     // الجداول مباشرة
@@ -267,13 +274,19 @@ d('(34) مصفوفة الصلاحيات', () => {
       [`select reverse_entry($1, 'غلط')`, [E.b2]],
       [`select entry_args($1)`, [E.b2]],
     ];
+    // إذن التصحيح الكامل لمدير الفرع: عشان اللي يمنعه هنا الفرع نفسه، مش القسم
+    await as(O, `select set_can_correct($1, true)`, [U.branch_manager]);
     const wrong: string[] = [];
+    expect(await tryAs(U.branch_manager, `select reverse_entry($1, 'غلط')`, [E.main])).toBeNull();
+    expect(await tryAs(U.branch_manager, `select soft_delete('device', $1, 'غلط')`, [devX])).toBeNull();
+    for (const e of [E.advance, E.capital]) expect(await tryAs(U.branch_manager, `select reverse_entry($1, 'غلط')`, [e])).toMatch(/E_FORBIDDEN/);
     for (const [sql, p] of calls)
       for (const r of [M, R] as Role[]) {
         const e = await tryAs(U[r], sql, p);
         if (!e || !/E_FORBIDDEN|E_NOT_FOUND/.test(e)) wrong.push(`${r} ${sql}: ${e ?? 'اتنفذت'}`);
       }
     expect(wrong).toEqual([]);
+    await as(O, `select set_can_correct($1, false)`, [U.branch_manager]);
     // تقرير الموديلات: طلب كل الفروع أو الفرع التاني بيرجّع فرعه هو
     for (const b of [null, B2]) {
       const rows = (await as(U.branch_manager, `select label from models_report($1, $2, $3)`, [FROM, TO, b])).rows.map((x) => x.label);
@@ -395,6 +408,7 @@ d('(34) مصفوفة الصلاحيات', () => {
 
   it('جهاز في الطريق لفرع الموظف: بيشوفه وبيستلمه، وما يعدّلوش قبل الاستلام', async () => {
     await as(O, `select send_device($1, $2)`, [devB, main]);
+    await as(O, `select set_can_correct($1, true)`, [U.branch_manager]);
     try {
       expect(await tryAs(U.reception, `select device_money($1)`, [devB])).toBeNull();
       for (const [sql, p] of [
@@ -416,6 +430,7 @@ d('(34) مصفوفة الصلاحيات', () => {
       expect(await tryAs(U.reception, `select cancel_device_transfer($1)`, [devB])).toBeNull();
       expect(await tryAs(U.reception, `select * from marketing_due()`)).toBeNull();
     } finally {
+      await as(O, `select set_can_correct($1, false)`, [U.branch_manager]);
       await as(O, `select set_branch_kind($1, 'both')`, [main]);
       await as(O, `select cancel_device_transfer($1)`, [devB]);
     }
@@ -430,14 +445,73 @@ d('(34) مصفوفة الصلاحيات', () => {
     await db.query(`insert into journal_entries(id, shop_id, source_type, source_id, created_by, branch_id) values ($1, $2, 'vat_payment', $1, $3, $4)`, [e, shopId, O, main]);
     await db.query(`insert into journal_lines(shop_id, entry_id, account_id, debit, credit) values ($1, $2, $3, 500, 0), ($1, $2, $4, 0, 500)`, [shopId, e, tax, cash]);
     await db.query('commit');
+    await as(O, `select set_can_correct($1, true)`, [U.branch_manager]);
     expect(await tryAs(U.branch_manager, `select reverse_entry($1, 'غلط')`, [e])).toMatch(/E_FORBIDDEN/);
+    await as(O, `select set_can_correct($1, false)`, [U.branch_manager]);
     expect(await tryAs(O, `select reverse_entry($1, 'غلط')`, [e])).toBeNull();
+  });
+
+  it('(قرار 2026-11-24) "يحذف" في قسم = حاجة القسم ده بس: القيود والحذف الناعم', async () => {
+    const S: Record<string, string> = {};
+    const mk = async (k: string, sql: string, p: unknown[]) => (S[k] = (await as(O, sql, p)).rows[0].e);
+    await mk('sales', `select record_sale($1, $2::jsonb, $3) e`, [id(), sale(5000), cash]);
+    await mk('cashbox', `select record_payment($1, $2, $3, 700) e`, [id(), cust, cash]);
+    await mk('transfer', `select transfer_cash($1, $2, $3, 100) e`, [id(), cash, bank]);
+    await mk('expenses', `select record_expense($1, $2, $3, 900) e`, [id(), rent, cash]);
+    await mk('purchases', `select record_purchase($1, $2, $3::jsonb) e`, [id(), sup, buy()]);
+    await mk('inventory', `select write_off($1, $2, 1, 'اتكسر') e`, [id(), item]);
+    await mk('devices', `select device_manual_part($1, $2, 'قطعة', 1000, $3) e`, [id(), dev, cash]);
+    const acts: [string, string, unknown[]][] = [
+      ...Object.entries(S).map(([k, e]) => [k === 'transfer' ? 'cashbox' : k, `select reverse_entry($1, 'غلط')`, [e]] as [string, string, unknown[]]),
+      ...Object.entries(S).map(([k, e]) => [k === 'transfer' ? 'cashbox' : k, `select entry_args($1)`, [e]] as [string, string, unknown[]]),
+      ['customers', `select soft_delete('customer', $1, 'غلط')`, [custX]],
+      ['purchases', `select soft_delete('supplier', $1, 'غلط')`, [supX]],
+      ['inventory', `select soft_delete('item', $1, 'غلط')`, [itemX]],
+      ['devices', `select soft_delete('device', $1, 'غلط')`, [devX]],
+    ];
+    const wrong: string[] = [];
+    const set = (s: string, v: boolean | null) => as(O, `select set_staff_override($1, $2, 'delete', $3)`, [U.reception, s, v]);
+    for (const s of ['sales', 'cashbox', 'expenses', 'purchases', 'inventory', 'devices', 'customers', 'finance', 'reports']) {
+      await set(s, true);
+      for (const [sec, sql, p] of acts) {
+        const e = await tryAs(U.reception, sql, p);
+        if (sec === s ? e !== null : e === null || !/E_FORBIDDEN/.test(e)) wrong.push(`حذف ${s}: ${sec} ${sql}: ${e ?? 'اتنفذت'}`);
+      }
+      await set(s, null);
+    }
+    // إذن "يصحح ويحذف" الكامل اللي صاحب المحل بيديه لموظف بعينه
+    await as(O, `select set_can_correct($1, true)`, [U.reception]);
+    for (const [sec, sql, p] of acts) {
+      const e = await tryAs(U.reception, sql, p);
+      if (e) wrong.push(`إذن كامل: ${sec} ${sql}: ${e}`);
+    }
+    await as(O, `select set_can_correct($1, false)`, [U.reception]);
+    // الفني: ولا بصلاحية القسم ولا بالإذن الكامل
+    await as(O, `select set_staff_override($1, 'customers', 'delete', true)`, [U.technician]);
+    await as(O, `select set_staff_override($1, 'expenses', 'delete', true)`, [U.technician]);
+    await as(O, `select set_can_correct($1, true)`, [U.technician]);
+    for (const [sec, sql, p] of acts) {
+      const e = await tryAs(U.technician, sql, p);
+      if (e === null || !/E_FORBIDDEN/.test(e)) wrong.push(`فني: ${sec} ${sql}: ${e ?? 'اتنفذت'}`);
+    }
+    await as(O, `select set_can_correct($1, false)`, [U.technician]);
+    for (const s of ['customers', 'expenses']) await as(O, `select set_staff_override($1, $2, 'delete', null)`, [U.technician, s]);
+    expect(wrong).toEqual([]);
+  }, 60_000);
+
+  it('قسم القيد في الواجهة = قسمه في قاعدة البيانات لكل أنواع القيود', async () => {
+    const def = (await admin(`select pg_get_constraintdef(oid) d from pg_constraint where conname = 'journal_entries_source_type_check'`)).rows[0].d as string;
+    const types = [...def.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    expect(types.length).toBeGreaterThan(25);
+    const db2 = (await admin(`select x, entry_section(x) s from unnest($1::text[]) x`, [types])).rows;
+    expect(db2.map((r) => [r.x, r.s])).toEqual(types.map((x) => [x, entrySection(x)]));
   });
 
   it('رصيد الصنف في الفروع: القيمة (التكلفة) لأصحاب صلاحية المبالغ بس، والفني ما يشوفهاش', async () => {
     const val = async (u: string) => (await as(u, `select value from item_branch_stock($1) where branch_id = $2`, [item, main])).rows[0].value;
-    expect(await val(O)).toBe('36000');
-    expect(await val(U.branch_manager)).toBe('36000');
+    // 20 اشترى − 2 و1 بيع − 1 هالك، وفي اختبار الأقسام: − 1 بيع + 1 شرا − 1 هالك = 15 × 2000
+    expect(await val(O)).toBe('30000');
+    expect(await val(U.branch_manager)).toBe('30000');
     for (const r of [R, T, C] as Role[]) expect(await val(U[r]), r).toBeNull();
   });
 

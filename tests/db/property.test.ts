@@ -144,7 +144,7 @@ d('الحسابات: عمليات عشوائية، وبعد كل عملية كل
       }],
       ['هالك', () => as(O, `select write_off($1, $2, $3, 'هالك')`, [randomUUID(), pick(items), 1 + Math.floor(r() * 2)])],
       ['مرتجع للمورد', () => as(O, `select supplier_return($1, $2, $3, 1, $4, $5, 'مرتجع')`, [randomUUID(), pick(sups), pick(items), Math.floor(r() * 30_000), r() < 0.5 ? null : cash()])],
-      ['مرتجع من عميل', () => as(R, `select sale_return($1, $2, 1, $3, $4, $5, $6, 'مرتجع')`, [randomUUID(), pick(items), Math.floor(r() * 40_000), r() < 0.5 ? cash() : null, pick(custs), r() < 0.7])],
+      ['مرتجع من عميل', () => as(O, `select sale_return($1, $2, 1, $3, $4, $5, $6, 'مرتجع')`, [randomUUID(), pick(items), Math.floor(r() * 40_000), r() < 0.5 ? cash() : null, pick(custs), r() < 0.7])],
       ['قطعة يدوية', () => as(R, `select device_manual_part($1, $2, 'قطعة', $3, $4)`, [randomUUID(), pick(devs).id, amt(20_000), cash()])],
       ['رصيد افتتاحي', () => {
         const k = pick(['cash', 'customer', 'supplier', 'stock'] as const);

@@ -202,7 +202,7 @@ export function CustomerProfileScreen() {
   const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
-  const canCorrect = useCanCorrect();
+  const canCorrect = useCanCorrect()('customers');
   const [del, setDel] = useState(false);
   const [wa, setWa] = useState(false);
   const { data, error, loading, reload } = useLoad(async () => {

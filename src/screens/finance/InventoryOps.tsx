@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ItemPicker } from '../../app/ItemPicker';
+import { useMe } from '../../app/auth';
 import { usePerms } from '../../app/perms';
 import { NewItemInline } from '../../app/NewItemInline';
 import { loadCashboxes, opId, rpc, useAccountName, type Cashbox, type StockRow } from '../../app/ledgerApi';
@@ -85,7 +86,8 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
   const [reason, setReason] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // (3) مرتجع العميل: بفاتورة (الأساس)، أو من غير فاتورة
+  // (3) مرتجع العميل: بفاتورة (الأساس)، أو من غير فاتورة (صاحب المحل بس)
+  const owner = useMe().profile.role === 'owner';
   const [mode, setMode] = useState<'byInvoice' | 'noInvoice'>('byInvoice');
   const id = useMemo(() => (op ? opId() : ''), [op]);
   const cbs = useLoad(async () => (op && op !== 'write_off' ? loadCashboxes() : ([] as Cashbox[])), [op]);
@@ -100,8 +102,8 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
     setRestock(true);
     setReason('');
     setErr(null);
-    setMode(presetItem ? 'noInvoice' : 'byInvoice');
-  }, [op, presetItem]);
+    setMode(presetItem && owner ? 'noInvoice' : 'byInvoice');
+  }, [op, presetItem, owner]);
   useEffect(() => {
     if (!cashbox && cbs.data?.length) setCashbox(cbs.data[0].id);
   }, [cbs.data, cashbox]);
@@ -141,7 +143,7 @@ export function InvOpDialog({ op, items, suppliers, presetItem, onOpenChange, on
     }
   }
 
-  const modes = (
+  const modes = owner && (
     <div className="inline-flex self-start rounded-md border border-glass-border p-0.5" role="radiogroup" aria-label={t('invop.title.sale_return')}>
       {(['byInvoice', 'noInvoice'] as const).map((m) => (
         <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} data-testid={`ret-${m}`} className={cn('h-7 rounded-sm px-2.5 text-xs', mode === m ? 'bg-raised text-fg' : 'text-fg-3')}>

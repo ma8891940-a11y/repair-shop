@@ -39,7 +39,7 @@ export function DeviceMoneyPanel({ deviceId, customer, orderNo, status, finalCos
   if (customer && (!stickyCustomer.current || stickyCustomer.current.id !== customer.id || stickyCustomer.current.name !== customer.name)) stickyCustomer.current = customer;
   const payCustomer = customer ?? stickyCustomer.current;
   const [calc, setCalc] = useState(false);
-  const canCorrect = useCanCorrect();
+  const canCorrect = useCanCorrect()('cashbox');
   const [fix, setFix] = useState<{ mode: 'edit' | 'cancel'; entry_id: string; entry_no: number; amount: number } | null>(null);
   // الخزن تتحفظ على الجهاز من دلوقتي، عشان الدفعة تتسجل صح لو النت فصل قبل ما الفورم يتفتح
   useEffect(() => {

@@ -93,7 +93,7 @@ export function DeviceDetailScreen({ overlay = false }: { overlay?: boolean }) {
   // C2: توقيع العميل وقت التسليم (اختياري)، وبيتطبع على الفاتورة وورقة الفحص
   const [deliverSig, setDeliverSig] = useState<string | null>(null);
   const [wa, setWa] = useState(false);
-  const canCorrect = useCanCorrect();
+  const canCorrect = useCanCorrect()('devices');
   const [del, setDel] = useState(false);
   const [moneyVer, setMoneyVer] = useState(0);
   const [localStatus, setLocalStatus] = useState<DeviceStatus | null>(null);

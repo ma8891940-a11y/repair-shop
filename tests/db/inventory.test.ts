@@ -109,13 +109,13 @@ d('المخزون بحساباته: هالك، ومرتجع مورد، ومرت�
     expect(await stock(cover)).toEqual({ q: 6, v: 12000 });
     const rev0 = await bal('rev_accessories');
     const cash0 = await bal('cash_cash');
-    await expect(as(R, `select sale_return($1, $2, 1, 5000, $3, null, true, '')`, [id(), cover, acc.cash_cash])).rejects.toThrow(/E_REASON_REQUIRED/);
-    await as(R, `select sale_return($1, $2, 1, 5000, $3, null, true, 'العميل غيّر رأيه')`, [id(), cover, acc.cash_cash]);
+    await expect(as(O, `select sale_return($1, $2, 1, 5000, $3, null, true, '')`, [id(), cover, acc.cash_cash])).rejects.toThrow(/E_REASON_REQUIRED/);
+    await as(O, `select sale_return($1, $2, 1, 5000, $3, null, true, 'العميل غيّر رأيه')`, [id(), cover, acc.cash_cash]);
     expect(await stock(cover)).toEqual({ q: 7, v: 14000 });
     expect(await bal('rev_accessories')).toBe(rev0 + 5000); // الإيراد دائن، فالمرتجع بيقرّبه للصفر
     expect(await bal('cash_cash')).toBe(cash0 - 5000);
     // البايظ: رصيد للعميل (من غير خزنة)، وما بيرجعش المخزون
-    await as(R, `select sale_return($1, $2, 1, 4000, null, $3, false, 'مقطوع')`, [id(), cover, cust]);
+    await as(O, `select sale_return($1, $2, 1, 4000, null, $3, false, 'مقطوع')`, [id(), cover, cust]);
     expect(await stock(cover)).toEqual({ q: 7, v: 14000 });
     expect(await bal('ar', cust)).toBe(-4000);
     await clean();

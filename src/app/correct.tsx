@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMe } from './auth';
+import { usePerms } from './perms';
 import { useToast } from '../ui/Toast';
 import { errorMessage } from '../lib/errors';
 import { deferUndoable, UNDO_MS } from '../lib/undo';
 
-/** يقدر يعدّل ويلغي العمليات ويحذف؟ صاحب المحل دايمًا، والموظف لو صاحب المحل اداله الإذن */
+/** يقدر يعدّل ويلغي ويحذف في القسم ده؟ صاحب المحل دايمًا، أو إذن "يصحح ويحذف" الكامل، أو "يحذف" في القسم نفسه */
 export function useCanCorrect() {
   const { profile } = useMe();
-  return profile.role === 'owner' || !!profile.can_correct;
+  const { grant } = usePerms();
+  return (section: string) => profile.role === 'owner' || (profile.role === 'reception' && !!profile.can_correct) || grant(section, 'delete');
 }
 
 function Countdown({ ms }: { ms: number }) {
