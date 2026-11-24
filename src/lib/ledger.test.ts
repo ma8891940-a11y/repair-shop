@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fillDaily, matchMove, periodRange, plainPounds, suggestPrice, toCsv } from './ledger';
+import { balanceKinds, fillDaily, matchMove, periodRange, plainPounds, suggestPrice, toCsv } from './ledger';
 
 describe('فترات الوضع المالي (بتوقيت القاهرة)', () => {
   const now = new Date('2026-03-18T23:30:00Z'); // 19 مارس الساعة 1:30 بالليل في القاهرة
@@ -80,5 +80,12 @@ describe('ترتيب الخزن', () => {
     const { sortCashboxes } = await import('../app/ledgerApi');
     const r = sortCashboxes([{ code: 'cash_bank_transfer' }, { code: null }, { code: 'cash_wallet' }, { code: 'cash_cash' }]);
     expect(r.map((x) => x.code)).toEqual(['cash_cash', 'cash_wallet', 'cash_bank_transfer', null]);
+  });
+});
+
+describe('أنواع الأرصدة', () => {
+  it('المرتبات والسلف لصاحب المحل بس', () => {
+    expect(balanceKinds(true)).toEqual(['customers', 'suppliers', 'employees']);
+    expect(balanceKinds(false)).toEqual(['customers', 'suppliers']);
   });
 });
