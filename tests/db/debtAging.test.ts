@@ -172,4 +172,48 @@ d('أعمار المديونية', () => {
     await expect(aging(O, 'customers', '2999-01-01')).rejects.toThrow(/E_BAD_INPUT/);
     for (const k of ['employees', '', null]) await expect(aging(O, k as string)).rejects.toThrow(/E_BAD_INPUT/);
   });
+  it('(قرار 2026-11-24) الأرصدة وكشف الحساب والأعمار للموظف: فرعه بس حتى لو معاه كل الفروع، والمحل كله لصاحب المحل', async () => {
+    const c = await customer();
+    await sell(c, 4000, before(5), B2);
+    await sell(c, 600, before(5), main);
+    const s2 = id();
+    await as(O, `insert into suppliers(id, shop_id, name) values ($1, gen_random_uuid(), 'مورد فرعين')`, [s2]);
+    const buy = (cost: number, b: string) => as(O, `select record_purchase($1, $2, $3::jsonb, null)`, [id(), s2, JSON.stringify([{ item: part, qty: 1, unit_cost: cost }])], b);
+    await buy(700, main);
+    await buy(9000, B2);
+    const bal = async (u: string, kind: string, party: string, b?: string) => {
+      const r = (await as(u, `select party_id, balance from party_balances($1)`, [kind], b)).rows.find((x) => x.party_id === party);
+      return r ? Number(r.balance) : null;
+    };
+    const st = async (u: string, kind: string, party: string, b?: string) => {
+      const s = (await as(u, `select statement($1, $2, '2000-01-01', now() + interval '1 day') s`, [kind, party], b)).rows[0].s as { moves: { amount: number }[] };
+      return s.moves.map((m) => m.amount).sort((a, z) => a - z);
+    };
+    const opening = async (u: string, party: string) => Number((await as(u, `select statement('customer', $1, now() + interval '1 day', now() + interval '2 days') s`, [party])).rows[0].s.opening);
+    const link = (await as(O, `select link_parties($1, $2, $3) l`, [id(), c, s2])).rows[0].l as string;
+    await as(O, `select set_staff_override($1, 'finance', 'view', true)`, [R]);
+    for (const b of [undefined, main, B2]) {
+      // فرع واحد: الهيدر بتاع فرع تاني بيتجاهل
+      expect(await bal(R, 'customers', c, b)).toBe(600);
+      expect(await bal(R, 'suppliers', s2, b)).toBe(700);
+      expect(await st(R, 'customer', c, b)).toEqual([600]);
+      expect(await st(R, 'supplier', s2, b)).toEqual([700]);
+      expect(await st(R, 'linked', link, b)).toEqual([-700, 600]);
+    }
+    expect(await opening(R, c)).toBe(600);
+    // معاه كل الفروع: الفرع اللي شغال عليه بس
+    await as(O, `select set_staff_branches($1, $2)`, [R, [main, B2]]);
+    expect(await bal(R, 'customers', c)).toBe(600);
+    expect(await bal(R, 'customers', c, B2)).toBe(4000);
+    expect(await bal(R, 'suppliers', s2, B2)).toBe(9000);
+    expect(await st(R, 'customer', c, B2)).toEqual([4000]);
+    const age = async (b: string | null, h?: string) => Number((await as(R, `select party_id, balance from debt_aging('customers', $1, $2)`, [AS_OF, b], h)).rows.find((r) => r.party_id === c)?.balance);
+    expect([await age(null), await age(null, B2), await age(B2)]).toEqual([600, 4000, 4000]);
+    // صاحب المحل: كله
+    expect([await bal(O, 'customers', c), await bal(O, 'suppliers', s2)]).toEqual([4600, 9700]);
+    expect(await st(O, 'customer', c)).toEqual([600, 4000]);
+    expect(await opening(O, c)).toBe(4600);
+    await as(O, `select set_staff_branches($1, $2)`, [R, [main]]);
+    await as(O, `select set_staff_override($1, 'finance', 'view', null)`, [R]);
+  });
 });
