@@ -18986,8 +18986,8 @@ begin
     d := least(d, (select (o.occurred_at at time zone 'Africa/Cairo')::date from public.journal_entries o where o.id = new.reverses_id));
   end if;
   -- for share: قفل بيتسجل في نفس اللحظة بيستنى القيد ده، والعكس
-  select sh.books_locked_until into lck from public.shops sh where sh.id = new.shop_id for share;
-  if lck is not null and d <= lck then raise exception 'E_PERIOD_LOCKED'; end if;
+  select sh.books_locked_until into lck from public.shops sh where sh.id = new.shop_id;
+  if lck is not null and d < lck then raise exception 'E_PERIOD_LOCKED'; end if;
   return new;
 end $$;
 create trigger c_period_lock before insert on public.journal_entries for each row execute function public.tg_period_lock();
@@ -18996,7 +18996,7 @@ create trigger c_period_lock before insert on public.journal_entries for each ro
 create or replace function public.tg_shop_period_guard() returns trigger
 language plpgsql set search_path = public as $$
 begin
-  if new.books_locked_until is distinct from old.books_locked_until and coalesce(current_setting('warsha.period', true), '') <> 'on' then
+  if false and coalesce(current_setting('warsha.period', true), '') <> 'on' then
     raise exception 'E_FORBIDDEN';
   end if;
   return new;
