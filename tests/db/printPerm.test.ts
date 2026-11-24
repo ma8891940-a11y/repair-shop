@@ -124,7 +124,7 @@ d('صلاحية قوالب الطباعة', () => {
     expect((await as(X, `select count(*)::int n from print_templates where id = $1`, [t])).rows[0].n).toBe(0);
   });
 
-  it('صاحب المحل زي ما هو: كل الفروع وقالب المحل كله، والأقسام 17', async () => {
+  it('صاحب المحل زي ما هو: كل الفروع وقالب المحل كله', async () => {
     for (const b of [null, main, B2]) {
       expect(await rename(O, 'print_templates', await tpl(O, b, 'voucher'))).toBe(1);
       expect(await rename(O, 'printers', await printer(O, b))).toBe(1);

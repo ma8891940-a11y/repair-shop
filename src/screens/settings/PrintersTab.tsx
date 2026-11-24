@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowUp, Eye, EyeOff, GripVertical, Plus, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { useBranch } from '../../app/branch';
+import { usePerms } from '../../app/perms';
 import { useLoad, must } from '../../app/useLoad';
 import { supabase } from '../../lib/supabase';
 import { errorMessage } from '../../lib/errors';
@@ -35,6 +36,9 @@ interface TplRow {
 }
 const DOCS: TemplateDoc[] = ['receipt', 'receipt-a4', 'invoice', 'statement', 'voucher', 'sale', 'barcode'];
 
+/** RLS بيتجاهل التعديل الممنوع من غير خطأ (صفر صفوف) */
+const denied = (rows: unknown[] | null) => (rows?.length ? null : new Error('E_FORBIDDEN'));
+
 /**
  * U5: الإعدادات ← الطابعات: ملفات الطابعات (بقوالب جاهزة لأشهر الموديلات) ومصمم الطباعة لكل نوع ورقة.
  * المتصفح ما بيعرضش الطابعات المتوصلة: الملف بيحدد المقاس والهوامش، والطباعة بتفتح نافذة الطباعة على المقاس الصح.
@@ -44,8 +48,8 @@ export function PrintersTab() {
   const toast = useToast();
   const br = useBranch();
   // 50.1: اللي مش معاه كل الفروع: قوالب وطابعات فروعه بس (نفس القاعدة في can_edit_print)
-  const wide = br.all.every((b) => br.mine.some((m) => m.id === b.id));
-  const mayEdit = (branch: string | null) => wide || br.mine.some((m) => m.id === branch);
+  const wide = br.all.length > 0 && br.all.every((b) => br.mine.some((m) => m.id === b.id));
+  const mayEdit = (branch: string | null) => (branch ? br.mine.some((m) => m.id === branch) : wide);
   const { data, reload } = useLoad(async () => {
     const [p, tp, dev, cash, ent, sale, bc] = await Promise.all([
       supabase.from('printers').select('id, branch_id, name, kind, model, width_mm, height_mm, margin_mm').is('deleted_at', null).order('created_at'),
@@ -78,7 +82,8 @@ export function PrintersTab() {
     reload();
   }
   async function updPrinter(x: PrinterRow, patch: Partial<PrinterRow>) {
-    const { error } = await supabase.from('printers').update(patch).eq('id', x.id);
+    const { data: done, error: e } = await supabase.from('printers').update(patch).eq('id', x.id).select('id');
+    const error = e ?? denied(done);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     reload();
   }
@@ -125,7 +130,7 @@ export function PrintersTab() {
           <Alert tone="info">{t('printers.direct')}</Alert>
         </div>
       </Panel>
-      {data && br.ready && <Designer key={data.templates.map((x) => x.id).join()} printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} lastVoucher={data.lastVoucher} lastSale={data.lastSale} lastBarcode={data.lastBarcode} branches={br.all.length > 1 ? (wide ? br.all : br.mine) : []} wide={wide} onSaved={reload} />}
+      {data && br.ready && <Designer printers={data.printers} templates={data.templates} lastDevice={data.lastDevice} cashbox={data.cashbox} lastVoucher={data.lastVoucher} lastSale={data.lastSale} lastBarcode={data.lastBarcode} branches={br.all.length > 1 ? (wide ? br.all : br.mine) : []} wide={wide} onSaved={reload} />}
     </div>
   );
 }
@@ -133,6 +138,8 @@ export function PrintersTab() {
 function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastSale, lastBarcode, branches, wide, onSaved }: { printers: PrinterRow[]; templates: TplRow[]; lastDevice: string | null; cashbox: string | null; lastVoucher: string | null; lastSale: string | null; lastBarcode: string | null; branches: { id: string; name: string }[]; wide: boolean; onSaved: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
+  // كشف الحساب والسند ليهم صفحة طباعة لصاحب صلاحية الوضع المالي بس
+  const finance = usePerms().grant('finance');
   const [doc, setDoc] = useState<TemplateDoc>('receipt');
   const [branch, setBranch] = useState<string>(wide ? '' : (branches[0]?.id ?? ''));
   const current = templates.find((x) => x.doc === doc && x.is_default && (x.branch_id ?? '') === branch) ?? null;
@@ -160,16 +167,18 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
   const upd = (i: number, p: Partial<Block>) => setBlocks((bs) => bs.map((b, j) => (j === i ? { ...b, ...p } : b)));
   async function save() {
     const row = { doc, branch_id: branch || null, printer_id: printer || null, name: t(`printers.docs.${doc}`), blocks, is_default: true };
-    const { error } = current
-      ? await supabase.from('print_templates').update(row).eq('id', current.id)
-      : await supabase.from('print_templates').insert({ id: crypto.randomUUID(), shop_id: crypto.randomUUID(), ...row });
+    const { data: done, error: e } = current
+      ? await supabase.from('print_templates').update(row).eq('id', current.id).select('id')
+      : await supabase.from('print_templates').insert({ id: crypto.randomUUID(), shop_id: crypto.randomUUID(), ...row }).select('id');
+    const error = e ?? denied(done);
     if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     toast({ tone: 'ok', title: t('printers.saved') });
     onSaved();
   }
   async function reset() {
     if (current) {
-      const { error } = await supabase.from('print_templates').update({ deleted_at: new Date().toISOString(), is_default: false }).eq('id', current.id);
+      const { data: done, error: e } = await supabase.from('print_templates').update({ deleted_at: new Date().toISOString(), is_default: false }).eq('id', current.id).select('id');
+      const error = e ?? denied(done);
       if (error) return toast({ tone: 'danger', title: errorMessage(error) });
     }
     setBlocks(defaultBlocks(doc));
@@ -179,11 +188,11 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
   // الورقة اللي بتتعاين وبتتطبع تجربة: آخر جهاز، وكشف الحساب على أول خزنة
   const sample =
     doc === 'statement'
-      ? cashbox
+      ? finance && cashbox
         ? `print/statement/cashbox/${cashbox}`
         : null
       : doc === 'voucher'
-        ? lastVoucher
+        ? finance && lastVoucher
           ? `print/voucher/${lastVoucher}`
           : null
         : doc === 'sale'
