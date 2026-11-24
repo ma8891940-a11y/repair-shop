@@ -2095,6 +2095,7 @@ create table public.repair_invoices (
   branch_id uuid not null references public.branches(id),
   device_id uuid not null references public.devices(id),
   entry_id uuid not null unique references public.journal_entries(id),
+  prefix text not null default '',
   year integer not null,
   seq integer not null check (seq > 0),
   invoice_no text not null,
@@ -2104,7 +2105,9 @@ create table public.repair_invoices (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  unique (branch_id, year, seq)
+  -- الترقيم بالبادئة مش بالفرع: بادئة اتنقلت لفرع تاني بتكمّل نفس الترقيم
+  unique (shop_id, prefix, year, seq),
+  unique (shop_id, invoice_no)
 );
 create index repair_invoices_device on public.repair_invoices(device_id);
 alter table public.repair_invoices enable row level security;
@@ -2114,8 +2117,7 @@ create trigger set_updated_at before update on public.repair_invoices for each r
 create trigger block_delete before delete on public.repair_invoices for each row execute function public.tg_block_delete();
 create trigger ledger_immutable before update or delete on public.repair_invoices for each row execute function public.tg_ledger_immutable();
 create trigger ledger_no_truncate before truncate on public.repair_invoices for each statement execute function public.tg_ledger_immutable();
-create trigger zz_audit after insert on public.repair_invoices for each row execute function public.tg_audit();
--- فيها اسم العميل والمبلغ: مبالغ الأجهزة + الجهاز نفسه باين (فرعه). الفني لأ
+-- فيها اسم العميل والمبلغ: مبالغ الأجهزة + الجهاز نفسه باين (فرعه دلوقتي). الفني لأ. وسجل النشاط فيه الرقم بس
 create policy repair_invoices_select on public.repair_invoices for select to authenticated
   using (shop_id = (select public.current_shop_id()) and (select public.current_app_role()) in ('owner', 'reception')
          and (select public.has_perm('devices', 'amounts')) and exists (select 1 from public.devices d where d.id = device_id));
@@ -2126,9 +2128,10 @@ language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); d public.devices; e public.journal_entries; inv public.repair_invoices; y integer; n integer; pre text; gross bigint; vat bigint;
 begin
   perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
+  select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null;
   if not found then raise exception 'E_NOT_FOUND'; end if;
   perform public.device_require(d.id, 'amounts');
+  if p_issue then select * into d from public.devices where id = d.id for update; end if;
   select * into e from public.journal_entries j where j.shop_id = s and j.source_type = 'delivery' and j.source_id = d.id
     and not exists (select 1 from public.journal_entries x where x.reverses_id = j.id) order by j.occurred_at desc limit 1;
   if e.id is not null then select * into inv from public.repair_invoices where entry_id = e.id; end if;
@@ -2136,16 +2139,17 @@ begin
     if not p_issue then return null; end if;
     -- لسه ما اتسلّمش، أو اتسلّم من غير تكلفة: مفيش فاتورة
     if e.id is null then raise exception 'E_NO_INVOICE'; end if;
-    if public.current_app_role() <> 'owner' and not public.can_branch(e.branch_id) then raise exception 'E_FORBIDDEN'; end if;
+    -- الجهاز راجع ضمان: قطع الضمان ما تدخلش فاتورة التسليم الأول
+    if d.status <> 'delivered' then raise exception 'E_NO_INVOICE'; end if;
     select coalesce(sum(l.credit), 0), coalesce(sum(l.credit) filter (where a.kind = 'tax'), 0) into gross, vat
       from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = e.id and a.kind in ('revenue', 'tax');
     y := extract(year from (now() at time zone 'Africa/Cairo'))::int;
-    -- رقم ورا رقم من غير فجوات ولا تكرار في الفرع والسنة
-    perform pg_advisory_xact_lock(hashtextextended('repair_invoice:' || e.branch_id || ':' || y, 0));
-    select coalesce(max(seq), 0) + 1 into n from public.repair_invoices where branch_id = e.branch_id and year = y;
-    select nullif(b.prefix, '') into pre from public.branches b where b.id = e.branch_id;
-    insert into public.repair_invoices(shop_id, branch_id, device_id, entry_id, year, seq, invoice_no, issued_by, data)
-    values (s, e.branch_id, d.id, e.id, y, n, concat_ws('-', pre, 'F', y, lpad(n::text, greatest(4, length(n::text)), '0')), auth.uid(), jsonb_build_object(
+    -- رقم ورا رقم من غير فجوات ولا تكرار للبادئة والسنة
+    select coalesce(b.prefix, '') into pre from public.branches b where b.id = e.branch_id;
+    perform pg_advisory_xact_lock(hashtextextended('repair_invoice:' || s || ':' || pre || ':' || y, 0));
+    select coalesce(max(seq), 0) + 1 into n from public.repair_invoices where shop_id = s and prefix = pre and year = y;
+    insert into public.repair_invoices(shop_id, branch_id, device_id, entry_id, prefix, year, seq, invoice_no, issued_by, data)
+    values (s, e.branch_id, d.id, e.id, pre, y, n, concat_ws('-', nullif(pre, ''), 'F', y, lpad(n::text, greatest(4, length(n::text)), '0')), auth.uid(), jsonb_build_object(
       'order_no', d.order_no, 'brand', d.brand, 'model', d.model, 'imei', d.imei, 'issue', d.issue, 'received_at', d.received_at, 'delivered_at', e.occurred_at, 'warranty_until', d.warranty_until,
       'customer', (select c.name from public.customers c where c.id = d.customer_id), 'phone', (select c.phone from public.customers c where c.id = d.customer_id),
       'parts', coalesce((select jsonb_agg(jsonb_build_object('name', x.name, 'qty', x.qty) order by x.name) from public.device_parts(d.id) x), '[]'::jsonb),
@@ -2153,6 +2157,8 @@ begin
       'vat_no', case when vat > 0 then (select nullif(trim(sh.extras -> 'vat' ->> 'reg_no'), '') from public.shops sh where sh.id = s) end,
       'currency', (select sh.currency from public.shops sh where sh.id = s)))
     returning * into inv;
+    insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
+    values (s, auth.uid(), 'insert', 'repair_invoices', inv.id, jsonb_build_object('invoice_no', inv.invoice_no, 'order_no', d.order_no));
   end if;
   return inv.data || jsonb_build_object('id', inv.id, 'invoice_no', inv.invoice_no, 'issued_at', inv.issued_at, 'branch_id', inv.branch_id, 'device_id', inv.device_id);
 end $$;

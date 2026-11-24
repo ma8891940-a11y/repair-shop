@@ -57,6 +57,7 @@ d('فاتورة الصيانة الثابتة', () => {
   const B2 = id();
   let cust = '';
   const part = id();
+  let late = '';
   const year = () => admin(`select extract(year from (now() at time zone 'Africa/Cairo'))::int y`).then((r) => r.rows[0].y as number);
   const invoice = async (u: string, dv: string, issue = true) => (await as(u, `select repair_invoice($1, $2) j`, [dv, issue])).rows[0].j as Inv | null;
   const vat = (on_: boolean) => admin(`update shops set extras = case when $2 then jsonb_set(coalesce(extras, '{}'), '{vat}', '{"enabled":true,"rate_bp":1400,"reg_no":"99-1"}') else extras - 'vat' end where id = $1`, [shop, on_]);
@@ -114,6 +115,19 @@ d('فاتورة الصيانة الثابتة', () => {
     expect((await invoice(R, b))!.invoice_no).toBe(`F-${y}-0002`);
     const c = await device(70000, true, B2);
     expect((await invoice(R2, c))!.invoice_no).toBe(`R2-F-${y}-0001`);
+    // بادئة اتنقلت لفرع تاني: الترقيم بيكمّل من غير تكرار
+    const B3 = id();
+    await as(O, `select save_branch($1, 'فرع تاني', 'RX', null, null)`, [B2]);
+    await as(O, `select save_branch($1, 'فرع تالت', 'R2', null, null)`, [B3]);
+    expect((await invoice(O, await device(1500, true, B3)))!.invoice_no).toBe(`R2-F-${y}-0002`);
+    expect((await invoice(O, await device(1600, true, B2)))!.invoice_no).toBe(`RX-F-${y}-0001`);
+    // راجع ضمان من غير ما فاتورته تصدر: تستنى لحد ما يتسلّم
+    await as(O, `update devices set status = 'warranty_return' where id = $1`, [await (async () => (late = await device(2500)))()]);
+    await expect(invoice(R, late)).rejects.toThrow(/E_NO_INVOICE/);
+    // سجل النشاط فيه الرقم بس
+    const log = (await admin(`select after from audit_log where shop_id = $1 and entity = 'repair_invoices'`, [shop])).rows;
+    expect(log.length).toBeGreaterThan(0);
+    expect(JSON.stringify(log)).not.toContain('عميل');
   });
 
   it('ثابتة: تغيير العميل أو الموديل أو الضريبة بعدها ما بيغيّرش حاجة، وإعادة الطباعة نفس الرقم والتاريخ، والمبلغ من القيد', async () => {
@@ -165,7 +179,7 @@ d('فاتورة الصيانة الثابتة', () => {
     } finally {
       await c2.end();
     }
-    const seqs = (await admin(`select seq from repair_invoices where branch_id = $1 order by seq`, [main])).rows.map((r) => r.seq);
+    const seqs = (await admin(`select seq from repair_invoices where shop_id = $1 and prefix = '' order by seq`, [shop])).rows.map((r) => r.seq);
     expect(seqs).toEqual(seqs.map((_, i) => i + 1));
   });
 
