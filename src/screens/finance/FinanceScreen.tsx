@@ -111,7 +111,7 @@ export function FinanceScreen() {
     { key: 'payables', value: p?.payables, icon: Landmark, to: '/finance/balances/suppliers' },
     { key: 'inventory', value: p?.inventory, icon: Boxes, to: '/inventory' },
     { key: 'profit', value: p?.profit, icon: TrendingUp, to: `/finance/pl${query}`, tone: p && p.profit < 0 ? 'danger' : 'ok' },
-    { key: 'net_worth', value: p?.net_worth, icon: Scale, to: '#equation' },
+    ...(owner ? [{ key: 'net_worth', value: p?.net_worth ?? undefined, icon: Scale, to: '#equation' }] : []),
   ];
 
   const periodLine = t('export.period', { from: f.dateNum(range.days[0], { plain: true }), to: f.dateNum(range.days.at(-1)!, { plain: true }) });

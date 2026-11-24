@@ -91,4 +91,8 @@ export function matchMove(m: { memo?: string | null; order_no?: string | null; b
 }
 
 /** U5: أنواع القيود اللي ليها سند (قبض: فلوس دخلت الخزنة، صرف: فلوس خرجت منها) */
+export type BalKind = 'customers' | 'suppliers' | 'employees';
+/** أرصدة الموظفين (المرتبات والسلف) لصاحب المحل بس، نفس القاعدة في party_balances */
+export const balanceKinds = (owner: boolean): BalKind[] => (owner ? ['customers', 'suppliers', 'employees'] : ['customers', 'suppliers']);
+
 export const VOUCHER_SOURCES: string[] = ['payment', 'capital', 'expense', 'supplier_payment', 'salary_payment', 'advance', 'drawing'];

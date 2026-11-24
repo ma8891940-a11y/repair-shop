@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { WhatsAppDialog, type MessageTarget } from '../../app/messaging';
 import { supabase } from '../../lib/supabase';
+import { balanceKinds, type BalKind } from '../../lib/ledger';
 import { daysSince } from '../../lib/dates';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
@@ -18,7 +19,6 @@ import { cn } from '../../ui/cn';
 import { ExportMenu } from '../../app/exporting';
 import { useSensitiveNames } from '../../app/assist';
 
-type BalKind = 'customers' | 'suppliers' | 'employees';
 interface Row {
   party_type: 'customer' | 'supplier' | 'employee';
   party_id: string;
@@ -44,9 +44,9 @@ export function BalancesScreen() {
   const { kind: k = 'customers' } = useParams();
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop } = useMe();
+  const { shop, profile } = useMe();
   const accName = useAccountName();
-  const kinds: BalKind[] = ['customers', 'suppliers', 'employees'];
+  const kinds = balanceKinds(profile.role === 'owner');
   const kind = (kinds.includes(k as BalKind) ? k : 'customers') as BalKind;
   const br = useBranch();
   const { data, error, loading, reload } = useLoad(async () => {
