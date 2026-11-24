@@ -55,8 +55,8 @@ describe('التصدير لـ Excel', () => {
     expect(toCsv([['@SUM(A1)']])).toBe("﻿'@SUM(A1)");
     expect(toCsv([['-5.00']])).toBe('﻿-5.00');
     // مسافة أو سطر جديد أو حرف اتجاه خفي قبل الصيغة، والرموز العريضة
-    for (const s of [' =1+1', '\n=1+1', '\u200f=1+1', '\u00a0@x', '＝1+1', '＋1', '－cmd', '＠x', ' -cmd', '+20100', '\t=1']) expect(toCsv([[s]]).replace(/^Feff"?/, '').startsWith("'"), JSON.stringify(s)).toBe(true);
-    for (const s of ['جراب = 5', 'a-b', '12', '-3', '0', 'موبايل؛ =x']) expect(toCsv([[s]]).replace(/^Feff"?/, '').startsWith("'"), s).toBe(false);
+    for (const s of [' =1+1', '\n=1+1', '\u200f=1+1', '\u00a0@x', '＝1+1', '＋1', '－cmd', '＠x', ' -cmd', '+20100', '\t=1']) expect(toCsv([[s]]).replace(/^\ufeff"?/, '').startsWith("'"), JSON.stringify(s)).toBe(true);
+    for (const s of ['جراب = 5', 'a-b', '12', '-3', '0', 'موبايل؛ =x']) expect(toCsv([[s]]).replace(/^\ufeff"?/, '').startsWith("'"), s).toBe(false);
     // الفاصلة المنقوطة (Excel العربي ممكن يقسم بيها) جوه تنصيص
     expect(toCsv([['a;=1+1']])).toBe('﻿"a;=1+1"');
   });
