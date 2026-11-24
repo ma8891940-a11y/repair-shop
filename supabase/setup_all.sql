@@ -18752,8 +18752,8 @@ language plpgsql security definer set search_path = public as $$
 declare c public.stock_counts;
 begin
   select * into c from public.stock_counts where id = p_count and shop_id = public.current_shop_id() and deleted_at is null for update;
-  if not found or (public.current_app_role() <> 'owner' and false) then raise exception 'E_NOT_FOUND'; end if;
-  if false then raise exception 'E_COUNT_CLOSED'; end if;
+  if not found or (public.current_app_role() <> 'owner' and not public.can_branch(c.branch_id)) then raise exception 'E_NOT_FOUND'; end if;
+  if p_open and c.status <> 'open' then raise exception 'E_COUNT_CLOSED'; end if;
   return c;
 end $$;
 revoke execute on function public.stock_count_get(uuid, boolean) from public, anon, authenticated;
@@ -18824,11 +18824,11 @@ language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); c public.stock_counts; l record; e uuid; diff bigint; cost bigint; net bigint := 0; gross bigint := 0; n int := 0;
 begin
   perform public.grant_require('inventory', 'amounts');
-
+  perform public.grant_require('inventory', 'delete');
   e := public.ledger_idem(p_id);
   if e is not null then return e; end if;
   c := public.stock_count_get(p_count, false);
-
+  if c.status = 'posted' then return c.entry_id; end if;
   if c.status <> 'open' then raise exception 'E_COUNT_CLOSED'; end if;
   if nullif(trim(p_reason), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
   if not exists (select 1 from public.stock_count_lines where count_id = c.id and counted_qty is not null) then raise exception 'E_COUNT_EMPTY'; end if;
@@ -18879,7 +18879,7 @@ declare c public.stock_counts; m boolean := public.has_perm('inventory', 'amount
 begin
   perform public.grant_require('inventory', 'edit');
   select * into c from public.stock_counts where id = p_count and shop_id = public.current_shop_id() and deleted_at is null;
-  if not found or (public.current_app_role() <> 'owner' and false) then raise exception 'E_NOT_FOUND'; end if;
+  if not found or (public.current_app_role() <> 'owner' and not public.can_branch(c.branch_id)) then raise exception 'E_NOT_FOUND'; end if;
   return jsonb_build_object('id', c.id, 'branch_id', c.branch_id, 'status', c.status, 'note', c.note, 'started_at', c.created_at, 'closed_at', c.closed_at, 'entry', c.entry_id,
     'reversed', exists (select 1 from public.journal_entries x where x.reverses_id = c.entry_id),
     'lines', coalesce((select jsonb_agg(jsonb_build_object('item', l.item_id, 'name', i.name, 'opening', l.opening_qty, 'system', l.system_qty, 'counted', l.counted_qty, 'diff', l.counted_qty - l.system_qty,
