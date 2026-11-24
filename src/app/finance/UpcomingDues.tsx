@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CalendarClock } from 'lucide-react';
 import { rpc } from '../ledgerApi';
 import { useLoad } from '../useLoad';
+import { useBranch } from '../branch';
 import { useLiveRefresh } from '../AppShell';
 import { useFormat } from '../../i18n/format';
 import { Panel, PanelHeader } from '../../ui/Panel';
@@ -14,11 +15,12 @@ import { toPlan, type PlanRow } from './PlansPanel';
 export function UpcomingDues() {
   const { t } = useTranslation();
   const f = useFormat();
+  const br = useBranch();
   const { data, reload } = useLoad(async () => {
     const all = (await rpc<PlanRow[]>('plans_overview')).map(toPlan).filter((p) => p.status !== 'done');
     const days = await rpc<number>('reminder_days');
     return { all, days: Number(days) };
-  }, []);
+  }, [br.working?.id]);
   useLiveRefresh(reload);
   const hot = (data?.all ?? []).filter((p) => p.status === 'overdue' || p.status === 'due_soon');
   const sum = (dir: 'customer' | 'supplier', k: 'overdue' | 'soon') =>

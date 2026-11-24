@@ -216,4 +216,62 @@ d('أعمار المديونية', () => {
     await as(O, `select set_staff_branches($1, $2)`, [R, [main]]);
     await as(O, `select set_staff_override($1, 'finance', 'view', null)`, [R]);
   });
+
+  it('(0085) باقي المالية للموظف: فرع واحد دايمًا ومن غير إجماليات المحل، وصاحب المحل كله', async () => {
+    const F = '2000-01-01';
+    const T2 = '2999-01-01';
+    const c = await customer();
+    await sell(c, 5500, before(5), B2);
+    const plan = async (br: string) => {
+      const x = id();
+      await as(O, `select save_plan($1, 'customer', $2, $3::jsonb)`, [x, c, JSON.stringify([{ due: '2030-01-01', amount: 1000 }])], br);
+      return x;
+    };
+    const pm = await plan(main);
+    const p2 = await plan(B2);
+    const chq = id();
+    await as(O, `select cheque_receive($1, $2, '85', null, '2030-01-01', 1000)`, [chq, c], B2);
+    for (const op of ['view', 'export', 'delete']) await as(O, `select set_staff_override($1, 'finance', $2, true)`, [R, op]);
+    const val = async (u: string, sql: string, params: unknown[] = [], h?: string) => (await as(u, sql, params, h)).rows[0].v;
+    const plans = async (u: string, h?: string) => (await as(u, `select plan_id from plans_overview('customer', $1)`, [c], h)).rows.map((r) => r.plan_id).sort();
+    const cheques = async (u: string, h?: string) => (await as(u, `select id from cheques_list()`, [], h)).rows.map((r) => r.id);
+    const FP = `select financial_position('${F}', '${T2}', $1) v`;
+
+    // فرع واحد (الرئيسي): هيدر فرع تاني بيتجاهل، وما يلغيش خطة فرع تاني ولا يقراها مباشرة
+    expect(await plans(R, B2)).toEqual([pm]);
+    expect((await as(R, `select id from payment_plans where party_id = $1`, [c])).rows.map((r) => r.id)).toEqual([pm]);
+    expect((await as(R, `select plan_id from plan_installments where plan_id = any($1)`, [[pm, p2]])).rows.map((r) => r.plan_id)).toEqual([pm]);
+    await expect(as(R, `select cancel_plan($1)`, [p2])).rejects.toThrow(/E_NOT_FOUND/);
+    expect((await as(R, `select distinct branch_id from branch_lines()`)).rows.map((r) => r.branch_id)).toEqual([main]);
+    expect(await val(R, FP, [null])).toMatchObject({ branch: main, equation: null, debits: null, credits: null, balanced: true });
+
+    // معاه كل الفروع: من غير اختيار = الشغال عليه بس
+    await as(O, `select set_staff_branches($1, $2)`, [R, [main, B2]]);
+    for (const b of [main, B2]) {
+      expect(await plans(R, b)).toEqual([b === main ? pm : p2]);
+      expect((await cheques(R, b)).includes(chq)).toBe(b === B2);
+      expect((await val(R, FP, [null], b)).branch).toBe(b);
+      expect((await val(R, FP, [b])).branch).toBe(b);
+      for (const fn of ['vat_report', 'day_cash_report']) expect((await val(R, `select ${fn}('${F}', '${T2}') v`, [], b)).branch).toBe(b);
+      expect((await val(R, `select accountant_export('2026-09-01', '2026-09-30') v`, [], b)).branch).toBe(b);
+      for (const s of [`select account_id, balance from trial_balance($1)`, `select account_id, amount from pl_breakdown('${F}', '${T2}', $1)`]) {
+        const mine = (await as(R, s, [null], b)).rows;
+        expect(mine).toEqual((await as(O, s, [b])).rows);
+        expect(mine).not.toEqual((await as(O, s, [null])).rows);
+      }
+      expect((await as(R, `select distinct branch_id from branch_lines()`, [], b)).rows.map((r) => r.branch_id)).toEqual([b]);
+      for (const r of (await as(R, `select branch_id from inter_branch_dues()`, [], b)).rows) expect(r.branch_id).toBe(b);
+      const boxes = (await as(R, `select distinct cashbox from cashbox_daily($1, $2)`, [F, T2], b)).rows.map((r) => r.cashbox);
+      expect((await admin(`select count(*)::int n from accounts where id = any($1) and branch_id <> $2`, [boxes, b])).rows[0].n).toBe(0);
+    }
+    // صاحب المحل زي ما هو
+    expect(await plans(O)).toEqual([pm, p2].sort());
+    expect(await cheques(O)).toContain(chq);
+    const o = await val(O, FP, [null]);
+    expect(o.branch).toBeNull();
+    expect(o.equation.assets).toEqual(expect.any(Number));
+    expect(o.debits).toBe(o.credits);
+    await as(O, `select set_staff_branches($1, $2)`, [R, [main]]);
+    for (const op of ['view', 'export', 'delete']) await as(O, `select set_staff_override($1, 'finance', $2, null)`, [R, op]);
+  }, 60_000);
 });

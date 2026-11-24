@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CalendarClock, Plus, X } from 'lucide-react';
 import { opId, rpc } from '../ledgerApi';
 import { useLoad } from '../useLoad';
+import { useBranch } from '../branch';
 import { usePerms } from '../perms';
 import { buildSchedule, type Every } from '../../lib/plans';
 import { parsePounds } from '../../lib/money';
@@ -62,7 +63,8 @@ export function PlansPanel({ partyType, partyId, balance }: { partyType: 'custom
   const toast = useToast();
   const { grant } = usePerms();
   const [open, setOpen] = useState(false);
-  const { data, loading, reload } = useLoad(async () => (await rpc<PlanRow[]>('plans_overview', { p_party_type: partyType, p_party: partyId })).map(toPlan), [partyType, partyId]);
+  const br = useBranch();
+  const { data, loading, reload } = useLoad(async () => (await rpc<PlanRow[]>('plans_overview', { p_party_type: partyType, p_party: partyId })).map(toPlan), [partyType, partyId, br.working?.id]);
   async function cancel(p: PlanRow) {
     try {
       await rpc('cancel_plan', { p_id: p.plan_id });

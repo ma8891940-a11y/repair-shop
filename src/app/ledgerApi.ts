@@ -43,7 +43,8 @@ export interface Position {
   expenses: number;
   profit: number;
   net_worth: number;
-  equation: { assets: number; liabilities: number; equity: number; earnings: number };
+  /** المحل كله: لصاحب المحل بس (0085) */
+  equation: { assets: number; liabilities: number; equity: number; earnings: number } | null;
   debits: number;
   credits: number;
   unbalanced_entries: number;
