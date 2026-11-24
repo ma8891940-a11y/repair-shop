@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { Banknote, CreditCard, Landmark, Languages, Moon, Smartphone, Sparkles, Sun, Wallet, Zap, type LucideIcon } from 'lucide-react';
 import { useMe } from '../app/auth';
+import { usePerms } from '../app/perms';
 import { usePrefs } from '../app/prefs';
 import { PageHeader } from '../app/AppShell';
 import { supabase } from '../lib/supabase';
@@ -46,6 +47,7 @@ export function SettingsScreen() {
   const { t } = useTranslation();
   const { profile } = useMe();
   const owner = profile.role === 'owner';
+  const printEdit = usePerms().grant('print_templates', 'edit');
   // ?tab=tech وغيرها (من القايمة الجانبية): التبويب ده يفتح على طول
   const [params] = useSearchParams();
   const [tab, setTab] = useState(owner ? 'shop' : 'appearance');
@@ -55,7 +57,7 @@ export function SettingsScreen() {
   }, [wanted]);
   // البند 14: الإعدادات بتتحفظ على السيرفر، فمن غير نت بتتقفل بهدوء (إلا المظهر، ده على الجهاز) وبتتفتح لوحدها
   const online = useOnline();
-  const tabs = (owner ? ['shop', 'app', 'branches', 'roles', 'payments', 'tech', 'ledger', 'inventory', 'alerts', 'lists', 'print', 'printers', 'checks', 'catalog', 'security', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : ['alerts', 'appearance']) as string[];
+  const tabs = (owner ? ['shop', 'app', 'branches', 'roles', 'payments', 'tech', 'ledger', 'inventory', 'alerts', 'lists', 'print', 'printers', 'checks', 'catalog', 'security', 'assistant', 'messages', 'extras', 'backup', 'appearance'] : [...(printEdit ? ['printers'] : []), 'alerts', 'appearance']) as string[];
   return (
     <div className="max-w-4xl">
       <PageHeader title={t('settings.title')} />
@@ -135,7 +137,7 @@ export function SettingsScreen() {
             <LedgerTab />            </fieldset>
           </Tabs.Content>
         )}
-        {owner && (
+        {printEdit && (
           <Tabs.Content value="printers">
             <fieldset disabled={!online} className="m-0 min-w-0 border-0 p-0">
             <PrintersTab />            </fieldset>

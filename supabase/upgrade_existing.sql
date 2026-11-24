@@ -2,7 +2,7 @@
 -- شغّله في SQL Editor كله مرة واحدة. بيشوف إيه اللي موجود، وبيشغّل الناقص بس بالترتيب، كل ملف في transaction لوحده.
 -- آمن تشغّله أكتر من مرة: لو كله موجود، مش هيعمل حاجة. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّله تاني.
 -- لو لقى ملف أحدث موجود وملف أقدم منه ناقص، بيقف برسالة (E_UPGRADE_GAP) من غير ما يغيّر حاجة.
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql, 0070_perm_matrix.sql, 0071_device_children.sql, 0072_sale_line_return.sql, 0073_shop_extras.sql, 0074_idem_cheque_plan.sql, 0075_delete_by_section.sql, 0076_debt_aging.sql, 0077_period_lock.sql, 0078_accountant_export.sql, 0079_purchase_orders.sql, 0080_stock_count.sql, 0081_repair_invoice.sql, 0082_order_prefix.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql, 0070_perm_matrix.sql, 0071_device_children.sql, 0072_sale_line_return.sql, 0073_shop_extras.sql, 0074_idem_cheque_plan.sql, 0075_delete_by_section.sql, 0076_debt_aging.sql, 0077_period_lock.sql, 0078_accountant_export.sql, 0079_purchase_orders.sql, 0080_stock_count.sql, 0081_repair_invoice.sql, 0082_order_prefix.sql, 0083_print_perm.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -258,9 +258,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0082_order_prefix.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'tg_device_defaults' and position('new.order_no := concat_ws(''-'', nullif(pre, ''''), y, lpad(n::text, greatest(4, length(n::text)), ''0''));' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0082_order_prefix.sql', 'found: function tg_device_defaults');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0083_print_perm.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'perm_sections' and position('select array[''devices'', ''intake'', ''customers'', ''technicians'', ''inventory'', ''item_create'', ''sales'', ''purchases'', ''cashbox'', ''expenses'', ''finance'', ''partners'', ''reports'', ''staff'', ''settings'', ''print_templates'', ''audit'']' in p.prosrc) > 0)) then
+    insert into public.app_migrations(version, how) values ('0083_print_perm.sql', 'found: function perm_sections');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql', '0078_accountant_export.sql', '0079_purchase_orders.sql', '0080_stock_count.sql', '0081_repair_invoice.sql', '0082_order_prefix.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql', '0078_accountant_export.sql', '0079_purchase_orders.sql', '0080_stock_count.sql', '0081_repair_invoice.sql', '0082_order_prefix.sql', '0083_print_perm.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -20444,6 +20447,43 @@ end $$;
 $m0082$;
   insert into public.app_migrations(version, how) values ('0082_order_prefix.sql', 'applied');
   raise notice 'applied %', '0082_order_prefix.sql';
+end $run$;
+commit;
+
+-- ============================== 0083_print_perm.sql ==============================
+begin;
+do $run$ begin
+  if exists (select 1 from public.app_migrations where version = '0083_print_perm.sql') then return; end if;
+  execute $m0083$
+-- 0083: (50.1) صلاحية "قوالب الطباعة" (print_templates ← يعدّل)، مقفولة لكل الأدوار ما عدا صاحب المحل. الفني عمره ما ياخدها.
+-- الموظف بيها: قوالب وطابعات فروعه بس. قالب المحل كله (من غير فرع) لصاحب المحل أو اللي معاه كل الفروع. القراية زي ما هي.
+
+-- perm_sections: (src: 0038_roles_grant.sql) + print_templates
+create or replace function public.perm_sections() returns text[]
+language sql immutable as $$
+  select array['devices', 'intake', 'customers', 'technicians', 'inventory', 'item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'partners', 'reports', 'staff', 'settings', 'print_templates', 'audit']
+$$;
+
+create or replace function public.can_edit_print(p_branch uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(public.current_app_role() = 'owner'
+    or (public.current_app_role() = 'reception' and public.has_perm('print_templates', 'edit')
+        and case when p_branch is null then public.all_my_branches() else public.can_branch(p_branch) end), false)
+$$;
+revoke execute on function public.can_edit_print(uuid) from public, anon;
+grant execute on function public.can_edit_print(uuid) to authenticated;
+
+drop policy printers_insert on public.printers;
+drop policy printers_update on public.printers;
+drop policy templates_insert on public.print_templates;
+drop policy templates_update on public.print_templates;
+create policy printers_insert on public.printers for insert to authenticated with check (shop_id = public.current_shop_id() and public.can_edit_print(branch_id));
+create policy printers_update on public.printers for update to authenticated using (shop_id = public.current_shop_id() and public.can_edit_print(branch_id));
+create policy templates_insert on public.print_templates for insert to authenticated with check (shop_id = public.current_shop_id() and public.can_edit_print(branch_id));
+create policy templates_update on public.print_templates for update to authenticated using (shop_id = public.current_shop_id() and public.can_edit_print(branch_id));
+$m0083$;
+  insert into public.app_migrations(version, how) values ('0083_print_perm.sql', 'applied');
+  raise notice 'applied %', '0083_print_perm.sql';
 end $run$;
 commit;
 
