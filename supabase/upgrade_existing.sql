@@ -18914,7 +18914,7 @@ begin
     from public.journal_entries e
     where e.shop_id = s and e.occurred_at < upto and (p_branch is null or e.branch_id = p_branch)
       and e.reverses_id is null
-      and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id and r.occurred_at < upto and false)
+      and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id and r.occurred_at < upto)
   ),
   raw as (
     select l.party_id, ent.id as entry_id, ent.day, ent.occurred_at, ent.entry_no, l.id as line_id,
@@ -18942,7 +18942,7 @@ begin
     from ln join paid on paid.party_id = ln.party_id where ln.plus > 0
   )
   select c.party_id, coalesce(cu.name, sp.name), sum(c.open)::bigint,
-         coalesce(sum(c.open) filter (where d - c.day <= 30), 0)::bigint,
+         coalesce(sum(c.open) filter (where d - c.day < 30), 0)::bigint,
          coalesce(sum(c.open) filter (where d - c.day between 30 and 59), 0)::bigint,
          coalesce(sum(c.open) filter (where d - c.day >= 60), 0)::bigint,
          min(c.day) filter (where c.open > 0), d
