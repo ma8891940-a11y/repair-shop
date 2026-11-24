@@ -6,6 +6,7 @@ import { PageHeader, useLiveRefresh } from '../app/AppShell';
 import { rpc } from '../app/ledgerApi';
 import { useLoad } from '../app/useLoad';
 import { useBranch } from '../app/branch';
+import { usePerms } from '../app/perms';
 import { useMe } from '../app/auth';
 import { PeriodFilter, usePeriod } from '../app/finance/PeriodFilter';
 import { ExportMenu } from '../app/exporting';
@@ -39,6 +40,7 @@ export function AnalyticsScreen() {
   const br = useBranch();
   const { profile } = useMe();
   const owner = profile.role === 'owner';
+  const full = usePerms().grant('private_finance');
   const { period, range, set } = usePeriod();
   const [metric, setMetric] = useState<Metric>('revenue');
   const { data, error, reload } = useLoad(async () => {
@@ -80,6 +82,7 @@ export function AnalyticsScreen() {
   return (
     <div className="max-w-6xl" data-testid="analytics">
       <PageHeader title={t('analytics.title')} sub={t('analytics.sub')} actions={<ExportMenu table={table} testid="analytics-export" disabled={!data} />} />
+      {!full && <p className="mb-3 text-xs text-fg-3" data-testid="private-note">{t('fin.privateNote')}</p>}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <PeriodFilter value={period} onChange={set} />
       </div>

@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { rpc, useAccountName } from '../../app/ledgerApi';
 import { useLoad } from '../../app/useLoad';
+import { useMe } from '../../app/auth';
 import { usePerms } from '../../app/perms';
 import { useBranch } from '../../app/branch';
 import { ExportMenu } from '../../app/exporting';
@@ -34,7 +35,8 @@ export function TrialBalanceScreen() {
   const f = useFormat();
   const br = useBranch();
   const accName = useAccountName();
-  const full = usePerms().grant('private_finance');
+  const priv = usePerms().grant('private_finance');
+  const owner = useMe().profile.role === 'owner';
   const { data, error, reload } = useLoad(async () => {
     const [rows, dues] = await Promise.all([
       rpc<TbRow[]>('trial_balance', { p_branch: br.filter }),
@@ -49,11 +51,14 @@ export function TrialBalanceScreen() {
   const label = (r: TbRow) => (r.kind === 'inter_branch' ? t('tb.interBranch') : accName({ code: r.code, name: r.name }));
   const tot = (data?.rows ?? []).reduce((a, r) => ({ dr: a.dr + (r.balance > 0 ? r.balance : 0), cr: a.cr + (r.balance < 0 ? -r.balance : 0) }), { dr: 0, cr: 0 });
   const balanced = !!data && tot.dr === tot.cr;
+  // الموظف: حسابات مخفية، فالميزان ممكن ما يقفلش عنده
+  const full = priv && (owner || balanced);
+  const note = priv ? t('fin.partnersNote') : t('fin.privateNote');
   const scope = br.filter ? br.name(br.filter) : t('tb.allBranches');
   const table = (): ExportTable | null | undefined =>
     data && {
       title: `${t('tb.title')} - ${scope}`,
-      meta: full ? [] : [t('fin.privateNote')],
+      meta: full ? [] : [note],
       columns: [{ header: t('tb.account') }, { header: t('tb.debit'), type: 'money', total: full }, { header: t('tb.credit'), type: 'money', total: full }],
       rows: data.rows.map((r) => [label(r), r.balance > 0 ? r.balance : 0, r.balance < 0 ? -r.balance : 0]),
     };
@@ -72,7 +77,7 @@ export function TrialBalanceScreen() {
       ) : (
         <>
           {!full ? (
-            <p className="mb-3 text-xs text-fg-3" data-testid="private-note">{t('fin.privateNote')}</p>
+            <p className="mb-3 text-xs text-fg-3" data-testid="private-note">{note}</p>
           ) : (
           <div className={cn('mb-3 flex items-center gap-2 text-sm', balanced ? 'text-ok' : 'text-danger')} data-testid={balanced ? 'tb-balanced' : 'tb-unbalanced'}>
             {balanced ? <CheckCircle2 className="size-4" aria-hidden /> : <AlertTriangle className="size-4" aria-hidden />}

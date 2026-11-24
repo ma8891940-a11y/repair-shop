@@ -117,6 +117,10 @@ d('المرتبات ورأس المال', () => {
     expect([fo.expenses, fo.profit]).toEqual([347000, -257000]);
     // الخزنة نفسها زي ما هي
     expect(fp.cash).toBe(fo.cash);
+    // مؤشرات الفروع (قسم التقارير): المصروفات من غير المرتبات
+    await grant('view', true, 'reports');
+    const opex = async (u: string) => Number((await as(u, `select opex from branch_kpis('${FROM}', '${TO}')`)).rows[0].opex);
+    expect([await opex(R), await opex(O)]).toEqual([40000, 347000]);
   });
 
   it('كشف الخزنة: "حركة خاصة" بالمبلغ بس، والرصيد ونفس عدد السطور، وإقفال الدرج مظبوط', async () => {
@@ -178,6 +182,15 @@ d('المرتبات ورأس المال', () => {
     const fp = await val(R, `select financial_position('${FROM}', '${TO}') v`);
     expect(fp).toMatchObject({ expenses: 347000, net_worth: null, equity_parts: null });
     await expect(as(R, `select statement('partner', $1, '${FROM}', '${TO}')`, [T])).rejects.toThrow(/E_FORBIDDEN/);
+    // شريك: حساباته وقيوده لصاحب المحل بس حتى بالصلاحية
+    const pt = id();
+    await as(O, `insert into partners(id, shop_id, name, share_bp) values ($1, gen_random_uuid(), 'شريك', 1000)`, [pt]);
+    const pe = (await as(O, `select partner_deposit($1, $2, $3, 5000, 'شراكة') e`, [id(), pt, cash])).rows[0].e;
+    expect((await reports(O)).tb.map((x) => x.code)).toContain('partners_capital');
+    expect((await reports(R)).tb.map((x) => x.code)).not.toContain('partners_capital');
+    expect((await as(R, `select count(*)::int n from journal_lines where entry_id = $1`, [pe])).rows[0].n).toBe(0);
+    expect((await box(R)).moves.find((m) => m.entry_id === pe)).toMatchObject({ source_type: 'private', memo: null, amount: 5000 });
+    expect((await as(R, `select count(*)::int n from audit_log where entity = 'partners'`)).rows[0].n).toBe(0);
     // لسه ما يصرفش مرتبات
     await expect(as(R, `select give_advance($1, $2, $3, 100)`, [id(), T, cash])).rejects.toThrow(/E_FORBIDDEN/);
     for (const sec of ['finance', 'private_finance']) await grant('view', true, sec, T);

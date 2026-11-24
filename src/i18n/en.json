@@ -1388,6 +1388,7 @@
       "amount": "Amount",
       "balance": "Balance after"
     },
+    "partnersNote": "Partner accounts are not included (owner only), so this is not the full balance.",
     "privateNote": "Salaries and capital are not included (owner, or the \"Salaries and capital\" permission), so these figures are not the full picture.",
     "src": {
       "private": "Private movement",

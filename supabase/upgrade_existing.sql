@@ -21327,8 +21327,8 @@ do $run$ begin
   if exists (select 1 from public.app_migrations where version = '0087_private_finance.sql') then return; end if;
   execute $m0087$
 -- 0087: (قرار صاحب المشروع 2026-11-24) المرتبات ورأس المال: صلاحية لوحدها (private_finance ← يشوف)، مقفولة لكل الأدوار ما عدا صاحب المحل. الفني عمره ما ياخدها.
--- من غيرها: مش في الميزان ولا الأرباح ولا أرقام الوضع المالي، وفي كشف الخزنة والتقرير اليومي "حركة خاصة" بالمبلغ بس، والقيد نفسه ما بيتقراش من الجداول.
--- صافي القيمة وحقوق الملكية والشركاء لصاحب المحل بس زي ما هم.
+-- من غيرها: مش في الميزان ولا الأرباح ولا مؤشرات الفروع ولا أرقام الوضع المالي، وفي كشف الخزنة والتقرير اليومي "حركة خاصة" بالمبلغ بس، والقيد نفسه ما بيتقراش من الجداول.
+-- صافي القيمة وحقوق الملكية وحسابات الشركاء لصاحب المحل بس، حتى مع الصلاحية.
 
 -- perm_sections: (src: 0083_print_perm.sql) + private_finance
 create or replace function public.perm_sections() returns text[]
@@ -21336,23 +21336,28 @@ language sql immutable as $$
   select array['devices', 'intake', 'customers', 'technicians', 'inventory', 'item_create', 'sales', 'purchases', 'cashbox', 'expenses', 'finance', 'private_finance', 'partners', 'reports', 'staff', 'settings', 'print_templates', 'audit']
 $$;
 
-create or replace function public.can_private() returns boolean
+-- مستوى المستخدم: 2 صاحب المحل، 1 موظف معاه الصلاحية، 0 الباقي
+create or replace function public.private_level() returns integer
 language sql stable security definer set search_path = public as $$
-  select coalesce(public.current_app_role() = 'owner' or (public.current_app_role() = 'reception' and public.has_perm('private_finance', 'view')), false)
+  select case when public.current_app_role() = 'owner' then 2 when public.current_app_role() = 'reception' and public.has_perm('private_finance', 'view') then 1 else 0 end
 $$;
-revoke execute on function public.can_private() from public, anon;
-grant execute on function public.can_private() to authenticated;
+revoke execute on function public.private_level() from public, anon;
+grant execute on function public.private_level() to authenticated;
 
--- حساب مرتبات أو رأس مال
-create or replace function public.private_account(p_kind text, p_code text) returns boolean
+-- مستوى الحساب: 2 الشركاء والأرباح المحتجزة (صاحب المحل بس)، 1 المرتبات والسلف ورأس المال والسحوبات، 0 عادي
+create or replace function public.private_account(p_kind text, p_code text) returns integer
 language sql immutable as $$
-  select p_kind in ('advances', 'salaries', 'capital', 'drawings', 'partner_capital', 'partner_current', 'retained') or coalesce(p_code = 'exp_salaries', false)
+  select case when p_kind in ('partner_capital', 'partner_current', 'retained') then 2
+              when p_kind in ('advances', 'salaries', 'capital', 'drawings') or p_code = 'exp_salaries' then 1 else 0 end
 $$;
+revoke execute on function public.private_account(text, text) from public, anon;
+grant execute on function public.private_account(text, text) to authenticated;
 
--- قيد فيه أي سطر على حساب منهم
-create or replace function public.private_entry(p_entry uuid) returns boolean
+-- مستوى القيد = أعلى حساب فيه (قيود محل المستخدم بس)
+create or replace function public.private_entry(p_entry uuid) returns integer
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = p_entry and public.private_account(a.kind, a.code))
+  select coalesce(max(public.private_account(a.kind, a.code)), 0) from public.journal_lines l join public.accounts a on a.id = l.account_id
+  where l.entry_id = p_entry and l.shop_id = public.current_shop_id()
 $$;
 revoke execute on function public.private_entry(uuid) from public, anon;
 grant execute on function public.private_entry(uuid) to authenticated;
@@ -21365,7 +21370,7 @@ language plpgsql stable security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); br uuid := public.party_branch();
 begin
   perform public.grant_require('finance', 'view');
-  if p_kind = 'employees' and not public.can_private() then raise exception 'E_FORBIDDEN'; end if;
+  if p_kind = 'employees' and public.private_level() < 1 then raise exception 'E_FORBIDDEN'; end if;
   if p_kind not in ('customers', 'suppliers', 'employees') then raise exception 'E_BAD_INPUT'; end if;
   return query
   with lines as (
@@ -21397,13 +21402,13 @@ declare
   parties uuid[] := array[p_id];
   lk public.party_links;
   opening bigint;
-  priv boolean := public.can_private();
+  lvl integer := public.private_level();
   br uuid; -- كشف العميل والمورد للموظف: فرعه بس. الخزنة ليها فحصها
   res jsonb;
 begin
   perform public.grant_require('finance', 'view');
   -- المرتبات والشركاء لصاحب المحل بس، والخزنة لازم تكون في فروع الموظف
-  if public.current_app_role() <> 'owner' and (p_kind = 'partner' or (p_kind = 'employee' and not priv)
+  if public.current_app_role() <> 'owner' and (p_kind = 'partner' or (p_kind = 'employee' and lvl < 1)
      or (p_kind = 'cashbox' and not exists (select 1 from public.accounts a where a.id = p_id and public.can_branch(a.branch_id)))) then raise exception 'E_FORBIDDEN'; end if;
   if p_kind <> 'cashbox' then br := public.party_branch(); end if;
   if p_kind = 'cashbox' then
@@ -21442,7 +21447,7 @@ begin
     join public.journal_entries e on e.id = l.entry_id
     left join public.devices d on d.id = e.device_id
     left join public.profiles p on p.id = e.created_by
-    cross join lateral (select p_kind = 'cashbox' and not priv and public.private_entry(e.id) as hide) h
+    cross join lateral (select p_kind = 'cashbox' and lvl < public.private_entry(e.id) as hide) h
     where l.account_id = any(accs) and (p_kind = 'cashbox' or l.party_id = any(parties)) and (br is null or e.branch_id = br) and e.occurred_at >= p_from and e.occurred_at < p_to
   ),
   mv2 as (select mv.*, opening + sum(amount) over (order by occurred_at, entry_no rows unbounded preceding) as running from mv)
@@ -21460,7 +21465,7 @@ create or replace function public.trial_balance(p_branch uuid default null, p_to
 returns table(account_id uuid, code text, name text, type text, kind text, debit bigint, credit bigint, balance bigint)
 language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
-declare priv boolean := public.can_private();
+declare lvl integer := public.private_level();
 begin
   perform public.grant_require('finance', 'view');
   if p_branch is not null and public.current_app_role() <> 'owner' and not public.can_branch(p_branch) then raise exception 'E_FORBIDDEN'; end if;
@@ -21470,7 +21475,7 @@ begin
   t as (select b.account_id acc, sum(greatest(b.amount, 0))::bigint dr, sum(greatest(-b.amount, 0))::bigint cr from b group by 1)
   select t.acc, a.code, a.name, coalesce(a.type::text, 'inter_branch'), coalesce(a.kind, 'inter_branch'), t.dr, t.cr, (t.dr - t.cr)::bigint
   from t left join public.accounts a on a.id = t.acc
-  where (t.dr - t.cr <> 0 or t.acc is null and p_branch is not null) and (priv or a.id is null or not public.private_account(a.kind, a.code))
+  where (t.dr - t.cr <> 0 or t.acc is null and p_branch is not null) and (a.id is null or lvl >= public.private_account(a.kind, a.code))
   order by case coalesce(a.type::text, 'inter_branch') when 'asset' then 1 when 'liability' then 2 when 'equity' then 3 when 'revenue' then 4 when 'expense' then 5 else 6 end, a.code nulls last, a.name;
 end $$;
 
@@ -21478,7 +21483,7 @@ end $$;
 create or replace function public.pl_breakdown(p_from timestamptz, p_to timestamptz, p_branch uuid default null)
 returns table(account_id uuid, code text, name text, type public.account_type, amount bigint)
 language plpgsql stable security definer set search_path = public as $$
-declare priv boolean := public.can_private();
+declare lvl integer := public.private_level();
 begin
   perform public.grant_require('finance', 'view');
   -- الموظف: فرع واحد من فروعه
@@ -21489,7 +21494,7 @@ begin
   from public.journal_lines l
   join public.accounts a on a.id = l.account_id
   join public.journal_entries e on e.id = l.entry_id
-  where l.shop_id = public.current_shop_id() and a.type in ('revenue', 'expense') and e.occurred_at >= p_from and e.occurred_at < p_to and (priv or not public.private_account(a.kind, a.code))
+  where l.shop_id = public.current_shop_id() and a.type in ('revenue', 'expense') and e.occurred_at >= p_from and e.occurred_at < p_to and lvl >= public.private_account(a.kind, a.code)
     and (p_branch is null or e.branch_id = p_branch)
   group by a.id
   having sum(l.debit - l.credit) <> 0
@@ -21501,12 +21506,12 @@ create or replace function public.branch_lines(p_to timestamptz default null)
 returns table(entry_id uuid, occurred_at timestamptz, source_type text, branch_id uuid, account_id uuid, amount bigint)
 language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
-declare br uuid; priv boolean := public.can_private();
+declare br uuid; lvl integer := public.private_level();
 begin
   perform public.grant_require('finance', 'view');
   br := public.party_branch();
   return query select * from public.branch_lines_raw(p_to) x where (br is null or x.branch_id = br)
-    and (priv or not exists (select 1 from public.accounts a where a.id = x.account_id and public.private_account(a.kind, a.code)));
+    and not exists (select 1 from public.accounts a where a.id = x.account_id and lvl < public.private_account(a.kind, a.code));
 end $$;
 
 -- financial_position: (src: 0086_finance_cards.sql)
@@ -21516,7 +21521,7 @@ declare
   s uuid := public.current_shop_id();
   res jsonb;
   own boolean := public.current_app_role() = 'owner';
-  priv boolean := public.can_private(); -- المرتبات ورأس المال
+  lvl integer := public.private_level(); -- المرتبات ورأس المال
 begin
   perform public.grant_require('finance', 'view');
   -- الموظف: فرع واحد من فروعه دايمًا، ومن غير إجماليات المحل كله
@@ -21549,7 +21554,7 @@ begin
     select coalesce(sum(case when a.type = 'revenue' then l.credit - l.debit else 0 end), 0)::bigint as revenue,
            coalesce(sum(case when a.type = 'expense' then l.debit - l.credit else 0 end), 0)::bigint as expenses
     from public.journal_lines l join public.accounts a on a.id = l.account_id join public.journal_entries e on e.id = l.entry_id
-    where l.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to and (p_branch is null or e.branch_id = p_branch) and (priv or not public.private_account(a.kind, a.code))
+    where l.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to and (p_branch is null or e.branch_id = p_branch) and lvl >= public.private_account(a.kind, a.code)
   ),
   tot as (
     select coalesce(sum(debit), 0)::bigint as d, coalesce(sum(credit), 0)::bigint as c from public.journal_lines where shop_id = s
@@ -21579,14 +21584,14 @@ begin
       -- أرباح اتوزعت على الشركاء ولسه ما اتسحبتش (حقوق ملكية، مش دين من بره)
       coalesce(sum(greatest(b, 0)) filter (where kind = 'partner_current'), 0)::bigint as partners_due
     from bal
-    where priv or kind not in ('advances', 'salaries')
+    where lvl >= 1 or kind not in ('advances', 'salaries')
   ),
   days as (
     select (date_trunc('day', e.occurred_at at time zone 'Africa/Cairo'))::date as day,
            coalesce(sum(case when a.type = 'revenue' then l.credit - l.debit else 0 end), 0)::bigint as revenue,
            coalesce(sum(case when a.type = 'expense' then l.debit - l.credit else 0 end), 0)::bigint as expenses
     from public.journal_lines l join public.accounts a on a.id = l.account_id join public.journal_entries e on e.id = l.entry_id
-    where l.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to and a.type in ('revenue', 'expense') and (p_branch is null or e.branch_id = p_branch) and (priv or not public.private_account(a.kind, a.code))
+    where l.shop_id = s and e.occurred_at >= p_from and e.occurred_at < p_to and a.type in ('revenue', 'expense') and (p_branch is null or e.branch_id = p_branch) and lvl >= public.private_account(a.kind, a.code)
     group by 1
   )
   select jsonb_build_object(
@@ -21654,7 +21659,7 @@ language plpgsql stable security definer set search_path = public as $$
 declare
   s uuid := public.current_shop_id();
   res jsonb;
-  priv boolean := public.can_private();
+  lvl integer := public.private_level();
 begin
   perform public.grant_require('finance', 'view');
   if public.current_app_role() <> 'owner' and (p_branch is null or not public.can_branch(p_branch)) then
@@ -21694,7 +21699,7 @@ begin
         'opening', o.opening, 'in', coalesce(t.d, 0), 'out', coalesce(t.c, 0), 'closing', o.opening + coalesce(t.d, 0) - coalesce(t.c, 0),
         'entries', coalesce((select jsonb_agg(jsonb_build_object('entry_id', m.entry_id, 'entry_no', m.entry_no, 'source_type', case when h.hide then 'private' else m.source_type end,
             'memo', case when not h.hide then m.memo end, 'at', m.occurred_at, 'in', m.debit, 'out', m.credit, 'cancelled', m.cancelled) order by m.occurred_at, m.entry_no)
-          from mv m cross join lateral (select not priv and public.private_entry(m.entry_id) as hide) h where m.account_id = b.id), '[]'::jsonb)) as x
+          from mv m cross join lateral (select lvl < public.private_entry(m.entry_id) as hide) h where m.account_id = b.id), '[]'::jsonb)) as x
       from boxes b
       cross join lateral (select coalesce(sum(l.debit - l.credit), 0)::bigint as opening from public.journal_lines l join public.journal_entries e on e.id = l.entry_id
                           where l.account_id = b.id and e.occurred_at < p_from) o
@@ -21709,7 +21714,7 @@ end $$;
 create or replace function public.accountant_export(p_from date, p_to date, p_branch uuid default null) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
-  s uuid := public.current_shop_id(); own boolean := public.current_app_role() = 'owner'; names boolean; res jsonb; priv boolean := public.can_private();
+  s uuid := public.current_shop_id(); own boolean := public.current_app_role() = 'owner'; names boolean; res jsonb; lvl integer := public.private_level();
   f timestamptz; t timestamptz;
 begin
   perform public.grant_require('finance', 'view');
@@ -21727,7 +21732,7 @@ begin
     select e.* from public.journal_entries e
     where e.shop_id = s and e.occurred_at >= f and e.occurred_at < t and (p_branch is null or e.branch_id = p_branch)
       and (own or not exists (select 1 from public.journal_lines l join public.accounts a on a.id = l.account_id
-                              where l.entry_id = e.id and (not priv and public.private_account(a.kind, a.code)
+                              where l.entry_id = e.id and (lvl < public.private_account(a.kind, a.code)
                                 or a.kind = 'cash' and not public.can_branch(a.branch_id))))
   ),
   ln as (
@@ -21759,13 +21764,65 @@ begin
   return res;
 end $$;
 
+-- branch_kpis: (src: 0041_analytics.sql)
+create or replace function public.branch_kpis(p_from timestamptz, p_to timestamptz)
+returns table(branch_id uuid, revenue bigint, cogs bigint, opex bigint, invoices integer, devices_in integer, devices_out integer,
+              repair_minutes bigint, returns integer, stock_value bigint, stale_value bigint, stale_items integer,
+              receivables bigint, receivables_60 bigint, goal_revenue bigint, goal_profit bigint)
+language plpgsql stable security definer set search_path = public as $$
+#variable_conflict use_column
+declare s uuid := public.current_shop_id(); stale interval := interval '60 days'; lvl integer := public.private_level();
+begin
+  perform public.grant_require('reports', 'view');
+  return query
+  with br as (
+    select b.id from public.branches b where b.shop_id = s and b.deleted_at is null and (public.all_my_branches() or public.can_branch(b.id))
+  ), bl as (
+    select l.*, a.type, a.kind, a.code from public.branch_lines_raw(p_to) l left join public.accounts a on a.id = l.account_id
+  ), money as (
+    select bl.branch_id,
+      coalesce(-sum(bl.amount) filter (where bl.type = 'revenue' and bl.kind = 'revenue' and bl.occurred_at >= p_from), 0)::bigint rev,
+      coalesce(sum(bl.amount) filter (where bl.type = 'expense' and bl.kind = 'cogs' and bl.occurred_at >= p_from), 0)::bigint cg,
+      coalesce(sum(bl.amount) filter (where bl.type = 'expense' and bl.kind <> 'cogs' and bl.occurred_at >= p_from and lvl >= public.private_account(bl.kind, bl.code)), 0)::bigint ox,
+      count(distinct bl.entry_id) filter (where bl.source_type in ('sale', 'delivery') and bl.type = 'revenue' and bl.occurred_at >= p_from)::int inv,
+      coalesce(sum(bl.amount) filter (where bl.kind = 'receivable'), 0)::bigint ar,
+      coalesce(sum(bl.amount) filter (where bl.kind = 'receivable' and bl.occurred_at < now() - interval '60 days'), 0)::bigint ar60
+    from bl group by 1
+  ), dev as (
+    select d.branch_id,
+      count(*) filter (where d.received_at >= p_from and d.received_at < p_to)::int din,
+      count(*) filter (where d.status = 'delivered' and d.delivered_at >= p_from and d.delivered_at < p_to)::int dout,
+      coalesce(sum(extract(epoch from d.delivered_at - d.received_at) / 60) filter (where d.status = 'delivered' and d.delivered_at >= p_from and d.delivered_at < p_to), 0)::bigint mins,
+      count(*) filter (where d.status = 'warranty_return' and d.updated_at >= p_from and d.updated_at < p_to)::int ret
+    from public.devices d where d.shop_id = s and d.deleted_at is null group by 1
+  ), stock as (
+    select m.branch_id, m.item_id, sum(m.qty) q, sum(m.value) v,
+           max(m.created_at) filter (where m.qty < 0) last_out
+    from public.stock_moves m where m.shop_id = s group by 1, 2
+  ), st as (
+    select x.branch_id, coalesce(sum(x.v) filter (where x.q > 0), 0)::bigint sv,
+      coalesce(sum(x.v) filter (where x.q > 0 and coalesce(x.last_out, 'epoch'::timestamptz) < now() - stale), 0)::bigint stv,
+      count(*) filter (where x.q > 0 and coalesce(x.last_out, 'epoch'::timestamptz) < now() - stale)::int sti
+    from stock x group by 1
+  ), g as (
+    select gg.branch_id,
+      max(gg.target) filter (where gg.metric = 'revenue') gr, max(gg.target) filter (where gg.metric = 'profit') gp
+    from public.branch_goals gg where gg.shop_id = s and gg.deleted_at is null and gg.month = date_trunc('month', p_from at time zone 'Africa/Cairo')::date
+    group by 1
+  )
+  select br.id, coalesce(m.rev, 0), coalesce(m.cg, 0), coalesce(m.ox, 0), coalesce(m.inv, 0), coalesce(dv.din, 0), coalesce(dv.dout, 0),
+         coalesce(dv.mins, 0), coalesce(dv.ret, 0), coalesce(st.sv, 0), coalesce(st.stv, 0), coalesce(st.sti, 0),
+         coalesce(m.ar, 0), coalesce(m.ar60, 0), g.gr, g.gp
+  from br left join money m on m.branch_id = br.id left join dev dv on dv.branch_id = br.id left join st on st.branch_id = br.id left join g on g.branch_id = br.id;
+end $$;
+
 -- entry_require: (src: 0075_delete_by_section.sql)
 create or replace function public.entry_require(p_entry uuid) returns void
 language plpgsql stable security definer set search_path = public as $$
 begin
   if public.current_app_role() = 'owner' then return; end if;
   if public.can_delete((select public.entry_section(e.source_type) from public.journal_entries e where e.id = p_entry)) is not true then raise exception 'E_FORBIDDEN'; end if;
-  if not public.can_private() and public.private_entry(p_entry) then raise exception 'E_FORBIDDEN'; end if;
+  if public.private_level() < public.private_entry(p_entry) then raise exception 'E_FORBIDDEN'; end if;
   if exists (select 1 from public.journal_entries e where e.id = p_entry and (e.source_type = 'vat_payment' or not public.can_branch(e.branch_id)))
      or exists (select 1 from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = p_entry
                 and (a.kind in ('advances', 'salaries', 'partner_capital', 'partner_current', 'capital', 'drawings') or (a.kind = 'cash' and not public.can_branch(a.branch_id))))
@@ -21778,20 +21835,21 @@ end $$;
 drop policy staff_entries_select on public.journal_entries;
 create policy staff_entries_select on public.journal_entries for select to authenticated
   using (shop_id = (select public.current_shop_id()) and (select public.current_app_role()) = 'reception' and (select public.has_perm('finance', 'view')) and public.can_branch(branch_id)
-         and ((select public.can_private()) or not public.private_entry(id)));
+         and (select public.private_level()) >= public.private_entry(id));
 drop policy staff_lines_select on public.journal_lines;
 create policy staff_lines_select on public.journal_lines for select to authenticated
   using (shop_id = (select public.current_shop_id()) and (select public.current_app_role()) = 'reception' and (select public.has_perm('finance', 'view'))
          and exists (select 1 from public.journal_entries e where e.id = entry_id and public.can_branch(e.branch_id))
-         and ((select public.can_private()) or not public.private_entry(entry_id)));
+         and (select public.private_level()) >= public.private_entry(entry_id));
 drop policy staff_accounts_select on public.accounts;
 create policy staff_accounts_select on public.accounts for select to authenticated
   using (shop_id = (select public.current_shop_id()) and (select public.current_app_role()) = 'reception' and (select public.has_perm('finance', 'view'))
-         and (kind <> 'cash' or public.can_branch(branch_id)) and ((select public.can_private()) or kind not in ('advances', 'salaries', 'partner_capital', 'partner_current')));
+         and (kind <> 'cash' or public.can_branch(branch_id)) and kind not in ('partner_capital', 'partner_current') and ((select public.private_level()) >= 1 or kind not in ('advances', 'salaries')));
 drop policy staff_audit_select on public.audit_log;
 create policy staff_audit_select on public.audit_log for select to authenticated
   using (shop_id = (select public.current_shop_id()) and (select public.current_app_role()) = 'reception' and (select public.has_perm('audit', 'view'))
-         and ((select public.can_private()) or not (entity in ('partners', 'profit_distributions', 'commission_rules') or (entity = 'journal_entries' and public.private_entry(entity_id)))));
+         and entity not in ('partners', 'profit_distributions') and ((select public.private_level()) >= 1 or entity <> 'commission_rules')
+         and (entity <> 'journal_entries' or (select public.private_level()) >= public.private_entry(entity_id)));
 $m0087$;
   insert into public.app_migrations(version, how) values ('0087_private_finance.sql', 'applied');
   raise notice 'applied %', '0087_private_finance.sql';
