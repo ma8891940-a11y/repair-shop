@@ -1736,6 +1736,17 @@ begin
 end $$;
 revoke execute on function public.stock_count_get(uuid, boolean) from public, anon, authenticated;
 
+-- تكلفة الوحدة في الفرع: متوسطه، ولو مفيش رصيد بقيمة: آخر سعر شرا (متوسط كل الفروع ممكن يتلخبط برصيد من غير تكلفة)
+create or replace function public.stock_count_cost(p_item uuid, p_branch uuid) returns bigint
+language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select case when st.qty > 0 and st.value > 0 then st.value / st.qty end from public.item_stock_at(p_item, p_branch) st),
+    (select m.value / m.qty from public.stock_moves m join public.journal_entries e on e.id = m.entry_id
+      where m.item_id = p_item and m.qty > 0 and e.source_type = 'purchase' order by e.occurred_at desc, m.created_at desc limit 1),
+    0)::bigint
+$$;
+revoke execute on function public.stock_count_cost(uuid, uuid) from public, anon, authenticated;
+
 create or replace function public.start_stock_count(p_id uuid, p_note text default null) returns uuid
 language plpgsql security definer set search_path = public as $$
 declare s uuid := public.current_shop_id(); b uuid;
@@ -1752,7 +1763,7 @@ begin
   end;
   insert into public.stock_count_lines(shop_id, count_id, item_id, opening_qty)
   select s, p_id, i.id, coalesce((select sum(m.qty) from public.stock_moves m where m.item_id = i.id and m.branch_id = b), 0)
-  from public.items i where i.shop_id = s and i.deleted_at is null and i.kind in ('part', 'accessory');
+  from public.items i where i.shop_id = s and i.deleted_at is null and i.kind in ('part', 'accessory') order by i.id;
   return p_id;
 end $$;
 
@@ -1799,20 +1810,21 @@ begin
   if c.status <> 'open' then raise exception 'E_COUNT_CLOSED'; end if;
   if nullif(trim(p_reason), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
   if not exists (select 1 from public.stock_count_lines where count_id = c.id and counted_qty is not null) then raise exception 'E_COUNT_EMPTY'; end if;
-  if exists (select 1 from public.stock_count_lines where count_id = c.id and counted_qty <> system_qty) then
+  if exists (select 1 from public.stock_count_lines sl join public.items i on i.id = sl.item_id and i.deleted_at is null where sl.count_id = c.id and sl.counted_qty <> sl.system_qty) then
     perform set_config('app.branch', c.branch_id::text, true);
     e := gen_random_uuid();
     insert into public.journal_entries(id, shop_id, source_type, source_id, memo, idem_key, created_by, branch_id)
     values (e, s, 'stock_count', c.id, left(trim(p_reason), 300), p_id, auth.uid(), c.branch_id);
-    -- بترتيب ثابت (زي أي عملية بتقفل أكتر من صنف) عشان ما يحصلش انتظار متبادل بين جردين
-    for l in select * from public.stock_count_lines where count_id = c.id and counted_qty <> system_qty order by item_id loop
+    -- بترتيب ثابت عشان جردين ما يستنوش بعض. صنف اتحذف بعد العد (رصيده صفر): مفيش حاجة تتسوى
+    for l in select sl.* from public.stock_count_lines sl join public.items i on i.id = sl.item_id and i.deleted_at is null
+             where sl.count_id = c.id and sl.counted_qty <> sl.system_qty order by sl.item_id loop
       perform 1 from public.items where id = l.item_id for update;
       diff := l.counted_qty - l.system_qty;
       if diff < 0 then
         cost := public.ledger_issue(l.item_id, -diff, e);
         net := net + cost;
       else
-        cost := public.item_last_cost(l.item_id) * diff;
+        cost := public.stock_count_cost(l.item_id, c.branch_id) * diff;
         -- زيادة في صنف تكلفته مش معروفة: بتتسجل من "تسوية مخزون" بتكلفتها
         if cost <= 0 then raise exception 'E_COUNT_COST'; end if;
         insert into public.stock_moves(shop_id, item_id, entry_id, qty, value, branch_id) values (s, l.item_id, e, diff, cost, c.branch_id);
@@ -1847,8 +1859,9 @@ begin
   select * into c from public.stock_counts where id = p_count and shop_id = public.current_shop_id() and deleted_at is null;
   if not found or (public.current_app_role() <> 'owner' and not public.can_branch(c.branch_id)) then raise exception 'E_NOT_FOUND'; end if;
   return jsonb_build_object('id', c.id, 'branch_id', c.branch_id, 'status', c.status, 'note', c.note, 'started_at', c.created_at, 'closed_at', c.closed_at, 'entry', c.entry_id,
+    'reversed', exists (select 1 from public.journal_entries x where x.reverses_id = c.entry_id),
     'lines', coalesce((select jsonb_agg(jsonb_build_object('item', l.item_id, 'name', i.name, 'opening', l.opening_qty, 'system', l.system_qty, 'counted', l.counted_qty, 'diff', l.counted_qty - l.system_qty,
-        'counted_at', l.counted_at, 'value', case when m and l.counted_qty is not null then (l.counted_qty - l.system_qty) * public.item_last_cost(l.item_id) end) order by i.name, i.id)
+        'counted_at', l.counted_at, 'value', case when m and l.counted_qty is not null then (l.counted_qty - l.system_qty) * public.stock_count_cost(l.item_id, c.branch_id) end) order by i.name, i.id)
       from public.stock_count_lines l join public.items i on i.id = l.item_id where l.count_id = c.id), '[]'::jsonb));
 end $$;
 do $$
@@ -1932,6 +1945,7 @@ begin
      or exists (select 1 from public.purchases where shop_id = s) or exists (select 1 from public.drawer_closings where shop_id = s)
      or exists (select 1 from public.stock_moves where shop_id = s)
      or exists (select 1 from public.attendance where shop_id = s and deleted_at is null)
+     or exists (select 1 from public.stock_counts where shop_id = s and status = 'open')
      or exists (select 1 from public.profiles where shop_id = s and id <> me) then
     raise exception 'E_RESTORE_NOT_EMPTY';
   end if;

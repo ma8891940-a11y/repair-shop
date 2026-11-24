@@ -124,6 +124,7 @@ d('الجرد الدوري', () => {
     expect(log.map((x) => x.after)).toEqual([expect.objectContaining({ items: 2, shortage: 2000, surplus: 900, reason: 'جرد الشهر' })]);
     // الإلغاء بقيد عكسي بيرجّع المخزون
     await as(O, `select reverse_entry($1, 'غلط')`, [e]);
+    expect(await sheet(O, k)).toMatchObject({ status: 'posted', reversed: true });
     expect(await stock(a)).toEqual({ q: 7, v: 7000 });
     expect(await stock(b)).toEqual({ q: 20, v: 6000 });
     expect((await as(O, `select integrity_report() r`)).rows[0].r).toEqual([]);
@@ -172,6 +173,24 @@ d('الجرد الدوري', () => {
     await expect(count(M, k, srv, 1)).rejects.toThrow(/E_NOT_FOUND/);
     await count(M, k, c, 2);
     await post(M, k);
+  });
+
+  it('الزيادة بتكلفة الفرع نفسه، والصنف اللي اتحذف بعد العد ما بيوقفش الاعتماد، وزيادة قد النقص بيبانوا الاتنين', async () => {
+    const [x, y, gone] = [id(), id(), id()];
+    await as(O, `insert into items(id, shop_id, kind, name) values ($1, gen_random_uuid(), 'part', 'س'), ($2, gen_random_uuid(), 'part', 'ص'), ($3, gen_random_uuid(), 'part', 'ع')`, [x, y, gone]);
+    const sup = (await admin(`select id from suppliers where shop_id = $1`, [shop])).rows[0].id;
+    await as(O, `select record_purchase($1, $2, $3::jsonb)`, [id(), sup, JSON.stringify([{ item: x, qty: 2, unit_cost: 1000 }, { item: y, qty: 2, unit_cost: 1000 }, { item: gone, qty: 1, unit_cost: 50 }])], main);
+    await as(O, `select record_purchase($1, $2, $3::jsonb)`, [id(), sup, JSON.stringify([{ item: x, qty: 8, unit_cost: 9000 }])], B2);
+    const k = await start(M);
+    await count(M, k, x, 3);
+    await count(M, k, y, 1);
+    await count(M, k, gone, 0);
+    await as(O, `select write_off($1, $2, 1, 'اتكسر')`, [id(), gone], main);
+    await as(O, `select soft_delete('item', $1, 'خلص')`, [gone]);
+    const e = (await post(M, k))!;
+    expect(await lines(e)).toEqual([['inventory', 0, 1000], ['inventory', 1000, 0], ['wastage', 0, 1000], ['wastage', 1000, 0]]);
+    expect(await stock(x)).toEqual({ q: 3, v: 3000 });
+    expect(await stock(x, B2)).toEqual({ q: 8, v: 72000 });
   });
 
   it('اعتمادين في نفس اللحظة: قيد واحد', async () => {
