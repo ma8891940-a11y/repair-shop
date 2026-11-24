@@ -120,6 +120,9 @@ d('أوامر الشراء', () => {
     expect(await stock(a)).toEqual({ q: 10, v: 180000 + 305000 + 120000 });
     expect(await stock(b)).toEqual({ q: 4, v: 10000 });
     expect(await ap()).toBe(180000 + 120000);
+    // تعديل قيد الاستلام كان هيفك ربطه بالأمر فيتستلم تاني
+    const args = (await as(O, `select entry_args($1) a`, [e1])).rows[0].a;
+    await expect(as(O, `select edit_entry($1, 'تعديل', $2::jsonb)`, [e1, JSON.stringify({ ...args, id: id() })])).rejects.toThrow(/E_ORDER_EDIT/);
     // إلغاء استلام بقيد عكسي: الكمية ترجع باقية
     await as(O, `select reverse_entry($1, 'غلط')`, [e1]);
     expect((await get(o)).lines[0].received).toBe(7);
@@ -205,7 +208,7 @@ d('أوامر الشراء', () => {
     expect((await get(op)).lines[0].qty).toBe(1);
     for (const [ls, err] of [
       [[], /E_BAD_INPUT/], [null, /E_BAD_INPUT/], [[{ item: a, qty: 0, unit_cost: 1 }], /E_BAD_QTY/], [[{ item: a, qty: 1.5, unit_cost: 1 }], /E_BAD_QTY/], [[{ item: a, qty: 1, unit_cost: -1 }], /E_BAD_PRICE/],
-      [[{ item: a, qty: 1, unit_cost: 1 }, { item: a, qty: 2, unit_cost: 1 }], /E_BAD_INPUT/], [[{ item: id(), qty: 1, unit_cost: 1 }], /E_NOT_FOUND/], [[{ item: a, qty: 100000, unit_cost: 999999999999 }], /E_BAD_AMOUNT/],
+      [[{ item: a, qty: 1, unit_cost: 1 }, { item: a, qty: 2, unit_cost: 1 }], /E_BAD_INPUT/], [[{ item: id(), qty: 1, unit_cost: 1 }], /E_NOT_FOUND/], [[{ item: a, qty: 100000, unit_cost: 999999999999 }], /E_BAD_AMOUNT/], [[{ item: a, qty: 1, unit_cost: 0 }], /E_BAD_AMOUNT/],
     ] as [unknown, RegExp][])
       await expect(order(O, ls), JSON.stringify(ls)).rejects.toThrow(err);
     const l = (await get(op)).lines[0].id;

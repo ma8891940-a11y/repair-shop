@@ -19209,7 +19209,7 @@ begin
     insert into public.purchase_order_lines(shop_id, order_id, item_id, qty, unit_cost, seq) values (s, p_id, it, (l ->> 'qty')::int, (l ->> 'unit_cost')::bigint, n);
     total := total + (l ->> 'qty')::numeric * (l ->> 'unit_cost')::numeric;
   end loop;
-  if total > 100000000000 then raise exception 'E_BAD_AMOUNT'; end if;
+  if total <= 0 or total > 100000000000 then raise exception 'E_BAD_AMOUNT'; end if;
   return p_id;
 end $$;
 
@@ -19250,6 +19250,7 @@ begin
     q := (l ->> 'qty')::int;
     if q > ol.qty - public.order_line_received(ol.id) then raise exception 'E_ORDER_QTY'; end if;
     if not exists (select 1 from public.items where id = ol.item_id and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+    if q::numeric * coalesce((l ->> 'unit_cost')::numeric, ol.unit_cost) > 100000000000 then raise exception 'E_BAD_AMOUNT'; end if;
     total := total + q::bigint * coalesce((l ->> 'unit_cost')::bigint, ol.unit_cost);
   end loop;
   perform public.ledger_amount(total);
@@ -19291,11 +19292,8 @@ begin
   if sup is null then raise exception 'E_NOT_FOUND'; end if;
   back := public.move_returned(mv.id);
   if p_qty is null or p_qty <= 0 or p_qty > mv.qty - back then raise exception 'E_RETURN_QTY'; end if;
-  -- نصيب تراكمي: آخر مرتجع بيقفل قيمة السطر بالقرش
-  refund := div(mv.value::numeric * (back + p_qty), mv.qty::numeric)::bigint
-          - coalesce((select sum(case when l.debit > 0 then l.debit else 0 end) from public.stock_moves m join public.journal_lines l on l.entry_id = m.entry_id join public.accounts a on a.id = l.account_id
-                      where m.return_of = mv.id and (a.kind = 'cash' or a.kind = 'payable') and not exists (select 1 from public.journal_entries x where x.reverses_id = m.entry_id)), 0);
-  refund := greatest(refund, 0);
+  -- قيمة سطر الشرا = الكمية × سعر الوحدة، فالقسمة من غير باقي
+  refund := mv.value / mv.qty * p_qty;
   perform set_config('app.branch', o.branch_id::text, true);
   if p_cashbox is not null then
     cb := public.ledger_cashbox(p_cashbox);
@@ -19338,19 +19336,24 @@ declare s uuid := public.current_shop_id();
 begin
   perform public.grant_require('purchases', 'view');
   return coalesce((
-    with ln as (
+    -- shortcut: آخر 300 أمر، ولو محل عدّاهم نضيف صفحات
+    with po0 as materialized (
+      select o.* from public.purchase_orders o
+      where o.shop_id = s and o.deleted_at is null and (p_branch is null or o.branch_id = p_branch)
+        and (public.current_app_role() = 'owner' or public.can_branch(o.branch_id))
+      order by o.created_at desc, o.id limit 300
+    ),
+    ln as materialized (
       select l.order_id, l.id, l.seq, l.item_id, i.name, l.qty, l.unit_cost, public.order_line_received(l.id) as got,
              coalesce((select jsonb_agg(jsonb_build_object('move', m.id, 'entry', m.entry_id, 'at', e.occurred_at, 'qty', m.qty, 'value', m.value, 'returned', public.move_returned(m.id)) order by e.occurred_at, m.id)
                from public.stock_moves m join public.journal_entries e on e.id = m.entry_id
                where m.order_line_id = l.id and not exists (select 1 from public.journal_entries x where x.reverses_id = m.entry_id)), '[]'::jsonb) as receipts
-      from public.purchase_order_lines l join public.items i on i.id = l.item_id where l.shop_id = s
+      from po0 join public.purchase_order_lines l on l.order_id = po0.id join public.items i on i.id = l.item_id
     ),
     po as (
       select o.*, sp.name as supplier,
              (select case when o.cancelled_at is not null then 'cancelled' when sum(ln.got) = 0 then 'open' when sum(ln.got) < sum(ln.qty) then 'partial' else 'received' end from ln where ln.order_id = o.id) as status
-      from public.purchase_orders o join public.suppliers sp on sp.id = o.supplier_id
-      where o.shop_id = s and o.deleted_at is null and (p_branch is null or o.branch_id = p_branch)
-        and (public.current_app_role() = 'owner' or public.can_branch(o.branch_id))
+      from po0 o join public.suppliers sp on sp.id = o.supplier_id
     )
     select jsonb_agg(jsonb_build_object('id', po.id, 'order_no', po.order_no, 'branch_id', po.branch_id, 'supplier_id', po.supplier_id, 'supplier', po.supplier, 'status', po.status,
         'expected_on', po.expected_on, 'note', po.note, 'created_at', po.created_at, 'cancel_reason', po.cancel_reason,
@@ -19600,6 +19603,43 @@ begin
   insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
   values (s, me, 'backup_restore', 'shops', s, jsonb_build_object('from_shop', old_shop, 'generated_at', p_data->>'generated_at', 'counts', counts));
   return jsonb_build_object('restored', true, 'counts', counts);
+end $$;
+
+-- edit_entry: (src: 0026_edit_delete.sql) + استلام أمر شراء ما يتعدلش (الجديد بيبقى من غير ربط بالأمر فيتستلم تاني): يتلغي ويتستلم من الأمر
+create or replace function public.edit_entry(p_entry uuid, p_reason text, p_new jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  o public.journal_entries;
+  nid uuid := (p_new ->> 'id')::uuid;
+  e uuid;
+  amt bigint := (p_new ->> 'amount')::bigint;
+  note text := nullif(trim(p_new ->> 'note'), '');
+begin
+  if public.current_app_role() is null or not public.can_correct() then raise exception 'E_FORBIDDEN'; end if;
+  if nid is null then raise exception 'E_BAD_INPUT'; end if;
+  e := public.ledger_idem(nid);
+  if e is not null then return e; end if;
+  select * into o from public.journal_entries where id = p_entry and shop_id = public.current_shop_id();
+  if not found then raise exception 'E_NOT_FOUND'; end if;
+  if exists (select 1 from public.stock_moves m where m.entry_id = o.id and m.order_line_id is not null) then raise exception 'E_ORDER_EDIT'; end if;
+  perform public.reverse_entry(p_entry, p_reason);
+  case o.source_type
+    when 'payment' then e := public.record_payment(nid, (p_new ->> 'customer')::uuid, (p_new ->> 'cashbox')::uuid, amt, (p_new ->> 'device')::uuid, p_new ->> 'method', note);
+    when 'expense' then e := public.record_expense(nid, (p_new ->> 'account')::uuid, (p_new ->> 'cashbox')::uuid, amt, note);
+    when 'transfer' then e := public.transfer_cash(nid, (p_new ->> 'from')::uuid, (p_new ->> 'to')::uuid, amt, note);
+    when 'capital' then e := public.owner_capital(nid, (p_new ->> 'cashbox')::uuid, amt, note);
+    when 'drawing' then e := public.owner_drawing(nid, (p_new ->> 'cashbox')::uuid, amt, note);
+    when 'advance' then e := public.give_advance(nid, (p_new ->> 'employee')::uuid, (p_new ->> 'cashbox')::uuid, amt, note);
+    when 'salary' then e := public.accrue_salary(nid, (p_new ->> 'employee')::uuid, amt, note);
+    when 'salary_payment' then e := public.pay_salary(nid, (p_new ->> 'employee')::uuid, (p_new ->> 'cashbox')::uuid, amt, note);
+    when 'supplier_payment' then e := public.pay_supplier(nid, (p_new ->> 'supplier')::uuid, (p_new ->> 'cashbox')::uuid, amt, note);
+    when 'purchase' then e := public.record_purchase(nid, (p_new ->> 'supplier')::uuid, p_new -> 'lines', (p_new ->> 'cashbox')::uuid, note);
+    when 'sale' then e := public.record_sale(nid, p_new -> 'lines', (p_new ->> 'cashbox')::uuid, (p_new ->> 'customer')::uuid, note);
+    else raise exception 'E_NOT_EDITABLE';
+  end case;
+  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
+  values (o.shop_id, auth.uid(), 'edit_entry', 'journal_entries', o.id, to_jsonb(o), jsonb_build_object('new_entry', e, 'reason', p_reason));
+  return e;
 end $$;
 $m0079$;
   insert into public.app_migrations(version, how) values ('0079_purchase_orders.sql', 'applied');
