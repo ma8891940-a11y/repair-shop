@@ -52,7 +52,7 @@ d('الجرد الدوري', () => {
   const stock = async (i: string, br = main) => (await admin(`select coalesce(sum(qty), 0)::int q, coalesce(sum(value), 0)::int v from stock_moves where item_id = $1 and branch_id = $2`, [i, br])).rows[0];
   const lines = async (e: string) => (await admin(`select a.code c, l.debit::int d, l.credit::int cr from journal_lines l join accounts a on a.id = l.account_id where l.entry_id = $1 order by a.code, l.debit`, [e])).rows.map((x) => [x.c, x.d, x.cr]);
   const entries = async () => Number((await admin(`select count(*) n from journal_entries where shop_id = $1`, [shop])).rows[0].n);
-  const start = async (u: string, op = id(), br = main) => (await as(u, `select start_stock_count($1, 'جرد الشهر') r`, [op], br)).rows[0].r as string;
+  const start = async (u: string, op: string = id(), br = main) => (await as(u, `select start_stock_count($1, 'جرد الشهر') r`, [op], br)).rows[0].r as string;
   const count = (u: string, k: string, i: string, q: number | null) => as(u, `select save_stock_count($1, $2, $3)`, [k, i, q], main);
   const post = async (u: string, k: string, reason: string | null = 'جرد', op = id()) => (await as(u, `select post_stock_count($1, $2, $3) e`, [op, k, reason], main)).rows[0].e as string | null;
   const sheet = async (u: string, k: string) => (await as(u, `select stock_count_sheet($1) j`, [k])).rows[0].j as Sheet;
