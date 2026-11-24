@@ -35,7 +35,7 @@ export function parseCsv(text: string): string[][] {
   row.push(cell);
   if (row.some((c) => c.trim() !== '')) rows.push(row);
   // علامة ' اللي بنحطها قدام الخلايا الخطرة في التصدير بتتشال
-  return rows.map((r) => r.map((c) => c.trim().replace(/^'(?=[=+\-@])/, '')));
+  return rows.map((r) => r.map((c) => c.trim().replace(/^'(?=[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069]*[=+\-@＝＋－＠])/, '')));
 }
 
 export interface ItemImportRow {
