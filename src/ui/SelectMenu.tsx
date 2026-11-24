@@ -42,13 +42,25 @@ export const SelectMenu = forwardRef<HTMLSelectElement, SelectMenuProps>(functio
   };
   const pick = (v: string) => {
     const s = sel.current!;
-    if (s.value === v) return;
+    if (s.value === v || ![...s.options].some((o) => o.value === v)) return;
     s.value = v;
+    // input كمان: الـ Dialog بيعرف منه إن فيه تعديل ما اتحفظش
+    s.dispatchEvent(new Event('input', { bubbles: true }));
     s.dispatchEvent(new Event('change', { bubbles: true }));
   };
   const keys = (e: KeyboardEvent<HTMLSelectElement>) => {
     onKeyDown?.(e);
-    if (e.defaultPrevented || e.ctrlKey || e.metaKey || !['Enter', ' ', 'ArrowDown', 'ArrowUp', 'F4'].includes(e.key)) return;
+    if (e.key === 'Enter') {
+      // بعد enterNav (على document): لو محدش خد Enter، القايمة بتاعتنا تفتح مش قايمة المتصفح
+      const last = (ev: globalThis.KeyboardEvent) => {
+        if (ev.defaultPrevented || ev.target !== sel.current) return;
+        ev.preventDefault();
+        open();
+      };
+      window.addEventListener('keydown', last, { once: true });
+      return;
+    }
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || ![' ', 'ArrowDown', 'ArrowUp', 'F4'].includes(e.key)) return;
     e.preventDefault();
     open();
   };
@@ -57,12 +69,12 @@ export const SelectMenu = forwardRef<HTMLSelectElement, SelectMenuProps>(functio
   const shown = (opts ?? []).filter((o) => !needle || o.text.toLowerCase().includes(needle));
   return (
     <Menu.Root open={!!opts} onOpenChange={(v) => !v && close()} dir={i18n.dir() as 'rtl' | 'ltr'}>
-      <div className={cn('relative cursor-pointer', wrapClassName ?? 'inline-block max-w-full')} title={rest.title} onClick={open}>
+      <div className={cn('relative cursor-pointer', wrapClassName ?? 'inline-block max-w-full')} title={rest.title} onClick={(e) => e.target !== sel.current && open()}>
         <Menu.Trigger asChild disabled>
           <span className="pointer-events-none absolute inset-0" aria-hidden />
         </Menu.Trigger>
         {/* اللمسة والضغطة للغلاف، فقايمة المتصفح ما بتفتحش */}
-        <select ref={sel} className={cn('pointer-events-none appearance-none truncate', className)} onKeyDown={keys} {...rest}>
+        <select ref={sel} className={cn('pointer-events-none appearance-none truncate', className)} onKeyDown={keys} aria-expanded={!!opts} {...rest}>
           {children}
         </select>
         <ChevronDown className="pointer-events-none absolute end-2 top-1/2 size-4 -translate-y-1/2 text-fg-3" aria-hidden />
@@ -99,6 +111,12 @@ export const SelectMenu = forwardRef<HTMLSelectElement, SelectMenuProps>(functio
                   e.preventDefault();
                   e.currentTarget.parentElement?.querySelector<HTMLElement>('[role=menuitemradio]')?.focus();
                 }
+                if (e.key === 'Enter' && shown[0]) {
+                  e.preventDefault();
+                  const first = shown.find((o) => !o.disabled);
+                  if (first) pick(first.value);
+                  close();
+                }
                 // الكتابة ما تتاخدش كبحث سريع من القايمة
                 if (e.key !== 'Escape') e.stopPropagation();
               }}
@@ -114,7 +132,10 @@ export const SelectMenu = forwardRef<HTMLSelectElement, SelectMenuProps>(functio
                 <Menu.RadioItem
                   value={o.value}
                   disabled={o.disabled}
-                  className="flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-sm px-2.5 text-base text-fg outline-none data-[disabled]:cursor-default data-[highlighted]:bg-accent-soft data-[state=checked]:font-semibold data-[disabled]:opacity-50 sm:min-h-8 sm:text-sm"
+                  // مع البحث: حركة الماوس ما تسرقش التركيز من الخانة
+                  onPointerMove={(e) => searchable && e.preventDefault()}
+                  onPointerLeave={(e) => searchable && e.preventDefault()}
+                  className="flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-sm px-2.5 text-base text-fg outline-none hover:bg-accent-soft data-[disabled]:cursor-default data-[highlighted]:bg-accent-soft data-[state=checked]:font-semibold data-[disabled]:opacity-50 sm:min-h-8 sm:text-sm"
                 >
                   <span className="flex size-4 shrink-0 items-center">
                     <Menu.ItemIndicator>
