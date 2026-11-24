@@ -6,11 +6,10 @@ import {
   type InputHTMLAttributes,
   type ReactElement,
   type ReactNode,
-  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
-import { ChevronDown } from 'lucide-react';
 import { cn } from './cn';
+import { SelectMenu, type SelectMenuProps } from './SelectMenu';
 
 const control =
   'w-full rounded-md border border-line bg-sunken/60 text-fg transition-[border-color,box-shadow,background-color] duration-150 ' +
@@ -52,18 +51,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   return <textarea ref={ref} rows={rows} className={cn(control, 'resize-y px-3 py-2 text-base', className)} {...rest} />;
 });
 
-export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select(
-  { className, children, ...rest },
-  ref,
-) {
-  return (
-    <div className="relative">
-      <select ref={ref} className={cn(control, 'h-9 appearance-none pe-8 ps-3 text-base', className)} {...rest}>
-        {children}
-      </select>
-      <ChevronDown className="pointer-events-none absolute end-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-3" aria-hidden />
-    </div>
-  );
+export const Select = forwardRef<HTMLSelectElement, SelectMenuProps>(function Select({ className, ...rest }, ref) {
+  return <SelectMenu ref={ref} wrapClassName="block min-w-0" className={cn(control, 'h-9 pe-8 ps-3 text-base', className)} {...rest} />;
 });
 
 interface FieldProps {

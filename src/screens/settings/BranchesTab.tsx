@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react';
+import { SelectMenu } from '../../ui/SelectMenu';
 import { useTranslation } from 'react-i18next';
 import { Building2, Pencil, Plus } from 'lucide-react';
 import { useBranch, type Branch } from '../../app/branch';
@@ -88,12 +89,12 @@ export function BranchesTab() {
                   </div>
                 </div>
                 {/* P: نوع الفرع (الأقسام اللي مالهاش علاقة بتختفي، والتغيير ما بيمسحش بيانات) */}
-                <select
+                <SelectMenu
                   value={x.kind ?? 'both'}
                   onChange={(e) => void setKind(x, e.target.value)}
                   aria-label={`${t('perm.branchKind')} ${x.name}`}
                   title={t('perm.kindHint')}
-                  className="h-8 rounded-md border border-line bg-sunken/60 px-2 text-xs text-fg"
+                  className="h-8 rounded-md border border-line bg-sunken/60 pe-7 ps-2 text-xs text-fg"
                   data-testid="branch-kind"
                 >
                   {(['both', 'repair', 'sales'] as const).map((k) => (
@@ -101,7 +102,7 @@ export function BranchesTab() {
                       {t(`perm.kinds.${k}`)}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
                 <span className="text-2xs text-fg-3">{t('branch.cashboxes', { n: stats.data?.cb[x.id] ?? 0 })}</span>
                 <span className="text-2xs text-fg-3">{t('branch.devicesOpen', { n: stats.data?.dv[x.id] ?? 0 })}</span>
                 <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} needsNet onClick={() => setEdit(x)} aria-label={`${t('branch.edit')} ${x.name}`}>

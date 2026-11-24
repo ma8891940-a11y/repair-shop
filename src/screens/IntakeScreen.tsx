@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { SelectMenu } from '../ui/SelectMenu';
 import { readExtras } from '../lib/extras';
 import type { Preset } from './settings/ExtrasTab';
 import { useNavigate } from 'react-router';
@@ -363,13 +364,13 @@ export function IntakeScreen() {
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-fg-2" data-testid="intake-branch">
           <span>{t('branch.intakeBranch')}:</span>
           {br.mine.length > 1 ? (
-            <select value={br.working.id} onChange={(e) => br.setView(e.target.value)} className="h-8 rounded-md border border-line bg-sunken/60 px-2 text-sm text-fg" aria-label={t('branch.intakeBranch')} data-testid="intake-branch-select">
+            <SelectMenu value={br.working.id} onChange={(e) => br.setView(e.target.value)} className="h-8 rounded-md border border-line bg-sunken/60 pe-7 ps-2 text-sm text-fg" aria-label={t('branch.intakeBranch')} data-testid="intake-branch-select">
               {br.mine.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
                 </option>
               ))}
-            </select>
+            </SelectMenu>
           ) : (
             <span className="font-medium text-fg">{br.working.name}</span>
           )}

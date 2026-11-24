@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { SelectMenu } from '../../ui/SelectMenu';
 import { Link } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -565,13 +566,13 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
                         {branchRows.map((b, i) => (
                           <div key={b.id} className="grid grid-cols-2 gap-2 rounded-md border border-glass-border p-2 sm:grid-cols-4" data-testid="layout-branch">
                             <Input value={b.name} onChange={(e) => setRow(i, { name: e.target.value })} maxLength={80} placeholder={i === 0 ? t('register.layout.mainPh') : t('register.layout.branchPh', { n: i + 1 })} aria-label={t('register.layout.name', { n: i + 1 })} />
-                            <select value={b.kind} onChange={(e) => setRow(i, { kind: e.target.value })} aria-label={t('register.layout.kind', { n: i + 1 })} className="h-9 rounded-md border border-line bg-sunken/60 px-2 text-sm text-fg">
+                            <SelectMenu wrapClassName="block min-w-0" value={b.kind} onChange={(e) => setRow(i, { kind: e.target.value })} aria-label={t('register.layout.kind', { n: i + 1 })} className="w-full h-9 rounded-md border border-line bg-sunken/60 pe-7 ps-2 text-sm text-fg">
                               {(['both', 'repair', 'sales'] as const).map((k) => (
                                 <option key={k} value={k}>
                                   {t(`perm.kinds.${k}`)}
                                 </option>
                               ))}
-                            </select>
+                            </SelectMenu>
                             <Input value={b.address} onChange={(e) => setRow(i, { address: e.target.value })} maxLength={200} placeholder={t('branch.address')} aria-label={`${t('branch.address')} ${i + 1}`} />
                             <Input value={b.phone} onChange={(e) => setRow(i, { phone: e.target.value })} dir="ltr" inputMode="tel" maxLength={40} placeholder={t('branch.phone')} aria-label={`${t('branch.phone')} ${i + 1}`} />
                           </div>

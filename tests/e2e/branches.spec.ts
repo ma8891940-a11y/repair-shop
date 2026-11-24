@@ -60,6 +60,18 @@ test('الفروع: فرع جديد ببادئة ← مبدّل الفروع ←
   await expect(sw).toBeVisible();
   await expect(sw.locator('option')).toHaveText(['كل الفروع', 'الفرع الرئيسي', 'فرع المعادي']);
   await noHorizontalScroll(page);
+  // القايمة بشكل التطبيق: علامة على الحالي، وEsc بيقفل من غير تغيير، والاختيار بالضغط
+  const menu = page.getByTestId('branch-switcher-menu');
+  const before = await sw.inputValue();
+  await sw.locator('..').click();
+  await expect(menu.getByRole('menuitemradio')).toHaveText(['كل الفروع', 'الفرع الرئيسي', 'فرع المعادي']);
+  await expect(menu.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  expect(await sw.inputValue()).toBe(before);
+  await sw.locator('..').click();
+  await menu.getByRole('menuitemradio', { name: 'الفرع الرئيسي' }).click();
+  await expect(sw.locator('option:checked')).toHaveText('الفرع الرئيسي');
 
   // 4) استلام في المعادي ← رقم الطلب ببادئة الفرع
   await sw.selectOption({ label: 'فرع المعادي' });

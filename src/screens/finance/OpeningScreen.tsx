@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { SelectMenu } from '../../ui/SelectMenu';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Check, Trash2 } from 'lucide-react';
@@ -252,17 +253,17 @@ function StockStep({ onSaved }: { onSaved: () => void }) {
                           testid="opening-brand"
                         />
                       ) : c === 'kind' ? (
-                        <select
+                        <SelectMenu wrapClassName="block min-w-0"
                           data-cell={`${i}-${j}`}
                           value={r.kind}
                           onChange={(e) => set(i, 'kind', e.target.value)}
                           onKeyDown={(e) => gridKeys(e, i, j, focus)}
                           aria-label={`${t('inv.cols.kind')} ${i + 1}`}
-                          className="h-8 w-full bg-transparent px-2 text-sm text-fg focus:outline focus:outline-2 focus:outline-accent"
+                          className="h-8 w-full bg-transparent pe-7 ps-2 text-sm text-fg focus:outline focus:outline-2 focus:outline-accent"
                         >
                           <option value="part">{t('inv.kinds.part')}</option>
                           <option value="accessory">{t('inv.kinds.accessory')}</option>
-                        </select>
+                        </SelectMenu>
                       ) : c === 'name' ? (
                         <NameSuggest
                           items={existing.data ?? []}
@@ -496,10 +497,10 @@ function PartyStep({ kind, onSaved }: { kind: 'customer' | 'supplier'; onSaved: 
             <Input value={r.name} onChange={(e) => set(i, 'name', e.target.value)} placeholder={t('opening.name')} aria-label={`${t('opening.name')} ${i + 1}`} />
             <Input mono dir="ltr" inputMode="tel" value={r.phone} onChange={(e) => set(i, 'phone', e.target.value)} placeholder={t('opening.phone')} aria-label={`${t('opening.phone')} ${i + 1}`} className="text-start" />
             <Input mono inputMode="decimal" value={r.amount} onChange={(e) => set(i, 'amount', e.target.value)} suffix={f.currency()} aria-label={`${t('fin.amount')} ${i + 1}`} />
-            <select value={r.dir} onChange={(e) => set(i, 'dir', e.target.value)} aria-label={`${t('opening.dir')} ${i + 1}`} className="h-9 rounded-md border border-line bg-sunken/60 px-2 text-sm text-fg">
+            <SelectMenu wrapClassName="block min-w-0" value={r.dir} onChange={(e) => set(i, 'dir', e.target.value)} aria-label={`${t('opening.dir')} ${i + 1}`} className="w-full h-9 rounded-md border border-line bg-sunken/60 pe-7 ps-2 text-sm text-fg">
               <option value="owes_us">{t(`opening.dirs.${kind}.owes_us`)}</option>
               <option value="we_owe">{t(`opening.dirs.${kind}.we_owe`)}</option>
-            </select>
+            </SelectMenu>
             <button type="button" onClick={() => { setRows((cur) => removeRows(cur, new Set([r.k]), blank)); setPicked(new Set()); }} aria-label={t('rows.deleteRow', { n: i + 1 })} title={t('rows.deleteRow', { n: i + 1 })} className="grid size-9 place-items-center self-center text-fg-3 hover:text-danger">
               <Trash2 className="size-3.5" aria-hidden />
             </button>
