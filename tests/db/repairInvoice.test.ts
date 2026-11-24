@@ -115,12 +115,11 @@ d('فاتورة الصيانة الثابتة', () => {
     expect((await invoice(R, b))!.invoice_no).toBe(`F-${y}-0002`);
     const c = await device(70000, true, B2);
     expect((await invoice(R2, c))!.invoice_no).toBe(`R2-F-${y}-0001`);
-    // بادئة اتنقلت لفرع تاني: الترقيم بيكمّل من غير تكرار
+    // محل بادئته اتنقلت لفرع تاني قبل 0082: الترقيم بيكمّل من غير تكرار
     const B3 = id();
     await as(O, `select save_branch($1, 'فرع تاني', 'RX', null, null)`, [B2]);
-    await as(O, `select save_branch($1, 'فرع تالت', 'R2', null, null)`, [B3]);
-    // أرقام طلبات الأجهزة نفسها بتتكرر مع بادئة معادة (عيب قديم متسجل في PROGRESS): العدّاد بيتظبط هنا عشان نختبر الفاتورة
-    await admin(`insert into order_counters(shop_id, branch_id, year, last_value) values ($1, $2, $3, 500)`, [shop, B3, y]);
+    await as(O, `select save_branch($1, 'فرع تالت', 'R3', null, null)`, [B3]);
+    await admin(`update branches set prefix = 'R2' where id = $1`, [B3]);
     expect((await invoice(O, await device(1500, true, B3)))!.invoice_no).toBe(`R2-F-${y}-0002`);
     expect((await invoice(O, await device(1600, true, B2)))!.invoice_no).toBe(`RX-F-${y}-0001`);
     // راجع ضمان من غير ما فاتورته تصدر: تستنى لحد ما يتسلّم
