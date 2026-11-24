@@ -68,7 +68,7 @@ export function toCsv(rows: (string | number | null | undefined)[][]): string {
     const s = v == null ? '' : String(v);
     // حماية من الصيغ في Excel (=, +, -, @ في أول الخلية)، إلا لو رقم سالب عادي
     // ومعاها مسافة أو حرف اتجاه خفي قبلها، والرموز العريضة (Excel بيقراها صيغة)
-    const safe = /^[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069]*[=+@＝＋－＠]/.test(s) || /^[\t\r]/.test(s) || (/^[\s\u200b-\u200f\u202a-\u202e\u2066-\u2069]*-/.test(s) && !/^-\d+(\.\d+)?$/.test(s.replace(/,/g, ''))) ? `'${s}` : s;
+    const safe = /^[\s\u00ad\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2069]*[=+@＝＋－＠]/.test(s) || /^[\t\r]/.test(s) || (/^[\s\u00ad\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2069]*-/.test(s) && !/^-\d+(\.\d+)?$/.test(s.replace(/,/g, ''))) ? `'${s}` : s;
     return /[",;\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   return '﻿' + rows.map((r) => r.map(esc).join(',')).join('\r\n');

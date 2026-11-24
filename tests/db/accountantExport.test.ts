@@ -109,13 +109,14 @@ d('تصدير للمحاسب', () => {
     E.pay = await at((await as(O, `select record_payment($1, $2, $3, 20001) e`, [id(), cust, cash])).rows[0].e, `${DAY} 23:59:59`);
     E.next = await at((await as(O, `select record_expense($1, $2, $3, 777) e`, [id(), rent, cash])).rows[0].e, '2026-08-11 00:00');
     E.first = await at((await as(O, `select record_expense($1, $2, $3, 333) e`, [id(), rent, cash])).rows[0].e, `${DAY} 00:00`);
+    E.tr = await at((await as(O, `select transfer_cash($1, $2, $3, 1234) e`, [id(), cash, cash2], main)).rows[0].e, `${DAY} 13:00`);
     E.b2 = await at((await as(O, `select record_payment($1, $2, $3, 5000) e`, [id(), cust, cash2], B2)).rows[0].e, `${DAY} 12:00`);
   }, 60_000);
   afterAll(async () => db?.end());
 
   it('مطابق للقيود بالقرش: الإجمالي، وسطر سطر، والفترة بتوقيت القاهرة (أول اليوم داخل، وأول بكرة بره)', async () => {
     const o = await exp(O);
-    const t = await totals(`e.shop_id = $1 and e.id = any($2)`, [shop, [E.cap, E.sale, E.ret, E.pay, E.first, E.b2]]);
+    const t = await totals(`e.shop_id = $1 and e.id = any($2)`, [shop, [E.cap, E.sale, E.ret, E.pay, E.first, E.b2, E.tr]]);
     expect([o.debit, o.credit]).toEqual([t.d, t.c]);
     expect(o.debit).toBe(o.credit);
     expect(o.lines.reduce((a, l) => a + l.debit, 0)).toBe(o.debit);
@@ -124,6 +125,10 @@ d('تصدير للمحاسب', () => {
     expect(o.restricted).toBe(false);
     // بعد بكرة: المصروف بس
     expect((await exp(O, '2026-08-11', '2026-08-11')).debit).toBe(777);
+    // إلغاء بعد الفترة ما بيغيّرش ملف قديم
+    await at((await as(O, `select reverse_entry($1, 'غلط') r`, [E.b2])).rows[0].r, '2026-09-01 10:00');
+    expect((await exp(O, DAY, DAY, B2)).payments).toEqual([expect.objectContaining({ amount: 5000, reversed: false })]);
+    expect((await exp(O, DAY, '2026-09-01', B2)).payments).toEqual([expect.objectContaining({ amount: 5000, reversed: true })]);
     expect(await exp(O, '2025-01-01', '2025-01-31')).toMatchObject({ lines: [], payments: [], sales: [], debit: 0, credit: 0 });
   });
 
@@ -132,7 +137,7 @@ d('تصدير للمحاسب', () => {
     expect(o.payments).toEqual([expect.objectContaining({ amount: 20001, customer: '=عميل "التصدير"', reversed: false, method: 'cash' })]);
     expect(o.sales.map((s) => [s.item, s.qty, s.amount, s.return_of])).toEqual([
       ['خدمة، بفاصلة', 3, 45075, null],
-      ['خدمة، بفاصلة', 1, 15025, saleNo],
+      ['خدمة، بفاصلة', 1, -15025, saleNo],
     ]);
   });
 
@@ -164,7 +169,7 @@ d('تصدير للمحاسب', () => {
   });
 
   it('مدخلات غلط، ومحل تاني فاضي، والتصدير في سجل النشاط', async () => {
-    for (const [f, t] of [['2026-08-11', '2026-08-10'], ['2024-01-01', '2026-01-01'], [null, DAY], [DAY, null]] as const) await expect(exp(O, f as string, t as string)).rejects.toThrow(/E_BAD_INPUT/);
+    for (const [f, t] of [['2026-08-11', '2026-08-10'], ['2024-01-01', '2026-01-01'], [null, DAY], [DAY, null], ['-infinity', DAY], [DAY, 'infinity']] as const) await expect(exp(O, f as string, t as string)).rejects.toThrow(/E_BAD_INPUT/);
     await expect(exp(O, DAY, DAY, id())).rejects.toThrow(/E_BAD_BRANCH/);
     await expect(exp(X, DAY, DAY, B2)).rejects.toThrow(/E_BAD_BRANCH/);
     expect((await exp(X)).lines).toEqual([]);
