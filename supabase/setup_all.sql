@@ -20931,6 +20931,7 @@ begin
   new.mode := coalesce(new.mode, 'flow');
   new.layout := coalesce(new.layout, '{}'::jsonb);
   if tg_op = 'UPDATE' and (new.doc, new.mode, new.blocks, new.layout) is not distinct from (old.doc, old.mode, old.blocks, old.layout) then return new; end if;
+  if octet_length(new.blocks::text) > 68000 then raise exception 'E_TEMPLATE' using detail = 'size'; end if;
   -- الاسترجاع: الخانات القديمة زي ما هي، والـ layout بيتفحص
   e := public.print_template_error(new.doc, new.mode, case when public.restoring() and new.mode = 'flow' then '[]'::jsonb else new.blocks end, new.layout);
   if e is not null then raise exception 'E_TEMPLATE' using detail = e; end if;

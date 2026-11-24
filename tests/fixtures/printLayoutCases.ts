@@ -1,4 +1,4 @@
-import { FREE_FIELDS, type PrintDoc } from './printLayout';
+import { FREE_FIELDS, type PrintDoc } from '../../src/lib/printLayout';
 
 /** حالات فحص القالب: نفسها في اختبار الواجهة واختبار السيرفر، عشان الاتنين يفضلوا متطابقين (للاختبارات بس) */
 export interface TemplateCase {
@@ -69,6 +69,7 @@ export const TEMPLATE_CASES: TemplateCase[] = [
   free('سالب', { x: -0.1 }, 'bounds'),
   free('صغير', { w: 0.9 }, 'bounds'),
   free('كسر صغير', { x: 1.25 }, 'number'),
+  free('0.1+0.2', { x: 0.1 + 0.2 }, 'number'),
   free('رقم نص', { x: '2' }, 'number'),
   free('رقم null', { h: null }, 'number'),
   free('رقم ضخم', { x: 1e6 }, 'bounds'),

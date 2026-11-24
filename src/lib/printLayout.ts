@@ -72,7 +72,7 @@ const isInt = (v: unknown, min: number, max: number): v is number => typeof v ==
 const tenths = (v: unknown): number | null => {
   if (typeof v !== 'number' || !Number.isFinite(v)) return null;
   const n = Math.round(v * 10);
-  return Math.abs(v * 10 - n) < 1e-6 ? n : null;
+  return n / 10 === v ? n : null;
 };
 const textOk = (o: Obj) => (o.key === 'text' ? typeof o.text === 'string' && [...o.text].length <= 300 : !('text' in o));
 const bytes = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;

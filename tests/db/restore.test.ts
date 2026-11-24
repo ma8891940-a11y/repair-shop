@@ -184,7 +184,7 @@ d('استرجاع النسخة الاحتياطية لمحل جديد فاضي',
     await as(A.o, `select save_goal($1, current_date, 'revenue', 5000000)`, [mainBr]);
     const prn = id();
     await as(A.o, `insert into printers(id, shop_id, name, kind, width_mm, margin_mm) values ($1, gen_random_uuid(), 'حراري الأصل', 'thermal80', 72, 3)`, [prn]);
-    await as(A.o, `insert into print_templates(shop_id, doc, printer_id, name, blocks, is_default) values (gen_random_uuid(), 'invoice', $1, 'فاتورة الأصل', '[{"key":"total","show":true}]', true)`, [prn]);
+    await as(A.o, `insert into print_templates(shop_id, doc, printer_id, name, blocks, is_default) values (gen_random_uuid(), 'invoice', $1, 'فاتورة الأصل', '[{"key":"total","show":true,"size":"lg","align":"start","bold":true}]', true)`, [prn]);
     await as(A.o, `insert into check_templates(shop_id, brand, items) values (gen_random_uuid(), 'samsung', '[{"key":"wifi"},{"key":"c_1","label":"فتحة الكارت"}]')`);
 
     before = await numbers(A.o, A.s);

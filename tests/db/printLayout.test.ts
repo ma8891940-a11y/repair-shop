@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { cleanupAfterFile } from './purge';
-import { TEMPLATE_CASES } from '../../src/lib/printLayoutCases';
+import { TEMPLATE_CASES } from '../fixtures/printLayoutCases';
 import { FLOW_BLOCKS, FREE_FIELDS, PRINT_DOCS } from '../../src/lib/printLayout';
 import { DOC_BLOCKS, defaultBlocks, type TemplateDoc } from '../../src/lib/printTemplate';
 

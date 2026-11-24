@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FLOW_BLOCKS, templateError, type PrintDoc } from './printLayout';
-import { TEMPLATE_CASES } from './printLayoutCases';
+import { TEMPLATE_CASES } from '../../tests/fixtures/printLayoutCases';
 import { DOC_BLOCKS, defaultBlocks, normalizeBlocks, type TemplateDoc } from './printTemplate';
 
 describe('نموذج القالب (50.2)', () => {
