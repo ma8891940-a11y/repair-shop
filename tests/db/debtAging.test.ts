@@ -74,7 +74,7 @@ d('أعمار المديونية', () => {
     cash = (await admin(`select id from accounts where shop_id = $1 and branch_id = $2 and method = 'cash'`, [shop, main])).rows[0].id;
     for (const role of ['reception', 'technician'] as const) {
       const em = `ag-${role}-${tag}@a.test`;
-      await as(O, `insert into staff_invites(shop_id, email, full_name, role, branch_ids) values (gen_random_uuid(), $1, $2, $2::app_role, $3)`, [em, role, [main]]);
+      await as(O, `insert into staff_invites(shop_id, email, full_name, role, branch_ids) values (gen_random_uuid(), $1, $2, $3, $4)`, [em, role, role, [main]]);
       const u = await user(em);
       await as(u, `select bootstrap_account($1)`, [role]);
       if (role === 'reception') R = u;
