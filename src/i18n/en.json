@@ -511,6 +511,7 @@
       "E_NOTHING_TO_DISTRIBUTE": "Nothing to distribute: profit is zero or no partners in this period",
       "E_ALREADY_LINKED": "This customer or supplier is already linked. Unlink first",
       "E_NETTING_LIMIT": "Netting can’t exceed the smaller balance (nothing to net if either is zero)",
+      "E_TEMPLATE": "The template has an invalid field or one outside the paper. Check it and save again",
       "E_DUP_PREFIX": "This prefix is used by another branch",
       "E_PREFIX_USED": "This prefix was already used in order or invoice numbers. Choose a new one",
       "E_DUP_NAME": "A branch with this name already exists",
