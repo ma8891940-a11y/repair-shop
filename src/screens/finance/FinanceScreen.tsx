@@ -123,10 +123,14 @@ export function FinanceScreen() {
       columns: [{ header: t('export.cols.item') }, { header: t('fin.cols.amount'), type: 'money' }],
       rows: [
         ...kpis.map((k) => [t(`fin.kpi.${k.key}`), Number(k.value ?? 0)]),
-        [t('fin.eq.assets'), Number(p.equation.assets)],
-        [t('fin.eq.liabilities'), Number(p.equation.liabilities)],
-        [t('fin.eq.equity'), Number(p.equation.equity)],
-        [t('fin.eq.earnings'), Number(p.equation.earnings)],
+        ...(p.equation
+          ? [
+              [t('fin.eq.assets'), Number(p.equation.assets)],
+              [t('fin.eq.liabilities'), Number(p.equation.liabilities)],
+              [t('fin.eq.equity'), Number(p.equation.equity)],
+              [t('fin.eq.earnings'), Number(p.equation.earnings)],
+            ]
+          : []),
         ...(p.equity_parts
           ? (() => {
               const eq = equityRows(p, t);
@@ -169,7 +173,7 @@ export function FinanceScreen() {
         <>
           {p && !p.balanced && (
             <Alert tone="danger" className="mb-4" title={t('fin.unbalancedTitle')}>
-              <span data-testid="ledger-unbalanced">{t('fin.unbalancedText', { n: p.unbalanced_entries, d: f.money(p.debits), c: f.money(p.credits) })}</span>
+              <span data-testid="ledger-unbalanced">{owner && t('fin.unbalancedText', { n: p.unbalanced_entries, d: f.money(p.debits), c: f.money(p.credits) })}</span>
             </Alert>
           )}
           <IntegrityAlert className="mb-4" />
@@ -207,6 +211,8 @@ export function FinanceScreen() {
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-3" aria-label={t('fin.equation')}>
+                  {p.equation && (
+                    <>
                   <EqTerm label={t('fin.eq.assets')} value={f.money(p.equation.assets)} />
                   <span className="text-lg text-fg-3">=</span>
                   <EqTerm label={t('fin.eq.liabilities')} value={f.money(p.equation.liabilities)} />
@@ -214,6 +220,8 @@ export function FinanceScreen() {
                   <EqTerm label={t('fin.eq.equity')} value={f.money(p.equation.equity)} />
                   <span className="text-lg text-fg-3">+</span>
                   <EqTerm label={t('fin.eq.earnings')} value={f.money(p.equation.earnings)} />
+                    </>
+                  )}
                   <div className="ms-auto">
                     {p.balanced ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--ok)_45%,transparent)] px-3 py-1 text-sm font-medium text-ok" data-testid="ledger-balanced">
@@ -366,8 +374,8 @@ function equityRows(p: Position, t: TFunction) {
 function EquityPanel({ p, money, cur }: { p: Position; money: (n: number) => string; cur: string }) {
   const { t } = useTranslation();
   const { rows, total } = equityRows(p, t);
-  const assets = Number(p.equation.assets);
-  const liab = Number(p.equation.liabilities);
+  const assets = Number(p.equation?.assets);
+  const liab = Number(p.equation?.liabilities);
   return (
     <Panel className="mt-4 p-4" data-testid="equity-panel">
       <h2 className="mb-1 text-sm font-semibold text-fg">{t('equity.title')}</h2>

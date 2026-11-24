@@ -61,6 +61,7 @@ export function KpiSheet({ kpi, onClose, p, range, query, page }: { kpi: KpiKey 
     }
     // صافي قيمة المحل: الأصول ناقص الالتزامات
     const e = p.equation;
+    if (!e) return [];
     return [
       { id: 'assets', label: t('fin.eq.assets'), group: t('fin.eq.assets'), amount: Number(e.assets) },
       { id: 'liabilities', label: t('fin.eq.liabilities'), group: t('fin.eq.liabilities'), amount: -Number(e.liabilities) },

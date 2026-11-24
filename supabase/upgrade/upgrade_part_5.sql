@@ -1,9 +1,9 @@
--- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 5 من 6 (الملفات 0058_web_push.sql لـ 0071_device_children.sql).
+-- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 5 من 7 (الملفات 0057_categories.sql لـ 0069_sale_errors.sql).
 -- بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك.
--- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql ثم upgrade_part_5.sql ثم upgrade_part_6.sql.
+-- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql ثم upgrade_part_5.sql ثم upgrade_part_6.sql ثم upgrade_part_7.sql.
 -- آمن تشغّل أي جزء أكتر من مرة: اللي اتطبق قبل كده بيتخطى. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّل نفس الجزء تاني.
 -- لو لقى ملف أحدث موجود وأقدم منه ناقص بيقف (E_UPGRADE_GAP). ولو جزء قبله لسه ما اتطبقش بيقف (E_UPGRADE_ORDER). الاتنين من غير تغيير.
--- ملفات الجزء ده: 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql, 0070_perm_matrix.sql, 0071_device_children.sql
+-- ملفات الجزء ده: 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -265,9 +265,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0084_party_branch.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'party_branch' and position('if public.current_app_role() = ''owner'' then return null; end if;' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0084_party_branch.sql', 'found: function party_branch');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0085_finance_branch.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'financial_position' and position('if public.current_app_role() <> ''owner'' and (p_branch is null or not public.can_branch(p_branch)) then p_branch := public.op_branch(); end if;' in p.prosrc) > 0)) then
+    insert into public.app_migrations(version, how) values ('0085_finance_branch.sql', 'found: function financial_position');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql', '0078_accountant_export.sql', '0079_purchase_orders.sql', '0080_stock_count.sql', '0081_repair_invoice.sql', '0082_order_prefix.sql', '0083_print_perm.sql', '0084_party_branch.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql', '0078_accountant_export.sql', '0079_purchase_orders.sql', '0080_stock_count.sql', '0081_repair_invoice.sql', '0082_order_prefix.sql', '0083_print_perm.sql', '0084_party_branch.sql', '0085_finance_branch.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -275,15 +278,494 @@ end $chk$;
 -- 2) الأجزاء اللي قبل الجزء ده لازم تكون اتطبقت
 do $ord$
 declare
-  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql', '0078_accountant_export.sql', '0079_purchase_orders.sql', '0080_stock_count.sql', '0081_repair_invoice.sql', '0082_order_prefix.sql', '0083_print_perm.sql', '0084_party_branch.sql'];
-  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
+  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql', '0078_accountant_export.sql', '0079_purchase_orders.sql', '0080_stock_count.sql', '0081_repair_invoice.sql', '0082_order_prefix.sql', '0083_print_perm.sql', '0084_party_branch.sql', '0085_finance_branch.sql'];
+  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7];
   miss text;
 begin
-  select min(v) into miss from unnest(files) v where v < '0058_web_push.sql' and v not in (select version from public.app_migrations);
+  select min(v) into miss from unnest(files) v where v < '0057_categories.sql' and v not in (select version from public.app_migrations);
   if miss is not null then raise exception 'E_UPGRADE_ORDER: الملف % لسه ما اتطبقش. شغّل upgrade_part_%.sql الأول، وبعدين الجزء ده (5).', miss, parts[array_position(files, miss)]; end if;
 end $ord$;
 
 -- 3) ملفات الجزء 5 بالترتيب، كل ملف في transaction لوحده
+-- ============================== 0057_categories.sql ==============================
+begin;
+do $run$ begin
+  if exists (select 1 from public.app_migrations where version = '0057_categories.sql') then return; end if;
+  execute $m0057$
+-- 0057: K: تصفح التصنيفات (طلب صاحب المشروع بفيديو 2026-11-16، بتصميم البرنامج نفسه من غير نسخ):
+-- تصنيفات بمستويين (رئيسي وفرعي) في قسمين: المنتجات والخدمات، لكل تصنيف أيقونة من أيقونات البرنامج وترتيب.
+-- كل صنف ممكن يتربط بتصنيف (items.category_id)، والتصنيفات النصية القديمة بتتحول لوحدها لتصنيفات (من غير ما حاجة تضيع)،
+-- والنص القديم بيفضل متزامن عشان الفلاتر والتقارير القديمة.
+-- الخدمات (فحص، تنظيف، سوفت وير، نقل بيانات...) = صنف نوعه 'service': بيتباع من غير مخزون ولا تكلفة، وإيراده "إيراد الصيانة".
+
+create table public.categories (
+  id uuid primary key,
+  shop_id uuid not null references public.shops(id),
+  parent_id uuid references public.categories(id),
+  section text not null default 'products' check (section in ('products', 'services')),
+  name text not null check (length(trim(name)) between 1 and 60),
+  icon text check (icon is null or icon ~ '^[a-z0-9_]{1,30}$'),
+  sort integer not null default 100,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+create index categories_shop on public.categories(shop_id, parent_id) where deleted_at is null;
+create unique index categories_name on public.categories(shop_id, coalesce(parent_id, '00000000-0000-0000-0000-000000000000'::uuid), lower(trim(name))) where deleted_at is null;
+alter table public.categories enable row level security;
+create trigger set_updated_at before update on public.categories for each row execute function public.tg_set_updated_at();
+create trigger block_delete before delete on public.categories for each row execute function public.tg_block_delete();
+create trigger a_force_shop_id before insert or update on public.categories for each row execute function public.tg_force_shop_id();
+create trigger zz_audit after insert or update on public.categories for each row execute function public.tg_audit();
+create policy categories_select on public.categories for select to authenticated using (shop_id = public.current_shop_id());
+-- إضافة وتعديل التصنيفات: صاحب المحل، واللي معاه "إضافة صنف جديد"
+create policy categories_insert on public.categories for insert to authenticated
+  with check (shop_id = public.current_shop_id() and (public.current_app_role() = 'owner' or public.has_perm('item_create', 'add')));
+create policy categories_update on public.categories for update to authenticated
+  using (shop_id = public.current_shop_id() and (public.current_app_role() = 'owner' or public.has_perm('item_create', 'add')));
+grant select, insert, update on public.categories to authenticated;
+
+-- مستويين بس، والفرعي في نفس قسم الرئيسي ونفس المحل
+create or replace function public.tg_category_tree() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare p public.categories;
+begin
+  if new.parent_id is null then return new; end if;
+  if new.parent_id = new.id then raise exception 'E_BAD_INPUT'; end if;
+  select * into p from public.categories where id = new.parent_id;
+  if p.id is null or p.shop_id <> new.shop_id or p.deleted_at is not null then raise exception 'E_NOT_FOUND'; end if;
+  if p.parent_id is not null then raise exception 'E_CATEGORY_DEPTH'; end if;
+  new.section := p.section;
+  return new;
+end $$;
+create trigger b_category_tree before insert or update on public.categories for each row execute function public.tg_category_tree();
+
+-- التصنيف اللي فيه أصناف أو تصنيفات فرعية ما بيتأرشفش (انقل اللي فيه الأول)
+create or replace function public.tg_category_archive() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.deleted_at is not null and old.deleted_at is null then
+    if exists (select 1 from public.categories c where c.parent_id = new.id and c.deleted_at is null)
+       or exists (select 1 from public.items i where i.category_id = new.id and i.deleted_at is null) then
+      raise exception 'E_CATEGORY_NOT_EMPTY';
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger c_category_archive before update on public.categories for each row execute function public.tg_category_archive();
+
+-- الأصناف: التصنيف والخدمة
+alter table public.items add column if not exists category_id uuid references public.categories(id);
+alter table public.items drop constraint items_kind_check;
+alter table public.items add constraint items_kind_check check (kind in ('part', 'accessory', 'used', 'service'));
+
+-- اسم التصنيف بيتنسخ في النص القديم (الفلاتر والتصدير والتقارير)
+-- والعكس: صنف بتصنيف نصي بس (الاستيراد من Excel، أو البرامج القديمة) بيتربط بتصنيف بنفس الاسم، ولو مش موجود بيتعمل تصنيف رئيسي
+create or replace function public.tg_item_category_text() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare cid uuid;
+begin
+  if new.category_id is not null and (tg_op = 'INSERT' or new.category_id is distinct from old.category_id) then
+    select c.name into new.category from public.categories c where c.id = new.category_id and c.shop_id = new.shop_id;
+    if new.category is null then raise exception 'E_NOT_FOUND'; end if;
+  elsif new.category_id is null and nullif(trim(new.category), '') is not null
+        and (tg_op = 'INSERT' or new.category is distinct from old.category) and not public.restoring() then
+    select c.id into cid from public.categories c
+     where c.shop_id = new.shop_id and c.deleted_at is null and lower(trim(c.name)) = lower(trim(new.category))
+     order by (c.parent_id is null), c.created_at limit 1;
+    if cid is null then
+      cid := gen_random_uuid();
+      insert into public.categories(id, shop_id, name, icon) values (cid, new.shop_id, left(trim(new.category), 60), 'box');
+    end if;
+    new.category_id := cid;
+    new.category := trim(new.category);
+  end if;
+  return new;
+end $$;
+create trigger b_item_category_text before insert or update of category_id, category on public.items for each row execute function public.tg_item_category_text();
+create or replace function public.tg_category_rename() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.name is distinct from old.name then
+    perform set_config('warsha.system', 'on', true);
+    update public.items set category = new.name where category_id = new.id;
+    perform set_config('warsha.system', 'off', true);
+  end if;
+  return new;
+end $$;
+create trigger d_category_rename after update of name on public.categories for each row execute function public.tg_category_rename();
+
+-- نقل البيانات: كل تصنيف نصي قديم (في الأصناف أو في قايمة "تصنيفات الأصناف") بقى تصنيف رئيسي، والأصناف اتربطت بيه
+create or replace function public.categories_from_text() returns integer
+language plpgsql security definer set search_path = public as $mig$
+declare r record; cid uuid; n int := 0;
+begin
+  perform set_config('warsha.restore', 'on', true);
+  perform set_config('warsha.system', 'on', true);
+  for r in
+    select distinct x.shop_id, trim(x.name) as name from (
+      select shop_id, category as name from public.items where category is not null and length(trim(category)) > 0 and deleted_at is null
+      union select shop_id, value from public.shop_lists where list = 'item_categories' and deleted_at is null
+    ) x
+  loop
+    select id into cid from public.categories c where c.shop_id = r.shop_id and c.parent_id is null and lower(trim(c.name)) = lower(r.name) and c.deleted_at is null;
+    if cid is null then
+      cid := gen_random_uuid();
+      insert into public.categories(id, shop_id, name, icon) values (cid, r.shop_id, left(r.name, 60), 'box');
+      n := n + 1;
+    end if;
+    update public.items set category_id = cid where shop_id = r.shop_id and category_id is null and lower(trim(category)) = lower(r.name);
+  end loop;
+  perform set_config('warsha.restore', 'off', true);
+  perform set_config('warsha.system', 'off', true);
+  return n;
+end $mig$;
+revoke execute on function public.categories_from_text() from public, anon, authenticated;
+select public.categories_from_text();
+
+-- الشجرة بالعدد: الأصناف (وأصناف الفرعي جوه الرئيسي)، واللي متوفر منها في الفرع (أو كل الفروع)
+create or replace function public.category_tree(p_branch uuid default null)
+returns table(id uuid, parent_id uuid, section text, name text, icon text, sort integer, items bigint, in_stock bigint)
+language plpgsql stable security definer set search_path = public as $$
+#variable_conflict use_column
+declare s uuid := public.current_shop_id();
+begin
+  if s is null then raise exception 'E_FORBIDDEN'; end if;
+  return query
+  with st as (
+    select m.item_id, sum(m.qty) q from public.stock_moves m
+    where m.shop_id = s and (p_branch is null or m.branch_id = p_branch) and (public.all_my_branches() or public.can_branch(m.branch_id))
+    group by m.item_id
+  ), it as (
+    select i.id, i.category_id, (i.kind = 'service' or coalesce(st.q, 0) > 0) avail
+    from public.items i left join st on st.item_id = i.id
+    where i.shop_id = s and i.deleted_at is null and i.category_id is not null
+      and (i.kind <> 'used' or coalesce(st.q, 0) > 0)
+  )
+  select c.id, c.parent_id, c.section, c.name, c.icon, c.sort,
+    (select count(*) from it where it.category_id = c.id or it.category_id in (select k.id from public.categories k where k.parent_id = c.id and k.deleted_at is null))::bigint,
+    (select count(*) from it where it.avail and (it.category_id = c.id or it.category_id in (select k.id from public.categories k where k.parent_id = c.id and k.deleted_at is null)))::bigint
+  from public.categories c
+  where c.shop_id = s and c.deleted_at is null
+  order by c.section, c.parent_id nulls first, c.sort, c.name;
+end $$;
+revoke execute on function public.category_tree(uuid) from public, anon;
+grant execute on function public.category_tree(uuid) to authenticated;
+
+-- ترتيب التصنيفات بالسحب (صاحب المحل)
+create or replace function public.reorder_categories(p_ids uuid[]) returns void
+language plpgsql security definer set search_path = public as $$
+declare i int;
+begin
+  perform public.ledger_require(array['owner']::public.app_role[]);
+  if coalesce(array_length(p_ids, 1), 0) > 200 then raise exception 'E_BAD_INPUT'; end if;
+  for i in 1 .. coalesce(array_length(p_ids, 1), 0) loop
+    update public.categories set sort = i * 10 where id = p_ids[i] and shop_id = public.current_shop_id();
+  end loop;
+end $$;
+revoke execute on function public.reorder_categories(uuid[]) from public, anon;
+grant execute on function public.reorder_categories(uuid[]) to authenticated;
+
+-- التصنيفات الجاهزة (اختياري، صاحب المحل): بتتضاف بس لو اسمها مش موجود
+create or replace function public.seed_categories(p_tree jsonb) returns integer
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); top jsonb; sub jsonb; tid uuid; n int := 0; i int := 0; j int;
+begin
+  perform public.ledger_require(array['owner']::public.app_role[]);
+  if jsonb_typeof(p_tree) <> 'array' or jsonb_array_length(p_tree) > 30 then raise exception 'E_BAD_INPUT'; end if;
+  for top in select * from jsonb_array_elements(p_tree) loop
+    i := i + 1;
+    select id into tid from public.categories where shop_id = s and parent_id is null and lower(trim(name)) = lower(trim(top ->> 'name')) and deleted_at is null;
+    if tid is null then
+      tid := gen_random_uuid();
+      insert into public.categories(id, shop_id, section, name, icon, sort) values (tid, s, coalesce(top ->> 'section', 'products'), top ->> 'name', top ->> 'icon', i * 10);
+      n := n + 1;
+    end if;
+    j := 0;
+    for sub in select * from jsonb_array_elements(coalesce(top -> 'children', '[]'::jsonb)) loop
+      j := j + 1;
+      if jsonb_array_length(coalesce(top -> 'children', '[]'::jsonb)) > 60 then raise exception 'E_BAD_INPUT'; end if;
+      if not exists (select 1 from public.categories where shop_id = s and parent_id = tid and lower(trim(name)) = lower(trim(sub ->> 'name')) and deleted_at is null) then
+        insert into public.categories(id, shop_id, parent_id, name, icon, sort) values (gen_random_uuid(), s, tid, sub ->> 'name', sub ->> 'icon', j * 10);
+        n := n + 1;
+      end if;
+    end loop;
+  end loop;
+  return n;
+end $$;
+revoke execute on function public.seed_categories(jsonb) from public, anon;
+grant execute on function public.seed_categories(jsonb) to authenticated;
+
+-- create_item: (src: 0038_roles_grant.sql) + الخدمة
+create or replace function public.create_item(
+  p_id uuid, p_kind text, p_name text, p_item_type text default null, p_brand text default null, p_model text default null,
+  p_quality text default null, p_color text default null, p_sale_price integer default null, p_qty integer default null, p_unit_cost bigint default null,
+  p_stock_id uuid default null
+) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); nm text := trim(coalesce(p_name, ''));
+begin
+  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
+  perform public.perm_require('item_create', 'add');
+  if exists (select 1 from public.items where id = p_id and shop_id = s) then return p_id; end if;
+  if p_kind not in ('part', 'accessory', 'service') or nm = '' or length(nm) > 160 then raise exception 'E_BAD_INPUT'; end if;
+  if p_sale_price is not null and (p_sale_price < 0 or p_sale_price > 2000000000) then raise exception 'E_BAD_AMOUNT'; end if;
+  insert into public.items(id, shop_id, kind, name, item_type, brand, model, quality, color, sale_price)
+  values (p_id, s, p_kind, nm, nullif(trim(p_item_type), ''), nullif(trim(p_brand), ''), nullif(trim(p_model), ''), nullif(trim(p_quality), ''), nullif(trim(p_color), ''), p_sale_price);
+  if coalesce(p_qty, 0) > 0 then
+    if p_unit_cost is null or p_unit_cost <= 0 then raise exception 'E_BAD_AMOUNT'; end if;
+    perform public.stock_in(coalesce(p_stock_id, gen_random_uuid()), p_id, p_qty, p_unit_cost, 'stock');
+  end if;
+  return p_id;
+end $$;
+
+-- record_sale: (src: 0037_item_details.sql) + الخدمات
+create or replace function public.record_sale(p_id uuid, p_lines jsonb, p_cashbox uuid default null, p_customer uuid default null, p_note text default null)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  s uuid := public.current_shop_id();
+  e uuid := gen_random_uuid();
+  l jsonb;
+  it public.items;
+  q bigint; p bigint; cost bigint;
+  rev_parts bigint := 0; rev_acc bigint := 0; rev_srv bigint := 0; total_cost bigint := 0;
+  debit_acc uuid; pt text; pid uuid;
+begin
+  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
+  perform public.perm_require('sales', 'add');
+  if public.ledger_idem(p_id) is not null then return public.ledger_idem(p_id); end if;
+  -- البيع بالآجل لصاحب المحل بس
+  if p_cashbox is null and (p_customer is null or public.current_app_role() <> 'owner') then raise exception 'E_BAD_INPUT'; end if;
+  if p_customer is not null and not exists (select 1 from public.customers where id = p_customer and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if jsonb_typeof(p_lines) <> 'array' or jsonb_array_length(p_lines) = 0 then raise exception 'E_BAD_INPUT'; end if;
+  insert into public.journal_entries(id, shop_id, source_type, source_id, memo, idem_key, created_by)
+  values (e, s, 'sale', p_id, nullif(trim(p_note), ''), p_id, auth.uid());
+  -- البيع بس: لو الإعداد مفتوح، اللي مش موجود بيخرج من غير تكلفة ويتسوى بعدين
+  perform set_config('app.uncosted', 'on', true);
+  for l in select * from jsonb_array_elements(p_lines) loop
+    select * into it from public.items where id = (l ->> 'item')::uuid and shop_id = s and deleted_at is null;
+    if not found then raise exception 'E_NOT_FOUND'; end if;
+    q := (l ->> 'qty')::bigint;
+    p := (l ->> 'price')::bigint;
+    if q is null or q <= 0 or p is null or p < 0 then raise exception 'E_BAD_AMOUNT'; end if;
+    -- K: الخدمة من غير مخزون ولا تكلفة، وإيرادها إيراد الصيانة
+    if it.kind = 'service' then rev_srv := rev_srv + q * p; continue; end if;
+    cost := public.ledger_issue(it.id, q, e);
+    total_cost := total_cost + cost;
+    if it.kind = 'part' then rev_parts := rev_parts + q * p; else rev_acc := rev_acc + q * p; end if;
+  end loop;
+  perform set_config('app.uncosted', 'off', true);
+  perform public.ledger_amount(rev_parts + rev_acc + rev_srv);
+  if p_cashbox is null then
+    debit_acc := public.ledger_acc('ar'); pt := 'customer'; pid := p_customer;
+  else
+    debit_acc := (public.ledger_cashbox(p_cashbox)).id;
+  end if;
+  insert into public.journal_lines(shop_id, entry_id, account_id, party_type, party_id, debit, credit)
+  values (s, e, debit_acc, pt, pid, rev_parts + rev_acc + rev_srv, 0);
+  if rev_parts > 0 then insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, public.ledger_acc('rev_parts'), 0, rev_parts); end if;
+  if rev_acc > 0 then insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, public.ledger_acc('rev_accessories'), 0, rev_acc); end if;
+  if rev_srv > 0 then insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, public.ledger_acc('rev_repair'), 0, rev_srv); end if;
+  if total_cost > 0 then
+    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values
+      (s, e, public.ledger_acc('cogs'), total_cost, 0), (s, e, public.ledger_acc('inventory'), 0, total_cost);
+  end if;
+  if p_cashbox is not null and p_customer is not null then
+    null; -- البيع النقدي لعميل معروف ما بيأثرش على رصيده
+  end if;
+  return e;
+end $$;
+
+-- النسخة الاحتياطية والاسترجاع: (src: 0049) + categories (قبل الأصناف)
+create or replace function public.backup_snapshot(p_shop uuid) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare
+  res jsonb := jsonb_build_object('format', 'warsha-backup', 'version', 1, 'generated_at', now(), 'shop_id', p_shop);
+  t text;
+  rows jsonb;
+begin
+  foreach t in array array['shops', 'branches', 'staff_branches', 'shop_branding', 'profiles', 'customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_photos', 'device_checks',
+                           'quote_decisions', 'message_templates', 'message_log', 'accounts', 'journal_entries', 'journal_lines', 'payments', 'drawer_closings',
+                           'suppliers', 'categories', 'items', 'stock_moves', 'uncosted_sales', 'payment_plans', 'plan_installments', 'branch_goals', 'printers', 'print_templates', 'check_templates', 'used_devices', 'commission_rules', 'purchases', 'labor_rates', 'specialties', 'staff_specialties', 'routes', 'repair_steps',
+                           'repair_videos', 'device_ratings', 'issue_presets', 'partners', 'profit_distributions', 'party_links', 'shop_lists', 'audit_log'] loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(x)), ''[]''::jsonb) from public.%I x where x.shop_id = $1', t) into rows using p_shop;
+    res := res || jsonb_build_object(t, rows);
+  end loop;
+  select coalesce(jsonb_agg(jsonb_build_object('device_id', device_id, 'kind', kind, 'erased_at', erased_at)), '[]'::jsonb)
+    into rows from public.device_passcodes where shop_id = p_shop;
+  return res || jsonb_build_object('device_passcodes', rows);
+end $$;
+
+-- restore_backup: (src: 0049_commissions.sql) + categories
+create or replace function public.restore_backup(p_data jsonb) returns jsonb
+-- extensions: فيها gen_random_bytes على Supabase
+language plpgsql security definer set search_path = public, extensions, pg_temp as $$
+declare
+  s uuid := public.current_shop_id();
+  me uuid := auth.uid();
+  old_shop uuid;
+  old_owner uuid;
+  sh jsonb;
+  t text;
+  r jsonb;
+  rows jsonb;
+  n int;
+  bad int;
+  counts jsonb := '{}'::jsonb;
+  -- بالترتيب ده عشان كل صف يلاقي اللي بيشاور عليه
+  tabs text[] := array['branches', 'profiles', 'staff_branches', 'shop_branding', 'accounts', 'customers', 'suppliers', 'party_links', 'partners', 'specialties', 'staff_specialties', 'routes', 'labor_rates',
+                       'issue_presets', 'commission_rules', 'shop_lists', 'message_templates', 'categories', 'items', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks',
+                       'quote_decisions', 'repair_steps', 'repair_videos', 'device_ratings', 'journal_entries', 'journal_lines', 'profit_distributions', 'payments',
+                       'purchases', 'stock_moves', 'uncosted_sales', 'used_devices', 'payment_plans', 'plan_installments', 'branch_goals', 'printers', 'print_templates', 'check_templates', 'drawer_closings', 'message_log', 'audit_log'];
+  -- الجداول دي ليها نسخة اتعملت مع التسجيل: بتتطابق بالكود (أو المفتاح) وبتاخد قيم النسخة
+  keyed text[] := array['branches', 'accounts', 'routes', 'specialties', 'message_templates', 'labor_rates', 'shop_branding'];
+begin
+  perform public.ledger_require(array['owner']::public.app_role[]);
+  if s is null or me is null then raise exception 'E_FORBIDDEN'; end if;
+  if p_data is null or p_data->>'format' is distinct from 'warsha-backup' or coalesce((p_data->>'version')::int, 0) <> 1 then
+    raise exception 'E_BACKUP_FORMAT';
+  end if;
+  old_shop := (p_data->>'shop_id')::uuid;
+  if old_shop is null or old_shop = s then raise exception 'E_BACKUP_FORMAT'; end if;
+
+  -- محل جديد فاضي بس
+  if exists (select 1 from public.devices where shop_id = s) or exists (select 1 from public.customers where shop_id = s)
+     or exists (select 1 from public.journal_entries where shop_id = s) or exists (select 1 from public.items where shop_id = s)
+     or exists (select 1 from public.suppliers where shop_id = s) or exists (select 1 from public.payments where shop_id = s)
+     or exists (select 1 from public.purchases where shop_id = s) or exists (select 1 from public.drawer_closings where shop_id = s)
+     or exists (select 1 from public.stock_moves where shop_id = s)
+     or exists (select 1 from public.profiles where shop_id = s and id <> me) then
+    raise exception 'E_RESTORE_NOT_EMPTY';
+  end if;
+
+  perform set_config('warsha.restore', 'on', true);
+  drop table if exists pg_temp._rmap;
+  create temp table _rmap(old uuid primary key, new uuid not null) on commit drop;
+  insert into _rmap values (old_shop, s);
+
+  -- 1) بيانات المحل نفسه (من غير الخطة والإيقاف واللوجو اللي في Storage)
+  sh := p_data->'shops'->0;
+  if sh is not null then
+    update public.shops set
+      name = coalesce(sh->>'name', name), phone = sh->>'phone', address = sh->>'address',
+      receipt_terms = coalesce(sh->>'receipt_terms', receipt_terms), warranty_days = coalesce((sh->>'warranty_days')::int, warranty_days),
+      country = coalesce(sh->>'country', country), currency = coalesce(sh->>'currency', currency),
+      payment_methods = coalesce(array(select jsonb_array_elements_text(sh->'payment_methods')), payment_methods),
+      theme = coalesce(sh->>'theme', theme), locale = coalesce(sh->>'locale', locale),
+      default_margin_pct = coalesce((sh->>'default_margin_pct')::int, default_margin_pct),
+      extras = coalesce(sh->'extras', extras), max_discount_pct = coalesce((sh->>'max_discount_pct')::int, max_discount_pct)
+    where id = s;
+  end if;
+
+  -- 2) الـ ids الجديدة
+  -- صاحب المحل في النسخة = اللي بيسترجع دلوقتي
+  select (x->>'id')::uuid into old_owner from jsonb_array_elements(coalesce(p_data->'profiles', '[]')) x
+   where x->>'role' = 'owner' order by x->>'created_at' limit 1;
+  if old_owner is not null then insert into _rmap values (old_owner, me) on conflict do nothing; end if;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.accounts a where a.shop_id = s and a.code = x->>'code' and x->>'code' is not null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'accounts', '[]')) x on conflict do nothing;
+  -- الفرع الرئيسي في النسخة = الفرع الرئيسي للمحل الجديد
+  insert into _rmap select (x->>'id')::uuid, public.main_branch(s)
+    from jsonb_array_elements(coalesce(p_data->'branches', '[]')) x where (x->>'is_main')::boolean and x->>'deleted_at' is null on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.routes a where a.shop_id = s and a.code = x->>'code' and x->>'code' is not null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'routes', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.specialties a where a.shop_id = s and a.code = x->>'code' and x->>'code' is not null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'specialties', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.message_templates a where a.shop_id = s and a.key = x->>'key'), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'message_templates', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.labor_rates a where a.shop_id = s and a.deleted_at is null and lower(trim(a.issue)) = lower(trim(x->>'issue')) and x->>'deleted_at' is null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'labor_rates', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.shop_branding a where a.shop_id = s), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'shop_branding', '[]')) x on conflict do nothing;
+  foreach t in array tabs loop
+    insert into _rmap select (x->>'id')::uuid, gen_random_uuid() from jsonb_array_elements(coalesce(p_data->t, '[]')) x where x ? 'id' on conflict do nothing;
+  end loop;
+
+  -- 3) الصفوف نفسها بالترتيب
+  foreach t in array tabs loop
+    rows := '[]'::jsonb;
+    for r in select public.restore_remap(x) from jsonb_array_elements(coalesce(p_data->t, '[]')) x loop
+      if t = 'profiles' then
+        -- صاحب المحل موجود أصلًا. الباقيين موظفين سابقين (من غير حساب دخول)
+        continue when (r->>'id')::uuid = me;
+        r := r || jsonb_build_object('deleted_at', coalesce(r->>'deleted_at', now()::text));
+      elsif t = 'devices' then
+        -- كود التتبع (الـ QR) بيفضل زي ما هو، إلا لو مستخدم في المشروع ده (المحل الأصلي لسه هنا)
+        if exists (select 1 from public.devices d where d.tracking_token = r->>'tracking_token') then
+          r := r || jsonb_build_object('tracking_token', encode(gen_random_bytes(12), 'hex'));
+        end if;
+      elsif t = 'journal_entries' then
+        if r->>'idem_key' is not null and exists (select 1 from public.journal_entries j where j.idem_key = (r->>'idem_key')::uuid) then
+          r := r || jsonb_build_object('idem_key', gen_random_uuid());
+        end if;
+      elsif t = 'accounts' and r->>'kind' = 'cash' and r->>'branch_id' is null then
+        -- نسخة من قبل الفروع: الخزن كلها في الفرع الرئيسي
+        r := r || jsonb_build_object('branch_id', public.main_branch(s));
+      elsif t = 'used_devices' then
+        -- رقم بطاقة البائع (في Vault) وصورتها (في Storage) مش جوه النسخة
+        r := r || jsonb_build_object('seller_nid_secret', null, 'seller_photo', null);
+      elsif t = 'shop_branding' then
+        -- اللوجو الملون والحراري جوه الصف نفسه. الملف الأصلي في Storage مش جوه النسخة
+        r := r || jsonb_build_object('logo_path', null);
+      end if;
+      if t = any (keyed) and exists (select 1 from _rmap m where m.new = (r->>'id')::uuid and m.old <> m.new)
+         and (t <> 'shop_branding' or exists (select 1 from public.shop_branding b where b.id = (r->>'id')::uuid)) then
+        -- موجود من التسجيل: بياخد قيم النسخة
+        execute format('select count(*) from public.%I where id = $1', t) into n using (r->>'id')::uuid;
+        if n > 0 then
+          execute format('update public.%1$I x set (%2$s) = (select %2$s from jsonb_populate_record(null::public.%1$I, $1)) where x.id = $2', t,
+            (select string_agg(quote_ident(c.column_name), ', ' order by c.ordinal_position) from information_schema.columns c
+              where c.table_schema = 'public' and c.table_name = t and c.column_name not in ('id', 'shop_id')))
+            using r, (r->>'id')::uuid;
+          continue;
+        end if;
+      end if;
+      rows := rows || jsonb_build_array(r);
+    end loop;
+    if jsonb_array_length(rows) > 0 then
+      -- overriding system value: أرقام القيود (entry_no) بترجع زي ما هي
+      execute format('insert into public.%1$I overriding system value select * from jsonb_populate_recordset(null::public.%1$I, $1)', t) using rows;
+    end if;
+    counts := counts || jsonb_build_object(t, jsonb_array_length(coalesce(p_data->t, '[]')));
+  end loop;
+
+  -- 4) عدّاد أرقام الطلبات: من آخر رقم راجع في كل سنة
+  -- (لكل فرع: الرقم ممكن يبقى قبله بادئة الفرع B2-2026-0001)
+  insert into public.order_counters(shop_id, branch_id, year, last_value)
+  select s, branch_id, (regexp_match(order_no, '(\d{4})-(\d+)$'))[1]::int, max((regexp_match(order_no, '(\d{4})-(\d+)$'))[2]::int)
+    from public.devices where shop_id = s and order_no ~ '\d{4}-\d+$' group by 2, 3
+  on conflict (shop_id, branch_id, year) do update set last_value = greatest(public.order_counters.last_value, excluded.last_value);
+
+  -- 5) التأكد: كل قيد متوازن، ورصيد كل حساب = رصيده في النسخة بالظبط
+  select count(*) into bad from (
+    select entry_id from public.journal_lines where shop_id = s group by entry_id having sum(debit) <> sum(credit)) x;
+  if bad > 0 then raise exception 'E_RESTORE_UNBALANCED'; end if;
+  select count(*) into bad from (
+    select m.new acc, sum((l->>'debit')::bigint - (l->>'credit')::bigint) b
+      from jsonb_array_elements(coalesce(p_data->'journal_lines', '[]')) l join _rmap m on m.old = (l->>'account_id')::uuid group by m.new
+  ) x full join (select account_id, sum(debit - credit) b from public.journal_lines where shop_id = s group by account_id) y on y.account_id = x.acc
+  where coalesce(x.b, 0) <> coalesce(y.b, 0);
+  if bad > 0 then raise exception 'E_RESTORE_MISMATCH'; end if;
+  -- وعدد الصفوف في كل جدول (الحسابات والقوالب اللي اتعملت مع التسجيل ممكن تزيد عن النسخة، مش تقل)
+  foreach t in array tabs loop
+    execute format('select count(*) from public.%I where shop_id = $1', t) into n using s;
+    if n < jsonb_array_length(coalesce(p_data->t, '[]')) - (case when t = 'profiles' and old_owner is not null then 1 else 0 end) then
+      raise exception 'E_RESTORE_MISMATCH';
+    end if;
+  end loop;
+
+  perform set_config('warsha.restore', 'off', true);
+  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
+  values (s, me, 'backup_restore', 'shops', s, jsonb_build_object('from_shop', old_shop, 'generated_at', p_data->>'generated_at', 'counts', counts));
+  return jsonb_build_object('restored', true, 'counts', counts);
+end $$;
+$m0057$;
+  insert into public.app_migrations(version, how) values ('0057_categories.sql', 'applied');
+  raise notice 'applied %', '0057_categories.sql';
+end $run$;
+commit;
+
 -- ============================== 0058_web_push.sql ==============================
 begin;
 do $run$ begin
@@ -2885,926 +3367,8 @@ $m0069$;
 end $run$;
 commit;
 
--- ============================== 0070_perm_matrix.sql ==============================
-begin;
-do $run$ begin
-  if exists (select 1 from public.app_migrations where version = '0070_perm_matrix.sql') then return; end if;
-  execute $m0070$
--- 0070: (34) الصلاحيات على السيرفر لكل الأدوار: دوال كانت بتتأكد من الدور العام بس (استقبال/فني)،
--- من غير صلاحية الجدول ولا الفرع، فالكاشير والمحاسب وموظف الفرع التاني كانوا يقدروا ينادوها بالـ id.
--- من غير أي تغيير في البيانات ولا الحسابات.
-
--- الموظف ليه الجهاز ده؟ (فرعه أو جهاز في الطريق لفرعه، والفني أجهزته بس، زي سياسة devices_select)
-create or replace function public.device_reach(p_device uuid) returns boolean
-language sql stable security definer set search_path = public as $$
-  select public.current_app_role() = 'owner' or exists (
-    select 1 from public.devices d where d.id = p_device and d.shop_id = public.current_shop_id()
-      and (public.can_branch(d.branch_id) or public.can_branch(d.transfer_to))
-      and (public.current_app_role() <> 'technician' or public.tech_can_see(d.id)))
-$$;
-
--- صلاحية في الأجهزة + الجهاز نفسه. p_intake: اللي بيستلم أجهزة كمان (المسار وكلمة السر والصور وقت الاستلام)
-create or replace function public.device_require(p_device uuid, p_op text, p_intake boolean default false) returns void
-language plpgsql stable security definer set search_path = public as $$
-begin
-  if (public.has_perm('devices', p_op) or (p_intake and public.has_perm('intake', 'add'))) is not true then raise exception 'E_FORBIDDEN'; end if;
-  if public.device_reach(p_device) is not true then raise exception 'E_FORBIDDEN'; end if;
-  -- جهاز في الطريق لفرعي: أشوفه بس، والتعديل بعد الاستلام (زي سياسة devices_update)
-  if p_op = 'edit' and not exists (select 1 from public.devices d where d.id = p_device and (public.current_app_role() = 'owner' or public.can_branch(d.branch_id))) then raise exception 'E_FORBIDDEN'; end if;
-end $$;
-
--- التصحيح: الموظف (حتى لو معاه "يحذف") في فروعه بس، والمرتبات والشركاء ورأس المال وسداد الضريبة لصاحب المحل بس
-create or replace function public.entry_require(p_entry uuid) returns void
-language plpgsql stable security definer set search_path = public as $$
-begin
-  if public.current_app_role() = 'owner' then return; end if;
-  if exists (select 1 from public.journal_entries e where e.id = p_entry and (e.source_type = 'vat_payment' or not public.can_branch(e.branch_id)))
-     or exists (select 1 from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = p_entry
-                and (a.kind in ('advances', 'salaries', 'partner_capital', 'partner_current', 'capital', 'drawings') or (a.kind = 'cash' and not public.can_branch(a.branch_id))))
-     or exists (select 1 from public.stock_moves m where m.entry_id = p_entry and not public.can_branch(m.branch_id)) then
-    raise exception 'E_FORBIDDEN';
-  end if;
-end $$;
-revoke execute on function public.device_reach(uuid), public.device_require(uuid, text, boolean), public.entry_require(uuid) from public, anon, authenticated;
-
--- send_device: (src: 0034_branches.sql) + صلاحية "يعدّل" في الأجهزة
-create or replace function public.send_device(p_device uuid, p_to uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); d public.devices;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
-  select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
-  if not found or not public.can_branch(d.branch_id) then raise exception 'E_NOT_FOUND'; end if;
-  if d.status = 'delivered' then raise exception 'E_DELIVERED'; end if;
-  if d.transfer_to is not null then raise exception 'E_IN_TRANSIT'; end if;
-  if p_to = d.branch_id or not exists (select 1 from public.branches where id = p_to and shop_id = s and deleted_at is null) then raise exception 'E_BAD_BRANCH'; end if;
-  perform set_config('app.device_move', 'on', true);
-  update public.devices set transfer_to = p_to, transfer_at = now(), transfer_by = auth.uid() where id = d.id;
-  perform set_config('app.device_move', 'off', true);
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-  values (s, auth.uid(), 'device_send', 'devices', d.id, jsonb_build_object('branch', d.branch_id), jsonb_build_object('to', p_to));
-end $$;
-
--- cancel_device_transfer: (src: 0034_branches.sql) + صلاحية "يعدّل" في الأجهزة
-create or replace function public.cancel_device_transfer(p_device uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); d public.devices;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
-  select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
-  if not found or d.transfer_to is null then raise exception 'E_NOT_FOUND'; end if;
-  if not (public.can_branch(d.branch_id) or public.can_branch(d.transfer_to)) then raise exception 'E_FORBIDDEN'; end if;
-  perform set_config('app.device_move', 'on', true);
-  update public.devices set transfer_to = null, transfer_at = null, transfer_by = null where id = d.id;
-  perform set_config('app.device_move', 'off', true);
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-  values (s, auth.uid(), 'device_transfer_cancel', 'devices', d.id, jsonb_build_object('to', d.transfer_to), null);
-end $$;
-
--- receive_device: (src: 0034_branches.sql) + صلاحية "يعدّل" في الأجهزة
-create or replace function public.receive_device(p_device uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); d public.devices;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
-  select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
-  if not found or d.transfer_to is null then raise exception 'E_NOT_FOUND'; end if;
-  if not public.can_branch(d.transfer_to) then raise exception 'E_FORBIDDEN'; end if;
-  perform set_config('app.device_move', 'on', true);
-  update public.devices set branch_id = d.transfer_to, transfer_to = null, transfer_at = null, transfer_by = null where id = d.id;
-  perform set_config('app.device_move', 'off', true);
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-  values (s, auth.uid(), 'device_receive', 'devices', d.id, jsonb_build_object('branch', d.branch_id), jsonb_build_object('branch', d.transfer_to));
-end $$;
-
--- reassign_step: (src: 0014_technicians.sql) + الصلاحية والفرع
-create or replace function public.reassign_step(p_step uuid, p_tech uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare s public.repair_steps;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  select * into s from public.repair_steps where id = p_step and shop_id = public.current_shop_id() for update;
-  if not found or s.status not in ('pending', 'active') then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(s.device_id, 'edit');
-  if p_tech is not null and not exists (select 1 from public.profiles where id = p_tech and shop_id = s.shop_id and role = 'technician' and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
-  update public.repair_steps set technician_id = p_tech, status = case when status = 'active' then 'pending' else status end, started_at = null where id = s.id;
-end $$;
-
--- suggest_device_price: (src: 0012_spec_completion.sql) + مبالغ الأجهزة والفرع
-create or replace function public.suggest_device_price(p_device uuid) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
-declare
-  d public.devices;
-  parts bigint;
-  labor bigint;
-  margin int;
-  markup bigint;
-  price bigint;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  select * into d from public.devices where id = p_device and shop_id = public.current_shop_id();
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(p_device, 'amounts');
-  select coalesce(-sum(m.value), 0) into parts from public.stock_moves m join public.journal_entries e on e.id = m.entry_id
-   where e.device_id = p_device and e.source_type in ('part_use', 'reversal');
-  select coalesce(sum(r.amount), 0) into labor from public.labor_rates r
-   where r.shop_id = d.shop_id and r.deleted_at is null and position(lower(trim(r.issue)) in lower(d.issue)) > 0;
-  select default_margin_pct into margin from public.shops where id = d.shop_id;
-  markup := (parts * margin + 99) / 100;
-  price := ((parts + labor + markup + 499) / 500) * 500;
-  return case when public.current_app_role() = 'owner'
-    then jsonb_build_object('price', price, 'parts', parts, 'labor', labor, 'margin', margin, 'markup', markup)
-    else jsonb_build_object('price', price, 'labor', labor) end;
-end $$;
-
--- device_money: (src: 0036_roles.sql) + الفرع
-create or replace function public.device_money(p_device uuid) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
-declare fc integer; paid bigint;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  if not public.has_perm('devices', 'amounts') then raise exception 'E_FORBIDDEN'; end if;
-  if not exists (select 1 from public.devices where id = p_device and shop_id = public.current_shop_id()) then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(p_device, 'amounts');
-  select final_cost into fc from public.device_costs where device_id = p_device and deleted_at is null;
-  paid := public.device_paid(p_device);
-  return jsonb_build_object(
-    'final', fc, 'paid', paid, 'due', greatest(coalesce(fc, 0) - paid, 0),
-    'payments', coalesce((select jsonb_agg(jsonb_build_object(
-        'id', p.id, 'amount', p.amount, 'method', p.method, 'created_at', p.created_at, 'entry_id', p.entry_id,
-        'by', (select full_name from public.profiles where id = p.created_by),
-        'reversed', exists (select 1 from public.journal_entries r where r.reverses_id = p.entry_id)) order by p.created_at)
-      from public.payments p where p.device_id = p_device), '[]'::jsonb),
-    'parts_cost', case when public.current_app_role() = 'owner' then (
-      select coalesce(sum(l.debit), 0) from public.journal_lines l join public.journal_entries e on e.id = l.entry_id
-      where e.device_id = p_device and e.source_type in ('part_use', 'reversal') and l.account_id = public.ledger_acc('cogs')) - (
-      select coalesce(sum(l.credit), 0) from public.journal_lines l join public.journal_entries e on e.id = l.entry_id
-      where e.device_id = p_device and e.source_type = 'reversal' and l.account_id = public.ledger_acc('cogs')) end
-  );
-end $$;
-
--- device_vat: (src: 0062_vat.sql) + مبالغ الأجهزة أو الوضع المالي، والفرع
-create or replace function public.device_vat(p_device uuid) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); r public.app_role := public.current_app_role(); v bigint; g bigint;
-begin
-  if s is null or r is null or r = 'technician' or r = 'marketing' then raise exception 'E_FORBIDDEN'; end if;
-  if (public.has_perm('devices', 'amounts') or public.has_perm('finance', 'view')) is not true or public.device_reach(p_device) is not true then raise exception 'E_FORBIDDEN'; end if;
-  select coalesce(sum(l.credit) filter (where a.kind = 'tax'), 0), coalesce(sum(l.credit) filter (where a.kind in ('tax', 'revenue')), 0)
-    into v, g
-  from public.journal_entries e join public.journal_lines l on l.entry_id = e.id join public.accounts a on a.id = l.account_id
-  where e.shop_id = s and e.source_type = 'delivery' and e.source_id = p_device
-    and not exists (select 1 from public.journal_entries x where x.reverses_id = e.id);
-  if g = 0 then return null; end if;
-  return jsonb_build_object('vat', v, 'gross', g, 'net', g - v);
-end $$;
-
--- device_parts: (src: 0012_spec_completion.sql) + الصلاحية والفرع
-create or replace function public.device_parts(p_device uuid)
-returns table(item_id uuid, name text, qty bigint)
-language plpgsql stable security definer set search_path = public as $$
-#variable_conflict use_column
-begin
-  if public.current_app_role() is null then raise exception 'E_FORBIDDEN'; end if;
-  if not exists (select 1 from public.devices where id = p_device and shop_id = public.current_shop_id()) then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(p_device, 'view');
-  return query
-  select i.id, i.name, (-sum(m.qty))::bigint
-  from public.stock_moves m
-  join public.journal_entries e on e.id = m.entry_id
-  join public.items i on i.id = m.item_id
-  where (e.device_id = p_device) and e.source_type in ('part_use', 'reversal')
-  group by i.id, i.name
-  having -sum(m.qty) > 0;
-end $$;
-
--- device_manual_part: (src: 0036_roles.sql) + الفرع والجهاز نفسه
-create or replace function public.device_manual_part(p_id uuid, p_device uuid, p_name text, p_cost bigint, p_cashbox uuid default null, p_supplier uuid default null) returns uuid
-language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); e uuid; credit_line jsonb;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  perform public.perm_require('devices', 'edit');
-  e := public.ledger_idem(p_id);
-  if e is not null then return e; end if;
-  if nullif(trim(p_name), '') is null then raise exception 'E_BAD_INPUT'; end if;
-  perform public.ledger_amount(p_cost);
-  if not exists (select 1 from public.devices where id = p_device and shop_id = s and deleted_at is null and status <> 'delivered') then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(p_device, 'edit');
-  if p_cashbox is not null then
-    credit_line := public.ledger_line((public.ledger_cashbox(p_cashbox)).id, 0, p_cost);
-  elsif p_supplier is not null then
-    if not exists (select 1 from public.suppliers where id = p_supplier and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
-    credit_line := public.ledger_line(public.ledger_acc('ap'), 0, p_cost, 'supplier', p_supplier);
-  else
-    raise exception 'E_BAD_INPUT';
-  end if;
-  return public.ledger_post('part_use', null, trim(p_name), jsonb_build_array(public.ledger_line(public.ledger_acc('cogs'), p_cost, 0), credit_line), p_device, p_id);
-end $$;
-
--- use_part: (src: 0036_roles.sql) + الفني أجهزته بس، وفي فرعه
-create or replace function public.use_part(p_id uuid, p_device uuid, p_item uuid, p_qty integer default 1)
-returns uuid
-language plpgsql security definer set search_path = public as $$
-declare
-  e uuid;
-  cost bigint;
-  inv uuid := public.ledger_acc('inventory');
-  cg uuid := public.ledger_acc('cogs');
-begin
-  perform public.ledger_require(array['owner', 'technician']::public.app_role[]);
-  perform public.perm_require('devices', 'edit');
-  e := public.ledger_idem(p_id);
-  if e is not null then return e; end if;
-  if not exists (select 1 from public.devices where id = p_device and shop_id = public.current_shop_id() and deleted_at is null and status <> 'delivered') then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(p_device, 'edit');
-  -- القيد محتاج يتعمل الأول عشان حركة المخزون تتربط بيه، والتوازن بيتراجع في آخر العملية
-  e := gen_random_uuid();
-  insert into public.journal_entries(id, shop_id, source_type, source_id, device_id, idem_key, created_by)
-  values (e, public.current_shop_id(), 'part_use', p_item, p_device, p_id, auth.uid());
-  cost := public.ledger_issue(p_item, p_qty, e);
-  if cost > 0 then
-    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values
-      (public.current_shop_id(), e, cg, cost, 0),
-      (public.current_shop_id(), e, inv, 0, cost);
-  else
-    raise exception 'E_BAD_AMOUNT';  -- صنف من غير تكلفة: لازم يتشتري بسعر الأول
-  end if;
-  return e;
-end $$;
-
--- set_device_passcode: (src: 0005_device_passcode.sql) + الصلاحية والفرع
-create or replace function public.set_device_passcode(p_device_id uuid, p_kind text, p_value text)
-returns void
-language plpgsql security definer set search_path = public as $$
-declare
-  shop uuid := public.current_shop_id();
-  r public.app_role := public.current_app_role();
-  dev public.devices;
-  existing public.device_passcodes;
-  sid uuid;
-begin
-  if shop is null then raise exception 'E_NO_SHOP'; end if;
-  if r not in ('owner', 'reception') then raise exception 'E_FORBIDDEN'; end if;
-  if p_kind not in ('pin', 'pattern') then raise exception 'E_BAD_INPUT'; end if;
-  if p_value is null or length(trim(p_value)) = 0 or length(p_value) > 64 then raise exception 'E_BAD_INPUT'; end if;
-  select * into dev from public.devices where id = p_device_id and shop_id = shop and deleted_at is null;
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(p_device_id, 'edit', true);
-  if dev.status = 'delivered' then raise exception 'E_DELIVERED_LOCKED'; end if;
-
-  select * into existing from public.device_passcodes where device_id = p_device_id;
-  if found and existing.secret_id is not null then
-    perform vault.update_secret(existing.secret_id, p_value);
-    update public.device_passcodes set kind = p_kind, erased_at = null where id = existing.id;
-  else
-    sid := vault.create_secret(p_value, 'device-passcode-' || p_device_id::text, 'device lock');
-    if found then
-      update public.device_passcodes set kind = p_kind, secret_id = sid, erased_at = null where id = existing.id;
-    else
-      insert into public.device_passcodes(shop_id, device_id, kind, secret_id) values (shop, p_device_id, p_kind, sid);
-    end if;
-  end if;
-  -- السجل فيه نوع العملية بس، مش القيمة
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
-  values (shop, auth.uid(), 'passcode_set', 'device_passcodes', p_device_id, jsonb_build_object('kind', p_kind));
-end $$;
-
--- reveal_device_passcode: (src: 0005_device_passcode.sql) + صلاحية "يشوف" في الأجهزة، والفني أجهزته بس، وفي فرعه
-create or replace function public.reveal_device_passcode(p_device_id uuid)
-returns table(kind text, value text)
-language plpgsql security definer set search_path = public as $$
-declare
-  shop uuid := public.current_shop_id();
-  r public.app_role := public.current_app_role();
-  pc public.device_passcodes;
-  v text;
-begin
-  if shop is null then raise exception 'E_NO_SHOP'; end if;
-  if r not in ('owner', 'technician') then raise exception 'E_FORBIDDEN'; end if;
-  select * into pc from public.device_passcodes where device_id = p_device_id and shop_id = shop and deleted_at is null;
-  if not found or pc.secret_id is null then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(p_device_id, 'view');
-  select ds.decrypted_secret into v from vault.decrypted_secrets ds where ds.id = pc.secret_id;
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
-  values (shop, auth.uid(), 'passcode_viewed', 'device_passcodes', p_device_id, jsonb_build_object('kind', pc.kind));
-  return query select pc.kind, v;
-end $$;
-
--- set_route: (src: 0014_technicians.sql) + الصلاحية والفرع
-create or replace function public.set_route(p_device uuid, p_route uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare
-  d public.devices;
-  r public.routes;
-  n int;
-  sp uuid;
-  i int := 0;
-  first_step uuid;
-begin
-  select * into d from public.devices where id = p_device and shop_id = public.current_shop_id() and deleted_at is null for update;
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  select * into r from public.routes where id = p_route and shop_id = d.shop_id and deleted_at is null;
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  -- الفني بيحدد المسار بس لو هو اللي فحص (خطوة فحص في مسار "غير معروف" متعيّنة له)
-  if public.current_app_role() = 'technician' and not exists (
-      select 1 from public.repair_steps s join public.routes rr on rr.id = s.route_id and rr.diagnose
-      where s.device_id = d.id and s.technician_id = auth.uid() and s.status in ('active', 'done')) then
-    raise exception 'E_FORBIDDEN';
-  end if;
-  if public.current_app_role() is null then raise exception 'E_FORBIDDEN'; end if;
-  perform public.device_require(d.id, 'edit', true);
-  update public.repair_steps set status = 'skipped', finished_at = now() where device_id = d.id and status in ('pending', 'active');
-  select coalesce(max(step_no), 0) into n from public.repair_steps where device_id = d.id;
-  foreach sp in array r.steps loop
-    i := i + 1;
-    insert into public.repair_steps(shop_id, device_id, route_id, step_no, specialty_id, technician_id)
-    values (d.shop_id, d.id, r.id, n + i, sp, case when i = 1 then public.pick_technician(d.id, sp) end)
-    returning id into first_step;
-  end loop;
-  perform set_config('warsha.routing', 'on', true);
-  update public.devices set route_id = r.id where id = d.id;
-  perform set_config('warsha.routing', 'off', true);
-end $$;
-
--- start_photo_upload: (src: 0044_capture.sql) + الصلاحية والفرع
-create or replace function public.start_photo_upload(p_device uuid)
-returns table(token text, expires_at timestamptz)
--- extensions: فيها gen_random_bytes على Supabase
-language plpgsql security definer set search_path = public, extensions, pg_temp as $$
-declare d public.devices; t text := encode(gen_random_bytes(16), 'hex'); e timestamptz := now() + interval '30 minutes';
-begin
-  if public.current_app_role() not in ('owner', 'reception') then raise exception 'E_FORBIDDEN'; end if;
-  select * into d from public.devices where id = p_device and shop_id = public.current_shop_id() and deleted_at is null;
-  if d.id is null then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(d.id, 'edit', true);
-  if d.status = 'delivered' then raise exception 'E_DELIVERED'; end if;
-  -- الجلسات القديمة لنفس الجهاز بتتقفل (رابط واحد شغال في نفس الوقت)
-  update public.photo_upload_sessions s set deleted_at = now() where s.device_id = d.id and s.deleted_at is null;
-  insert into public.photo_upload_sessions(shop_id, device_id, token, expires_at, created_by)
-  values (d.shop_id, d.id, t, e, auth.uid());
-  return query select t, e;
-end $$;
-
--- apply_status_lww: (src: 0015_offline_backup.sql) + الصلاحية والفرع
-create or replace function public.apply_status_lww(p_device uuid, p_status public.device_status, p_client_ts timestamptz)
-returns jsonb
-language plpgsql security definer set search_path = public as $$
-declare d public.devices;
-begin
-  if public.current_app_role() is null then raise exception 'E_FORBIDDEN'; end if;
-  select * into d from public.devices where id = p_device and shop_id = public.current_shop_id() and deleted_at is null for update;
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(d.id, 'edit');
-  if d.status = p_status then
-    return jsonb_build_object('applied', true, 'same', true);
-  end if;
-  if d.updated_at > p_client_ts then
-    insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-    values (d.shop_id, auth.uid(), 'sync_conflict', 'devices', d.id,
-            jsonb_build_object('status', d.status, 'updated_at', d.updated_at),
-            jsonb_build_object('status', p_status, 'client_ts', p_client_ts, 'kept', 'server'));
-    return jsonb_build_object('applied', false, 'reason', 'newer_on_server', 'server_status', d.status);
-  end if;
-  begin
-    update public.devices set status = p_status where id = d.id;
-  exception when others then
-    -- التعديل ما ينفعش يتطبق (مثلًا الانتقال مش مسموح دلوقتي): بيتسجل تعارض بسببه
-    insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-    values (d.shop_id, auth.uid(), 'sync_conflict', 'devices', d.id,
-            jsonb_build_object('status', d.status, 'updated_at', d.updated_at),
-            jsonb_build_object('status', p_status, 'client_ts', p_client_ts, 'kept', 'server', 'error', sqlerrm));
-    return jsonb_build_object('applied', false, 'reason', 'rejected', 'error', sqlerrm, 'server_status', d.status);
-  end;
-  return jsonb_build_object('applied', true);
-end $$;
-
--- models_report: (src: 0034_branches.sql) + صلاحية التقارير، والموظف فرعه بس
-create or replace function public.models_report(p_from timestamptz, p_to timestamptz, p_branch uuid default null)
-returns table(kind text, label text, devices integer)
-language plpgsql stable security definer set search_path = public as $$
-#variable_conflict use_column
-begin
-  perform public.grant_require('reports', 'view');
-  if not public.all_my_branches() and (p_branch is null or not public.can_branch(p_branch)) then p_branch := public.op_branch(); end if;
-  return query
-  (select 'model'::text, d.brand || ' ' || d.model, count(*)::int from public.devices d
-    where d.shop_id = public.current_shop_id() and d.received_at >= p_from and d.received_at < p_to and d.deleted_at is null and (p_branch is null or d.branch_id = p_branch)
-    group by d.brand, d.model order by 3 desc limit 10)
-  union all
-  (select 'route'::text, coalesce(r.code, r.name, '-'), count(*)::int from public.devices d left join public.routes r on r.id = d.route_id
-    where d.shop_id = public.current_shop_id() and d.received_at >= p_from and d.received_at < p_to and d.deleted_at is null and (p_branch is null or d.branch_id = p_branch)
-    group by r.code, r.name order by 3 desc limit 10);
-end $$;
-
--- marketing_due: (src: 0021_spec_rules.sql) + صلاحية الأجهزة والعملاء، والموظف فرعه بس
-create or replace function public.marketing_due(p_days integer default 180)
-returns table(device_id uuid, order_no text, brand text, model text, issue text, delivered_at timestamptz,
-              customer_id uuid, customer_name text, phone text, tracking_token text)
-language plpgsql stable security definer set search_path = public as $$
-#variable_conflict use_column
-declare s uuid := public.current_shop_id(); days integer := greatest(30, least(coalesce(p_days, 180), 720));
-begin
-  if public.current_app_role() not in ('owner', 'reception') then raise exception 'E_FORBIDDEN'; end if;
-  if (public.has_perm('devices', 'view') and public.has_perm('customers', 'view')) is not true then raise exception 'E_FORBIDDEN'; end if;
-  return query
-  with last_dev as (
-    select distinct on (d.customer_id) d.*
-    from public.devices d
-    where d.shop_id = s and d.deleted_at is null and d.status = 'delivered' and d.delivered_at is not null
-      and (public.all_my_branches() or public.can_branch(d.branch_id))
-    order by d.customer_id, d.delivered_at desc
-  )
-  select d.id, d.order_no, d.brand, d.model, d.issue, d.delivered_at, c.id, c.name, c.phone, d.tracking_token
-  from last_dev d join public.customers c on c.id = d.customer_id and c.deleted_at is null
-  where c.marketing_ok
-    and d.delivered_at <= now() - make_interval(days => days)
-    and d.delivered_at > now() - make_interval(days => days + 365)
-    and not exists (select 1 from public.message_log m where m.customer_id = c.id and m.template_key = 'marketing' and m.created_at >= d.delivered_at and m.deleted_at is null)
-  order by d.delivered_at
-  limit 200;
-end $$;
-
--- item_branch_stock: (src: 0034_branches.sql) + القيمة (التكلفة) بصلاحية مبالغ المخزون
-create or replace function public.item_branch_stock(p_item uuid) returns table(branch_id uuid, qty bigint, value bigint)
-language sql stable security definer set search_path = public as $$
-  select b.id, coalesce(sum(m.qty), 0)::bigint, case when (select public.has_perm('inventory', 'amounts')) then coalesce(sum(m.value), 0)::bigint end
-  from public.branches b left join public.stock_moves m on m.branch_id = b.id and m.item_id = p_item
-  where b.shop_id = public.current_shop_id() and b.deleted_at is null and b.id = any (public.my_branch_ids())
-    and public.current_app_role() in ('owner', 'reception', 'technician')
-  group by b.id
-$$;
-
--- reverse_entry: (src: 0046_master.sql) + الموظف فروعه بس، والمرتبات والشركاء لصاحب المحل
-CREATE OR REPLACE FUNCTION public.reverse_entry(p_entry uuid, p_reason text)
- RETURNS uuid
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-declare
-  o public.journal_entries;
-  e uuid;
-  lines jsonb;
-  mv record;
-begin
-  if public.current_app_role() is null or not public.can_correct() then raise exception 'E_FORBIDDEN'; end if;
-  -- C3: كلمة السر الرئيسية (لو صاحب المحل حددها)
-  perform public.master_require();
-  if nullif(trim(p_reason), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
-  select * into o from public.journal_entries where id = p_entry and shop_id = public.current_shop_id() for update;
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  perform public.entry_require(o.id);
-  if o.source_type in ('reversal', 'cost_adjust') or exists (select 1 from public.journal_entries where reverses_id = o.id) then
-    raise exception 'E_ALREADY_REVERSED';
-  end if;
-  select jsonb_agg(public.ledger_line(account_id, credit, debit, party_type, party_id)) into lines
-  from public.journal_lines where entry_id = o.id;
-  -- العكس بيتسجل في نفس فرع القيد الأصلي
-  perform set_config('app.branch', o.branch_id::text, true);
-  e := public.ledger_post('reversal', o.source_id, p_reason, lines, o.device_id, null, o.id);
-  for mv in select * from public.stock_moves where entry_id = o.id loop
-    perform 1 from public.items where id = mv.item_id for update;
-    if (select coalesce(sum(qty), 0) from public.stock_moves where item_id = mv.item_id and branch_id = mv.branch_id) - mv.qty < 0 then
-      raise exception 'E_STOCK';
-    end if;
-    insert into public.stock_moves(shop_id, item_id, entry_id, qty, value, branch_id) values (mv.shop_id, mv.item_id, e, -mv.qty, -mv.value, mv.branch_id);
-  end loop;
-  for mv in select distinct item_id, branch_id from public.stock_moves where entry_id = o.id loop
-    perform public.ledger_settle_item(mv.item_id, o.device_id, mv.branch_id);
-  end loop;
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-  values (o.shop_id, auth.uid(), 'reverse_entry', 'journal_entries', o.id, to_jsonb(o), jsonb_build_object('reversal_id', e, 'reason', p_reason));
-  return e;
-end $function$;
-
--- entry_args: (src: 0060_sale_lines.sql) + نفس شرط reverse_entry
-create or replace function public.entry_args(p_entry uuid) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
-declare
-  o public.journal_entries;
-  cash_in uuid; cash_out uuid; amt bigint; party uuid; acc uuid; res jsonb; pay public.payments; pur public.purchases;
-  ls jsonb; rev bigint; cust uuid;
-begin
-  if public.current_app_role() is null or not public.can_correct() then raise exception 'E_FORBIDDEN'; end if;
-  select * into o from public.journal_entries where id = p_entry and shop_id = public.current_shop_id();
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  perform public.entry_require(o.id);
-  select max(l.account_id::text) filter (where a.kind = 'cash' and l.debit > 0)::uuid,
-         max(l.account_id::text) filter (where a.kind = 'cash' and l.credit > 0)::uuid,
-         max(l.party_id::text) filter (where l.party_id is not null)::uuid,
-         max(l.account_id::text) filter (where a.kind = 'expense' and l.debit > 0)::uuid,
-         greatest(sum(l.debit), 0)
-    into cash_in, cash_out, party, acc, amt
-  from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = o.id;
-  res := jsonb_build_object('source_type', o.source_type, 'entry_no', o.entry_no, 'note', o.memo,
-    'reversed', exists (select 1 from public.journal_entries where reverses_id = o.id),
-    'editable', o.source_type in ('payment', 'expense', 'transfer', 'capital', 'drawing', 'advance', 'salary', 'salary_payment', 'supplier_payment', 'purchase', 'sale'));
-  if o.source_type = 'payment' then
-    select * into pay from public.payments where entry_id = o.id;
-    res := res || jsonb_build_object('customer', pay.customer_id, 'device', pay.device_id, 'cashbox', pay.cashbox_id, 'method', pay.method, 'amount', pay.amount);
-  elsif o.source_type = 'expense' then
-    res := res || jsonb_build_object('account', acc, 'cashbox', cash_out, 'amount', amt);
-  elsif o.source_type = 'transfer' then
-    res := res || jsonb_build_object('from', cash_out, 'to', cash_in, 'amount', amt);
-  elsif o.source_type = 'capital' then
-    res := res || jsonb_build_object('cashbox', cash_in, 'amount', amt);
-  elsif o.source_type = 'drawing' then
-    res := res || jsonb_build_object('cashbox', cash_out, 'amount', amt);
-  elsif o.source_type in ('advance', 'salary_payment') then
-    res := res || jsonb_build_object('employee', party, 'cashbox', cash_out, 'amount', amt);
-  elsif o.source_type = 'salary' then
-    res := res || jsonb_build_object('employee', party, 'amount', amt);
-  elsif o.source_type = 'supplier_payment' then
-    res := res || jsonb_build_object('supplier', party, 'cashbox', cash_out, 'amount', amt);
-  elsif o.source_type = 'purchase' then
-    select * into pur from public.purchases where entry_id = o.id;
-    select jsonb_agg(jsonb_build_object('item', m.item_id, 'qty', m.qty, 'unit_cost', m.value / nullif(m.qty, 0)) order by m.created_at) into ls
-    from public.stock_moves m where m.entry_id = o.id;
-    res := res || jsonb_build_object('supplier', pur.supplier_id, 'cashbox', cash_out, 'lines', coalesce(ls, '[]'::jsonb));
-  elsif o.source_type = 'sale' then
-    -- سعر البيع: لو صنف واحد بيتحسب من الإيراد، ولو أكتر من صنف بيتاخد سعر الصنف المسجل
-    select coalesce(sum(l.credit), 0) into rev from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = o.id and a.type = 'revenue';
-    select max(l.party_id::text) filter (where l.party_type = 'customer')::uuid into cust from public.journal_lines l where l.entry_id = o.id;
-    -- 6ب: البيع الجديد بسطوره زي ما اتباع بالظبط. القديم (قبل 0060) زي الأول
-    select jsonb_agg(jsonb_build_object('item', sl.item_id, 'qty', sl.qty, 'price', sl.price) order by sl.seq) into ls
-    from public.sale_lines sl where sl.entry_id = o.id and sl.deleted_at is null;
-    if ls is null then
-    select jsonb_agg(jsonb_build_object('item', x.item_id, 'qty', x.q,
-             'price', case when x.n = 1 then rev / x.q else coalesce(i.sale_price, 0) end) order by x.first)
-      into ls
-    from (select m.item_id, -sum(m.qty) q, count(*) over () n, min(m.created_at) first from public.stock_moves m where m.entry_id = o.id group by m.item_id) x
-    join public.items i on i.id = x.item_id;
-    end if;
-    res := res || jsonb_build_object('customer', cust, 'cashbox', cash_in, 'lines', coalesce(ls, '[]'::jsonb));
-  end if;
-  return res;
-end $$;
-
--- soft_delete: (src: 0046_master.sql) + الجهاز في فرع الموظف بس
-create or replace function public.soft_delete(p_kind text, p_id uuid, p_reason text default null) returns void
-language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); before jsonb; tbl text;
-begin
-  if public.current_app_role() is null or not public.can_correct() then raise exception 'E_FORBIDDEN'; end if;
-  -- C3: كلمة السر الرئيسية (لو صاحب المحل حددها)
-  perform public.master_require();
-  if p_kind = 'customer' then
-    tbl := 'customers';
-    select to_jsonb(c) into before from public.customers c where id = p_id and shop_id = s and deleted_at is null for update;
-    if before is null then raise exception 'E_NOT_FOUND'; end if;
-    if exists (select 1 from public.journal_lines l where l.party_id = p_id and l.shop_id = s group by l.account_id having sum(l.debit - l.credit) <> 0) then raise exception 'E_HAS_BALANCE'; end if;
-    if exists (select 1 from public.devices d where d.customer_id = p_id and d.deleted_at is null and d.status not in ('delivered', 'unrepairable')) then raise exception 'E_HAS_OPEN_DEVICES'; end if;
-  elsif p_kind = 'supplier' then
-    tbl := 'suppliers';
-    select to_jsonb(x) into before from public.suppliers x where id = p_id and shop_id = s and deleted_at is null for update;
-    if before is null then raise exception 'E_NOT_FOUND'; end if;
-    if exists (select 1 from public.journal_lines l where l.party_id = p_id and l.shop_id = s group by l.account_id having sum(l.debit - l.credit) <> 0) then raise exception 'E_HAS_BALANCE'; end if;
-  elsif p_kind = 'item' then
-    tbl := 'items';
-    select to_jsonb(x) into before from public.items x where id = p_id and shop_id = s and deleted_at is null for update;
-    if before is null then raise exception 'E_NOT_FOUND'; end if;
-    if (select coalesce(sum(qty), 0) <> 0 or coalesce(sum(value), 0) <> 0 from public.stock_moves where item_id = p_id) then raise exception 'E_HAS_STOCK'; end if;
-  elsif p_kind = 'device' then
-    tbl := 'devices';
-    select to_jsonb(x) into before from public.devices x where id = p_id and shop_id = s and deleted_at is null for update;
-    if before is null then raise exception 'E_NOT_FOUND'; end if;
-    if public.current_app_role() <> 'owner' and not public.can_branch((before ->> 'branch_id')::uuid) then raise exception 'E_FORBIDDEN'; end if;
-    if exists (select 1 from public.journal_entries e where e.device_id = p_id and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id) and e.source_type not in ('reversal', 'cost_adjust')) then
-      raise exception 'E_HAS_MONEY';
-    end if;
-  else
-    raise exception 'E_BAD_INPUT';
-  end if;
-  perform set_config('warsha.system', 'on', true);
-  execute format('update public.%I set deleted_at = now(), updated_at = now() where id = $1', tbl) using p_id;
-  perform set_config('warsha.system', 'off', true);
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-  values (s, auth.uid(), 'soft_delete', tbl, p_id, before, jsonb_build_object('reason', nullif(trim(p_reason), '')));
-end $$;
-$m0070$;
-  insert into public.app_migrations(version, how) values ('0070_perm_matrix.sql', 'applied');
-  raise notice 'applied %', '0070_perm_matrix.sql';
-end $run$;
-commit;
-
--- ============================== 0071_device_children.sql ==============================
-begin;
-do $run$ begin
-  if exists (select 1 from public.app_migrations where version = '0071_device_children.sql') then return; end if;
-  execute $m0071$
--- 0071: (24ب) تفاصيل الجهاز (التكلفة والدفعات والصور والملاحظات والسجل والفحص والخطوات والرسايل وكلمة السر)
--- كانت معزولة بالمحل بس. بقت: اللي بيشوف الجهاز نفسه (فرعه، والفني أجهزته بس)، والكتابة في فرع الجهاز.
--- سياسات مقيّدة فوق الموجود (وسياسة قراية ملفات الصور اتعادت أضيق)، من غير أي تغيير في البيانات.
--- الدفعات بالخزنة مش بالجهاز: الكاشير والمحاسب بيشوفوا دفعات خزنهم، وكشف العميل محتاجها.
-
--- الكتابة على الجهاز: فرع الموظف نفسه (مش جهاز في الطريق)، والفني أجهزته بس
-create or replace function public.device_writable(p_device uuid) returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.devices d where d.id = p_device and d.shop_id = public.current_shop_id()
-      and (public.current_app_role() = 'owner' or public.can_branch(d.branch_id))
-      and (public.current_app_role() <> 'technician' or public.tech_can_see(d.id)))
-$$;
-revoke execute on function public.device_writable(uuid) from public, anon;
-grant execute on function public.device_writable(uuid) to authenticated;
-
--- ---------- القراية: الاستعلام على devices بيمشي بسياسات devices نفسها ----------
-do $$
-declare t text;
-begin
-  foreach t in array array['device_costs', 'device_photos', 'device_notes', 'status_log', 'device_checks', 'repair_steps', 'device_passcodes', 'quote_decisions', 'device_ratings', 'photo_upload_sessions'] loop
-    execute format('create policy reach_%1$s_select on public.%1$I as restrictive for select to authenticated using (exists (select 1 from public.devices d where d.id = device_id))', t);
-  end loop;
-end $$;
--- رابط الرفع (token) للي بيستلم أو بيعدّل بس
-create policy perm_upload_sessions_select on public.photo_upload_sessions as restrictive for select to authenticated
-  using ((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add')));
--- رسالة من غير جهاز (كشف حساب مثلًا): لأصحاب العملاء
-create policy reach_message_log_select on public.message_log as restrictive for select to authenticated
-  using (case when device_id is null then (select public.has_perm('customers', 'view')) else exists (select 1 from public.devices d where d.id = device_id) end);
--- الدفعة: خزنتها لازم تكون باينة للموظف (فرعه)
-create policy reach_payments_select on public.payments as restrictive for select to authenticated
-  using (exists (select 1 from public.accounts a where a.id = cashbox_id));
-
--- ---------- الكتابة ----------
--- التحديث using (true): الصف باين (القراية فوق)، والممنوع بيرجّع خطأ بدل ما يعدّي من غير ما حاجة تتحفظ
-create policy reach_device_costs_insert on public.device_costs as restrictive for insert to authenticated with check (public.device_writable(device_id));
-create policy reach_device_costs_update on public.device_costs as restrictive for update to authenticated using (true) with check (public.device_writable(device_id));
-create policy reach_device_notes_insert on public.device_notes as restrictive for insert to authenticated
-  with check ((select public.has_perm('devices', 'view')) and public.device_writable(device_id));
-create policy reach_device_notes_update on public.device_notes as restrictive for update to authenticated using (true) with check (public.device_writable(device_id));
-create policy reach_device_photos_insert on public.device_photos as restrictive for insert to authenticated
-  with check (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add'))) and public.device_writable(device_id));
-create policy reach_device_photos_update on public.device_photos as restrictive for update to authenticated
-  using (true) with check ((select public.has_perm('devices', 'edit')) and public.device_writable(device_id));
-create policy reach_device_checks_insert on public.device_checks as restrictive for insert to authenticated
-  with check (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add'))) and public.device_writable(device_id));
-create policy reach_device_checks_update on public.device_checks as restrictive for update to authenticated
-  using (true) with check (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add'))) and public.device_writable(device_id));
-create policy reach_message_log_insert on public.message_log as restrictive for insert to authenticated
-  with check (case when device_id is null then (select public.has_perm('customers', 'view')) else exists (select 1 from public.devices d where d.id = device_id) end);
-
--- ---------- ملفات الصور نفسها ----------
-drop policy if exists device_photos_read on storage.objects;
-create policy device_photos_read on storage.objects for select to authenticated
-  using (
-    bucket_id = 'device-photos'
-    and (storage.foldername(name))[1] = (select public.current_shop_id())::text
-    and exists (select 1 from public.devices d where d.id = case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end)
-  );
--- الرفع: مقيّدة فوق سياسة 0002 (جلسة الرفع من الموبايل بـ token ليها فحصها)
-create policy device_photos_upload_reach on storage.objects as restrictive for insert to authenticated
-  with check (
-    bucket_id <> 'device-photos'
-    or public.photo_upload_allowed(name)
-    or (((select public.has_perm('devices', 'edit')) or (select public.has_perm('intake', 'add')))
-        and public.device_writable(case when (storage.foldername(objects.name))[2] ~ '^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$' then (storage.foldername(objects.name))[2]::uuid end))
-  );
-
--- ---------- التوزيع: الفني في فرع الجهاز بس ----------
-create or replace function public.tech_in_branch(p_tech uuid, p_branch uuid) returns boolean
-language sql stable security definer set search_path = public as $$
-  select coalesce(
-    (select bool_or(sb.branch_id = p_branch) from public.staff_branches sb join public.branches b on b.id = sb.branch_id and b.deleted_at is null
-      where sb.profile_id = p_tech and sb.deleted_at is null),
-    -- من غير فروع: الرئيسي (زي my_branch_ids)
-    exists (select 1 from public.branches b where b.id = p_branch and b.is_main and b.deleted_at is null))
-$$;
-revoke execute on function public.tech_in_branch(uuid, uuid) from public, anon, authenticated;
-
--- pick_technician: (src: 0014_technicians.sql) + فني في فرع الجهاز بس
-create or replace function public.pick_technician(p_device uuid, p_specialty uuid) returns uuid
-language sql stable security definer set search_path = public as $$
-  select coalesce(
-    (select s.technician_id from public.repair_steps s join public.profiles p on p.id = s.technician_id and p.deleted_at is null
-      where s.device_id = p_device and s.specialty_id = p_specialty and s.technician_id is not null and s.status = 'done'
-        and public.tech_in_branch(s.technician_id, (select branch_id from public.devices where id = p_device))
-      order by s.step_no desc limit 1),
-    (select ss.profile_id from public.staff_specialties ss join public.profiles p on p.id = ss.profile_id and p.deleted_at is null and p.role = 'technician'
-      where ss.specialty_id = p_specialty and ss.deleted_at is null and ss.shop_id = public.current_shop_id()
-        and public.tech_in_branch(ss.profile_id, (select branch_id from public.devices where id = p_device))
-      order by (select count(*) from public.repair_steps x where x.technician_id = ss.profile_id and x.status in ('pending', 'active')), p.full_name
-      limit 1),
-    -- مفيش حد عنده التخصص: فني عام (ملوش تخصصات)
-    (select p.id from public.profiles p
-      where p.shop_id = public.current_shop_id() and p.role = 'technician' and p.deleted_at is null
-        and public.tech_in_branch(p.id, (select branch_id from public.devices where id = p_device))
-        and not exists (select 1 from public.staff_specialties ss where ss.profile_id = p.id and ss.deleted_at is null)
-      order by (select count(*) from public.repair_steps x where x.technician_id = p.id and x.status in ('pending', 'active')), p.full_name
-      limit 1))
-$$;
-
--- my_queue: (src: 0014_technicians.sql) + فروع الفني بس
-create or replace function public.my_queue()
-returns table(step_id uuid, device_id uuid, order_no text, brand text, model text, issue text, priority text, status public.device_status,
-              received_at timestamptz, est_minutes integer, step_no integer, steps_total integer, specialty_id uuid, step_status text,
-              started_at timestamptz, diagnose boolean, late boolean, is_return boolean)
-language plpgsql stable security definer set search_path = public as $$
-#variable_conflict use_column
-begin
-  if public.current_app_role() is null then raise exception 'E_FORBIDDEN'; end if;
-  return query
-  select s.id, d.id, d.order_no, d.brand, d.model, d.issue, d.priority, d.status, d.received_at, d.est_minutes, s.step_no,
-         (select count(*)::int from public.repair_steps x where x.device_id = d.id and x.status <> 'skipped'),
-         s.specialty_id, s.status, s.started_at, coalesce(r.diagnose, false),
-         (d.est_minutes is not null and now() > d.received_at + make_interval(mins => d.est_minutes)) or now() - d.received_at > interval '7 days',
-         d.return_of_tech is not null
-  from public.repair_steps s
-  join public.devices d on d.id = s.device_id and d.deleted_at is null
-  left join public.routes r on r.id = s.route_id
-  where s.shop_id = public.current_shop_id() and s.status in ('pending', 'active')
-    and public.can_branch(d.branch_id)
-    and (s.technician_id = auth.uid()
-         or (s.technician_id is null and public.tech_has_specialty(auth.uid(), s.specialty_id)))
-    and not exists (select 1 from public.repair_steps p where p.device_id = s.device_id and p.step_no < s.step_no and p.status in ('pending', 'active'))
-  order by case d.priority when 'urgent' then 0 when 'warranty' then 1 else 2 end, d.received_at;
-end $$;
-
--- start_step: (src: 0014_technicians.sql) + صلاحية الأجهزة وفرع الجهاز
-create or replace function public.start_step(p_step uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare s public.repair_steps; d public.devices; r public.routes;
-begin
-  select * into s from public.repair_steps where id = p_step and shop_id = public.current_shop_id() for update;
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  if public.current_app_role() = 'technician' then
-    if s.technician_id is null and public.tech_has_specialty(auth.uid(), s.specialty_id) then
-      s.technician_id := auth.uid();  -- خطوة مش متعيّنة لحد وهو عنده التخصص: بياخدها
-    elsif s.technician_id is distinct from auth.uid() then
-      raise exception 'E_FORBIDDEN';
-    end if;
-  elsif public.current_app_role() is distinct from 'owner' then
-    raise exception 'E_FORBIDDEN';
-  end if;
-  if s.status <> 'pending' then raise exception 'E_BAD_TRANSITION'; end if;
-  if exists (select 1 from public.repair_steps x where x.device_id = s.device_id and x.step_no < s.step_no and x.status in ('pending', 'active')) then
-    raise exception 'E_STEP_ORDER';
-  end if;
-  perform public.device_require(s.device_id, 'edit');
-  select * into d from public.devices where id = s.device_id;
-  if d.status = 'awaiting_approval' then raise exception 'E_AWAITING_APPROVAL'; end if;
-  if d.status in ('delivered', 'ready', 'unrepairable') then raise exception 'E_BAD_TRANSITION'; end if;
-  update public.repair_steps set status = 'active', started_at = now(), technician_id = s.technician_id where id = s.id;
-  select * into r from public.routes where id = s.route_id;
-  perform public.walk_status(d.id, case when coalesce(r.diagnose, false) or d.status = 'received' then 'inspecting'::public.device_status else 'in_repair'::public.device_status end);
-end $$;
-
--- finish_step: (src: 0014_technicians.sql) + صلاحية الأجهزة وفرع الجهاز
-create or replace function public.finish_step(p_step uuid, p_check jsonb default null, p_next_route uuid default null) returns jsonb
-language plpgsql security definer set search_path = public as $$
-declare
-  s public.repair_steps;
-  r public.routes;
-  nxt public.repair_steps;
-  ck uuid;
-begin
-  select * into s from public.repair_steps where id = p_step and shop_id = public.current_shop_id() for update;
-  if not found then raise exception 'E_NOT_FOUND'; end if;
-  if public.current_app_role() = 'technician' and s.technician_id is distinct from auth.uid() then raise exception 'E_FORBIDDEN'; end if;
-  if public.current_app_role() not in ('owner', 'technician') then raise exception 'E_FORBIDDEN'; end if;
-  perform public.device_require(s.device_id, 'edit');
-  if s.status <> 'active' then raise exception 'E_BAD_TRANSITION'; end if;
-  if (select status from public.devices where id = s.device_id) = 'awaiting_approval' then raise exception 'E_AWAITING_APPROVAL'; end if;
-  select * into r from public.routes where id = s.route_id;
-  select * into nxt from public.repair_steps where device_id = s.device_id and step_no > s.step_no and status = 'pending' order by step_no limit 1;
-
-  if nxt.id is null and coalesce(r.diagnose, false) then
-    -- الفحص خلص: الفني بيحدد المسار
-    if p_next_route is null then raise exception 'E_ROUTE_REQUIRED'; end if;
-    update public.repair_steps set status = 'done', finished_at = now() where id = s.id;
-    perform public.set_route(s.device_id, p_next_route);
-    select * into nxt from public.repair_steps where device_id = s.device_id and status = 'pending' order by step_no limit 1;
-    return jsonb_build_object('next_step', nxt.id, 'next_tech', nxt.technician_id, 'ready', false);
-  end if;
-
-  if nxt.id is null then
-    -- آخر خطوة: الفحص النهائي بنفس قائمة الفحص السريع
-    if p_check is null or jsonb_typeof(p_check) <> 'object' or p_check = '{}'::jsonb then raise exception 'E_FINAL_CHECK_REQUIRED'; end if;
-    select id into ck from public.device_checks where device_id = s.device_id and stage = 'delivery' and deleted_at is null;
-    if ck is null then
-      insert into public.device_checks(id, shop_id, device_id, stage, items) values (gen_random_uuid(), s.shop_id, s.device_id, 'delivery', p_check);
-    else
-      update public.device_checks set items = p_check where id = ck;
-    end if;
-    update public.repair_steps set status = 'done', finished_at = now() where id = s.id;
-    perform public.walk_status(s.device_id, 'ready');
-    return jsonb_build_object('next_step', null, 'ready', true);
-  end if;
-
-  update public.repair_steps set status = 'done', finished_at = now() where id = s.id;
-  if nxt.technician_id is null then
-    update public.repair_steps set technician_id = public.pick_technician(s.device_id, nxt.specialty_id) where id = nxt.id returning * into nxt;
-  end if;
-  return jsonb_build_object('next_step', nxt.id, 'next_tech', nxt.technician_id, 'ready', false);
-end $$;
-
--- reassign_step: (src: 0070_perm_matrix.sql) + الفني لازم يكون في فرع الجهاز
-create or replace function public.reassign_step(p_step uuid, p_tech uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare s public.repair_steps;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  select * into s from public.repair_steps where id = p_step and shop_id = public.current_shop_id() for update;
-  if not found or s.status not in ('pending', 'active') then raise exception 'E_NOT_FOUND'; end if;
-  perform public.device_require(s.device_id, 'edit');
-  if p_tech is not null and not exists (select 1 from public.profiles where id = p_tech and shop_id = s.shop_id and role = 'technician' and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
-  if p_tech is not null and not public.tech_in_branch(p_tech, (select branch_id from public.devices where id = s.device_id)) then raise exception 'E_TECH_BRANCH'; end if;
-  update public.repair_steps set technician_id = p_tech, status = case when status = 'active' then 'pending' else status end, started_at = null where id = s.id;
-end $$;
-
--- record_payment: (src: 0036_roles.sql) + جهاز يوصله الموظف بس
-create or replace function public.record_payment(p_id uuid, p_customer uuid, p_cashbox uuid, p_amount bigint, p_device uuid default null, p_method text default null, p_note text default null)
-returns uuid
-language plpgsql security definer set search_path = public as $$
-declare
-  cb public.accounts;
-  e uuid;
-  dev public.devices;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  perform public.perm_require('cashbox', 'add');
-  e := public.ledger_idem(p_id);
-  if e is not null then return e; end if;
-  perform public.ledger_amount(p_amount);
-  cb := public.ledger_cashbox(p_cashbox);
-  if not exists (select 1 from public.customers where id = p_customer and shop_id = cb.shop_id and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
-  if p_device is not null then
-    select * into dev from public.devices where id = p_device and shop_id = cb.shop_id and deleted_at is null;
-    if not found or dev.customer_id <> p_customer then raise exception 'E_CROSS_SHOP'; end if;
-    -- أو كان في فرعي واتنقل: كاش اتحصّل أوفلاين قبل النقل لازم يتسجل
-    if public.device_reach(p_device) is not true and not exists (
-        select 1 from public.audit_log l where l.shop_id = cb.shop_id and l.entity = 'devices' and l.entity_id = p_device and l.action = 'device_receive' and public.can_branch((l.before ->> 'branch')::uuid)) then
-      raise exception 'E_FORBIDDEN';
-    end if;
-  end if;
-  e := public.ledger_post('payment', p_id, p_note, jsonb_build_array(
-    public.ledger_line(cb.id, p_amount, 0),
-    public.ledger_line(public.ledger_acc('ar'), 0, p_amount, 'customer', p_customer)
-  ), p_device, p_id);
-  insert into public.payments(id, shop_id, customer_id, device_id, cashbox_id, method, amount, entry_id, created_by)
-  values (p_id, cb.shop_id, p_customer, p_device, cb.id, coalesce(p_method, cb.method), p_amount, e, auth.uid());
-  return e;
-end $$;
-
--- receive_device: (src: 0070_perm_matrix.sql) + الخطوات المفتوحة بتتوزع على فنيين الفرع الجديد
-create or replace function public.receive_device(p_device uuid) returns void
-language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); d public.devices;
-begin
-  perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
-  if public.has_perm('devices', 'edit') is not true then raise exception 'E_FORBIDDEN'; end if;
-  select * into d from public.devices where id = p_device and shop_id = s and deleted_at is null for update;
-  if not found or d.transfer_to is null then raise exception 'E_NOT_FOUND'; end if;
-  if not public.can_branch(d.transfer_to) then raise exception 'E_FORBIDDEN'; end if;
-  perform set_config('app.device_move', 'on', true);
-  update public.devices set branch_id = d.transfer_to, transfer_to = null, transfer_at = null, transfer_by = null where id = d.id;
-  perform set_config('app.device_move', 'off', true);
-  update public.repair_steps st set technician_id = public.pick_technician(d.id, st.specialty_id), status = 'pending', started_at = null
-  where st.device_id = d.id and st.status in ('pending', 'active') and st.technician_id is not null and not public.tech_in_branch(st.technician_id, d.transfer_to);
-  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
-  values (s, auth.uid(), 'device_receive', 'devices', d.id, jsonb_build_object('branch', d.branch_id), jsonb_build_object('branch', d.transfer_to));
-end $$;
-
--- tg_device_warranty_tech: (src: 0014_technicians.sql) + الفني لازم يكون لسه في فرع الجهاز، وإلا توزيع جديد
-create or replace function public.tg_device_warranty_tech() returns trigger
-language plpgsql security definer set search_path = public as $$
-declare t uuid; sp uuid; n int;
-begin
-  if new.status = 'warranty_return' and old.status is distinct from 'warranty_return' then
-    select s.technician_id, s.specialty_id into t, sp from public.repair_steps s
-     where s.device_id = new.id and s.status = 'done' and s.technician_id is not null order by s.step_no desc limit 1;
-    if t is not null and not public.tech_in_branch(t, new.branch_id) then t := public.pick_technician(new.id, sp); end if;
-    perform set_config('warsha.routing', 'on', true);
-    update public.devices set priority = 'warranty', return_of_tech = t where id = new.id;
-    perform set_config('warsha.routing', 'off', true);
-    if sp is not null then
-      select coalesce(max(step_no), 0) into n from public.repair_steps where device_id = new.id;
-      insert into public.repair_steps(shop_id, device_id, route_id, step_no, specialty_id, technician_id)
-      values (new.shop_id, new.id, new.route_id, n + 1, sp, t);
-    end if;
-  end if;
-  return null;
-end $$;
-
--- device_tech_name: (src: 0014_technicians.sql) + جهاز يوصله الموظف بس
-create or replace function public.device_tech_name(p_device uuid) returns text
-language sql stable security definer set search_path = public as $$
-  select split_part(p.full_name, ' ', 1) from public.repair_steps s join public.profiles p on p.id = s.technician_id
-  where s.device_id = p_device and s.shop_id = public.current_shop_id() and public.device_reach(p_device) and s.status in ('active', 'pending', 'done')
-  order by case s.status when 'active' then 0 when 'pending' then 1 else 2 end, s.step_no desc limit 1
-$$;
-$m0071$;
-  insert into public.app_migrations(version, how) values ('0071_device_children.sql', 'applied');
-  raise notice 'applied %', '0071_device_children.sql';
-end $run$;
-commit;
-
-select 5 as part, 6 as parts, count(*) as applied_files, max(version) as latest,
-  case when '0071_device_children.sql' in (select version from public.app_migrations) then
+select 5 as part, 7 as parts, count(*) as applied_files, max(version) as latest,
+  case when '0069_sale_errors.sql' in (select version from public.app_migrations) then
     'الجزء 5 خلص. اللي بعده: upgrade_part_6.sql'
   else 'فيه ملف ما اتطبقش' end as status
 from public.app_migrations;
