@@ -9,6 +9,7 @@ import { daysSince } from '../../lib/dates';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
 import { useMe } from '../../app/auth';
+import { usePerms } from '../../app/perms';
 import { useBranch } from '../../app/branch';
 import { rpc, useAccountName } from '../../app/ledgerApi';
 import { PeriodFilter, usePeriod } from '../../app/finance/PeriodFilter';
@@ -44,9 +45,9 @@ export function BalancesScreen() {
   const { kind: k = 'customers' } = useParams();
   const { t } = useTranslation();
   const f = useFormat();
-  const { shop, profile } = useMe();
+  const { shop } = useMe();
   const accName = useAccountName();
-  const kinds = balanceKinds(profile.role === 'owner');
+  const kinds = balanceKinds(usePerms().grant('private_finance'));
   const kind = (kinds.includes(k as BalKind) ? k : 'customers') as BalKind;
   const br = useBranch();
   const { data, error, loading, reload } = useLoad(async () => {
@@ -187,6 +188,7 @@ export function ProfitScreen() {
   const { shop } = useMe();
   const accName = useAccountName();
   const br = useBranch();
+  const full = usePerms().grant('private_finance');
   const { period, range, set } = usePeriod();
   const { data, error, loading, reload } = useLoad(
     () => rpc<{ account_id: string; code: string | null; name: string | null; type: 'revenue' | 'expense'; amount: number }[]>('pl_breakdown', { p_from: range.from.toISOString(), p_to: range.to.toISOString(), p_branch: br.filter }),
@@ -211,7 +213,7 @@ export function ProfitScreen() {
             disabled={!data}
             table={() => ({
               title: t('fin.kpi.profit'),
-              meta: [periodLine, `${t('fin.kpi.profit')}: ${f.money(sum(rev) - sum(exp))} ${cur}`],
+              meta: [periodLine, ...(full ? [] : [t('fin.privateNote')]), `${t('fin.kpi.profit')}: ${f.money(sum(rev) - sum(exp))} ${cur}`],
               columns: [{ header: t('export.cols.kind') }, { header: t('export.cols.item') }, { header: t('fin.cols.amount'), type: 'money' }],
               rows: [...rev.map((r) => [t('fin.revenue'), accName(r), r.amount]), ...exp.map((r) => [t('fin.expenses'), accName(r), r.amount])],
             })}
@@ -227,6 +229,7 @@ export function ProfitScreen() {
         <Skeleton className="h-40 w-full" />
       ) : (
         <div className="flex flex-col gap-4">
+          {!full && <p className=" text-xs text-fg-3" data-testid="private-note">{t('fin.privateNote')}</p>}
           <PlBlock periodLine={periodLine} title={t('fin.revenue')} items={rev} tone="text-ok" testid="pl-export-revenue" />
           <PlBlock periodLine={periodLine} title={t('fin.expenses')} items={exp} tone="text-danger" testid="pl-export-expenses" />
           <Panel className="flex items-center justify-between p-4">

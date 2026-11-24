@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useBackground } from '../../app/stage';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../../app/auth';
+import { usePerms } from '../../app/perms';
 import { useLoad, must } from '../../app/useLoad';
 import { loadLink } from '../../app/finance/PartyLink';
 import { rpc, useAccountName, type DayCash, type Position, type Statement, type StatementKind } from '../../app/ledgerApi';
@@ -553,6 +554,7 @@ export function DayReportPrint() {
   const { t } = useTranslation();
   const f = useFormat();
   const accName = useAccountName();
+  const full = usePerms().grant('private_finance');
   const { data } = useLoad(async () => {
     const from = cairoDayStart(day).toISOString();
     const to = cairoDayEnd(day).toISOString();
@@ -576,6 +578,7 @@ export function DayReportPrint() {
       {data && (
         <>
           <PrintHeader title={t('fin.dayReport')} sub={f.dateLong(cairoDayStart(day))} />
+          {!full && <p className="mb-2 text-xs">{t('fin.privateNote')}</p>}
           <div className="grid grid-cols-2 gap-6">
             <section>
               <h2 className="mb-1 border-b border-black font-semibold">{t('fin.revenue')}</h2>
@@ -653,7 +656,7 @@ export function DayReportPrint() {
                     <ul className="mt-1 text-xs">
                       {c.entries.map((e) => (
                         <li key={e.entry_id + (e.in ? 'd' : 'c')} className={cn('flex justify-between gap-2', e.cancelled && 'line-through')}>
-                          <a href={`#/finance/entry/${e.entry_id}`} className="underline">
+                          <a href={e.source_type === 'private' ? undefined : `#/finance/entry/${e.entry_id}`} className={e.source_type === 'private' ? undefined : 'underline'}>
                             #{e.entry_no} · {t(`fin.src.${e.source_type}`, { defaultValue: e.source_type })}
                           </a>
                           <span className="font-mono" dir="ltr">

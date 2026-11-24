@@ -9,7 +9,7 @@ export function ReadyReports({ query, lastDay }: { query: string; lastDay: strin
   const { t } = useTranslation();
   const { grant } = usePerms();
   // P: الموظف بيشوف التقارير اللي ليه صلاحيتها بس (المرتبات والشركاء لصاحب المحل)
-  const allow: Record<string, boolean> = { employees: grant('staff'), partners: grant('partners'), inventory: grant('reports'), tech: grant('reports') };
+  const allow: Record<string, boolean> = { employees: grant('private_finance'), partners: grant('partners'), inventory: grant('reports'), tech: grant('reports') };
   const all: { k: string; to: string; icon: LucideIcon }[] = [
     { k: 'day', to: `/print/day/${lastDay}`, icon: CalendarDays },
     { k: 'pl', to: `/finance/pl${query}`, icon: Receipt },
