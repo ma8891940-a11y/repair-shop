@@ -2,6 +2,8 @@
  * U5: قوالب الطباعة. القالب = خانات مرتبة (تظهر أو لأ، وحجم الخط، والمحاذاة، والعريض، ونص حر).
  * القالب بيتحكم في الشكل بس: الأرقام والبيانات دايمًا من البرنامج.
  */
+import { FONTS, PT } from './printLayout';
+
 export type TemplateDoc = 'receipt' | 'receipt-a4' | 'invoice' | 'statement' | 'voucher' | 'sale' | 'barcode';
 export type BlockKey =
   | 'header' | 'title' | 'orderNo' | 'date' | 'customer' | 'phone' | 'device' | 'imei' | 'issue'
@@ -23,6 +25,9 @@ export interface Block {
   size: Size;
   align: Align;
   bold: boolean;
+  /** 50.2: خط وحجم اختياريين (الطباعة بتستخدمهم في 50.6) */
+  font?: (typeof FONTS)[number];
+  pt?: number;
   /** نص حر (للخانة "text" بس) */
   text?: string;
 }
@@ -71,6 +76,8 @@ export function normalizeBlocks(doc: TemplateDoc, raw: unknown): Block[] {
       size: o.size === 'sm' || o.size === 'md' || o.size === 'lg' ? o.size : d.size,
       align: o.align === 'start' || o.align === 'center' || o.align === 'end' ? o.align : d.align,
       bold: typeof o.bold === 'boolean' ? o.bold : d.bold,
+      ...((FONTS as readonly unknown[]).includes(o.font) ? { font: o.font as Block['font'] } : {}),
+      ...(Number.isInteger(o.pt) && (o.pt as number) >= PT.min && (o.pt as number) <= PT.max ? { pt: o.pt as number } : {}),
       ...(key === 'text' ? { text: typeof o.text === 'string' ? o.text.slice(0, 300) : '' } : {}),
     });
   }
