@@ -1,9 +1,9 @@
--- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 6 من 6 (الملفات 0072_sale_line_return.sql لـ 0076_debt_aging.sql).
+-- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 6 من 6 (الملفات 0072_sale_line_return.sql لـ 0077_period_lock.sql).
 -- بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك.
 -- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql ثم upgrade_part_5.sql ثم upgrade_part_6.sql.
 -- آمن تشغّل أي جزء أكتر من مرة: اللي اتطبق قبل كده بيتخطى. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّل نفس الجزء تاني.
 -- لو لقى ملف أحدث موجود وأقدم منه ناقص بيقف (E_UPGRADE_GAP). ولو جزء قبله لسه ما اتطبقش بيقف (E_UPGRADE_ORDER). الاتنين من غير تغيير.
--- ملفات الجزء ده: 0072_sale_line_return.sql, 0073_shop_extras.sql, 0074_idem_cheque_plan.sql, 0075_delete_by_section.sql, 0076_debt_aging.sql
+-- ملفات الجزء ده: 0072_sale_line_return.sql, 0073_shop_extras.sql, 0074_idem_cheque_plan.sql, 0075_delete_by_section.sql, 0076_debt_aging.sql, 0077_period_lock.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -241,9 +241,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0076_debt_aging.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'debt_aging' and position('declare s uuid := public.current_shop_id(); today date := (now() at time zone ''Africa/Cairo'')::date; d date := coalesce(p_as_of, today);' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0076_debt_aging.sql', 'found: function debt_aging');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0077_period_lock.sql') and (exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'shops' and column_name = 'books_locked_until')) then
+    insert into public.app_migrations(version, how) values ('0077_period_lock.sql', 'found: column shops.books_locked_until');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -251,8 +254,8 @@ end $chk$;
 -- 2) الأجزاء اللي قبل الجزء ده لازم تكون اتطبقت
 do $ord$
 declare
-  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql'];
-  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6];
+  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql', '0077_period_lock.sql'];
+  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6];
   miss text;
 begin
   select min(v) into miss from unnest(files) v where v < '0072_sale_line_return.sql' and v not in (select version from public.app_migrations);
@@ -966,8 +969,78 @@ $m0076$;
 end $run$;
 commit;
 
+-- ============================== 0077_period_lock.sql ==============================
+begin;
+do $run$ begin
+  if exists (select 1 from public.app_migrations where version = '0077_period_lock.sql') then return; end if;
+  execute $m0077$
+-- 0077: (6) قفل الفترة المحاسبية: لحد يوم معيّن (بتوقيت القاهرة) ممنوع قيد بتاريخ جوه الفترة، وممنوع إلغاء أو تعديل قيد جواها.
+-- - صاحب المحل بس بيقفل ويفتح. الفتح (أو تأخير القفل لورا) بسبب وكلمة السر الرئيسية لو متحددة، والاتنين في سجل النشاط.
+-- - التقفيل لحد امبارح بالكتير: شغل النهارده ما بيقفش. ومرتجع النهارده لبيع قديم قيد جديد بتاريخ النهارده، فمسموح.
+-- - الحماية على الجدول نفسه، فأي دالة (حتى اللي هتتعمل بعدين) ممنوعة.
+alter table public.shops add column books_locked_until date;
+
+create or replace function public.tg_period_lock() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare d date := (new.occurred_at at time zone 'Africa/Cairo')::date; lck date;
+begin
+  if public.restoring() then return new; end if;
+  -- الشغل العادي (تاريخه النهارده ومش عكس) ما بيلمسش القفل
+  if new.reverses_id is null and d >= (now() at time zone 'Africa/Cairo')::date then return new; end if;
+  if new.reverses_id is not null then
+    d := least(d, (select (o.occurred_at at time zone 'Africa/Cairo')::date from public.journal_entries o where o.id = new.reverses_id));
+  end if;
+  -- for share: قفل بيتسجل في نفس اللحظة بيستنى القيد ده، والعكس
+  select sh.books_locked_until into lck from public.shops sh where sh.id = new.shop_id for share;
+  if lck is not null and d <= lck then raise exception 'E_PERIOD_LOCKED'; end if;
+  return new;
+end $$;
+create trigger c_period_lock before insert on public.journal_entries for each row execute function public.tg_period_lock();
+
+-- التاريخ بيتغيّر من set_period_lock بس (صاحب المحل بيعدّل صف المحل مباشرة في الإعدادات)
+create or replace function public.tg_shop_period_guard() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if new.books_locked_until is distinct from old.books_locked_until and coalesce(current_setting('warsha.period', true), '') <> 'on' then
+    raise exception 'E_FORBIDDEN';
+  end if;
+  return new;
+end $$;
+create trigger zy_shop_period_guard before update on public.shops for each row execute function public.tg_shop_period_guard();
+
+-- p_until = آخر يوم مقفول. null = فتح كل حاجة. بيرجّع التاريخ بعد التعديل
+create or replace function public.set_period_lock(p_until date, p_reason text default null) returns date
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); old date; opening boolean;
+begin
+  perform public.ledger_require(array['owner']::public.app_role[]);
+  select sh.books_locked_until into old from public.shops sh where sh.id = s for update;
+  if not found then raise exception 'E_FORBIDDEN'; end if;
+  if p_until is not distinct from old then return old; end if;
+  if p_until >= (now() at time zone 'Africa/Cairo')::date then raise exception 'E_PERIOD_DATE'; end if;
+  opening := old is not null and (p_until is null or p_until < old);
+  if opening then
+    perform public.master_require();
+    if nullif(trim(p_reason), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
+  end if;
+  perform set_config('warsha.period', 'on', true);
+  update public.shops set books_locked_until = p_until where id = s;
+  perform set_config('warsha.period', '', true);
+  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
+  values (s, auth.uid(), case when opening then 'period_unlock' else 'period_lock' end, 'shops', s,
+          jsonb_build_object('until', old), jsonb_build_object('until', p_until, 'reason', left(nullif(trim(p_reason), ''), 300)));
+  return p_until;
+end $$;
+revoke execute on function public.set_period_lock(date, text) from public, anon;
+grant execute on function public.set_period_lock(date, text) to authenticated;
+$m0077$;
+  insert into public.app_migrations(version, how) values ('0077_period_lock.sql', 'applied');
+  raise notice 'applied %', '0077_period_lock.sql';
+end $run$;
+commit;
+
 select 6 as part, 6 as parts, count(*) as applied_files, max(version) as latest,
-  case when '0076_debt_aging.sql' in (select version from public.app_migrations) then
+  case when '0077_period_lock.sql' in (select version from public.app_migrations) then
     'خلص: المشروع على آخر نسخة'
   else 'فيه ملف ما اتطبقش' end as status
 from public.app_migrations;
