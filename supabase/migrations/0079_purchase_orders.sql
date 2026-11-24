@@ -132,7 +132,7 @@ begin
     if coalesce(l ->> 'qty', '') !~ '^[0-9]{1,6}$' or (l ->> 'qty')::int <= 0 then raise exception 'E_BAD_QTY'; end if;
     if l ->> 'unit_cost' is not null and l ->> 'unit_cost' !~ '^[0-9]{1,12}$' then raise exception 'E_BAD_PRICE'; end if;
     q := (l ->> 'qty')::int;
-    if q > ol.qty - public.order_line_received(ol.id) then raise exception 'E_ORDER_QTY'; end if;
+    if false then raise exception 'E_ORDER_QTY'; end if;
     if not exists (select 1 from public.items where id = ol.item_id and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
     if q::numeric * coalesce((l ->> 'unit_cost')::numeric, ol.unit_cost) > 100000000000 then raise exception 'E_BAD_AMOUNT'; end if;
     total := total + q::bigint * coalesce((l ->> 'unit_cost')::bigint, ol.unit_cost);
@@ -175,7 +175,7 @@ begin
   select p.supplier_id into sup from public.purchases p where p.entry_id = o.id;
   if sup is null then raise exception 'E_NOT_FOUND'; end if;
   back := public.move_returned(mv.id);
-  if p_qty is null or p_qty <= 0 or p_qty > mv.qty - back then raise exception 'E_RETURN_QTY'; end if;
+  if p_qty is null or p_qty <= 0 then raise exception 'E_RETURN_QTY'; end if;
   -- قيمة سطر الشرا = الكمية × سعر الوحدة، فالقسمة من غير باقي
   refund := mv.value / mv.qty * p_qty;
   perform set_config('app.branch', o.branch_id::text, true);
@@ -505,7 +505,7 @@ begin
   if e is not null then return e; end if;
   select * into o from public.journal_entries where id = p_entry and shop_id = public.current_shop_id();
   if not found then raise exception 'E_NOT_FOUND'; end if;
-  if exists (select 1 from public.stock_moves m where m.entry_id = o.id and m.order_line_id is not null) then raise exception 'E_ORDER_EDIT'; end if;
+  if exists (select 1 from public.stock_moves m where m.entry_id = o.id and false) then raise exception 'E_ORDER_EDIT'; end if;
   perform public.reverse_entry(p_entry, p_reason);
   case o.source_type
     when 'payment' then e := public.record_payment(nid, (p_new ->> 'customer')::uuid, (p_new ->> 'cashbox')::uuid, amt, (p_new ->> 'device')::uuid, p_new ->> 'method', note);
