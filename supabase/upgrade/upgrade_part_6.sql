@@ -1,9 +1,9 @@
--- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 6 من 6 (الملفات 0073_shop_extras.sql لـ 0074_idem_cheque_plan.sql).
+-- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 6 من 6 (الملفات 0073_shop_extras.sql لـ 0075_delete_by_section.sql).
 -- بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك.
 -- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql ثم upgrade_part_5.sql ثم upgrade_part_6.sql.
 -- آمن تشغّل أي جزء أكتر من مرة: اللي اتطبق قبل كده بيتخطى. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّل نفس الجزء تاني.
 -- لو لقى ملف أحدث موجود وأقدم منه ناقص بيقف (E_UPGRADE_GAP). ولو جزء قبله لسه ما اتطبقش بيقف (E_UPGRADE_ORDER). الاتنين من غير تغيير.
--- ملفات الجزء ده: 0073_shop_extras.sql, 0074_idem_cheque_plan.sql
+-- ملفات الجزء ده: 0073_shop_extras.sql, 0074_idem_cheque_plan.sql, 0075_delete_by_section.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -235,9 +235,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0074_idem_cheque_plan.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'cheque_receive' and position('perform public.ledger_idem(p_id);' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0074_idem_cheque_plan.sql', 'found: function cheque_receive');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0075_delete_by_section.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'can_delete' and position('select public.current_app_role() in (''owner'', ''reception'')' in p.prosrc) > 0)) then
+    insert into public.app_migrations(version, how) values ('0075_delete_by_section.sql', 'found: function can_delete');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -245,8 +248,8 @@ end $chk$;
 -- 2) الأجزاء اللي قبل الجزء ده لازم تكون اتطبقت
 do $ord$
 declare
-  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql'];
-  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6];
+  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql'];
+  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6];
   miss text;
 begin
   select min(v) into miss from unnest(files) v where v < '0073_shop_extras.sql' and v not in (select version from public.app_migrations);
@@ -534,8 +537,145 @@ $m0074$;
 end $run$;
 commit;
 
+-- ============================== 0075_delete_by_section.sql ==============================
+begin;
+do $run$ begin
+  if exists (select 1 from public.app_migrations where version = '0075_delete_by_section.sql') then return; end if;
+  execute $m0075$
+-- 0075: قرارات صاحب المشروع (2026-11-24):
+-- 1) "يحذف" في قسم = إلغاء وتعديل وحذف حاجة القسم ده بس (كان أي "يحذف" بيفتح كل حاجة).
+--    إذن "يصحح ويحذف" الكامل (profiles.can_correct) اللي صاحب المحل بيديه لموظف بعينه زي ما هو.
+-- 2) المرتجع من غير فاتورة لصاحب المحل بس.
+
+create or replace function public.can_delete(p_section text) returns boolean
+language sql stable security definer set search_path = public as $$
+  -- الفني ما يلغيش ولا يحذف (القيود فيها مبالغ)، حتى لو متعلّمله
+  select public.current_app_role() in ('owner', 'reception')
+     and (coalesce(public.has_perm(p_section, 'delete'), false)
+          or coalesce((select p.can_correct from public.profiles p where p.id = auth.uid() and p.deleted_at is null), false))
+$$;
+-- القيد بتاع أنهي قسم (اللي مش مذكور: الوضع المالي)
+create or replace function public.entry_section(p_source text) returns text
+language sql immutable as $$
+  select case
+    when p_source in ('sale', 'sale_return') then 'sales'
+    when p_source in ('payment', 'transfer', 'drawer_close') then 'cashbox'
+    when p_source = 'expense' then 'expenses'
+    when p_source in ('purchase', 'supplier_payment', 'supplier_return') then 'purchases'
+    when p_source in ('write_off', 'stock_transfer') then 'inventory'
+    when p_source in ('part_use', 'delivery') then 'devices'
+    else 'finance' end
+$$;
+revoke execute on function public.can_delete(text), public.entry_section(text) from public, anon, authenticated;
+
+-- entry_require: (src: 0070_perm_matrix.sql) + قسم القيد
+create or replace function public.entry_require(p_entry uuid) returns void
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if public.current_app_role() = 'owner' then return; end if;
+  if public.can_delete((select public.entry_section(e.source_type) from public.journal_entries e where e.id = p_entry)) is not true then raise exception 'E_FORBIDDEN'; end if;
+  if exists (select 1 from public.journal_entries e where e.id = p_entry and (e.source_type = 'vat_payment' or not public.can_branch(e.branch_id)))
+     or exists (select 1 from public.journal_lines l join public.accounts a on a.id = l.account_id where l.entry_id = p_entry
+                and (a.kind in ('advances', 'salaries', 'partner_capital', 'partner_current', 'capital', 'drawings') or (a.kind = 'cash' and not public.can_branch(a.branch_id))))
+     or exists (select 1 from public.stock_moves m where m.entry_id = p_entry and not public.can_branch(m.branch_id)) then
+    raise exception 'E_FORBIDDEN';
+  end if;
+end $$;
+
+-- soft_delete: (src: 0070_perm_matrix.sql) + قسم الحاجة اللي بتتحذف
+create or replace function public.soft_delete(p_kind text, p_id uuid, p_reason text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); before jsonb; tbl text;
+begin
+  if public.current_app_role() is null or not public.can_correct() then raise exception 'E_FORBIDDEN'; end if;
+  if public.can_delete(case p_kind when 'customer' then 'customers' when 'supplier' then 'purchases' when 'item' then 'inventory' when 'device' then 'devices' end) is not true then raise exception 'E_FORBIDDEN'; end if;
+  -- C3: كلمة السر الرئيسية (لو صاحب المحل حددها)
+  perform public.master_require();
+  if p_kind = 'customer' then
+    tbl := 'customers';
+    select to_jsonb(c) into before from public.customers c where id = p_id and shop_id = s and deleted_at is null for update;
+    if before is null then raise exception 'E_NOT_FOUND'; end if;
+    if exists (select 1 from public.journal_lines l where l.party_id = p_id and l.shop_id = s group by l.account_id having sum(l.debit - l.credit) <> 0) then raise exception 'E_HAS_BALANCE'; end if;
+    if exists (select 1 from public.devices d where d.customer_id = p_id and d.deleted_at is null and d.status not in ('delivered', 'unrepairable')) then raise exception 'E_HAS_OPEN_DEVICES'; end if;
+  elsif p_kind = 'supplier' then
+    tbl := 'suppliers';
+    select to_jsonb(x) into before from public.suppliers x where id = p_id and shop_id = s and deleted_at is null for update;
+    if before is null then raise exception 'E_NOT_FOUND'; end if;
+    if exists (select 1 from public.journal_lines l where l.party_id = p_id and l.shop_id = s group by l.account_id having sum(l.debit - l.credit) <> 0) then raise exception 'E_HAS_BALANCE'; end if;
+  elsif p_kind = 'item' then
+    tbl := 'items';
+    select to_jsonb(x) into before from public.items x where id = p_id and shop_id = s and deleted_at is null for update;
+    if before is null then raise exception 'E_NOT_FOUND'; end if;
+    if (select coalesce(sum(qty), 0) <> 0 or coalesce(sum(value), 0) <> 0 from public.stock_moves where item_id = p_id) then raise exception 'E_HAS_STOCK'; end if;
+  elsif p_kind = 'device' then
+    tbl := 'devices';
+    select to_jsonb(x) into before from public.devices x where id = p_id and shop_id = s and deleted_at is null for update;
+    if before is null then raise exception 'E_NOT_FOUND'; end if;
+    if public.current_app_role() <> 'owner' and not public.can_branch((before ->> 'branch_id')::uuid) then raise exception 'E_FORBIDDEN'; end if;
+    if exists (select 1 from public.journal_entries e where e.device_id = p_id and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id) and e.source_type not in ('reversal', 'cost_adjust')) then
+      raise exception 'E_HAS_MONEY';
+    end if;
+  else
+    raise exception 'E_BAD_INPUT';
+  end if;
+  perform set_config('warsha.system', 'on', true);
+  execute format('update public.%I set deleted_at = now(), updated_at = now() where id = $1', tbl) using p_id;
+  perform set_config('warsha.system', 'off', true);
+  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, before, after)
+  values (s, auth.uid(), 'soft_delete', tbl, p_id, before, jsonb_build_object('reason', nullif(trim(p_reason), '')));
+end $$;
+
+-- sale_return: (src: 0062_vat.sql) + صاحب المحل بس
+create or replace function public.sale_return(p_id uuid, p_item uuid, p_qty integer, p_refund bigint, p_cashbox uuid default null, p_customer uuid default null, p_restock boolean default true, p_reason text default null) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); e uuid; it public.items; cost bigint; cb uuid; rev uuid; v bigint;
+begin
+  perform public.ledger_require(array['owner']::public.app_role[]);
+  perform public.perm_require('sales', 'edit');
+  e := public.ledger_idem(p_id);
+  if e is not null then return e; end if;
+  if nullif(trim(p_reason), '') is null then raise exception 'E_REASON_REQUIRED'; end if;
+  if p_qty is null or p_qty <= 0 or p_refund is null or p_refund < 0 then raise exception 'E_BAD_AMOUNT'; end if;
+  select * into it from public.items where id = p_item and shop_id = s and deleted_at is null for update;
+  if not found then raise exception 'E_NOT_FOUND'; end if;
+  if p_cashbox is null and p_refund > 0 and p_customer is null then raise exception 'E_BAD_INPUT'; end if;
+  if p_customer is not null and not exists (select 1 from public.customers where id = p_customer and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if p_cashbox is not null then cb := (public.ledger_cashbox(p_cashbox)).id; end if;
+  rev := public.ledger_acc(case when it.kind = 'part' then 'rev_parts' else 'rev_accessories' end);
+  cost := public.item_last_cost(p_item) * p_qty;
+  if p_refund = 0 and (cost = 0 or not p_restock) then raise exception 'E_BAD_AMOUNT'; end if;
+  e := gen_random_uuid();
+  insert into public.journal_entries(id, shop_id, source_type, source_id, memo, idem_key, created_by)
+  values (e, s, 'sale_return', p_item, trim(p_reason), p_id, auth.uid());
+  if p_refund > 0 then
+    -- R5: المبلغ المرتجع شامل الضريبة: الضريبة بترجع من حساب الضريبة المستحقة، والباقي من الإيراد
+    v := public.vat_of(p_refund, public.vat_bp(s));
+    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, rev, p_refund - v, 0);
+    if v > 0 then insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, public.ledger_acc('vat_payable'), v, 0); end if;
+    if cb is not null then
+      insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values (s, e, cb, 0, p_refund);
+    else
+      insert into public.journal_lines(shop_id, entry_id, account_id, party_type, party_id, debit, credit) values (s, e, public.ledger_acc('ar'), 'customer', p_customer, 0, p_refund);
+    end if;
+  end if;
+  -- القطعة السليمة بترجع المخزون بتكلفتها (والتكلفة بتخرج من تكلفة البضاعة). البايظة ما بترجعش، وتكلفتها فضلت مصروف.
+  if p_restock and cost > 0 then
+    insert into public.journal_lines(shop_id, entry_id, account_id, debit, credit) values
+      (s, e, public.ledger_acc('inventory'), cost, 0), (s, e, public.ledger_acc('cogs'), 0, cost);
+    insert into public.stock_moves(shop_id, item_id, entry_id, qty, value) values (s, p_item, e, p_qty, cost);
+  elsif p_restock then
+    insert into public.stock_moves(shop_id, item_id, entry_id, qty, value) values (s, p_item, e, p_qty, 0);
+  end if;
+  return e;
+end $$;
+$m0075$;
+  insert into public.app_migrations(version, how) values ('0075_delete_by_section.sql', 'applied');
+  raise notice 'applied %', '0075_delete_by_section.sql';
+end $run$;
+commit;
+
 select 6 as part, 6 as parts, count(*) as applied_files, max(version) as latest,
-  case when '0074_idem_cheque_plan.sql' in (select version from public.app_migrations) then
+  case when '0075_delete_by_section.sql' in (select version from public.app_migrations) then
     'خلص: المشروع على آخر نسخة'
   else 'فيه ملف ما اتطبقش' end as status
 from public.app_migrations;

@@ -5,8 +5,10 @@
 
 create or replace function public.can_delete(p_section text) returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce(public.has_perm(p_section, 'delete'), false)
-      or coalesce((select p.can_correct from public.profiles p where p.id = auth.uid() and p.deleted_at is null), false)
+  -- الفني ما يلغيش ولا يحذف (القيود فيها مبالغ)، حتى لو متعلّمله
+  select public.current_app_role() in ('owner', 'reception')
+     and (coalesce(public.has_perm(p_section, 'delete'), false)
+          or coalesce((select p.can_correct from public.profiles p where p.id = auth.uid() and p.deleted_at is null), false))
 $$;
 -- القيد بتاع أنهي قسم (اللي مش مذكور: الوضع المالي)
 create or replace function public.entry_section(p_source text) returns text

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
 import { cleanupAfterFile } from './purge';
+import { entrySection } from '../../src/lib/entrySection';
 
 cleanupAfterFile();
 const url = process.env.TEST_DATABASE_URL;
@@ -485,14 +486,32 @@ d('(34) مصفوفة الصلاحيات', () => {
       if (e) wrong.push(`إذن كامل: ${sec} ${sql}: ${e}`);
     }
     await as(O, `select set_can_correct($1, false)`, [U.reception]);
+    // الفني: ولا بصلاحية القسم ولا بالإذن الكامل
+    await as(O, `select set_staff_override($1, 'customers', 'delete', true)`, [U.technician]);
+    await as(O, `select set_staff_override($1, 'expenses', 'delete', true)`, [U.technician]);
+    await as(O, `select set_can_correct($1, true)`, [U.technician]);
+    for (const [sec, sql, p] of acts) {
+      const e = await tryAs(U.technician, sql, p);
+      if (e === null || !/E_FORBIDDEN/.test(e)) wrong.push(`فني: ${sec} ${sql}: ${e ?? 'اتنفذت'}`);
+    }
+    await as(O, `select set_can_correct($1, false)`, [U.technician]);
+    for (const s of ['customers', 'expenses']) await as(O, `select set_staff_override($1, $2, 'delete', null)`, [U.technician, s]);
     expect(wrong).toEqual([]);
   }, 60_000);
 
+  it('قسم القيد في الواجهة = قسمه في قاعدة البيانات لكل أنواع القيود', async () => {
+    const def = (await admin(`select pg_get_constraintdef(oid) d from pg_constraint where conname = 'journal_entries_source_type_check'`)).rows[0].d as string;
+    const types = [...def.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    expect(types.length).toBeGreaterThan(25);
+    const db2 = (await admin(`select x, entry_section(x) s from unnest($1::text[]) x`, [types])).rows;
+    expect(db2.map((r) => [r.x, r.s])).toEqual(types.map((x) => [x, entrySection(x)]));
+  });
+
   it('رصيد الصنف في الفروع: القيمة (التكلفة) لأصحاب صلاحية المبالغ بس، والفني ما يشوفهاش', async () => {
     const val = async (u: string) => (await as(u, `select value from item_branch_stock($1) where branch_id = $2`, [item, main])).rows[0].value;
-    const full = await val(O);
-    expect(Number(full)).toBeGreaterThan(0);
-    expect(await val(U.branch_manager)).toBe(full);
+    // 20 اشترى − 2 و1 بيع − 1 هالك، وفي اختبار الأقسام: − 1 بيع + 1 شرا − 1 هالك = 15 × 2000
+    expect(await val(O)).toBe('30000');
+    expect(await val(U.branch_manager)).toBe('30000');
     for (const r of [R, T, C] as Role[]) expect(await val(U[r]), r).toBeNull();
   });
 

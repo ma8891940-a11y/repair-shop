@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { PlansPanel } from '../../app/finance/PlansPanel';
-import { entrySection, useCanCorrect } from '../../app/correct';
+import { useCanCorrect } from '../../app/correct';
+import { entrySection } from '../../lib/entrySection';
 import { ArrowLeft, ArrowDownUp, HandCoins, Lock, Pencil, Printer, Search, Undo2, Users, Wallet } from 'lucide-react';
 import { PageHeader, useLiveRefresh } from '../../app/AppShell';
 import { useLoad, must } from '../../app/useLoad';
@@ -53,6 +54,7 @@ export function StatementScreen() {
   const [dir, setDir] = useState<Dir>('all');
   const [op, setOp] = useState<Op | null>(null);
   const [closing, setClosing] = useState(false);
+  const canCorrect = useCanCorrect();
   const [reverse, setReverse] = useState<Move | null>(null);
   const [edit, setEdit] = useState<Move | null>(null);
   const [netting, setNetting] = useState<LinkInfo | null>(null);

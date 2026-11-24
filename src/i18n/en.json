@@ -2246,7 +2246,7 @@
       "load": "Find invoice",
       "errNo": "Enter a valid invoice number",
       "cancelled": "This invoice is cancelled",
-      "legacy": "Old invoice without lines: use \"No invoice\"",
+      "legacy": "Old invoice without lines: the owner returns it with \"No invoice\"",
       "left": "{{n}} left of {{q}}",
       "credit": "Credit sale: the amount comes off the customer's account",
       "total": "Refund to customer",
