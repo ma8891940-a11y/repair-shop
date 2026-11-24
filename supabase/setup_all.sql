@@ -1,7 +1,7 @@
 -- جوالك / Gawalak: إعداد قاعدة البيانات كاملة في خطوة واحدة.
 -- شغّل الملف ده مرة واحدة بس على مشروع Supabase جديد فاضي (SQL Editor ← New query ← الصق ← Run).
 -- الملف ده بيتولد تلقائيًا من supabase/migrations. ما تعدّلوش بإيدك: npm run db:setup-file
--- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql, 0070_perm_matrix.sql, 0071_device_children.sql, 0072_sale_line_return.sql, 0073_shop_extras.sql, 0074_idem_cheque_plan.sql, 0075_delete_by_section.sql, 0076_debt_aging.sql, 0077_period_lock.sql, 0078_accountant_export.sql, 0079_purchase_orders.sql, 0080_stock_count.sql, 0081_repair_invoice.sql, 0082_order_prefix.sql, 0083_print_perm.sql, 0084_party_branch.sql, 0085_finance_branch.sql, 0086_finance_cards.sql, 0087_private_finance.sql
+-- الملفات: 0001_phase1.sql, 0002_storage.sql, 0003_shop_profile_realtime.sql, 0004_error_codes.sql, 0005_device_passcode.sql, 0006_invite_name.sql, 0007_phase2_customer.sql, 0008_ledger.sql, 0009_tracking_guess_limit.sql, 0010_default_cashboxes.sql, 0011_finance_drilldown.sql, 0012_spec_completion.sql, 0013_tracking_ambiguous.sql, 0014_technicians.sql, 0015_offline_backup.sql, 0016_shop_identity.sql, 0017_growth.sql, 0018_account_state.sql, 0019_extras.sql, 0020_admin_paging.sql, 0021_spec_rules.sql, 0022_security_review.sql, 0023_restore.sql, 0024_signout.sql, 0025_integrity.sql, 0026_edit_delete.sql, 0027_inventory.sql, 0028_opening.sql, 0029_partners.sql, 0030_party_links.sql, 0031_partner_capital.sql, 0032_lists.sql, 0033_assistant.sql, 0034_branches.sql, 0035_lists_everywhere.sql, 0036_roles.sql, 0037_item_details.sql, 0038_roles_grant.sql, 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql, 0060_sale_lines.sql, 0061_attendance.sql, 0062_vat.sql, 0063_cheques.sql, 0064_day_report.sql, 0065_cheque_pending.sql, 0066_commission_net.sql, 0067_idem_lock.sql, 0068_stock_adjust.sql, 0069_sale_errors.sql, 0070_perm_matrix.sql, 0071_device_children.sql, 0072_sale_line_return.sql, 0073_shop_extras.sql, 0074_idem_cheque_plan.sql, 0075_delete_by_section.sql, 0076_debt_aging.sql, 0077_period_lock.sql, 0078_accountant_export.sql, 0079_purchase_orders.sql, 0080_stock_count.sql, 0081_repair_invoice.sql, 0082_order_prefix.sql, 0083_print_perm.sql, 0084_party_branch.sql, 0085_finance_branch.sql, 0086_finance_cards.sql, 0087_private_finance.sql, 0088_print_layout.sql
 
 -- ============================== 0001_phase1.sql ==============================
 -- =====================================================================
@@ -20794,3 +20794,157 @@ create policy staff_audit_select on public.audit_log for select to authenticated
   using (shop_id = (select public.current_shop_id()) and (select public.current_app_role()) = 'reception' and (select public.has_perm('audit', 'view'))
          and entity not in ('partners', 'profit_distributions') and ((select public.private_level()) >= 1 or entity <> 'commission_rules')
          and (entity <> 'journal_entries' or (select public.private_level()) >= public.private_entry(entity_id)));
+
+-- ============================== 0088_print_layout.sql ==============================
+-- 0088: (50.2) نموذج القالب: flow (الخانات بالترتيب زي الأول) وfree (حقول بأماكنها بالمللي للمقاسات الثابتة).
+-- الفحص في دالة واحدة (print_template_error) بتتنده من trigger، فأي طريق للحفظ بيعدّي عليها. نفسها في src/lib/printLayout.ts واختبار بيطابقهم.
+-- القوالب القديمة: mode = flow وlayout فاضي، من غير أي تغيير. والاسترجاع: الخانات القديمة بترجع زي ما هي (الشاشة بتنضّفها)، والـ layout لازم يعدّي.
+alter table public.print_templates add column mode text not null default 'flow' check (mode in ('flow', 'free'));
+alter table public.print_templates add column layout jsonb not null default '{}'::jsonb check (jsonb_typeof(layout) = 'object');
+
+-- حقول القالب الحر لكل نوع. كشف الحساب والإيصال الحراري بالترتيب بس
+create or replace function public.print_free_fields(p_doc text) returns text[]
+language sql immutable as $$
+  select case
+    when p_doc in ('sticker', 'label') then array['shopName', 'logo', 'shopPhone', 'shopAddress', 'text', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'warranty', 'terms', 'qr', 'barcode']
+    when p_doc = 'receipt-a4' then array['shopName', 'logo', 'shopPhone', 'shopAddress', 'text', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'warranty', 'terms', 'qr', 'barcode', 'price', 'paid', 'remaining']
+    when p_doc = 'invoice' then array['shopName', 'logo', 'shopPhone', 'shopAddress', 'text', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'warranty', 'terms', 'qr', 'barcode', 'price', 'paid', 'remaining', 'parts']
+    when p_doc = 'sale' then array['shopName', 'logo', 'shopPhone', 'shopAddress', 'text', 'entryNo', 'date', 'customer', 'phone', 'lines', 'price', 'paid', 'remaining', 'terms', 'barcode']
+    when p_doc = 'voucher' then array['shopName', 'logo', 'shopPhone', 'shopAddress', 'text', 'entryNo', 'date', 'party', 'amount', 'method', 'memo']
+    when p_doc = 'barcode' then array['shopName', 'logo', 'shopPhone', 'shopAddress', 'text', 'itemName', 'code', 'price', 'barcode']
+    else '{}'::text[] end
+$$;
+create or replace function public.print_flow_blocks(p_doc text) returns text[]
+language sql immutable as $$
+  select case
+    when p_doc in ('receipt', 'receipt-a4') then array['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'accessories', 'condition', 'estimate', 'terms', 'signature', 'qr', 'sign', 'thanks', 'text']
+    when p_doc = 'invoice' then array['header', 'title', 'orderNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'parts', 'total', 'paid', 'remaining', 'warranty', 'signature', 'sign', 'thanks', 'text']
+    when p_doc = 'statement' then array['header', 'title', 'party', 'period', 'opening', 'moves', 'closing', 'signature', 'thanks', 'text']
+    when p_doc = 'voucher' then array['header', 'title', 'entryNo', 'date', 'party', 'amount', 'method', 'cashbox', 'memo', 'sign', 'thanks', 'text']
+    when p_doc = 'sale' then array['header', 'title', 'entryNo', 'date', 'customer', 'phone', 'lines', 'total', 'paid', 'remaining', 'memo', 'sign', 'thanks', 'text']
+    when p_doc = 'barcode' then array['header', 'itemName', 'code', 'price', 'text']
+    else '{}'::text[] end
+$$;
+
+create or replace function public.print_only_keys(p jsonb, p_keys text[]) returns boolean
+language sql immutable as $$
+  select not exists (select 1 from jsonb_object_keys(p) k where not (k = any (p_keys)))
+$$;
+create or replace function public.print_int(p jsonb, p_min numeric, p_max numeric) returns boolean
+language sql immutable as $$
+  select case when p is not null and jsonb_typeof(p) = 'number' then (p #>> '{}')::numeric = trunc((p #>> '{}')::numeric) and (p #>> '{}')::numeric between p_min and p_max else false end
+$$;
+-- أعشار المللي، أو null لو مش رقم بخانة عشرية واحدة بالكتير
+create or replace function public.print_tenths(p jsonb) returns numeric
+language sql immutable as $$
+  select case when p is not null and jsonb_typeof(p) = 'number' and (p #>> '{}')::numeric * 10 = trunc((p #>> '{}')::numeric * 10) then (p #>> '{}')::numeric * 10 end
+$$;
+-- [العرض، الطول] بالمللي، أو null لو المقاس غلط
+create or replace function public.print_paper(p jsonb) returns integer[]
+language plpgsql immutable as $$
+declare k text;
+begin
+  if p is null or jsonb_typeof(p) <> 'object' or jsonb_typeof(p -> 'kind') is distinct from 'string' then return null; end if;
+  k := p ->> 'kind';
+  if k = 'custom' then
+    if not public.print_only_keys(p, array['kind', 'w', 'h']) or not public.print_int(p -> 'w', 20, 300) then return null; end if;
+    if jsonb_typeof(p -> 'h') is distinct from 'null' and not public.print_int(p -> 'h', 10, 450) then return null; end if;
+    return array[(p ->> 'w')::numeric::int, (p ->> 'h')::numeric::int];
+  end if;
+  if not public.print_only_keys(p, array['kind']) then return null; end if;
+  return case k when '40x30' then array[40, 30] when '58' then array[58, null] when '80' then array[80, null] when 'a4' then array[210, 297] end;
+end $$;
+
+-- null = القالب سليم، وإلا كود الغلط (نفس ترتيب templateError في الواجهة)
+create or replace function public.print_template_error(p_doc text, p_mode text, p_blocks jsonb, p_layout jsonb) returns text
+language plpgsql immutable as $$
+declare
+  b jsonb; k text; seen text[] := '{}'; size integer[]; free text[]; flow text[]; l numeric; t numeric; w numeric; h numeric;
+begin
+  if p_doc is null or not (p_doc = any (array['receipt', 'receipt-a4', 'invoice', 'statement', 'voucher', 'sale', 'barcode', 'sticker', 'label'])) then return 'doc'; end if;
+  if p_mode is null or p_mode not in ('flow', 'free') then return 'mode'; end if;
+  if p_blocks is null or jsonb_typeof(p_blocks) <> 'array' or p_layout is null or jsonb_typeof(p_layout) <> 'object' then return 'type'; end if;
+  if octet_length(p_blocks::text) > 68000 or octet_length(p_layout::text) > 68000 then return 'size'; end if;
+  if not public.print_only_keys(p_layout, array['lang', 'paper', 'bg', 'fields']) then return 'key'; end if;
+  if p_layout ? 'lang' and not coalesce(jsonb_typeof(p_layout -> 'lang') = 'string' and p_layout ->> 'lang' in ('app', 'ar', 'en'), false) then return 'lang'; end if;
+  if p_layout ? 'bg' and jsonb_typeof(p_layout -> 'bg') <> 'null'
+     and not (jsonb_typeof(p_layout -> 'bg') = 'string' and p_layout ->> 'bg' ~ '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\.(png|jpg)$') then return 'bg'; end if;
+  if p_layout ? 'paper' then
+    size := public.print_paper(p_layout -> 'paper');
+    if size is null then return 'paper'; end if;
+  end if;
+
+  if p_mode = 'flow' then
+    if p_layout ? 'fields' then return 'key'; end if;
+    if jsonb_array_length(p_blocks) > 60 then return 'count'; end if;
+    flow := public.print_flow_blocks(p_doc);
+    for b in select x from jsonb_array_elements(p_blocks) x loop
+      if jsonb_typeof(b) <> 'object' then return 'type'; end if;
+      if not public.print_only_keys(b, array['key', 'show', 'size', 'align', 'bold', 'text', 'font', 'pt']) then return 'key'; end if;
+      k := b ->> 'key';
+      if jsonb_typeof(b -> 'key') is distinct from 'string' or not (k = any (flow)) then return 'field'; end if;
+      if k <> 'text' and k = any (seen) then return 'duplicate'; end if;
+      seen := seen || k;
+      if jsonb_typeof(b -> 'show') is distinct from 'boolean' or jsonb_typeof(b -> 'bold') is distinct from 'boolean'
+         or not coalesce(b ->> 'size' in ('sm', 'md', 'lg') and b ->> 'align' in ('start', 'center', 'end'), false) then return 'value'; end if;
+      if b ? 'font' and not coalesce(b ->> 'font' in ('sans', 'mono', 'system'), false) then return 'font'; end if;
+      if b ? 'pt' and not public.print_int(b -> 'pt', 5, 72) then return 'pt'; end if;
+      if not public.print_text_ok(b) then return 'text'; end if;
+    end loop;
+    return null;
+  end if;
+
+  free := public.print_free_fields(p_doc);
+  if cardinality(free) = 0 then return 'mode'; end if;
+  if jsonb_array_length(p_blocks) > 0 then return 'key'; end if;
+  if size is null or size[2] is null then return 'paper'; end if;
+  if jsonb_typeof(p_layout -> 'fields') is distinct from 'array' then return 'type'; end if;
+  if jsonb_array_length(p_layout -> 'fields') not between 1 and 60 then return 'count'; end if;
+  for b in select x from jsonb_array_elements(p_layout -> 'fields') x loop
+    if jsonb_typeof(b) <> 'object' then return 'type'; end if;
+    if not public.print_only_keys(b, array['key', 'x', 'y', 'w', 'h', 'font', 'pt', 'align', 'bold', 'text']) then return 'key'; end if;
+    k := b ->> 'key';
+    if jsonb_typeof(b -> 'key') is distinct from 'string' or not (k = any (free)) then return 'field'; end if;
+    if k <> 'text' and k = any (seen) then return 'duplicate'; end if;
+    seen := seen || k;
+    if jsonb_typeof(b -> 'bold') is distinct from 'boolean' or not coalesce(b ->> 'align' in ('start', 'center', 'end'), false) then return 'value'; end if;
+    if not coalesce(b ->> 'font' in ('sans', 'mono', 'system'), false) then return 'font'; end if;
+    if not public.print_int(b -> 'pt', 5, 72) then return 'pt'; end if;
+    l := public.print_tenths(b -> 'x'); t := public.print_tenths(b -> 'y'); w := public.print_tenths(b -> 'w'); h := public.print_tenths(b -> 'h');
+    if l is null or t is null or w is null or h is null then return 'number'; end if;
+    if l < 0 or t < 0 or w < 10 or h < 10 or l + w > size[1] * 10 or t + h > size[2] * 10 then return 'bounds'; end if;
+    if not public.print_text_ok(b) then return 'text'; end if;
+  end loop;
+  return null;
+end $$;
+-- النص للخانة "text" بس، ولحد 300 حرف
+create or replace function public.print_text_ok(p jsonb) returns boolean
+language sql immutable as $$
+  select case when p ->> 'key' = 'text' then coalesce(jsonb_typeof(p -> 'text') = 'string' and length(p ->> 'text') <= 300, false) else not (p ? 'text') end
+$$;
+
+create or replace function public.tg_print_template_valid() returns trigger
+language plpgsql set search_path = public as $$
+declare e text;
+begin
+  -- نسخة احتياطية من قبل 0088: من غير العمودين
+  new.mode := coalesce(new.mode, 'flow');
+  new.layout := coalesce(new.layout, '{}'::jsonb);
+  if tg_op = 'UPDATE' and (new.doc, new.mode, new.blocks, new.layout) is not distinct from (old.doc, old.mode, old.blocks, old.layout) then return new; end if;
+  -- الاسترجاع: الخانات القديمة زي ما هي، والـ layout بيتفحص
+  e := public.print_template_error(new.doc, new.mode, case when public.restoring() and new.mode = 'flow' then '[]'::jsonb else new.blocks end, new.layout);
+  if e is not null then raise exception 'E_TEMPLATE' using detail = e; end if;
+  return new;
+end $$;
+create trigger valid_template before insert or update on public.print_templates for each row execute function public.tg_print_template_valid();
+
+do $$
+declare f text;
+begin
+  foreach f in array array['print_free_fields(text)', 'print_flow_blocks(text)', 'print_only_keys(jsonb, text[])', 'print_int(jsonb, numeric, numeric)', 'print_tenths(jsonb)', 'print_paper(jsonb)',
+                           'print_text_ok(jsonb)', 'print_template_error(text, text, jsonb, jsonb)'] loop
+    execute format('revoke execute on function public.%s from public, anon', f);
+    execute format('grant execute on function public.%s to authenticated', f);
+  end loop;
+end $$;
+revoke execute on function public.tg_print_template_valid() from public, anon, authenticated;
