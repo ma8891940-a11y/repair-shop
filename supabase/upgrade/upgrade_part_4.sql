@@ -1,9 +1,9 @@
--- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 4 من 6 (الملفات 0040_branch_books.sql لـ 0059_counters_branch.sql).
+-- جوالك / Gawalak: ترقية مشروع Supabase لآخر نسخة، الجزء 4 من 6 (الملفات 0039_payment_plans.sql لـ 0057_categories.sql).
 -- بيتولد تلقائيًا: npm run db:setup-file. ما تعدّلوش بإيدك.
 -- شغّل الأجزاء بالترتيب في SQL Editor (كل جزء لوحده: New query ← الصق ← Run): upgrade_part_1.sql ثم upgrade_part_2.sql ثم upgrade_part_3.sql ثم upgrade_part_4.sql ثم upgrade_part_5.sql ثم upgrade_part_6.sql.
 -- آمن تشغّل أي جزء أكتر من مرة: اللي اتطبق قبل كده بيتخطى. ولو ملف فشل، اللي قبله بيفضل، وصلّح السبب وشغّل نفس الجزء تاني.
 -- لو لقى ملف أحدث موجود وأقدم منه ناقص بيقف (E_UPGRADE_GAP). ولو جزء قبله لسه ما اتطبقش بيقف (E_UPGRADE_ORDER). الاتنين من غير تغيير.
--- ملفات الجزء ده: 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql, 0058_web_push.sql, 0059_counters_branch.sql
+-- ملفات الجزء ده: 0039_payment_plans.sql, 0040_branch_books.sql, 0041_analytics.sql, 0042_app_brand.sql, 0043_printing.sql, 0044_capture.sql, 0045_checklists.sql, 0046_master.sql, 0047_mfa.sql, 0048_used.sql, 0049_commissions.sql, 0050_insights.sql, 0051_demo.sql, 0052_catalog.sql, 0053_portal.sql, 0054_telegram.sql, 0055_eta_placeholder.sql, 0056_branch_features.sql, 0057_categories.sql
 
 -- سجل الترقية (للنظام بس، من غير أي بيانات محلات)
 create table if not exists public.app_migrations (version text primary key, applied_at timestamptz not null default now(), how text not null);
@@ -238,9 +238,12 @@ begin
   if not exists (select 1 from public.app_migrations where version = '0075_delete_by_section.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'can_delete' and position('select public.current_app_role() in (''owner'', ''reception'')' in p.prosrc) > 0)) then
     insert into public.app_migrations(version, how) values ('0075_delete_by_section.sql', 'found: function can_delete');
   end if;
+  if not exists (select 1 from public.app_migrations where version = '0076_debt_aging.sql') and (exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = 'debt_aging' and position('declare s uuid := public.current_shop_id(); d date := coalesce(p_as_of, (now() at time zone ''Africa/Cairo'')::date);' in p.prosrc) > 0)) then
+    insert into public.app_migrations(version, how) values ('0076_debt_aging.sql', 'found: function debt_aging');
+  end if;
   insert into public.app_migrations(version, how) select v, 'inferred' from unnest(array['0022_security_review.sql']::text[]) v
     where v < (select max(version) from public.app_migrations) on conflict (version) do nothing;
-  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql']) v where v not in (select version from public.app_migrations);
+  select min(v) into first_missing from unnest(array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql']) v where v not in (select version from public.app_migrations);
   select max(version) into later_present from public.app_migrations where first_missing is not null and version > first_missing;
   if later_present is not null then raise exception 'E_UPGRADE_GAP: % موجود، بس % ناقص قبله. ابعت الرسالة دي للمطوّر.', later_present, first_missing; end if;
 end $chk$;
@@ -248,15 +251,455 @@ end $chk$;
 -- 2) الأجزاء اللي قبل الجزء ده لازم تكون اتطبقت
 do $ord$
 declare
-  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql'];
-  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6];
+  files text[] := array['0001_phase1.sql', '0002_storage.sql', '0003_shop_profile_realtime.sql', '0004_error_codes.sql', '0005_device_passcode.sql', '0006_invite_name.sql', '0007_phase2_customer.sql', '0008_ledger.sql', '0009_tracking_guess_limit.sql', '0010_default_cashboxes.sql', '0011_finance_drilldown.sql', '0012_spec_completion.sql', '0013_tracking_ambiguous.sql', '0014_technicians.sql', '0015_offline_backup.sql', '0016_shop_identity.sql', '0017_growth.sql', '0018_account_state.sql', '0019_extras.sql', '0020_admin_paging.sql', '0021_spec_rules.sql', '0022_security_review.sql', '0023_restore.sql', '0024_signout.sql', '0025_integrity.sql', '0026_edit_delete.sql', '0027_inventory.sql', '0028_opening.sql', '0029_partners.sql', '0030_party_links.sql', '0031_partner_capital.sql', '0032_lists.sql', '0033_assistant.sql', '0034_branches.sql', '0035_lists_everywhere.sql', '0036_roles.sql', '0037_item_details.sql', '0038_roles_grant.sql', '0039_payment_plans.sql', '0040_branch_books.sql', '0041_analytics.sql', '0042_app_brand.sql', '0043_printing.sql', '0044_capture.sql', '0045_checklists.sql', '0046_master.sql', '0047_mfa.sql', '0048_used.sql', '0049_commissions.sql', '0050_insights.sql', '0051_demo.sql', '0052_catalog.sql', '0053_portal.sql', '0054_telegram.sql', '0055_eta_placeholder.sql', '0056_branch_features.sql', '0057_categories.sql', '0058_web_push.sql', '0059_counters_branch.sql', '0060_sale_lines.sql', '0061_attendance.sql', '0062_vat.sql', '0063_cheques.sql', '0064_day_report.sql', '0065_cheque_pending.sql', '0066_commission_net.sql', '0067_idem_lock.sql', '0068_stock_adjust.sql', '0069_sale_errors.sql', '0070_perm_matrix.sql', '0071_device_children.sql', '0072_sale_line_return.sql', '0073_shop_extras.sql', '0074_idem_cheque_plan.sql', '0075_delete_by_section.sql', '0076_debt_aging.sql'];
+  parts int[] := array[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6];
   miss text;
 begin
-  select min(v) into miss from unnest(files) v where v < '0040_branch_books.sql' and v not in (select version from public.app_migrations);
+  select min(v) into miss from unnest(files) v where v < '0039_payment_plans.sql' and v not in (select version from public.app_migrations);
   if miss is not null then raise exception 'E_UPGRADE_ORDER: الملف % لسه ما اتطبقش. شغّل upgrade_part_%.sql الأول، وبعدين الجزء ده (4).', miss, parts[array_position(files, miss)]; end if;
 end $ord$;
 
 -- 3) ملفات الجزء 4 بالترتيب، كل ملف في transaction لوحده
+-- ============================== 0039_payment_plans.sql ==============================
+begin;
+do $run$ begin
+  if exists (select 1 from public.app_migrations where version = '0039_payment_plans.sql') then return; end if;
+  execute $m0039$
+-- 0039: N (المرحلة الأولى): مواعيد التحصيل وخطط التقسيط ومركز الإشعارات.
+-- - خطة لعميل (ليا: هو عليه للمحل) أو لمورد (عليا: المحل عليه للمورد): قسط واحد = "ميعاد تحصيل"، أو كذا قسط بجدول.
+-- - المدفوع ما بيتخزنش: بيتحسب من القيود (زي كل الأرصدة). كل اللي بيقلل رصيد الطرف بعد ما الخطة اتعملت
+--   (دفعة، أو مرتجع، أو مقاصة) بيتوزع على خطط الطرف بالأقدم، وجوه الخطة على الأقساط بالترتيب:
+--   الزيادة بتغطي القسط اللي بعده، والنقص بيفضل على نفس القسط. الخطة بتتقفل لوحدها لما تتغطى كلها.
+-- - الإشعارات بتتحسب وقت ما تتطلب (مفيش مهام في الخلفية): أقساط متأخرة، وأقساط قربت، وأجهزة جاهزة من 10 أيام،
+--   وأصناف ناقصة، وبيعات محتاجة تسوية. كل مستخدم بيشوف اللي ليه صلاحيته بس، و"اتقرا" بيتحفظ له هو.
+
+create table public.payment_plans (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references public.shops(id),
+  branch_id uuid references public.branches(id),
+  party_type text not null check (party_type in ('customer', 'supplier')),
+  party_id uuid not null,
+  title text check (title is null or length(title) <= 120),
+  total bigint not null check (total > 0),
+  note text check (note is null or length(note) <= 500),
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+create index payment_plans_party on public.payment_plans(shop_id, party_type, party_id) where deleted_at is null;
+
+create table public.plan_installments (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references public.shops(id),
+  plan_id uuid not null references public.payment_plans(id),
+  seq integer not null check (seq between 1 and 120),
+  due_date date not null,
+  amount bigint not null check (amount > 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  unique (plan_id, seq)
+);
+
+create table public.notification_reads (
+  id uuid primary key default gen_random_uuid(),
+  shop_id uuid not null references public.shops(id),
+  profile_id uuid not null references auth.users(id),
+  key text not null check (length(key) <= 120),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  unique (profile_id, key)
+);
+
+alter table public.payment_plans enable row level security;
+alter table public.plan_installments enable row level security;
+alter table public.notification_reads enable row level security;
+create trigger set_updated_at before update on public.payment_plans for each row execute function public.tg_set_updated_at();
+create trigger set_updated_at before update on public.plan_installments for each row execute function public.tg_set_updated_at();
+create trigger set_updated_at before update on public.notification_reads for each row execute function public.tg_set_updated_at();
+create trigger block_delete before delete on public.payment_plans for each row execute function public.tg_block_delete();
+create trigger block_delete before delete on public.plan_installments for each row execute function public.tg_block_delete();
+create trigger block_delete before delete on public.notification_reads for each row execute function public.tg_block_delete();
+create trigger zz_audit after insert or update on public.payment_plans for each row execute function public.tg_audit();
+
+-- القراية: صاحب المحل، أو اللي معاه "يشوف" في الوضع المالي (مش الفني). الكتابة من الدوال بس
+create policy plans_select on public.payment_plans for select to authenticated
+  using (shop_id = public.current_shop_id() and (public.current_app_role() = 'owner' or (public.current_app_role() = 'reception' and (select public.has_perm('finance', 'view')))));
+create policy installments_select on public.plan_installments for select to authenticated
+  using (shop_id = public.current_shop_id() and (public.current_app_role() = 'owner' or (public.current_app_role() = 'reception' and (select public.has_perm('finance', 'view')))));
+create policy reads_select on public.notification_reads for select to authenticated using (profile_id = auth.uid());
+grant select on public.payment_plans, public.plan_installments, public.notification_reads to authenticated;
+
+-- كام يوم قبل الميعاد بيبان "قرب" (الإعدادات ← التنبيهات، الافتراضي 3)
+create or replace function public.reminder_days() returns integer
+language sql stable security definer set search_path = public as $$
+  select least(greatest(coalesce((select (s.extras -> 'reminders' ->> 'days')::int from public.shops s where s.id = public.current_shop_id()), 3), 0), 30)
+$$;
+revoke execute on function public.reminder_days() from public, anon;
+grant execute on function public.reminder_days() to authenticated;
+
+-- اللي اتدفع للطرف من وقت معيّن: كل اللي قلّل رصيده (من غير القيود اللي اتلغت ولا قيود الإلغاء نفسها)
+create or replace function public.party_paid_since(p_type text, p_party uuid, p_since timestamptz) returns bigint
+language sql stable security definer set search_path = public as $$
+  select coalesce(sum(case when p_type = 'customer' then l.credit else l.debit end), 0)::bigint
+  from public.journal_lines l
+  join public.accounts a on a.id = l.account_id and a.kind = case when p_type = 'customer' then 'receivable' else 'payable' end
+  join public.journal_entries e on e.id = l.entry_id
+  where l.shop_id = public.current_shop_id() and l.party_id = p_party and e.created_at >= p_since
+    and e.reverses_id is null and not exists (select 1 from public.journal_entries r where r.reverses_id = e.id)
+$$;
+revoke execute on function public.party_paid_since(text, uuid, timestamptz) from public, anon, authenticated;
+
+-- الخطط بحالتها: المدفوع والباقي والقسط الجاي والمتأخر، وكل قسط مغطّي قد إيه
+create or replace function public.plans_overview(p_party_type text default null, p_party uuid default null)
+returns table(plan_id uuid, party_type text, party_id uuid, party_name text, title text, total bigint, paid bigint, remaining bigint,
+              next_due date, next_amount bigint, overdue bigint, status text, created_at timestamptz, installments jsonb)
+language plpgsql stable security definer set search_path = public as $$
+#variable_conflict use_column
+declare s uuid := public.current_shop_id(); today date := (now() at time zone 'Africa/Cairo')::date; soon integer := public.reminder_days();
+begin
+  perform public.grant_require('finance', 'view');
+  return query
+  with pl as (
+    select p.*, min(p.created_at) over (partition by p.party_type, p.party_id) first_at,
+           coalesce(sum(p.total) over (partition by p.party_type, p.party_id order by p.created_at, p.id rows between unbounded preceding and 1 preceding), 0) before_total
+    from public.payment_plans p
+    where p.shop_id = s and p.deleted_at is null
+      and (p_party_type is null or p.party_type = p_party_type) and (p_party is null or p.party_id = p_party)
+  ), pool as (
+    select distinct x.party_type, x.party_id, public.party_paid_since(x.party_type, x.party_id, x.first_at) amount from pl x
+  ), paid as (
+    select pl.*, least(pl.total, greatest(0, po.amount - pl.before_total))::bigint got
+    from pl join pool po on po.party_type = pl.party_type and po.party_id = pl.party_id
+  ), inst as (
+    select i.plan_id, i.seq, i.due_date, i.amount,
+           least(i.amount, greatest(0, pd.got - coalesce(sum(i.amount) over (partition by i.plan_id order by i.seq rows between unbounded preceding and 1 preceding), 0)))::bigint covered
+    from public.plan_installments i join paid pd on pd.id = i.plan_id
+    where i.deleted_at is null
+  )
+  select pd.id, pd.party_type, pd.party_id,
+         coalesce((select c.name from public.customers c where pd.party_type = 'customer' and c.id = pd.party_id),
+                  (select sp.name from public.suppliers sp where pd.party_type = 'supplier' and sp.id = pd.party_id)),
+         pd.title, pd.total, pd.got, pd.total - pd.got,
+         (select min(x.due_date) from inst x where x.plan_id = pd.id and x.covered < x.amount),
+         (select x.amount - x.covered from inst x where x.plan_id = pd.id and x.covered < x.amount order by x.seq limit 1),
+         coalesce((select sum(x.amount - x.covered) from inst x where x.plan_id = pd.id and x.covered < x.amount and x.due_date < today), 0)::bigint,
+         case when pd.got >= pd.total then 'done'
+              when exists (select 1 from inst x where x.plan_id = pd.id and x.covered < x.amount and x.due_date < today) then 'overdue'
+              when exists (select 1 from inst x where x.plan_id = pd.id and x.covered < x.amount and x.due_date <= today + soon) then 'due_soon'
+              else 'open' end,
+         pd.created_at,
+         coalesce((select jsonb_agg(jsonb_build_object('seq', x.seq, 'due', x.due_date, 'amount', x.amount, 'covered', x.covered,
+                     'status', case when x.covered >= x.amount then 'paid' when x.due_date < today then 'overdue' when x.due_date <= today + soon then 'due_soon' else 'upcoming' end)
+                     order by x.seq) from inst x where x.plan_id = pd.id), '[]'::jsonb)
+  from paid pd
+  order by (pd.got >= pd.total), (select min(x.due_date) from inst x where x.plan_id = pd.id and x.covered < x.amount) nulls last, pd.created_at;
+end $$;
+revoke execute on function public.plans_overview(text, uuid) from public, anon;
+grant execute on function public.plans_overview(text, uuid) to authenticated;
+
+-- خطة جديدة: p_rows = [{due: 'YYYY-MM-DD', amount: قروش}] (قسط واحد = ميعاد تحصيل). الإجمالي = مجموع الأقساط
+create or replace function public.save_plan(p_id uuid, p_party_type text, p_party uuid, p_rows jsonb, p_title text default null, p_note text default null) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); r jsonb; n integer := 0; tot bigint := 0; a bigint; d date;
+begin
+  perform public.grant_require('finance', 'add');
+  if exists (select 1 from public.payment_plans where id = p_id) then
+    if exists (select 1 from public.payment_plans where id = p_id and shop_id = s) then return p_id; end if;
+    raise exception 'E_NOT_FOUND';
+  end if;
+  if p_party_type not in ('customer', 'supplier') then raise exception 'E_BAD_INPUT'; end if;
+  if p_party_type = 'customer' and not exists (select 1 from public.customers where id = p_party and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if p_party_type = 'supplier' and not exists (select 1 from public.suppliers where id = p_party and shop_id = s and deleted_at is null) then raise exception 'E_NOT_FOUND'; end if;
+  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) not between 1 and 120 then raise exception 'E_BAD_INPUT'; end if;
+  insert into public.payment_plans(id, shop_id, branch_id, party_type, party_id, title, total, note, created_by)
+  values (p_id, s, public.op_branch(), p_party_type, p_party, nullif(trim(p_title), ''), 1, nullif(trim(p_note), ''), auth.uid());
+  for r in select * from jsonb_array_elements(p_rows) loop
+    n := n + 1;
+    a := (r ->> 'amount')::bigint;
+    d := (r ->> 'due')::date;
+    if a is null or a <= 0 or d is null then raise exception 'E_BAD_AMOUNT'; end if;
+    perform public.ledger_amount(a);
+    tot := tot + a;
+    insert into public.plan_installments(shop_id, plan_id, seq, due_date, amount) values (s, p_id, n, d, a);
+  end loop;
+  perform public.ledger_amount(tot);
+  update public.payment_plans set total = tot where id = p_id;
+  return p_id;
+end $$;
+revoke execute on function public.save_plan(uuid, text, uuid, jsonb, text, text) from public, anon;
+grant execute on function public.save_plan(uuid, text, uuid, jsonb, text, text) to authenticated;
+
+-- إلغاء الخطة (مش حذف: بتتعلّم ملغية وبتفضل في سجل النشاط). الفلوس والقيود ما بتتأثرش
+create or replace function public.cancel_plan(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  perform public.grant_require('finance', 'delete');
+  update public.payment_plans set deleted_at = now() where id = p_id and shop_id = public.current_shop_id() and deleted_at is null;
+  if not found then raise exception 'E_NOT_FOUND'; end if;
+end $$;
+revoke execute on function public.cancel_plan(uuid) from public, anon;
+grant execute on function public.cancel_plan(uuid) to authenticated;
+
+-- ---------- مركز الإشعارات ----------
+-- key ثابت لكل إشعار (عشان "اتقرا" يفضل)، وkind + args بيتحولوا لجملة في الواجهة بلغة البرنامج
+create or replace function public.my_notifications()
+returns table(key text, kind text, args jsonb, link text, at timestamptz, read boolean)
+language plpgsql stable security definer set search_path = public as $$
+#variable_conflict use_column
+declare s uuid := public.current_shop_id(); r public.app_role := public.current_app_role(); uid uuid := auth.uid();
+  today date := (now() at time zone 'Africa/Cairo')::date;
+begin
+  if r is null then raise exception 'E_FORBIDDEN'; end if;
+  -- أقساط متأخرة أو قربت (مين يشوف الوضع المالي)
+  if r = 'owner' or (r = 'reception' and public.has_perm('finance', 'view')) then
+    return query
+    select 'inst:' || i.id::text || ':' || (case when i.due_date < today then 'late' else 'soon' end),
+           case when i.due_date < today then 'overdue' else 'due_soon' end,
+           jsonb_build_object('name', o.party_name, 'amount', (x ->> 'amount')::bigint - (x ->> 'covered')::bigint, 'due', i.due_date, 'party_type', o.party_type),
+           '/finance/' || o.party_type || '/' || o.party_id::text,
+           (i.due_date::timestamp at time zone 'Africa/Cairo'),
+           false
+    from public.plans_overview() o
+    cross join lateral jsonb_array_elements(o.installments) x
+    join public.plan_installments i on i.plan_id = o.plan_id and i.seq = (x ->> 'seq')::int and i.deleted_at is null
+    where x ->> 'status' in ('overdue', 'due_soon');
+  end if;
+  -- أجهزة جاهزة من 10 أيام أو أكتر ومحدش استلمها (مين يشوف الأجهزة، في فروعه)
+  if r <> 'technician' and public.has_perm('devices', 'view') then
+    return query
+    select 'ready:' || d.id::text, 'ready_old', jsonb_build_object('order', d.order_no, 'days', (today - (sl.at at time zone 'Africa/Cairo')::date)), '/devices/' || d.id::text, sl.at, false
+    from public.devices d
+    cross join lateral (select max(l.created_at) at from public.status_log l where l.device_id = d.id and l.new_status = 'ready' and l.deleted_at is null) sl
+    where d.shop_id = s and d.deleted_at is null and d.status = 'ready' and public.can_branch(d.branch_id)
+      and sl.at is not null and sl.at < now() - interval '10 days';
+  end if;
+  -- أصناف وصلت للحد الأدنى، وبيعات من غير رصيد لسه محتاجة تسوية
+  if r <> 'technician' and public.has_perm('inventory', 'view') then
+    return query
+    select 'short:' || st.id::text || ':' || st.qty::text, 'short', jsonb_build_object('name', st.name, 'qty', st.qty), '/inventory', now(), false
+    from public.items_stock() st where st.short;
+    return query
+    select 'unsettled:' || st.id::text || ':' || st.unsettled::text, 'unsettled', jsonb_build_object('name', st.name, 'qty', st.unsettled), '/inventory', now(), false
+    from public.items_stock() st where st.unsettled > 0;
+  end if;
+end $$;
+-- نفس القايمة ومعاها "اتقرا" لكل مستخدم
+create or replace function public.notifications_feed()
+returns table(key text, kind text, args jsonb, link text, at timestamptz, read boolean)
+language sql stable security definer set search_path = public as $$
+  select n.key, n.kind, n.args, n.link, n.at, exists (select 1 from public.notification_reads nr where nr.profile_id = auth.uid() and nr.key = n.key and nr.deleted_at is null)
+  from public.my_notifications() n
+  order by 6, 5 desc
+  limit 200
+$$;
+revoke execute on function public.notifications_feed() from public, anon;
+grant execute on function public.notifications_feed() to authenticated;
+revoke execute on function public.my_notifications() from public, anon;
+grant execute on function public.my_notifications() to authenticated;
+
+create or replace function public.mark_notifications_read(p_keys text[]) returns void
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id();
+begin
+  if s is null or auth.uid() is null then raise exception 'E_FORBIDDEN'; end if;
+  if coalesce(array_length(p_keys, 1), 0) > 200 then raise exception 'E_BAD_INPUT'; end if;
+  insert into public.notification_reads(shop_id, profile_id, key)
+  select s, auth.uid(), k from unnest(p_keys) k where length(k) between 1 and 120
+  on conflict (profile_id, key) do nothing;
+end $$;
+revoke execute on function public.mark_notifications_read(text[]) from public, anon;
+grant execute on function public.mark_notifications_read(text[]) to authenticated;
+
+-- ---------- النسخة الاحتياطية والاسترجاع: الخطط والأقساط ----------
+-- backup_snapshot: (src: 0037_item_details.sql) + payment_plans وplan_installments
+create or replace function public.backup_snapshot(p_shop uuid) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare
+  res jsonb := jsonb_build_object('format', 'warsha-backup', 'version', 1, 'generated_at', now(), 'shop_id', p_shop);
+  t text;
+  rows jsonb;
+begin
+  foreach t in array array['shops', 'branches', 'staff_branches', 'shop_branding', 'profiles', 'customers', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_photos', 'device_checks',
+                           'quote_decisions', 'message_templates', 'message_log', 'accounts', 'journal_entries', 'journal_lines', 'payments', 'drawer_closings',
+                           'suppliers', 'items', 'stock_moves', 'uncosted_sales', 'payment_plans', 'plan_installments', 'purchases', 'labor_rates', 'specialties', 'staff_specialties', 'routes', 'repair_steps',
+                           'repair_videos', 'device_ratings', 'issue_presets', 'partners', 'profit_distributions', 'party_links', 'shop_lists', 'audit_log'] loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(x)), ''[]''::jsonb) from public.%I x where x.shop_id = $1', t) into rows using p_shop;
+    res := res || jsonb_build_object(t, rows);
+  end loop;
+  select coalesce(jsonb_agg(jsonb_build_object('device_id', device_id, 'kind', kind, 'erased_at', erased_at)), '[]'::jsonb)
+    into rows from public.device_passcodes where shop_id = p_shop;
+  return res || jsonb_build_object('device_passcodes', rows);
+end $$;
+
+-- restore_backup: (src: 0037_item_details.sql) + payment_plans وplan_installments
+create or replace function public.restore_backup(p_data jsonb) returns jsonb
+-- extensions: فيها gen_random_bytes على Supabase
+language plpgsql security definer set search_path = public, extensions, pg_temp as $$
+declare
+  s uuid := public.current_shop_id();
+  me uuid := auth.uid();
+  old_shop uuid;
+  old_owner uuid;
+  sh jsonb;
+  t text;
+  r jsonb;
+  rows jsonb;
+  n int;
+  bad int;
+  counts jsonb := '{}'::jsonb;
+  -- بالترتيب ده عشان كل صف يلاقي اللي بيشاور عليه
+  tabs text[] := array['branches', 'profiles', 'staff_branches', 'shop_branding', 'accounts', 'customers', 'suppliers', 'party_links', 'partners', 'specialties', 'staff_specialties', 'routes', 'labor_rates',
+                       'issue_presets', 'shop_lists', 'message_templates', 'items', 'devices', 'device_costs', 'status_log', 'device_notes', 'device_checks',
+                       'quote_decisions', 'repair_steps', 'repair_videos', 'device_ratings', 'journal_entries', 'journal_lines', 'profit_distributions', 'payments',
+                       'purchases', 'stock_moves', 'uncosted_sales', 'payment_plans', 'plan_installments', 'drawer_closings', 'message_log', 'audit_log'];
+  -- الجداول دي ليها نسخة اتعملت مع التسجيل: بتتطابق بالكود (أو المفتاح) وبتاخد قيم النسخة
+  keyed text[] := array['branches', 'accounts', 'routes', 'specialties', 'message_templates', 'labor_rates', 'shop_branding'];
+begin
+  perform public.ledger_require(array['owner']::public.app_role[]);
+  if s is null or me is null then raise exception 'E_FORBIDDEN'; end if;
+  if p_data is null or p_data->>'format' is distinct from 'warsha-backup' or coalesce((p_data->>'version')::int, 0) <> 1 then
+    raise exception 'E_BACKUP_FORMAT';
+  end if;
+  old_shop := (p_data->>'shop_id')::uuid;
+  if old_shop is null or old_shop = s then raise exception 'E_BACKUP_FORMAT'; end if;
+
+  -- محل جديد فاضي بس
+  if exists (select 1 from public.devices where shop_id = s) or exists (select 1 from public.customers where shop_id = s)
+     or exists (select 1 from public.journal_entries where shop_id = s) or exists (select 1 from public.items where shop_id = s)
+     or exists (select 1 from public.suppliers where shop_id = s) or exists (select 1 from public.payments where shop_id = s)
+     or exists (select 1 from public.purchases where shop_id = s) or exists (select 1 from public.drawer_closings where shop_id = s)
+     or exists (select 1 from public.stock_moves where shop_id = s)
+     or exists (select 1 from public.profiles where shop_id = s and id <> me) then
+    raise exception 'E_RESTORE_NOT_EMPTY';
+  end if;
+
+  perform set_config('warsha.restore', 'on', true);
+  drop table if exists pg_temp._rmap;
+  create temp table _rmap(old uuid primary key, new uuid not null) on commit drop;
+  insert into _rmap values (old_shop, s);
+
+  -- 1) بيانات المحل نفسه (من غير الخطة والإيقاف واللوجو اللي في Storage)
+  sh := p_data->'shops'->0;
+  if sh is not null then
+    update public.shops set
+      name = coalesce(sh->>'name', name), phone = sh->>'phone', address = sh->>'address',
+      receipt_terms = coalesce(sh->>'receipt_terms', receipt_terms), warranty_days = coalesce((sh->>'warranty_days')::int, warranty_days),
+      country = coalesce(sh->>'country', country), currency = coalesce(sh->>'currency', currency),
+      payment_methods = coalesce(array(select jsonb_array_elements_text(sh->'payment_methods')), payment_methods),
+      theme = coalesce(sh->>'theme', theme), locale = coalesce(sh->>'locale', locale),
+      default_margin_pct = coalesce((sh->>'default_margin_pct')::int, default_margin_pct),
+      extras = coalesce(sh->'extras', extras), max_discount_pct = coalesce((sh->>'max_discount_pct')::int, max_discount_pct)
+    where id = s;
+  end if;
+
+  -- 2) الـ ids الجديدة
+  -- صاحب المحل في النسخة = اللي بيسترجع دلوقتي
+  select (x->>'id')::uuid into old_owner from jsonb_array_elements(coalesce(p_data->'profiles', '[]')) x
+   where x->>'role' = 'owner' order by x->>'created_at' limit 1;
+  if old_owner is not null then insert into _rmap values (old_owner, me) on conflict do nothing; end if;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.accounts a where a.shop_id = s and a.code = x->>'code' and x->>'code' is not null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'accounts', '[]')) x on conflict do nothing;
+  -- الفرع الرئيسي في النسخة = الفرع الرئيسي للمحل الجديد
+  insert into _rmap select (x->>'id')::uuid, public.main_branch(s)
+    from jsonb_array_elements(coalesce(p_data->'branches', '[]')) x where (x->>'is_main')::boolean and x->>'deleted_at' is null on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.routes a where a.shop_id = s and a.code = x->>'code' and x->>'code' is not null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'routes', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.specialties a where a.shop_id = s and a.code = x->>'code' and x->>'code' is not null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'specialties', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.message_templates a where a.shop_id = s and a.key = x->>'key'), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'message_templates', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.labor_rates a where a.shop_id = s and a.deleted_at is null and lower(trim(a.issue)) = lower(trim(x->>'issue')) and x->>'deleted_at' is null), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'labor_rates', '[]')) x on conflict do nothing;
+  insert into _rmap select (x->>'id')::uuid, coalesce((select a.id from public.shop_branding a where a.shop_id = s), gen_random_uuid())
+    from jsonb_array_elements(coalesce(p_data->'shop_branding', '[]')) x on conflict do nothing;
+  foreach t in array tabs loop
+    insert into _rmap select (x->>'id')::uuid, gen_random_uuid() from jsonb_array_elements(coalesce(p_data->t, '[]')) x where x ? 'id' on conflict do nothing;
+  end loop;
+
+  -- 3) الصفوف نفسها بالترتيب
+  foreach t in array tabs loop
+    rows := '[]'::jsonb;
+    for r in select public.restore_remap(x) from jsonb_array_elements(coalesce(p_data->t, '[]')) x loop
+      if t = 'profiles' then
+        -- صاحب المحل موجود أصلًا. الباقيين موظفين سابقين (من غير حساب دخول)
+        continue when (r->>'id')::uuid = me;
+        r := r || jsonb_build_object('deleted_at', coalesce(r->>'deleted_at', now()::text));
+      elsif t = 'devices' then
+        -- كود التتبع (الـ QR) بيفضل زي ما هو، إلا لو مستخدم في المشروع ده (المحل الأصلي لسه هنا)
+        if exists (select 1 from public.devices d where d.tracking_token = r->>'tracking_token') then
+          r := r || jsonb_build_object('tracking_token', encode(gen_random_bytes(12), 'hex'));
+        end if;
+      elsif t = 'journal_entries' then
+        if r->>'idem_key' is not null and exists (select 1 from public.journal_entries j where j.idem_key = (r->>'idem_key')::uuid) then
+          r := r || jsonb_build_object('idem_key', gen_random_uuid());
+        end if;
+      elsif t = 'accounts' and r->>'kind' = 'cash' and r->>'branch_id' is null then
+        -- نسخة من قبل الفروع: الخزن كلها في الفرع الرئيسي
+        r := r || jsonb_build_object('branch_id', public.main_branch(s));
+      elsif t = 'shop_branding' then
+        -- اللوجو الملون والحراري جوه الصف نفسه. الملف الأصلي في Storage مش جوه النسخة
+        r := r || jsonb_build_object('logo_path', null);
+      end if;
+      if t = any (keyed) and exists (select 1 from _rmap m where m.new = (r->>'id')::uuid and m.old <> m.new)
+         and (t <> 'shop_branding' or exists (select 1 from public.shop_branding b where b.id = (r->>'id')::uuid)) then
+        -- موجود من التسجيل: بياخد قيم النسخة
+        execute format('select count(*) from public.%I where id = $1', t) into n using (r->>'id')::uuid;
+        if n > 0 then
+          execute format('update public.%1$I x set (%2$s) = (select %2$s from jsonb_populate_record(null::public.%1$I, $1)) where x.id = $2', t,
+            (select string_agg(quote_ident(c.column_name), ', ' order by c.ordinal_position) from information_schema.columns c
+              where c.table_schema = 'public' and c.table_name = t and c.column_name not in ('id', 'shop_id')))
+            using r, (r->>'id')::uuid;
+          continue;
+        end if;
+      end if;
+      rows := rows || jsonb_build_array(r);
+    end loop;
+    if jsonb_array_length(rows) > 0 then
+      -- overriding system value: أرقام القيود (entry_no) بترجع زي ما هي
+      execute format('insert into public.%1$I overriding system value select * from jsonb_populate_recordset(null::public.%1$I, $1)', t) using rows;
+    end if;
+    counts := counts || jsonb_build_object(t, jsonb_array_length(coalesce(p_data->t, '[]')));
+  end loop;
+
+  -- 4) عدّاد أرقام الطلبات: من آخر رقم راجع في كل سنة
+  -- (لكل فرع: الرقم ممكن يبقى قبله بادئة الفرع B2-2026-0001)
+  insert into public.order_counters(shop_id, branch_id, year, last_value)
+  select s, branch_id, (regexp_match(order_no, '(\d{4})-(\d+)$'))[1]::int, max((regexp_match(order_no, '(\d{4})-(\d+)$'))[2]::int)
+    from public.devices where shop_id = s and order_no ~ '\d{4}-\d+$' group by 2, 3
+  on conflict (shop_id, branch_id, year) do update set last_value = greatest(public.order_counters.last_value, excluded.last_value);
+
+  -- 5) التأكد: كل قيد متوازن، ورصيد كل حساب = رصيده في النسخة بالظبط
+  select count(*) into bad from (
+    select entry_id from public.journal_lines where shop_id = s group by entry_id having sum(debit) <> sum(credit)) x;
+  if bad > 0 then raise exception 'E_RESTORE_UNBALANCED'; end if;
+  select count(*) into bad from (
+    select m.new acc, sum((l->>'debit')::bigint - (l->>'credit')::bigint) b
+      from jsonb_array_elements(coalesce(p_data->'journal_lines', '[]')) l join _rmap m on m.old = (l->>'account_id')::uuid group by m.new
+  ) x full join (select account_id, sum(debit - credit) b from public.journal_lines where shop_id = s group by account_id) y on y.account_id = x.acc
+  where coalesce(x.b, 0) <> coalesce(y.b, 0);
+  if bad > 0 then raise exception 'E_RESTORE_MISMATCH'; end if;
+  -- وعدد الصفوف في كل جدول (الحسابات والقوالب اللي اتعملت مع التسجيل ممكن تزيد عن النسخة، مش تقل)
+  foreach t in array tabs loop
+    execute format('select count(*) from public.%I where shop_id = $1', t) into n using s;
+    if n < jsonb_array_length(coalesce(p_data->t, '[]')) - (case when t = 'profiles' and old_owner is not null then 1 else 0 end) then
+      raise exception 'E_RESTORE_MISMATCH';
+    end if;
+  end loop;
+
+  perform set_config('warsha.restore', 'off', true);
+  insert into public.audit_log(shop_id, actor_id, action, entity, entity_id, after)
+  values (s, me, 'backup_restore', 'shops', s, jsonb_build_object('from_shop', old_shop, 'generated_at', p_data->>'generated_at', 'counts', counts));
+  return jsonb_build_object('restored', true, 'counts', counts);
+end $$;
+$m0039$;
+  insert into public.app_migrations(version, how) values ('0039_payment_plans.sql', 'applied');
+  raise notice 'applied %', '0039_payment_plans.sql';
+end $run$;
+commit;
+
 -- ============================== 0040_branch_books.sql ==============================
 begin;
 do $run$ begin
@@ -3445,250 +3888,8 @@ $m0057$;
 end $run$;
 commit;
 
--- ============================== 0058_web_push.sql ==============================
-begin;
-do $run$ begin
-  if exists (select 1 from public.app_migrations where version = '0058_web_push.sql') then return; end if;
-  execute $m0058$
--- 0058: Web Push: إشعارات على الجهاز حتى والبرنامج مقفول (N المرحلة التانية)
---
--- - مجاني: خدمات الإشعارات بتاعة المتصفحات (Chrome/Edge/Firefox/Safari) مجانية، ومفيش أي خدمة مدفوعة.
--- - كل مستخدم بيفعّلها لجهازه من الإعدادات ← التنبيهات. الاشتراك بتاع الجهاز (endpoint + المفاتيح العامة) بيتحفظ هنا،
---   وصاحبه بس اللي يشوفه. الكتابة من الدوال بس.
--- - الإشعارات نفسها هي نفس اللي في الجرس (my_notifications) بنفس الصلاحيات بالظبط: الفني ما يوصلوش أقساط ولا فلوس.
--- - كل إشعار بيتبعت مرة واحدة بس لكل مستخدم (push_sent)، وما بيتبعتش لو المستخدم قراه في البرنامج.
--- - التوقيت: من الساعة كام لحد الساعة كام (بتوقيت القاهرة) من الإعدادات. برّه الوقت ده الإشعارات بتستنى.
--- - الإرسال من Edge Function اسمها push بمفاتيح VAPID في أسرار Supabase (التشفير جوه الدالة، مش هنا).
--- - زرار "اتقرا" في الإشعار بيشتغل بـ token عشوائي لمرة واحدة (push_ack) من غير تسجيل دخول.
--- - الاشتراكات خاصة بالجهاز، فما بتدخلش في النسخة الاحتياطية (بعد الاسترجاع كل واحد بيفعّل من جهازه تاني).
-
-create table public.push_subscriptions (
-  id uuid primary key default gen_random_uuid(),
-  shop_id uuid not null references public.shops(id),
-  profile_id uuid not null references auth.users(id),
-  endpoint text not null check (length(endpoint) between 12 and 1000 and endpoint like 'https://%'),
-  p256dh text not null check (p256dh ~ '^[A-Za-z0-9_-]{80,100}$'),
-  auth text not null check (auth ~ '^[A-Za-z0-9_-]{16,44}$'),
-  locale text not null default 'ar' check (locale in ('ar', 'en')),
-  user_agent text check (length(user_agent) <= 300),
-  fails integer not null default 0,
-  last_ok_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
-create unique index push_subscriptions_endpoint on public.push_subscriptions(endpoint) where deleted_at is null;
-create index push_subscriptions_profile on public.push_subscriptions(profile_id) where deleted_at is null;
-
-create table public.push_sent (
-  id uuid primary key default gen_random_uuid(),
-  shop_id uuid not null references public.shops(id),
-  profile_id uuid not null references auth.users(id),
-  key text not null check (length(key) <= 120),
-  ack_token text not null unique,
-  acked_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz,
-  unique (profile_id, key)
-);
-
-alter table public.push_subscriptions enable row level security;
-alter table public.push_sent enable row level security;
-create trigger set_updated_at before update on public.push_subscriptions for each row execute function public.tg_set_updated_at();
-create trigger set_updated_at before update on public.push_sent for each row execute function public.tg_set_updated_at();
-create trigger block_delete before delete on public.push_subscriptions for each row execute function public.tg_block_delete();
-create trigger block_delete before delete on public.push_sent for each row execute function public.tg_block_delete();
-
--- كل واحد يشوف أجهزته هو بس (في محله). الكتابة من الدوال بس
-create policy push_subs_select on public.push_subscriptions for select to authenticated
-  using (profile_id = auth.uid() and shop_id = public.current_shop_id() and deleted_at is null);
-create policy push_sent_select on public.push_sent for select to authenticated
-  using (profile_id = auth.uid() and shop_id = public.current_shop_id());
-grant select on public.push_subscriptions, public.push_sent to authenticated;
-
--- ---------- التوقيت (الإعدادات ← التنبيهات) ----------
--- من/لحد بتوقيت القاهرة (0-24). الافتراضي من 9 الصبح لـ 9 بالليل. من = لحد يعني طول اليوم
-create or replace function public.push_window(p_shop uuid) returns int[]
-language sql stable security definer set search_path = public as $$
-  select array[
-    least(greatest(coalesce((s.extras -> 'reminders' ->> 'push_from')::int, 9), 0), 24),
-    least(greatest(coalesce((s.extras -> 'reminders' ->> 'push_to')::int, 21), 0), 24)]
-  from public.shops s where s.id = p_shop
-$$;
-revoke execute on function public.push_window(uuid) from public, anon, authenticated;
-
-create or replace function public.push_window_open(p_shop uuid, p_at timestamptz) returns boolean
-language plpgsql stable security definer set search_path = public as $$
-declare w int[] := public.push_window(p_shop); h int := extract(hour from p_at at time zone 'Africa/Cairo')::int;
-begin
-  if w is null then return false; end if;
-  if w[1] = w[2] or (w[1] = 0 and w[2] = 24) then return true; end if;
-  if w[1] < w[2] then return h >= w[1] and h < w[2]; end if;
-  -- بيعدّي نص الليل (مثلًا من 20 لـ 2)
-  return h >= w[1] or h < w[2];
-end $$;
-revoke execute on function public.push_window_open(uuid, timestamptz) from public, anon, authenticated;
-
--- ---------- الاشتراك (من الجهاز نفسه) ----------
-create or replace function public.save_push_subscription(p_endpoint text, p_p256dh text, p_auth text, p_locale text default 'ar', p_user_agent text default null)
-returns uuid
-language plpgsql security definer set search_path = public as $$
-declare s uuid := public.current_shop_id(); me uuid := auth.uid(); rid uuid;
-begin
-  if s is null or me is null then raise exception 'E_FORBIDDEN'; end if;
-  if p_endpoint is null or p_endpoint !~ '^https://[^/@\s]+\.[^/@\s]+/' or length(p_endpoint) > 1000
-     or coalesce(p_p256dh, '') !~ '^[A-Za-z0-9_-]{80,100}$' or coalesce(p_auth, '') !~ '^[A-Za-z0-9_-]{16,44}$' then
-    raise exception 'E_BAD_INPUT';
-  end if;
-  -- نفس المتصفح بقى لمستخدم تاني (حد خرج وحد دخل): الاشتراك بينتقل لللي داخل دلوقتي بس
-  select id into rid from public.push_subscriptions where endpoint = p_endpoint and deleted_at is null for update;
-  if rid is not null then
-    update public.push_subscriptions set shop_id = s, profile_id = me, p256dh = p_p256dh, auth = p_auth,
-      locale = case when p_locale = 'en' then 'en' else 'ar' end, user_agent = left(p_user_agent, 300), fails = 0
-    where id = rid;
-  else
-    rid := gen_random_uuid();
-    insert into public.push_subscriptions(id, shop_id, profile_id, endpoint, p256dh, auth, locale, user_agent)
-    values (rid, s, me, p_endpoint, p_p256dh, p_auth, case when p_locale = 'en' then 'en' else 'ar' end, left(p_user_agent, 300));
-  end if;
-  -- 10 أجهزة بالكتير لكل مستخدم (الأقدم بيتشال)
-  update public.push_subscriptions set deleted_at = now()
-   where profile_id = me and deleted_at is null
-     and id not in (select id from public.push_subscriptions where profile_id = me and deleted_at is null order by updated_at desc limit 10);
-  return rid;
-end $$;
-revoke execute on function public.save_push_subscription(text, text, text, text, text) from public, anon;
-grant execute on function public.save_push_subscription(text, text, text, text, text) to authenticated;
-
-create or replace function public.remove_push_subscription(p_endpoint text) returns void
-language plpgsql security definer set search_path = public as $$
-begin
-  if auth.uid() is null then raise exception 'E_FORBIDDEN'; end if;
-  update public.push_subscriptions set deleted_at = now() where endpoint = p_endpoint and profile_id = auth.uid() and deleted_at is null;
-end $$;
-revoke execute on function public.remove_push_subscription(text) from public, anon;
-grant execute on function public.remove_push_subscription(text) to authenticated;
-
--- ---------- الإرسال (Edge Function push بمفتاح السيرفر بس) ----------
--- بيرجّع الإشعارات الجديدة لكل جهاز مشترك (لو التوقيت مفتوح)، وبيسجّلها إنها اتبعتت عشان ما تتكررش.
--- لكل مستخدم: الإشعارات بتتحسب بصلاحياته هو بالظبط (نفس دالة الجرس وهو داخل).
-create or replace function public.push_due(p_now timestamptz default now())
-returns table(sub_id uuid, endpoint text, p256dh text, auth text, locale text, key text, kind text, args jsonb, link text, token text)
-language plpgsql security definer set search_path = public, extensions, pg_temp as $$
-#variable_conflict use_column
-declare
-  u record;
-  old_claims text := current_setting('request.jwt.claims', true);
-  old_sub text := current_setting('request.jwt.claim.sub', true);
-begin
-  drop table if exists pg_temp._push_new;
-  create temp table _push_new(profile_id uuid, key text, kind text, args jsonb, link text, token text) on commit drop;
-  for u in
-    select distinct ps.profile_id, ps.shop_id
-      from public.push_subscriptions ps
-      join public.profiles p on p.id = ps.profile_id and p.shop_id = ps.shop_id and p.deleted_at is null
-      join public.shops sh on sh.id = ps.shop_id and sh.suspended_at is null
-     where ps.deleted_at is null and public.push_window_open(ps.shop_id, p_now)
-  loop
-    -- نفس صلاحيات المستخدم: كأنه داخل (aal2 لأنه فعّل الاشتراك وهو داخل بالتحقق بخطوتين لو مفعّل)
-    perform set_config('request.jwt.claims', jsonb_build_object('sub', u.profile_id, 'role', 'authenticated', 'aal', 'aal2')::text, true);
-    perform set_config('request.jwt.claim.sub', u.profile_id::text, true);
-    begin
-      insert into _push_new
-      select u.profile_id, n.key, n.kind, n.args, n.link, encode(gen_random_bytes(16), 'hex')
-        from public.my_notifications() n
-       where not exists (select 1 from public.push_sent x where x.profile_id = u.profile_id and x.key = n.key)
-         and not exists (select 1 from public.notification_reads r where r.profile_id = u.profile_id and r.key = n.key and r.deleted_at is null)
-       limit 50;
-    exception when others then
-      -- مستخدم اتقفل أو اتشالت صلاحيته: ما يوصلوش حاجة
-      null;
-    end;
-  end loop;
-  perform set_config('request.jwt.claims', coalesce(old_claims, ''), true);
-  perform set_config('request.jwt.claim.sub', coalesce(old_sub, ''), true);
-
-  insert into public.push_sent(shop_id, profile_id, key, ack_token)
-  select p.shop_id, n.profile_id, n.key, n.token from _push_new n join public.profiles p on p.id = n.profile_id
-  on conflict (profile_id, key) do nothing;
-
-  return query
-  select ps.id, ps.endpoint, ps.p256dh, ps.auth, ps.locale, n.key, n.kind, n.args, n.link, n.token
-    from _push_new n
-    join public.push_subscriptions ps on ps.profile_id = n.profile_id and ps.deleted_at is null
-   order by ps.id, n.key;
-end $$;
-revoke execute on function public.push_due(timestamptz) from public, anon, authenticated;
-grant execute on function public.push_due(timestamptz) to service_role;
-
--- نتيجة الإرسال: الجهاز اللي لغى الاشتراك (404/410) أو فشل 5 مرات ورا بعض بيتشال
-create or replace function public.push_result(p_rows jsonb) returns integer
-language plpgsql security definer set search_path = public as $$
-declare r jsonb; n int := 0; st int;
-begin
-  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) > 5000 then raise exception 'E_BAD_INPUT'; end if;
-  for r in select * from jsonb_array_elements(p_rows) loop
-    st := coalesce((r ->> 'status')::int, 0);
-    if st between 200 and 299 then
-      update public.push_subscriptions set fails = 0, last_ok_at = now() where id = (r ->> 'sub_id')::uuid;
-    elsif st in (404, 410) or coalesce((r ->> 'gone')::boolean, false) then
-      update public.push_subscriptions set deleted_at = now() where id = (r ->> 'sub_id')::uuid and deleted_at is null;
-      n := n + 1;
-    else
-      update public.push_subscriptions set fails = fails + 1, deleted_at = case when fails + 1 >= 5 then now() else deleted_at end
-       where id = (r ->> 'sub_id')::uuid and deleted_at is null;
-    end if;
-  end loop;
-  return n;
-end $$;
-revoke execute on function public.push_result(jsonb) from public, anon, authenticated;
-grant execute on function public.push_result(jsonb) to service_role;
-
--- ---------- زرار "اتقرا" من الإشعار نفسه (من غير تسجيل دخول) ----------
--- token عشوائي 128 بت لإشعار واحد، بيشتغل مرة واحدة وفي خلال 7 أيام. بيعلّم الإشعار مقروء في الجرس بس.
-create or replace function public.push_ack(p_token text) returns boolean
-language plpgsql security definer set search_path = public as $$
-declare x public.push_sent;
-begin
-  if p_token is null or p_token !~ '^[0-9a-f]{32}$' then return false; end if;
-  update public.push_sent set acked_at = now()
-   where ack_token = p_token and acked_at is null and deleted_at is null and created_at > now() - interval '7 days'
-  returning * into x;
-  if x.id is null then return false; end if;
-  insert into public.notification_reads(shop_id, profile_id, key) values (x.shop_id, x.profile_id, x.key)
-  on conflict (profile_id, key) do nothing;
-  return true;
-end $$;
-revoke execute on function public.push_ack(text) from public;
-grant execute on function public.push_ack(text) to anon, authenticated;
-$m0058$;
-  insert into public.app_migrations(version, how) values ('0058_web_push.sql', 'applied');
-  raise notice 'applied %', '0058_web_push.sql';
-end $run$;
-commit;
-
--- ============================== 0059_counters_branch.sql ==============================
-begin;
-do $run$ begin
-  if exists (select 1 from public.app_migrations where version = '0059_counters_branch.sql') then return; end if;
-  execute $m0059$
--- 0059: U6 (مراجعة عزل الفروع): ترقيم الطلبات لكل فرع
---
--- اختبار U6 (tests/db/u6.test.ts) لقى إن موظف فرع بيقدر يقرا عدّاد أرقام طلبات الفرع التاني (order_counters)،
--- وده بيكشف عدد شغل الفرع التاني في السنة. البرنامج نفسه ما بيقراش الجدول ده خالص (الترقيم جوه قاعدة البيانات)،
--- فالقراية بقت لفروع الموظف بس (صاحب المحل بيشوف الكل زي الأول).
-drop policy if exists counters_select on public.order_counters;
-create policy counters_select_branch on public.order_counters for select to authenticated
-  using (shop_id = public.current_shop_id() and (branch_id is null or branch_id in (select unnest(public.my_branch_ids()))));
-$m0059$;
-  insert into public.app_migrations(version, how) values ('0059_counters_branch.sql', 'applied');
-  raise notice 'applied %', '0059_counters_branch.sql';
-end $run$;
-commit;
-
 select 4 as part, 6 as parts, count(*) as applied_files, max(version) as latest,
-  case when '0059_counters_branch.sql' in (select version from public.app_migrations) then
+  case when '0057_categories.sql' in (select version from public.app_migrations) then
     'الجزء 4 خلص. اللي بعده: upgrade_part_5.sql'
   else 'فيه ملف ما اتطبقش' end as status
 from public.app_migrations;
