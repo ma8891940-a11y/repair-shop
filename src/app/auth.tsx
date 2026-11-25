@@ -18,6 +18,9 @@ interface AuthState {
   suspended: boolean;
   /** C3: الحساب مفعّل عليه 2FA والدخول لسه ما عدّاش الخطوة التانية */
   mfaNeeded: boolean;
+  /** داخل من كود أو رابط استعادة: كلمة سر جديدة الأول */
+  recovery: boolean;
+  endRecovery: () => void;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -51,6 +54,26 @@ function writeMe(uid: string, v: { profile: Profile; shop: Shop }) {
   }
 }
 
+// رابط الاستعادة بيتقرا من العنوان قبل ما Supabase يشيله، وبيفضل لحد ما كلمة السر تتغيّر (حتى مع إعادة التحميل)
+const REC_KEY = 'pw-recovery';
+const setRec = (on: boolean) => {
+  try {
+    if (on) sessionStorage.setItem(REC_KEY, '1');
+    else sessionStorage.removeItem(REC_KEY);
+  } catch {
+    /* التخزين ممكن يكون مقفول */
+  }
+};
+const recoveryNow = (() => {
+  const link = /[#&]type=recovery(&|$)/.test(window.location.hash) && /access_token=/.test(window.location.hash);
+  if (link) setRec(true);
+  try {
+    return link || sessionStorage.getItem(REC_KEY) === '1';
+  } catch {
+    return link;
+  }
+})();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -61,6 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [suspended, setSuspended] = useState(false);
   const [mfaNeeded, setMfaNeeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState(recoveryNow);
+  const endRecovery = useCallback(() => {
+    setRec(false);
+    setRecovery(false);
+  }, []);
 
   const load = useCallback(async (s: Session | null) => {
     setError(null);
@@ -136,7 +164,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'MFA_CHALLENGE_VERIFIED') {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRec(true);
+        setRecovery(true);
+      }
+      // دخول عادي أو خروج: مفيش استعادة شغالة
+      if (event === 'SIGNED_OUT') endRecovery();
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'MFA_CHALLENGE_VERIFIED') {
         // خارج callback المصادقة عشان ما يحصلش قفل
         setTimeout(() => void load(s), 0);
       }
@@ -145,7 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, [load]);
+  }, [load, endRecovery]);
 
   const refresh = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -163,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await endSession();
   }, []);
 
-  return <Ctx.Provider value={{ loading, session, profile, shop, error, isAdmin, suspended, mfaNeeded, refresh, signOut }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ loading, session, profile, shop, error, isAdmin, suspended, mfaNeeded, recovery, endRecovery, refresh, signOut }}>{children}</Ctx.Provider>;
 }
 
 /** مفاتيح جلسة Supabase المحفوظة على الجهاز */
