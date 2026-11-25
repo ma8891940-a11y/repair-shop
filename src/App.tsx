@@ -15,6 +15,7 @@ import { TooltipProvider } from './ui/Tooltip';
 import { ToastProvider } from './ui/Toast';
 import { SplashScreen } from './screens/SplashScreen';
 import { LoginScreen } from './screens/auth/LoginScreen';
+import { ForgotScreen, NewPasswordScreen } from './screens/auth/ForgotScreen';
 import { draftMode, hasRegisterDraft, regMeta } from './screens/auth/registerDraft';
 import { lazyScreen, markBackgroundLoaded, whenIdle } from './app/lazyScreen';
 import { getHandoffMs, initSplashSpeed, SPLASH_ANIM_MS } from './lib/splashTiming';
@@ -129,7 +130,7 @@ function Suspended() {
 }
 
 function Gate() {
-  const { loading, session, profile, shop, suspended, isAdmin, mfaNeeded } = useAuth();
+  const { loading, session, profile, shop, suspended, isAdmin, mfaNeeded, recovery } = useAuth();
   const location = useLocation();
   // صفحة تتبع العميل: عامة، بتشتغل بتسجيل دخول أو من غيره
   if (isPublicPath(location.pathname)) {
@@ -146,6 +147,7 @@ function Gate() {
   if (loading) return null;
   // C3: الخطوة التانية من 2FA قبل أي حاجة
   if (session && mfaNeeded) return <MfaScreen />;
+  if (session && recovery) return <NewPasswordScreen />;
 
   // المعالج بيفضل في نفس المكان من الشجرة طول الخطوات، فحالته ما بتضيعش وقت تأكيد الإيميل
   const joinPath = !session && location.pathname === '/join';
@@ -160,6 +162,7 @@ function Gate() {
   if (!session) {
     return (
       <Routes>
+        <Route path="/forgot" element={<ForgotScreen />} />
         <Route path="*" element={<LoginScreen />} />
       </Routes>
     );

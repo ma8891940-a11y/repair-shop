@@ -21,7 +21,7 @@ export function errorMessage(e: unknown): string {
   const wait = retryAfterSeconds(msg);
   if (wait != null) return t('errors.waitSeconds', { s: wait });
   if (/email rate limit|over_email_send_rate_limit/i.test(msg)) return t('errors.emailRate');
-  if (/error sending|sending (confirmation|recovery|magic|invite)|smtp|unexpected_failure.*mail|mail.*(failed|error)/i.test(msg)) return t('errors.emailSend');
+  if (/email address.*not authorized|email_address_not_authorized|error sending|sending (confirmation|recovery|magic|invite)|smtp|unexpected_failure.*mail|mail.*(failed|error)/i.test(msg)) return t('errors.emailSend');
   if (/rate limit|too many/i.test(msg)) return t('errors.rateLimit');
   if (/IMAGE_PROCESSING_FAILED/.test(msg)) return t('errors.imageFail');
   if (/token has expired|otp|invalid token/i.test(msg)) return t('errors.otp');

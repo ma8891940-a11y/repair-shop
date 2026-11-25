@@ -174,6 +174,8 @@ export function RegisterWizard({ mode: modeProp, resume = false }: { mode?: Wiza
           options: { emailRedirectTo: confirmRedirect(), data: regData },
         });
         if (se) return fail(se);
+        // إيميل عنده حساب متأكد: Supabase بيرد عادي من غير ما يبعت حاجة، فما نستناش كود
+        if (!data.session && data.user?.identities?.length === 0) return fail(t('errors.exists'));
         if (data.session) {
           // "Confirm email" مقفول في المشروع: نكمّل على طول
           autoRan.current = true;
