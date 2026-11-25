@@ -64,7 +64,8 @@ const setRec = (on: boolean) => {
     /* التخزين ممكن يكون مقفول */
   }
 };
-const linkToken = /[#&]type=recovery(&|$)/.test(window.location.hash) ? (/access_token=([^&]+)/.exec(window.location.hash)?.[1] ?? null) : null;
+const hash = typeof window === 'undefined' ? '' : window.location.hash;
+const linkToken = /[#&]type=recovery(&|$)/.test(hash) ? (/access_token=([^&]+)/.exec(hash)?.[1] ?? null) : null;
 const recoveryNow = () => {
   try {
     return linkToken != null || localStorage.getItem(REC_KEY) === '1';
