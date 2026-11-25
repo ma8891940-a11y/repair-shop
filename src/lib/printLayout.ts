@@ -2,6 +2,8 @@
  * 50.2: نموذج القالب: flow (خانات بالترتيب، زي printTemplate) وfree (حقول بأماكنها بالمللي للمقاسات الثابتة).
  * نفس الفحص على السيرفر في 0088 (print_template_error)، وفيه اختبار بيتأكد إنهم متطابقين.
  */
+import { BG_MAX_PX, bgFits } from './printBackground';
+
 export const PRINT_DOCS = ['receipt', 'receipt-a4', 'invoice', 'statement', 'voucher', 'sale', 'barcode', 'sticker', 'label'] as const;
 export type PrintDoc = (typeof PRINT_DOCS)[number];
 export type PrintMode = 'flow' | 'free';
@@ -59,8 +61,8 @@ export interface FreeField {
 export interface PrintLayout {
   lang?: (typeof LANGS)[number];
   paper?: { kind: keyof typeof PAPERS } | { kind: 'custom'; w: number; h: number | null };
-  /** ملف الخلفية (50.3) */
-  bg?: string | null;
+  /** 50.3: ملف الخلفية، وطريقة الورق، ومقاس الصورة بالبكسل */
+  bg?: { file: string; stock: 'preprinted' | 'blank'; w: number; h: number } | null;
   fields?: FreeField[];
 }
 
@@ -76,6 +78,10 @@ const tenths = (v: unknown): number | null => {
 };
 const textOk = (o: Obj) => (o.key === 'text' ? typeof o.text === 'string' && [...o.text].length <= 300 : !('text' in o));
 const bytes = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;
+
+const bgOk = (v: unknown): boolean =>
+  isObj(v) && onlyKeys(v, ['file', 'stock', 'w', 'h']) && typeof v.file === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\.(png|jpg)$/.test(v.file)
+  && (v.stock === 'preprinted' || v.stock === 'blank') && isInt(v.w, 1, BG_MAX_PX) && isInt(v.h, 1, BG_MAX_PX);
 
 /** مقاس الورقة بالمللي، أو null لو الكائن غلط */
 export function paperSize(paper: unknown): { w: number; h: number | null } | null {
@@ -98,9 +104,11 @@ export function templateError(doc: string, mode: string, blocks: unknown, layout
   if (bytes(blocks) > MAX_JSON || bytes(layout) > MAX_JSON) return 'size';
   if (!onlyKeys(layout, ['lang', 'paper', 'bg', 'fields'])) return 'key';
   if ('lang' in layout && !(LANGS as readonly unknown[]).includes(layout.lang)) return 'lang';
-  if (layout.bg != null && !(typeof layout.bg === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\.(png|jpg)$/.test(layout.bg))) return 'bg';
+  const bg = layout.bg as Obj | null | undefined;
+  if (bg != null && !bgOk(bg)) return 'bg';
   const size = 'paper' in layout ? paperSize(layout.paper) : null;
   if ('paper' in layout && !size) return 'paper';
+  if (bg != null && !(size && bgFits({ w: bg.w as number, h: bg.h as number }, size))) return 'bgsize';
   if (mode === 'flow') {
     if ('fields' in layout) return 'key';
     if (blocks.length > MAX_FIELDS) return 'count';
