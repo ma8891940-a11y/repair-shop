@@ -106,6 +106,19 @@ d('نسخ القالب الثابتة', () => {
     expect((await print(O, 'sale', await sale())).template).toBeNull();
   });
 
+  it('اللوجو بيتجمّد، ومتخزن مرة واحدة حتى لو العنوان اتغيّر', async () => {
+    const logo = (x: string) => `data:image/png;base64,${x}`;
+    await admin(`insert into shop_branding(id, shop_id, logo_color) values (gen_random_uuid(), $1, $2) on conflict (shop_id) do update set logo_color = excluded.logo_color`, [shop, logo('AAAA')]);
+    const e = await sale();
+    expect((await print(O, 'sale', e)).shop.logo_color).toBe(logo('AAAA'));
+    await as(O, `update shops set address = 'عنوان تالت' where id = $1`, [shop]);
+    await print(O, 'sale', await sale());
+    expect((await admin(`select count(*)::int n from print_identities where shop_id = $1 and data ? 'logo_color'`, [shop])).rows[0].n).toBe(1);
+    await admin(`update shop_branding set logo_color = $2 where shop_id = $1`, [shop, logo('BBBB')]);
+    expect((await print(O, 'sale', e)).shop.logo_color).toBe(logo('AAAA'));
+    expect((await print(O, 'sale', await sale())).shop.logo_color).toBe(logo('BBBB'));
+  });
+
   it('كل حفظ بمحتوى جديد = نسخة، ونفس المحتوى أو اسم القالب لأ', async () => {
     const x = await tpl('voucher', 'أ');
     await edit(x, 'voucher', 'ب');
@@ -180,6 +193,12 @@ d('نسخ القالب الثابتة', () => {
     // المستند الراجع مربوط بالقيد الجديد
     const ref = (await admin(`select ref_id from print_documents where shop_id = $1 and doc = 'sale' limit 1`, [a.s])).rows[0].ref_id;
     expect((await admin(`select 1 from journal_entries where id = $1 and shop_id = $2`, [ref, a.s])).rowCount).toBe(1);
+    // نسخة متلاعب فيها: قالب أو لوجو أو وثيقة محل تاني مرفوضين
+    const first = (t: string, patch: object) => ({ ...backup, [t]: [{ ...backup[t][0], ...patch }, ...backup[t].slice(1)] });
+    await expect(restore('c', first('print_template_versions', { layout: { html: 'x' } }))).rejects.toThrow(/E_TEMPLATE/);
+    await expect(restore('d', first('print_identities', { data: { logo_color: 'data:image/svg+xml,<svg>' } }))).rejects.toThrow(/E_BAD_INPUT/);
+    const foreign = (await admin(`select id from print_identities where shop_id = $1 limit 1`, [a.s])).rows[0].id;
+    await expect(restore('e', first('print_documents', { identity_id: foreign }))).rejects.toThrow(/E_BAD_INPUT/);
     const old: Record<string, unknown> = { ...backup };
     for (const t of ['print_template_versions', 'print_identities', 'print_documents']) delete old[t];
     const b = await restore('b', old);

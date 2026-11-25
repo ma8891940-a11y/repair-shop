@@ -1752,7 +1752,7 @@ do $run$ begin
   execute $m0090$
 -- 0090: (50.4) نسخ القالب الثابتة: كل حفظ للقالب = نسخة ما بتتعدلش، وكل مستند ليه رقم (فاتورة صيانة، وبيع، وسند) بيتربط أول طباعة
 -- بنسخة القالب وبيانات المحل وقتها (الاسم والعنوان واللوجو)، وإعادة الطباعة بنفسها. الستيكر والليبل مش وثايق.
--- بيانات المحل متخزنة مرة واحدة لكل شكل (اللوجو كبير)، والوثايق بتشاور عليها.
+-- بيانات المحل واللوجو كل واحد متخزن مرة واحدة لكل شكل، والوثايق بتشاور عليهم.
 create table public.print_template_versions (
   id uuid primary key default gen_random_uuid(),
   shop_id uuid not null references public.shops(id),
@@ -1786,6 +1786,8 @@ create table public.print_documents (
   -- null = القالب الافتراضي (مفيش قالب محفوظ وقت أول طباعة)
   version_id uuid references public.print_template_versions(id),
   identity_id uuid not null references public.print_identities(id),
+  -- اللوجو لوحده: تغيير العنوان ما يكررهوش
+  logo_id uuid references public.print_identities(id),
   created_by uuid references public.profiles(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -1800,9 +1802,36 @@ begin
     -- القراية من print_document بس
     execute format('revoke all on public.%I from public, anon, authenticated', x);
     execute format('create trigger ledger_immutable before update or delete on public.%I for each row execute function public.tg_ledger_immutable()', x);
+    execute format('create trigger a_force_shop_id before insert on public.%I for each row execute function public.tg_force_shop_id()', x);
     execute format('create trigger ledger_no_truncate before truncate on public.%I for each statement execute function public.tg_ledger_immutable()', x);
   end loop;
 end $$;
+
+-- نسخة احتياطية متلاعب فيها: الصف لازم يشاور على حاجات نفس المحل، والقالب واللوجو بنفس فحصهم
+create or replace function public.tg_print_frozen_valid() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare dc text; e text;
+begin
+  if tg_table_name = 'print_template_versions' then
+    select t.doc into dc from public.print_templates t where t.id = new.template_id and t.shop_id = new.shop_id;
+    if dc is null then raise exception 'E_BAD_INPUT'; end if;
+    if octet_length(new.blocks::text) > 68000 then raise exception 'E_TEMPLATE'; end if;
+    e := public.print_template_error(dc, new.mode, case when new.mode = 'flow' then '[]'::jsonb else new.blocks end, new.layout);
+    if e is not null then raise exception 'E_TEMPLATE' using detail = e; end if;
+  elsif tg_table_name = 'print_identities' then
+    if octet_length(new.data::text) > 1300000
+       or exists (select 1 from jsonb_each_text(new.data) x where x.key in ('logo_color', 'logo_thermal') and x.value is not null and x.value !~ '^data:image/png;base64,[A-Za-z0-9+/=]*$')
+       then raise exception 'E_BAD_INPUT'; end if;
+    new.hash := encode(sha256(convert_to(new.data::text, 'UTF8')), 'hex');
+  elsif exists (select 1 from public.print_template_versions v where v.id = new.version_id and v.shop_id <> new.shop_id)
+     or exists (select 1 from public.print_identities i where i.id in (new.identity_id, new.logo_id) and i.shop_id <> new.shop_id) then
+    raise exception 'E_BAD_INPUT';
+  end if;
+  return new;
+end $$;
+create trigger b_valid before insert on public.print_template_versions for each row execute function public.tg_print_frozen_valid();
+create trigger b_valid before insert on public.print_identities for each row execute function public.tg_print_frozen_valid();
+create trigger b_valid before insert on public.print_documents for each row execute function public.tg_print_frozen_valid();
 
 -- نسخة للمحتوى الحالي: آخر نسخة لو نفس المحتوى، وإلا نسخة جديدة
 create or replace function public.print_template_version(p_template uuid) returns uuid
@@ -1827,14 +1856,25 @@ begin
 end $$;
 create trigger zz_version after insert or update of mode, blocks, layout on public.print_templates for each row execute function public.tg_print_template_version();
 -- القوالب الموجودة: نسخة أولى
+select set_config('warsha.system', 'on', true);
 select public.print_template_version(id) from public.print_templates;
+select set_config('warsha.system', 'off', true);
+
+-- بيانات ثابتة مرة واحدة لكل شكل
+create or replace function public.print_identity(p_data jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid := public.current_shop_id(); h text := encode(sha256(convert_to(p_data::text, 'UTF8')), 'hex');
+begin
+  insert into public.print_identities(shop_id, hash, data) values (s, h, p_data) on conflict (shop_id, hash) do nothing;
+  return (select id from public.print_identities where shop_id = s and hash = h);
+end $$;
 
 -- شكل المستند: أول مرة بيتجمّد (نسخة القالب وبيانات المحل)، وبعدها نفسه دايمًا
 create or replace function public.print_document(p_doc text, p_ref uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
   s uuid := public.current_shop_id(); br uuid; iv public.repair_invoices; e public.journal_entries;
-  pd public.print_documents; v public.print_template_versions; i public.print_identities; tpl uuid; ident jsonb; h text;
+  pd public.print_documents; v public.print_template_versions; tpl uuid; ident jsonb; logo jsonb;
 begin
   perform public.ledger_require(array['owner', 'reception']::public.app_role[]);
   -- نفس صلاحية المستند نفسه
@@ -1863,22 +1903,19 @@ begin
       and (t.branch_id = br or t.branch_id is null) order by t.branch_id nulls last limit 1;
     select jsonb_build_object('name', sh.name, 'phone', coalesce(nullif(b.phone, ''), sh.phone), 'address', coalesce(nullif(b.address, ''), sh.address),
         'terms', sh.receipt_terms, 'currency', sh.currency, 'name_en', g.name_en, 'tagline', g.tagline, 'phones', coalesce(to_jsonb(g.phones), '[]'::jsonb), 'whatsapp', g.whatsapp,
-        'socials', coalesce(g.socials, '{}'::jsonb), 'logo_color', g.logo_color, 'logo_thermal', g.logo_thermal, 'show_powered_by', coalesce(g.show_powered_by, false)) into ident
+        'socials', coalesce(g.socials, '{}'::jsonb), 'show_powered_by', coalesce(g.show_powered_by, false), 'vat_no', nullif(trim(sh.extras -> 'vat' ->> 'reg_no'), '')),
+      case when g.logo_color is not null or g.logo_thermal is not null then jsonb_build_object('logo_color', g.logo_color, 'logo_thermal', g.logo_thermal) end into ident, logo
       from public.shops sh left join public.branches b on b.id = br and (select count(*) from public.branches z where z.shop_id = s and z.deleted_at is null) > 1
       left join public.shop_branding g on g.shop_id = sh.id and g.deleted_at is null where sh.id = s;
-    h := encode(sha256(convert_to(ident::text, 'UTF8')), 'hex');
-    insert into public.print_identities(shop_id, hash, data) values (s, h, ident) on conflict (shop_id, hash) do nothing;
-    select * into i from public.print_identities where shop_id = s and hash = h;
-    insert into public.print_documents(shop_id, doc, ref_id, version_id, identity_id, created_by)
-    values (s, p_doc, p_ref, case when tpl is not null then public.print_template_version(tpl) end, i.id, auth.uid()) returning * into pd;
-  else
-    select * into i from public.print_identities where id = pd.identity_id;
+    insert into public.print_documents(shop_id, doc, ref_id, version_id, identity_id, logo_id, created_by)
+    values (s, p_doc, p_ref, case when tpl is not null then public.print_template_version(tpl) end, public.print_identity(ident), case when logo is not null then public.print_identity(logo) end, auth.uid()) returning * into pd;
   end if;
-  select * into v from public.print_template_versions where id = pd.version_id;
-  return jsonb_build_object('id', pd.id, 'first_printed_at', pd.created_at, 'shop', i.data,
+  select * into v from public.print_template_versions where id = pd.version_id and shop_id = s;
+  return jsonb_build_object('id', pd.id, 'first_printed_at', pd.created_at, 'shop', jsonb_build_object('logo_color', null, 'logo_thermal', null)
+      || (select i.data from public.print_identities i where i.id = pd.identity_id and i.shop_id = s) || coalesce((select i.data from public.print_identities i where i.id = pd.logo_id and i.shop_id = s), '{}'::jsonb),
     'template', case when v.id is not null then jsonb_build_object('version', v.version, 'mode', v.mode, 'blocks', v.blocks, 'layout', v.layout) end);
 end $$;
-revoke execute on function public.print_template_version(uuid), public.tg_print_template_version() from public, anon, authenticated;
+revoke execute on function public.print_template_version(uuid), public.tg_print_template_version(), public.tg_print_frozen_valid(), public.print_identity(jsonb) from public, anon, authenticated;
 revoke execute on function public.print_document(text, uuid) from public, anon;
 grant execute on function public.print_document(text, uuid) to authenticated;
 
