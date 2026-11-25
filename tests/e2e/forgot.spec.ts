@@ -94,3 +94,11 @@ test('تسجيل بإيميل عنده حساب: رسالة واضحة بدل ا
   await expect(page.getByRole('alert').filter({ hasText: 'عنده حساب' })).toBeVisible();
   await expect(page.locator('input[autocomplete=one-time-code]')).toHaveCount(0);
 });
+
+test('رابط استعادة مزوّر: ما يفتحش شاشة كلمة السر', async ({ page }, info) => {
+  await prefs(page, info);
+  await mock(page);
+  await page.goto('/#access_token=x&expires_at=1&expires_in=1&refresh_token=r&token_type=bearer&type=recovery');
+  await expect(page.getByTestId('forgot-link')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('new-password-screen')).toHaveCount(0);
+});

@@ -116,6 +116,7 @@ export function NewPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setError(null);
     if (!checkPassword(pw).rules.len) return setError(t('errors.weakPassword'));
     if (pw !== pw2) return setError(t('register.mismatch'));
@@ -125,7 +126,7 @@ export function NewPasswordScreen() {
       setBusy(false);
       return setError(/different from the old/i.test(er.message) ? t('forgot.same') : errorMessage(er));
     }
-    await supabase.auth.signOut({ scope: 'others' }).catch(() => undefined);
+    await supabase.auth.signOut({ scope: 'others' });
     toast({ tone: 'ok', title: t('forgot.done') });
     endRecovery();
   }
@@ -146,7 +147,7 @@ export function NewPasswordScreen() {
         <Button type="submit" variant="primary" size="lg" loading={busy} className="w-full justify-center">
           {t('forgot.save')}
         </Button>
-        <button type="button" onClick={() => (endRecovery(), void signOut())} className="text-sm text-fg-3 hover:text-fg">
+        <button type="button" onClick={() => void signOut()} className="text-sm text-fg-3 hover:text-fg">
           {t('forgot.back')}
         </button>
       </form>

@@ -58,21 +58,20 @@ function writeMe(uid: string, v: { profile: Profile; shop: Shop }) {
 const REC_KEY = 'pw-recovery';
 const setRec = (on: boolean) => {
   try {
-    if (on) sessionStorage.setItem(REC_KEY, '1');
-    else sessionStorage.removeItem(REC_KEY);
+    if (on) localStorage.setItem(REC_KEY, '1');
+    else localStorage.removeItem(REC_KEY);
   } catch {
     /* التخزين ممكن يكون مقفول */
   }
 };
-const recoveryNow = (() => {
-  const link = /[#&]type=recovery(&|$)/.test(window.location.hash) && /access_token=/.test(window.location.hash);
-  if (link) setRec(true);
+const linkToken = /[#&]type=recovery(&|$)/.test(window.location.hash) ? (/access_token=([^&]+)/.exec(window.location.hash)?.[1] ?? null) : null;
+const recoveryNow = () => {
   try {
-    return link || sessionStorage.getItem(REC_KEY) === '1';
+    return linkToken != null || localStorage.getItem(REC_KEY) === '1';
   } catch {
-    return link;
+    return linkToken != null;
   }
-})();
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -159,6 +158,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(({ data }) => {
       performance.mark('auth-session');
       if (!active) return;
+      // الرابط ما بيتصدقش غير لو Supabase قبله وعمل بيه الجلسة
+      if (linkToken && data.session?.access_token === linkToken) setRec(true);
+      else if (linkToken || !data.session) endRecovery();
       setSession(data.session);
       void load(data.session);
     });
@@ -168,8 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRec(true);
         setRecovery(true);
       }
-      // دخول عادي أو خروج: مفيش استعادة شغالة
-      if (event === 'SIGNED_OUT') endRecovery();
+      // كلمة السر اتغيّرت (حتى من تبويب تاني) أو خروج
+      if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') endRecovery();
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'MFA_CHALLENGE_VERIFIED') {
         // خارج callback المصادقة عشان ما يحصلش قفل
         setTimeout(() => void load(s), 0);
