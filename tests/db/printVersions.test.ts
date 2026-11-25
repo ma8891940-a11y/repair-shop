@@ -108,7 +108,7 @@ d('نسخ القالب الثابتة', () => {
 
   it('اللوجو بيتجمّد، ومتخزن مرة واحدة حتى لو العنوان اتغيّر', async () => {
     const logo = (x: string) => `data:image/png;base64,${x}`;
-    await admin(`insert into shop_branding(id, shop_id, logo_color) values (gen_random_uuid(), $1, $2) on conflict (shop_id) do update set logo_color = excluded.logo_color`, [shop, logo('AAAA')]);
+    await as(O, `insert into shop_branding(id, shop_id, logo_color) values (gen_random_uuid(), $1, $2) on conflict (shop_id) do update set logo_color = excluded.logo_color`, [shop, logo('AAAA')]);
     const e = await sale();
     expect((await print(O, 'sale', e)).shop.logo_color).toBe(logo('AAAA'));
     await as(O, `update shops set address = 'عنوان تالت' where id = $1`, [shop]);

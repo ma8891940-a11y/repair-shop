@@ -35,7 +35,7 @@ describe('تصدير واستيراد القالب (50.5)', () => {
   });
   it('صورة كبيرة على الحد بتروح وترجع، وفوقه مرفوضة', () => {
     expect(parseTemplate(exportTemplate(free, { type: 'png', bytes: bytes(BG_MAX_BYTES) })).image!.bytes.length).toBe(BG_MAX_BYTES);
-    rejects(exportTemplate(free, { type: 'png', bytes: bytes(BG_MAX_BYTES + 1) }));
+    expect(() => exportTemplate(free, { type: 'png', bytes: bytes(BG_MAX_BYTES + 1) })).toThrow('E_TEMPLATE_FILE');
   });
   it('ملف مش JSON أو ضخم أو صيغة تانية', () => {
     for (const v of ['', '<html>', 'null', '[]', '5', ' '.repeat(EXPORT_MAX_CHARS + 1)]) rejects(v);
@@ -66,6 +66,6 @@ describe('تصدير واستيراد القالب (50.5)', () => {
   it('نص فيه وسوم HTML مرفوض', () => {
     for (const s of ['<b>x</b>', '< script>', '</p>', '<!--x', '<?xml', '<SVG'])
       rejects({ ...raw(), layout: { ...raw().layout, fields: [{ ...(raw().layout.fields as object[])[0], text: s }] } });
-    rejects(exportTemplate({ ...flow, blocks: [{ key: 'text', show: true, size: 'md', align: 'start', bold: false, text: '<img src=x>' }] }, null));
+    expect(() => exportTemplate({ ...flow, blocks: [{ key: 'text', show: true, size: 'md', align: 'start', bold: false, text: '<img src=x>' }] }, null)).toThrow('E_TEMPLATE_FILE');
   });
 });

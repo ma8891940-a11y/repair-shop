@@ -23,6 +23,7 @@ export interface ImportedTemplate {
   /** layout.bg بيبقى null: الشاشة بترفع image الأول (prepareBackground) وتحط اسمها الجديد مع bg */
   template: TemplateContent;
   image: TemplateImage | null;
+  /** طريقة الورق من هنا، والمقاس من prepareBackground بعد ما الصورة تترسم (مش من الملف) */
   bg: { stock: 'preprinted' | 'blank'; w: number; h: number } | null;
 }
 
@@ -35,10 +36,13 @@ function toBase64(bytes: Uint8Array): string {
 /** من غير image: الخلفية ما بتدخلش الملف (اسمها بتاع المحل ده بس) */
 export function exportTemplate(t: TemplateContent, image: TemplateImage | null): string {
   const { bg, ...layout } = t.layout;
-  return JSON.stringify({
+  const out = JSON.stringify({
     format: EXPORT_FORMAT, version: 1, doc: t.doc, mode: t.mode, blocks: t.blocks, layout,
     ...(bg && image ? { background: { stock: bg.stock, w: bg.w, h: bg.h, type: image.type, data: toBase64(image.bytes) } } : {}),
   });
+  // ما يتصدّرش ملف مش هيتستورد
+  parseTemplate(out);
+  return out;
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
