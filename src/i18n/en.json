@@ -130,6 +130,7 @@
     "booting": "Getting ready"
   },
   "login": {
+    "forgot": "Forgot your password?",
     "title": "Sign in",
     "subtitle": "Sign in to pick up where you left off",
     "email": "Email",
@@ -149,6 +150,18 @@
     "resendConfirm": "Resend confirmation email",
     "resent": "A new confirmation email was sent. Open your inbox and tap the link.",
     "resendIn": "Resend in {{s}}s"
+  },
+  "forgot": {
+    "title": "Forgot password",
+    "sub": "Enter your account email and we’ll send a code or link to set a new password.",
+    "send": "Send",
+    "sent": "If {{email}} has an account, a code or link is on its way. Enter the code here or open the link. Check spam too.",
+    "back": "Back to sign in",
+    "newTitle": "New password",
+    "newSub": "Choose a new password. Other devices signed in to this account will be signed out.",
+    "save": "Save password",
+    "same": "That is your old password. Choose a different one",
+    "done": "Password changed"
   },
   "register": {
     "step": "Step {{n}} of {{total}}",

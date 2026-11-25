@@ -95,6 +95,9 @@ export function LoginScreen() {
           >
             <Input type={show ? 'text' : 'password'} dir="ltr" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyUp={onKey} className="h-11 text-start" />
           </Field>
+          <Link to="/forgot" state={{ email: email.trim() }} className="-mt-2 self-start text-sm font-medium text-accent underline-offset-4 hover:underline" data-testid="forgot-link">
+            {t('login.forgot')}
+          </Link>
           {linkError && !error && <Alert tone="warn">{linkError}</Alert>}
           {error && (
             <div key={attempt}>
