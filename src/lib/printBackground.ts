@@ -1,6 +1,8 @@
 /** 50.3: صورة خلفية القالب: PNG أو JPG بس بمحتوى الملف (مش باسمه)، ونسبتها تطابق الورقة، وبتتعاد رسمها قبل الرفع */
 export const BG_MAX_BYTES = 2 * 1024 * 1024;
 export const BG_MAX_PX = 10000;
+/** فوق كده canvas بيطلع فاضي على آيفون من غير خطأ (A4 بدقة 300 = 8.7 مليون) */
+export const BG_MAX_AREA = 16_000_000;
 export type BgType = 'png' | 'jpg';
 
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -32,8 +34,8 @@ export async function prepareBackground(file: File, paper: { w: number; h: numbe
   });
   try {
     const { width: w, height: h } = bitmap;
-    if (w > BG_MAX_PX || h > BG_MAX_PX) throw new Error('E_BG_SIZE');
-    if (!bgFits({ w, h }, paper)) throw new Error('E_BG_RATIO');
+    if (w > BG_MAX_PX || h > BG_MAX_PX || w * h > BG_MAX_AREA) throw new Error('E_BG_SIZE');
+    if (!bgFits({ w, h }, paper)) throw new Error('E_BG_RATIO', { cause: paper });
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;

@@ -40,7 +40,9 @@ describe('صورة خلفية القالب (50.3)', () => {
     await expect(prepareBackground(file(PNG), paper)).rejects.toThrow('E_BG_RATIO');
     vi.stubGlobal('createImageBitmap', async () => ({ width: 40000, height: 30000, close }));
     await expect(prepareBackground(file(JPG), paper)).rejects.toThrow('E_BG_SIZE');
-    expect(close).toHaveBeenCalledTimes(2);
+    vi.stubGlobal('createImageBitmap', async () => ({ width: 4960, height: 3720, close }));
+    await expect(prepareBackground(file(JPG), paper)).rejects.toThrow('E_BG_SIZE');
+    expect(close).toHaveBeenCalledTimes(3);
   });
   it('اللي بيترفع هو الرسم الجديد مش الملف الأصلي', async () => {
     const clean = new Blob(['clean'], { type: 'image/png' });
