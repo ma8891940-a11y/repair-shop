@@ -14,6 +14,7 @@ const field = (o: object = {}) => ({ key: 'customer', x: 2, y: 2.5, w: 30, h: 5,
 const free = (name: string, f: object, error: string | null, o: object = {}): TemplateCase => ({ name, doc: 'sticker', mode: 'free', blocks: [], layout: { paper: { kind: '40x30' }, fields: [field(f)], ...o }, error });
 const flow = (name: string, b: unknown, error: string | null, o: Partial<TemplateCase> = {}): TemplateCase => ({ name, doc: 'receipt', mode: 'flow', blocks: [b], layout: {}, error, ...o });
 const BG = '0f8fad5b-d9cb-469f-a165-70867728950e';
+const bg = (o: object = {}) => ({ file: `${BG}.png`, stock: 'blank', w: 2480, h: 3508, ...o });
 
 export const TEMPLATE_CASES: TemplateCase[] = [
   // flow
@@ -22,7 +23,7 @@ export const TEMPLATE_CASES: TemplateCase[] = [
   flow('نصين حر', block(), null, { blocks: [block({ key: 'text', text: 'أ' }), block({ key: 'text', text: 'ب' })] }),
   flow('خط وحجم', block({ font: 'mono', pt: 12 }), null),
   flow('فاضي', null, null, { blocks: [] }),
-  flow('لغة ومقاس وخلفية', block(), null, { layout: { lang: 'en', paper: { kind: '58' }, bg: `${BG}.png` } }),
+  flow('لغة ومقاس وخلفية', block(), null, { layout: { lang: 'en', paper: { kind: 'a4' }, bg: bg() } }),
   flow('مقاس مخصوص من غير طول', block(), null, { layout: { paper: { kind: 'custom', w: 72, h: null } } }),
   flow('خلفية فاضية', block(), null, { layout: { bg: null } }),
   flow('خانة مش بتاعة النوع', block({ key: 'imei' }), 'field', { doc: 'statement' }),
@@ -47,9 +48,20 @@ export const TEMPLATE_CASES: TemplateCase[] = [
   flow('حقول في flow', block(), 'key', { layout: { fields: [] } }),
   flow('لغة غلط', block(), 'lang', { layout: { lang: 'fr' } }),
   flow('لغة null', block(), 'lang', { layout: { lang: null } }),
-  flow('خلفية SVG', block(), 'bg', { layout: { bg: `${BG}.svg` } }),
-  flow('خلفية رابط', block(), 'bg', { layout: { bg: 'https://x/a.png' } }),
+  flow('خلفية SVG', block(), 'bg', { layout: { paper: { kind: 'a4' }, bg: bg({ file: `${BG}.svg` }) } }),
+  flow('خلفية رابط', block(), 'bg', { layout: { paper: { kind: 'a4' }, bg: bg({ file: 'https://x/a.png' }) } }),
   flow('خلفية رقم', block(), 'bg', { layout: { bg: 5 } }),
+  flow('خلفية نص', block(), 'bg', { layout: { paper: { kind: 'a4' }, bg: `${BG}.png` } }),
+  flow('ورق مطبوع جاهز', block(), null, { layout: { paper: { kind: 'a4' }, bg: bg({ stock: 'preprinted', file: `${BG}.jpg` }) } }),
+  flow('طريقة ورق مجهولة', block(), 'bg', { layout: { paper: { kind: 'a4' }, bg: bg({ stock: 'other' }) } }),
+  flow('خلفية بمفتاح زيادة', block(), 'bg', { layout: { paper: { kind: 'a4' }, bg: bg({ url: 'x' }) } }),
+  flow('خلفية من غير مقاس', block(), 'bg', { layout: { paper: { kind: 'a4' }, bg: bg({ w: undefined }) } }),
+  flow('خلفية ضخمة', block(), 'bg', { layout: { paper: { kind: 'a4' }, bg: bg({ w: 10001, h: 10001 }) } }),
+  flow('خلفية مش بنسبة الورقة', block(), 'bgsize', { layout: { paper: { kind: 'a4' }, bg: bg({ w: 3508, h: 2480 }) } }),
+  flow('خلفية على حد النص مللي', block(), null, { layout: { paper: { kind: '40x30' }, bg: bg({ w: 400, h: 305 }) } }),
+  flow('خلفية بعد النص مللي', block(), 'bgsize', { layout: { paper: { kind: '40x30' }, bg: bg({ w: 400, h: 306 }) } }),
+  flow('خلفية من غير مقاس ورقة', block(), 'bgsize', { layout: { bg: bg() } }),
+  flow('خلفية على رول', block(), 'bgsize', { layout: { paper: { kind: '80' }, bg: bg() } }),
   flow('مقاس مجهول', block(), 'paper', { layout: { paper: { kind: 'a3' } } }),
   flow('مقاس null', block(), 'paper', { layout: { paper: null } }),
   flow('مقاس ومعاه مفتاح', block(), 'paper', { layout: { paper: { kind: 'a4', w: 5 } } }),
