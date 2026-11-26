@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { SelectMenu } from '../../ui/SelectMenu';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowUp, Eye, EyeOff, GripVertical, Plus, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { useBranch } from '../../app/branch';
@@ -267,20 +268,20 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
                 <GripVertical className="size-4 cursor-grab text-fg-3" aria-hidden />
                 <span className="min-w-0 flex-1 basis-[40%] truncate text-fg">{t(`printers.b.${b.key}`)}</span>
                 {b.key === 'text' && <Input value={b.text ?? ''} onChange={(e) => upd(i, { text: e.target.value })} maxLength={300} className="h-7 w-40" aria-label={t('printers.b.text')} />}
-                <select value={b.size} onChange={(e) => upd(i, { size: e.target.value as Block['size'] })} aria-label={t('printers.size')} className="h-7 rounded border border-line bg-sunken/60 px-1 text-2xs">
+                <SelectMenu value={b.size} onChange={(e) => upd(i, { size: e.target.value as Block['size'] })} aria-label={t('printers.size')} className="h-7 rounded border border-line bg-sunken/60 pe-7 ps-2 text-2xs">
                   {(['sm', 'md', 'lg'] as const).map((z) => (
                     <option key={z} value={z}>
                       {t(`printers.sizes.${z}`)}
                     </option>
                   ))}
-                </select>
-                <select value={b.align} onChange={(e) => upd(i, { align: e.target.value as Block['align'] })} aria-label={t('printers.align')} className="h-7 rounded border border-line bg-sunken/60 px-1 text-2xs">
+                </SelectMenu>
+                <SelectMenu value={b.align} onChange={(e) => upd(i, { align: e.target.value as Block['align'] })} aria-label={t('printers.align')} className="h-7 rounded border border-line bg-sunken/60 pe-7 ps-2 text-2xs">
                   {(['start', 'center', 'end'] as const).map((z) => (
                     <option key={z} value={z}>
                       {t(`printers.aligns.${z}`)}
                     </option>
                   ))}
-                </select>
+                </SelectMenu>
                 <button type="button" onClick={() => upd(i, { bold: !b.bold })} aria-pressed={b.bold} className={cn('h-7 rounded px-1.5 text-2xs font-bold', b.bold ? 'bg-accent-soft text-fg' : 'text-fg-3')} aria-label={t('printers.bold')}>
                   B
                 </button>

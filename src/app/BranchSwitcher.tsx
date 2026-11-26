@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Building2 } from 'lucide-react';
 import { useBranch } from './branch';
 import { useMe } from './auth';
+import { SelectMenu } from '../ui/SelectMenu';
 import { Tip } from '../ui/Tooltip';
 import { cn } from '../ui/cn';
 
@@ -18,23 +19,28 @@ export function BranchSwitcher({ className }: { className?: string }) {
   const tip = b.view === 'all' && b.working ? t('branch.workingOn', { name: b.working.name }) : t('branch.switcher');
   return (
     <Tip label={tip}>
-      <label className={cn('glass relative flex h-9 items-center gap-1.5 rounded-md ps-2.5 text-sm text-fg-2 focus-within:border-accent', className)}>
-        <Building2 className="size-4 shrink-0 text-fg-3" aria-hidden />
-        <span className="sr-only">{t('branch.switcher')}</span>
-        <select
+      <span className={cn('glass relative flex h-9 items-center rounded-md text-sm text-fg-2 focus-within:border-accent', className)}>
+        <Building2 className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-3" aria-hidden />
+        <SelectMenu
           value={b.view}
           onChange={(e) => b.setView(e.target.value)}
-          className="h-full max-w-[150px] cursor-pointer appearance-none truncate bg-transparent pe-3 text-sm text-fg focus:outline-none"
+          aria-label={t('branch.switcher')}
+          searchOver={6}
+          className="h-9 max-w-[38vw] rounded-md bg-transparent pe-7 ps-8 text-sm text-fg focus:outline-none sm:max-w-[260px]"
           data-testid="branch-switcher"
         >
-          {owner && <option value="all">{t('branch.all')}</option>}
+          {owner && (
+            <option value="all" data-divider="true">
+              {t('branch.all')}
+            </option>
+          )}
           {b.mine.map((x) => (
             <option key={x.id} value={x.id}>
               {x.name}
             </option>
           ))}
-        </select>
-      </label>
+        </SelectMenu>
+      </span>
     </Tip>
   );
 }

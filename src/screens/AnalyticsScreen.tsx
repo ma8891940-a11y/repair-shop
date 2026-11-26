@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { SelectMenu } from '../ui/SelectMenu';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownRight, ArrowUpRight, Target, ThumbsDown, ThumbsUp } from 'lucide-react';
@@ -114,13 +115,13 @@ export function AnalyticsScreen() {
               <PanelHeader
                 title={t('analytics.compare')}
                 actions={
-                  <select value={metric} onChange={(e) => setMetric(e.target.value as Metric)} aria-label={t('analytics.metric')} className="h-8 rounded-md border border-line bg-sunken/60 px-2 text-xs text-fg" data-testid="an-metric">
+                  <SelectMenu value={metric} onChange={(e) => setMetric(e.target.value as Metric)} aria-label={t('analytics.metric')} className="h-8 rounded-md border border-line bg-sunken/60 pe-7 ps-2 text-xs text-fg" data-testid="an-metric">
                     {METRICS.map((m) => (
                       <option key={m} value={m}>
                         {t(`analytics.m.${m}`)}
                       </option>
                     ))}
-                  </select>
+                  </SelectMenu>
                 }
               />
               <ul className="flex flex-col gap-2 p-3" data-testid="an-bars">

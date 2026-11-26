@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SelectMenu } from '../../ui/SelectMenu';
 import { useTranslation } from 'react-i18next';
 import { ArrowDown, ArrowUp, Plus, RotateCcw, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -132,14 +133,14 @@ export function ChecksTab() {
         <div className="flex flex-wrap items-center gap-2">
           {available.length > 0 && (
             <>
-              <select value={extra} onChange={(e) => setExtra(e.target.value)} className="h-8 rounded-sm border border-line bg-sunken px-2 text-sm text-fg" aria-label={t('checksTpl.addReady')} data-testid="tpl-add-ready">
+              <SelectMenu value={extra} onChange={(e) => setExtra(e.target.value)} className="h-8 rounded-sm border border-line bg-sunken pe-7 ps-2 text-sm text-fg" aria-label={t('checksTpl.addReady')} data-testid="tpl-add-ready">
                 <option value="">{t('checksTpl.addReady')}</option>
                 {available.map((k) => (
                   <option key={k} value={k}>
                     {label(k)}
                   </option>
                 ))}
-              </select>
+              </SelectMenu>
               <Button size="sm" disabled={!extra || items.length >= 40} onClick={() => (setItems((l) => [...l, { key: extra }]), setExtra(''))} icon={<Plus className="size-3.5" />}>
                 {t('checksTpl.add')}
               </Button>
