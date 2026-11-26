@@ -99,7 +99,7 @@ d('فحص القالب على السيرفر', () => {
       void layout;
       return { ...rest, blocks: [{ key: 'legacy' }] };
     };
-    const old = { ...b, print_templates: b.print_templates.filter((t) => t.mode === 'flow').map(strip) };
+    const old = { ...b, print_template_versions: [], print_identities: [], print_documents: [], print_templates: b.print_templates.filter((t) => t.mode === 'flow').map(strip) };
     for (const t of await restore('b', old)) expect(t).toMatchObject({ mode: 'flow', layout: {}, blocks: [{ key: 'legacy' }] });
     await expect(restore('c', { ...b, print_templates: [{ ...free, layout: { html: '<script>' } }] })).rejects.toThrow(/E_TEMPLATE/);
   }, 30_000);
