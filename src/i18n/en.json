@@ -215,12 +215,12 @@
     "mismatch": "Passwords don't match",
     "match": "Passwords match",
     "strength": {
-      "label": "Password strength",
       "0": "Very weak",
       "1": "Weak",
       "2": "Fair",
       "3": "Strong",
-      "4": "Very strong"
+      "4": "Very strong",
+      "label": "Password strength"
     },
     "rules": {
       "len": "At least 8 characters",
@@ -4005,6 +4005,32 @@
       "due": "Due date",
       "amount": "Amount",
       "status": "Status"
+    }
+  },
+  "printTest": {
+    "title": "Test print",
+    "hint": "Guides at real size: paper edge, margin, and a ruler every 5 mm. If the frame is shifted, adjust the printer offset.",
+    "noTemplate": "No saved template for this type: printing at the default size.",
+    "sample": {
+      "shopName": "Repair shop",
+      "shopPhone": "01000000000",
+      "shopAddress": "Tahrir St, Cairo",
+      "orderNo": "A-2026-0001",
+      "entryNo": "1024",
+      "customer": "Ahmed Mahmoud",
+      "phone": "01012345678",
+      "device": "Samsung A54",
+      "imei": "350000000000000",
+      "issue": "Broken screen",
+      "warranty": "30 days on the same fault",
+      "terms": "Devices left over 30 days are not our responsibility.",
+      "parts": "Screen × 1",
+      "lines": "Case × 2",
+      "party": "Ahmed Mahmoud",
+      "method": "Cash",
+      "memo": "Payment on account",
+      "itemName": "20W charger",
+      "code": "6221234567890"
     }
   }
 }
