@@ -8,6 +8,7 @@ import type { Block } from './printTemplate';
 export const FONT_CSS = { sans: 'var(--font-sans)', mono: 'var(--font-mono)', system: 'system-ui, sans-serif' } as const;
 
 export interface PrinterRow {
+  kind?: string;
   width_mm: number;
   height_mm: number | null;
   margin_mm: number;

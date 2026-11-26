@@ -3,8 +3,10 @@
  * وخطوط الإرشاد للطباعة التجريبية. الحساب في lib/printEngine، والبيانات والأرقام دايمًا من الشاشة اللي بتطبع.
  */
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useMe } from '../auth';
 import { supabase } from '../../lib/supabase';
-import { freeStyle, planCss, rulerTicks, type PagePlan, type PrinterRow } from '../../lib/printEngine';
+import { DOC_PAGE, freeStyle, pagePlan, planCss, rulerTicks, type PagePlan, type PrinterRow } from '../../lib/printEngine';
 import type { FreeField, PrintDoc, PrintLayout } from '../../lib/printLayout';
 
 export interface LoadedTemplate {
@@ -28,7 +30,7 @@ export async function loadTemplate(doc: PrintDoc, branchId: string | null | unde
   const list = (ts ?? []) as { branch_id: string | null; mode: 'flow' | 'free'; blocks: unknown; layout: PrintLayout; printer_id: string | null }[];
   const pick = list.find((x) => x.branch_id && x.branch_id === branchId) ?? list.find((x) => !x.branch_id) ?? null;
   const printer = pick?.printer_id
-    ? (((await supabase.from('printers').select('width_mm, height_mm, margin_mm, offset_x, offset_y').eq('id', pick.printer_id).is('deleted_at', null).maybeSingle()).data as PrinterRow | null) ?? null)
+    ? (((await supabase.from('printers').select('kind, width_mm, height_mm, margin_mm, offset_x, offset_y').eq('id', pick.printer_id).is('deleted_at', null).maybeSingle()).data as PrinterRow | null) ?? null)
     : null;
   if (ref && FROZEN.includes(doc)) {
     const { data, error: e } = await supabase.rpc('print_document', { p_doc: doc, p_ref: ref });
@@ -38,6 +40,36 @@ export async function loadTemplate(doc: PrintDoc, branchId: string | null | unde
   }
   return pick ? { mode: pick.mode, blocks: pick.blocks, layout: pick.layout ?? {}, printer } : null;
 }
+
+/** نفس loadTemplate، ومعاينة المصمم (preview): مسودته من الجلسة (خانات بالترتيب) ومن غير ما الوثيقة تتجمّد */
+export async function loadForPrint(doc: PrintDoc, branchId: string | null | undefined, ref: string | undefined, preview: boolean): Promise<LoadedTemplate | null> {
+  const tmpl = await loadTemplate(doc, branchId, preview ? undefined : ref);
+  if (!preview) return tmpl;
+  let draft: unknown = null;
+  try {
+    draft = JSON.parse(sessionStorage.getItem(`tpl-preview:${doc}`) ?? 'null');
+  } catch {
+    draft = null;
+  }
+  return draft ? { ...(tmpl ?? { layout: {}, printer: null }), mode: 'flow', blocks: draft } : tmpl;
+}
+
+/** خطة الصفحة للمستند: المقاس والإزاحة والخلفية ولغة القالب (t بلغته)، والحقول لو القالب حر */
+export function useDocPlan(doc: string, tmpl: LoadedTemplate | null | undefined) {
+  const { i18n } = useTranslation();
+  const { shop } = useMe();
+  const plan = pagePlan(tmpl?.mode ?? 'flow', tmpl?.layout, tmpl?.printer, DOC_PAGE[doc] ?? DOC_PAGE.receipt, i18n.language);
+  const free = tmpl?.mode === 'free' && !!plan.h;
+  const fields = (free ? (tmpl?.layout.fields ?? []) : []) as FreeField[];
+  const bgUrl = useBgUrl(shop.id, plan.bg?.file);
+  return { plan, free, fields, bgUrl, bgReady: !plan.bg || !!bgUrl, t: i18n.getFixedT(plan.lang) };
+}
+
+/** خلفية المستند بالترتيب (flow): من حافة الورقة (ورا الهامش)، وبتتطبع مع الورق الفاضي بس */
+export const FlowBg = ({ plan, bgUrl }: { plan: PagePlan; bgUrl: string | null }) =>
+  bgUrl && plan.bg && plan.h ? (
+    <img src={bgUrl} alt="" data-testid="print-bg" className={plan.bg.print ? undefined : 'print:hidden'} style={{ position: 'absolute', top: `-${plan.margin}mm`, left: `-${plan.margin}mm`, width: `${plan.w}mm`, height: `${plan.h}mm`, maxWidth: 'none' }} />
+  ) : null;
 
 /** رابط مؤقت لصورة الخلفية (المكان خاص بالمحل، 0089) */
 export function useBgUrl(shopId: string, file: string | null | undefined): string | null {

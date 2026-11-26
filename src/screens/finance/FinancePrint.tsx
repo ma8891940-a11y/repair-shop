@@ -16,9 +16,11 @@ import { ColorHeader, useBranding } from '../../app/brand/branding';
 import { useBranch } from '../../app/branch';
 import { defaultBlocks, normalizeBlocks, type Block, type BlockKey, type Size } from '../../lib/printTemplate';
 import { cn } from '../../ui/cn';
+import { blockStyle, type PagePlan } from '../../lib/printEngine';
+import { FlowBg, FreePage, Offset, PageStyle, loadForPrint, useDocPlan } from '../../app/print/engine';
 import { VOUCHER_SOURCES } from '../../lib/ledger';
 
-export function PrintFrame({ ready, children }: { ready: boolean; children: React.ReactNode }) {
+export function PrintFrame({ ready, children, plan, bgUrl = null, free = false }: { ready: boolean; children: React.ReactNode; plan?: PagePlan; bgUrl?: string | null; free?: boolean }) {
   useBackground('off');
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -33,7 +35,7 @@ export function PrintFrame({ ready, children }: { ready: boolean; children: Reac
   }, [ready, preview]);
   return (
     <div className="min-h-dvh bg-white text-black">
-      <style>{'@page { size: A4; margin: 12mm; }'}</style>
+      {plan ? <PageStyle plan={plan} /> : <style>{'@page { size: A4; margin: 12mm; }'}</style>}
       <div className={`flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden${embed ? ' hidden' : ''}`}>
         <button type="button" onClick={() => window.print()} className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-on-accent">
           {t('print.print')}
@@ -43,17 +45,39 @@ export function PrintFrame({ ready, children }: { ready: boolean; children: Reac
         </button>
         <span className="text-xs text-neutral-600">{t('fin.pdfHint')}</span>
       </div>
-      <article className="mx-auto max-w-[190mm] p-[8mm] text-[12px] print:max-w-none print:p-0">{ready ? children : <Skeleton className="h-40 w-full" />}</article>
+      <article className="mx-auto max-w-[190mm] p-[8mm] text-[12px] print:max-w-none print:p-0">{!ready ? (
+          <Skeleton className="h-40 w-full" />
+        ) : plan && !free ? (
+          <Offset plan={plan}>
+            <div style={{ position: 'relative' }}>
+              <FlowBg plan={plan} bgUrl={bgUrl} />
+              <div style={{ position: 'relative' }}>{children}</div>
+            </div>
+          </Offset>
+        ) : (
+          children
+        )}</article>
     </div>
   );
 }
 
-export function PrintHeader({ title, sub }: { title: string; sub: string }) {
+type Frozen = { name?: string; phone?: string | null; address?: string | null; logo_color?: string | null; logo_thermal?: string | null } | undefined;
+function useShopFor(fz?: Record<string, unknown>) {
   const { shop } = useMe();
   const branding = useBranding();
+  const b = branding.data ?? null;
+  const z = fz as Frozen;
+  return {
+    shop: z ? { ...shop, name: z.name ?? shop.name, phone: z.phone ?? '', address: z.address ?? '' } : shop,
+    b: z && b ? { ...b, logo_color: z.logo_color ?? null, logo_thermal: z.logo_thermal ?? null } : b,
+  };
+}
+
+export function PrintHeader({ title, sub, fz }: { title: string; sub: string; fz?: Record<string, unknown> }) {
+  const { shop, b } = useShopFor(fz);
   return (
     <div className="mb-4">
-      <ColorHeader shop={shop} b={branding.data ?? null} title={title} sub={sub} />
+      <ColorHeader shop={shop} b={b} title={title} sub={sub} />
     </div>
   );
 }
@@ -61,7 +85,6 @@ export function PrintHeader({ title, sub }: { title: string; sub: string }) {
 /** طباعة كشف حساب (خزنة / عميل / مورد / موظف) للفترة. "حفظ كـ PDF" من نافذة الطباعة */
 export function StatementPrint() {
   const { kind = 'cashbox', id = '' } = useParams();
-  const { t } = useTranslation();
   const f = useFormat();
   const accName = useAccountName();
   const { range } = usePeriod();
@@ -81,20 +104,12 @@ export function StatementPrint() {
       name = kind === 'cashbox' ? accName(row as { code: string | null; name: string | null }) : (row?.name ?? row?.full_name ?? '');
     }
     // U5: قالب "كشف الحساب" الافتراضي (قالب الفرع الشغال يكسب قالب المحل)، أو مسودة المصمم في المعاينة
-    const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'statement').eq('is_default', true).is('deleted_at', null);
-    const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
-    const pick = list.find((x) => x.branch_id && x.branch_id === br.working?.id) ?? list.find((x) => !x.branch_id);
-    let draft: unknown = null;
-    if (preview) {
-      try {
-        draft = JSON.parse(sessionStorage.getItem('tpl-preview:statement') ?? 'null');
-      } catch {
-        draft = null;
-      }
-    }
-    const tpl = draft ? normalizeBlocks('statement', draft) : pick ? normalizeBlocks('statement', pick.blocks) : null;
-    return { st, name, tpl };
+    const tmpl = await loadForPrint('statement', br.working?.id, undefined, preview);
+    const tpl = tmpl?.blocks != null ? normalizeBlocks('statement', tmpl.blocks) : null;
+    return { st, name, tpl, tmpl };
   }, [kind, id, range.from.getTime(), range.to.getTime(), br.working?.id, preview, previewV]);
+  // 50.6: المقاس والإزاحة والخلفية من القالب وطابعته، ونصوص الكشف بلغة القالب
+  const { plan, bgUrl, bgReady, t } = useDocPlan('statement', data?.tmpl);
   const last = data?.st.moves.at(-1);
   const blocks = data ? (data.tpl ?? defaultBlocks('statement')) : [];
   // نفس مقاسات الكشف من غير قالب: العادي 12 والكبير 14 (الرصيد الختامي)
@@ -122,7 +137,7 @@ export function StatementPrint() {
       <tbody className="[&_td]:border-b [&_td]:border-dotted [&_td]:border-neutral-400 [&_td]:px-1 [&_td]:py-1">
         {rows.map((x) =>
           x.key === 'opening' ? (
-            <tr key="opening" className={cls(x)} data-block="opening">
+            <tr key="opening" className={cls(x)} style={blockStyle(x)} data-block="opening">
               <td colSpan={4} className={x.bold ? 'font-bold' : 'font-semibold'}>
                 {t('fin.opening')}
               </td>
@@ -150,7 +165,7 @@ export function StatementPrint() {
               </tr>
             ))
           ) : (
-            <tr key="closing" className={cls(x)} data-block="closing">
+            <tr key="closing" className={cls(x)} style={blockStyle(x)} data-block="closing">
               <td colSpan={4} className="!border-t-2 !border-solid !border-black">
                 {t('fin.closingBalance')}
               </td>
@@ -178,7 +193,7 @@ export function StatementPrint() {
         );
       case 'title':
         return shown('header') ? null : (
-          <div key="title" className={cn('mb-1', cls(x))} data-block="title">
+          <div key="title" className={cn('mb-1', cls(x))} style={blockStyle(x)} data-block="title">
             {title}
           </div>
         );
@@ -188,31 +203,31 @@ export function StatementPrint() {
             {data!.name}
           </span>
         ) : (
-          <div key="party" className={cls(x)} data-block="party" data-testid="statement-party">
+          <div key="party" className={cls(x)} style={blockStyle(x)} data-block="party" data-testid="statement-party">
             <bdi>{data!.name}</bdi>
           </div>
         );
       case 'period':
         return shown('header') ? null : (
-          <div key="period" className={cn('mb-2', cls(x))} data-block="period">
+          <div key="period" className={cn('mb-2', cls(x))} style={blockStyle(x)} data-block="period">
             {period}
           </div>
         );
       case 'signature':
         return (
-          <div key="signature" className={cn('mt-6', cls(x))} data-block="signature">
+          <div key="signature" className={cn('mt-6', cls(x))} style={blockStyle(x)} data-block="signature">
             {t('print.sign')}: ..............................
           </div>
         );
       case 'thanks':
         return (
-          <div key="thanks" className={cn('mt-2 text-neutral-600', cls(x))} data-block="thanks">
+          <div key="thanks" className={cn('mt-2 text-neutral-600', cls(x))} style={blockStyle(x)} data-block="thanks">
             {t('print.thanks')}
           </div>
         );
       case 'text':
         return x.text ? (
-          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} data-block="text">
+          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} style={blockStyle(x)} data-block="text">
             {x.text}
           </p>
         ) : null;
@@ -222,8 +237,8 @@ export function StatementPrint() {
   };
   return (
     // نستنى الفروع كمان، عشان الطباعة ما تبدأش بقالب المحل قبل ما قالب الفرع يوصل
-    <PrintFrame ready={!!data && br.ready}>
-      {data && <div data-testid="print-statement">{blocks.map(render)}</div>}
+    <PrintFrame ready={!!data && br.ready && bgReady} plan={plan} bgUrl={bgUrl}>
+      {data && <div data-testid="print-statement" dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang}>{blocks.map(render)}</div>}
     </PrintFrame>
   );
 }
@@ -234,7 +249,6 @@ export function StatementPrint() {
  */
 export function VoucherPrint() {
   const { id = '' } = useParams();
-  const { t } = useTranslation();
   const f = useFormat();
   const accName = useAccountName();
   const br = useBranch();
@@ -284,26 +298,18 @@ export function VoucherPrint() {
     const rev = must(await supabase.from('journal_entries').select('entry_no').eq('reverses_id', id).maybeSingle()) as { entry_no: number } | null;
     // صرف شيك العميل (0065) بيسجل دفعة برضه
     const pay = e.source_type === 'payment' || e.source_type === 'cheque_clear' ? ((await supabase.from('payments').select('method').eq('entry_id', id).maybeSingle()).data as { method: string } | null) : null;
-    const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'voucher').eq('is_default', true).is('deleted_at', null);
-    const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
-    const pick = list.find((x) => x.branch_id && x.branch_id === (e.branch_id ?? br.working?.id)) ?? list.find((x) => !x.branch_id);
-    let draft: unknown = null;
-    if (preview) {
-      try {
-        draft = JSON.parse(sessionStorage.getItem('tpl-preview:voucher') ?? 'null');
-      } catch {
-        draft = null;
-      }
-    }
-    const tpl = draft ? normalizeBlocks('voucher', draft) : pick ? normalizeBlocks('voucher', pick.blocks) : null;
-    return { e, receipt, amount, party, cashbox: accName(cash), method: pay?.method ?? null, tpl, cancelledBy: rev?.entry_no ?? null };
+    const tmpl = await loadForPrint('voucher', e.branch_id ?? br.working?.id, id, preview);
+    const tpl = tmpl?.mode === 'flow' && tmpl.blocks != null ? normalizeBlocks('voucher', tmpl.blocks) : null;
+    return { e, receipt, amount, party, cashbox: accName(cash), method: pay?.method ?? null, tpl, tmpl, cancelledBy: rev?.entry_no ?? null };
   }, [id, preview, previewV, br.working?.id]);
+  const { plan, free, fields, bgUrl, bgReady, t } = useDocPlan('voucher', data?.tmpl);
+  const sf = useShopFor(data?.tmpl?.shop);
   const blocks = data ? (data.tpl ?? defaultBlocks('voucher')) : [];
   const fs: Record<Size, string> = { sm: 'text-[12px]', md: 'text-[14px]', lg: 'text-[20px]' };
   const cls = (x: Block) => cn(fs[x.size], x.bold && 'font-bold', x.align === 'center' ? 'text-center' : x.align === 'end' ? 'text-end' : 'text-start');
   const title = data ? t(data.receipt ? 'voucher.receipt' : 'voucher.payment') : '';
   const row = (x: Block, label: ReactNode, value: ReactNode, testid?: string, mono = false) => (
-    <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1.5', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} data-block={x.key}>
+    <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1.5', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} style={blockStyle(x)} data-block={x.key}>
       <span className="w-[30%] shrink-0 font-semibold">{label}</span>
       <span className={cn('min-w-0', mono && 'font-mono')} dir={mono ? 'ltr' : undefined} data-testid={testid}>
         {value}
@@ -314,10 +320,10 @@ export function VoucherPrint() {
     if (!x.show || !data) return null;
     switch (x.key) {
       case 'header':
-        return <PrintHeader key="header" title={blocks.some((b) => b.key === 'title' && b.show) ? title : ''} sub={blocks.some((b) => b.key === 'entryNo' && b.show) ? `#${data.e.entry_no}` : ''} />;
+        return <PrintHeader key="header" fz={data.tmpl?.shop} title={blocks.some((b) => b.key === 'title' && b.show) ? title : ''} sub={blocks.some((b) => b.key === 'entryNo' && b.show) ? `#${data.e.entry_no}` : ''} />;
       case 'title':
         return blocks.some((b) => b.key === 'header' && b.show) ? null : (
-          <div key="title" className={cn('mb-2', cls(x))} data-block="title">
+          <div key="title" className={cn('mb-2', cls(x))} style={blockStyle(x)} data-block="title">
             {title}
           </div>
         );
@@ -337,20 +343,20 @@ export function VoucherPrint() {
         return row(x, t('voucher.memo'), `${t(`fin.src.${data.e.source_type}`)}${data.e.memo ? ` - ${data.e.memo}` : ''}`);
       case 'sign':
         return (
-          <div key="sign" className={cn('mt-8 grid grid-cols-2 gap-6', cls(x))} data-block="sign">
+          <div key="sign" className={cn('mt-8 grid grid-cols-2 gap-6', cls(x))} style={blockStyle(x)} data-block="sign">
             <div>{t('voucher.signReceiver')}: ..............................</div>
             <div>{t('voucher.signCashier')}: ..............................</div>
           </div>
         );
       case 'thanks':
         return (
-          <div key="thanks" className={cn('mt-3 text-neutral-600', cls(x))} data-block="thanks">
+          <div key="thanks" className={cn('mt-3 text-neutral-600', cls(x))} style={blockStyle(x)} data-block="thanks">
             {t('print.thanks')}
           </div>
         );
       case 'text':
         return x.text ? (
-          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} data-block="text">
+          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} style={blockStyle(x)} data-block="text">
             {x.text}
           </p>
         ) : null;
@@ -360,15 +366,32 @@ export function VoucherPrint() {
   };
   if (error) return <p className="p-6 text-sm text-red-700">{error}</p>;
   return (
-    <PrintFrame ready={!!data && br.ready}>
+    <PrintFrame ready={!!data && br.ready && bgReady} plan={plan} bgUrl={bgUrl} free={free}>
       {data && (
-        <div data-testid="print-voucher" data-kind={data.receipt ? 'receipt' : 'payment'} data-cancelled={data.cancelledBy ? 'true' : 'false'}>
+        <div data-testid="print-voucher" data-kind={data.receipt ? 'receipt' : 'payment'} data-cancelled={data.cancelledBy ? 'true' : 'false'} dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang}>
           {data.cancelledBy != null && (
             <div className="mb-3 border-2 border-black px-3 py-2 text-center text-[18px] font-extrabold" data-testid="voucher-cancelled">
               {t('voucher.cancelled', { no: data.cancelledBy })}
             </div>
           )}
-          {blocks.map(render)}
+          {free ? (
+            <FreePage
+              plan={plan}
+              fields={fields}
+              bgUrl={bgUrl}
+              values={{
+                ...shopValues(sf),
+                entryNo: <span dir="ltr">#{data.e.entry_no}</span>,
+                date: f.dateTime(data.e.occurred_at),
+                party: <bdi>{data.party}</bdi>,
+                amount: <span className="num" dir="ltr">{f.money(data.amount)} {f.currency()}</span>,
+                method: data.method ? t(`payments.${data.method}`, { defaultValue: data.method }) : '',
+                memo: `${t(`fin.src.${data.e.source_type}`)}${data.e.memo ? ` - ${data.e.memo}` : ''}`,
+              }}
+            />
+          ) : (
+            blocks.map(render)
+          )}
         </div>
       )}
     </PrintFrame>
@@ -400,7 +423,6 @@ interface SaleInvoice {
  */
 export function SaleInvoicePrint() {
   const { id = '' } = useParams();
-  const { t } = useTranslation();
   const f = useFormat();
   const br = useBranch();
   const [params] = useSearchParams();
@@ -408,27 +430,19 @@ export function SaleInvoicePrint() {
   const previewV = params.get('v');
   const { data, error } = useLoad(async () => {
     const inv = (await rpc('sale_invoice', { p_entry: id })) as SaleInvoice;
-    const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks').eq('doc', 'sale').eq('is_default', true).is('deleted_at', null);
-    const list = (ts ?? []) as { branch_id: string | null; blocks: unknown }[];
-    const pick = list.find((x) => x.branch_id && x.branch_id === (inv.branch_id ?? br.working?.id)) ?? list.find((x) => !x.branch_id);
-    let draft: unknown = null;
-    if (preview) {
-      try {
-        draft = JSON.parse(sessionStorage.getItem('tpl-preview:sale') ?? 'null');
-      } catch {
-        draft = null;
-      }
-    }
-    const tpl = draft ? normalizeBlocks('sale', draft) : pick ? normalizeBlocks('sale', pick.blocks) : null;
-    return { inv, tpl };
+    const tmpl = await loadForPrint('sale', inv.branch_id ?? br.working?.id, id, preview);
+    const tpl = tmpl?.mode === 'flow' && tmpl.blocks != null ? normalizeBlocks('sale', tmpl.blocks) : null;
+    return { inv, tpl, tmpl };
   }, [id, preview, previewV, br.working?.id]);
+  const { plan, free, fields, bgUrl, bgReady, t } = useDocPlan('sale', data?.tmpl);
+  const sf = useShopFor(data?.tmpl?.shop);
   const blocks = data ? (data.tpl ?? defaultBlocks('sale')) : [];
   const fs: Record<Size, string> = { sm: 'text-[12px]', md: 'text-[14px]', lg: 'text-[20px]' };
   const cls = (x: Block) => cn(fs[x.size], x.bold && 'font-bold', x.align === 'center' ? 'text-center' : x.align === 'end' ? 'text-end' : 'text-start');
   const shown = (k: BlockKey) => blocks.some((b) => b.key === k && b.show);
   const money = (v: number) => `${f.money(Number(v))} ${f.currency()}`;
   const row = (x: Block, label: ReactNode, value: ReactNode, testid?: string, mono = false) => (
-    <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1.5', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} data-block={x.key}>
+    <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1.5', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} style={blockStyle(x)} data-block={x.key}>
       <span className="w-[30%] shrink-0 font-semibold">{label}</span>
       <span className={cn('min-w-0', mono && 'font-mono')} dir={mono ? 'ltr' : undefined} data-testid={testid}>
         {value}
@@ -440,10 +454,10 @@ export function SaleInvoicePrint() {
     const v = data.inv;
     switch (x.key) {
       case 'header':
-        return <PrintHeader key="header" title={shown('title') ? t('saleInv.title') : ''} sub={shown('entryNo') ? `#${v.entry_no}` : ''} />;
+        return <PrintHeader key="header" fz={data.tmpl?.shop} title={shown('title') ? t('saleInv.title') : ''} sub={shown('entryNo') ? `#${v.entry_no}` : ''} />;
       case 'title':
         return shown('header') ? null : (
-          <div key="title" className={cn('mb-2', cls(x))} data-block="title">
+          <div key="title" className={cn('mb-2', cls(x))} style={blockStyle(x)} data-block="title">
             {t('saleInv.title')}
           </div>
         );
@@ -457,7 +471,7 @@ export function SaleInvoicePrint() {
         return v.phone ? row(x, t('print.phone'), v.phone, undefined, true) : null;
       case 'lines':
         return (
-          <table key="lines" className={cn('mt-2 w-full border-collapse', fs[x.size])} data-block="lines">
+          <table key="lines" className={cn('mt-2 w-full border-collapse', fs[x.size])} style={blockStyle(x)} data-block="lines">
             <thead>
               <tr className="[&_th]:border-b [&_th]:border-black [&_th]:px-1 [&_th]:py-1 [&_th]:text-start">
                 <th>{t('saleInv.item')}</th>
@@ -510,19 +524,19 @@ export function SaleInvoicePrint() {
         return v.memo ? row(x, t('voucher.memo'), v.memo) : null;
       case 'sign':
         return (
-          <div key="sign" className={cn('mt-8', cls(x))} data-block="sign">
+          <div key="sign" className={cn('mt-8', cls(x))} style={blockStyle(x)} data-block="sign">
             {t('print.sign')}: ..............................
           </div>
         );
       case 'thanks':
         return (
-          <div key="thanks" className={cn('mt-3 text-neutral-600', cls(x))} data-block="thanks">
+          <div key="thanks" className={cn('mt-3 text-neutral-600', cls(x))} style={blockStyle(x)} data-block="thanks">
             {t('print.thanks')}
           </div>
         );
       case 'text':
         return x.text ? (
-          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} data-block="text">
+          <p key={`text-${i}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} style={blockStyle(x)} data-block="text">
             {x.text}
           </p>
         ) : null;
@@ -532,15 +546,35 @@ export function SaleInvoicePrint() {
   };
   if (error) return <p className="p-6 text-sm text-red-700">{error}</p>;
   return (
-    <PrintFrame ready={!!data && br.ready}>
+    <PrintFrame ready={!!data && br.ready && bgReady} plan={plan} bgUrl={bgUrl} free={free}>
       {data && (
-        <div data-testid="print-sale" data-legacy={data.inv.legacy ? 'true' : 'false'} data-cancelled={data.inv.cancelled_by != null ? 'true' : 'false'}>
+        <div dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang} data-testid="print-sale" data-legacy={data.inv.legacy ? 'true' : 'false'} data-cancelled={data.inv.cancelled_by != null ? 'true' : 'false'}>
           {data.inv.cancelled_by != null && (
             <div className="mb-3 border-2 border-black px-3 py-2 text-center text-[18px] font-extrabold" data-testid="sale-cancelled">
               {t('voucher.cancelled', { no: data.inv.cancelled_by })}
             </div>
           )}
-          {blocks.map(render)}
+          {free ? (
+            <FreePage
+              plan={plan}
+              fields={fields}
+              bgUrl={bgUrl}
+              values={{
+                ...shopValues(sf),
+                entryNo: <span dir="ltr">#{data.inv.entry_no}</span>,
+                date: f.dateTime(data.inv.at),
+                customer: data.inv.customer ? <bdi>{data.inv.customer}</bdi> : '',
+                phone: data.inv.phone ? <span dir="ltr">{data.inv.phone}</span> : '',
+                lines: data.inv.lines.map((l) => `${l.name} × ${f.number(Number(l.qty))}`).join(t('common.sep')),
+                price: <span className="num" dir="ltr">{money(data.inv.total)}</span>,
+                paid: <span className="num" dir="ltr">{money(data.inv.paid)}</span>,
+                remaining: <span className="num" dir="ltr">{money(data.inv.due)}</span>,
+                terms: sf.shop.receipt_terms.split('\n').map((x) => x.trim()).filter(Boolean).join(' - '),
+              }}
+            />
+          ) : (
+            blocks.map(render)
+          )}
           {data.inv.legacy && <p className="mt-2 text-[11px] text-neutral-600">{t('saleInv.legacy')}</p>}
         </div>
       )}
@@ -687,4 +721,14 @@ export function DayReportPrint() {
       )}
     </PrintFrame>
   );
+}
+
+function shopValues({ shop, b }: ReturnType<typeof useShopFor>): Partial<Record<string, ReactNode>> {
+  const logo = b?.logo_color ?? b?.logo_thermal ?? null;
+  return {
+    shopName: shop.name,
+    shopPhone: shop.phone,
+    shopAddress: shop.address,
+    logo: logo ? <img src={logo} alt={shop.name} style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} /> : null,
+  };
 }
