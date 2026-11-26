@@ -37,3 +37,23 @@ describe('إعدادات الطباعة', () => {
     expect(printUrl('receipt-a4', 'd1')).toBe('/print/receipt-a4/d1');
   });
 });
+
+describe('قالب الستيكر من الإعدادات (50.8)', () => {
+  it('كل مقاس جاهز بيطلع قالب سليم بنفس سطور الاستيكر', async () => {
+    const { stickerLayout, STICKER_PRESETS, DEFAULT_STICKER } = await import('./printPlan');
+    const { templateError } = await import('./printLayout');
+    for (const [w, h] of [...STICKER_PRESETS, [DEFAULT_STICKER.w, DEFAULT_STICKER.h], [37.5, 24.6]]) {
+      const l = stickerLayout({ w, h });
+      expect(templateError('sticker', 'free', [], l), `${w}x${h}`).toBeNull();
+      expect(l.fields!.map((f) => f.key)).toEqual(['orderNo', 'customer', 'phone', 'device', 'issue', 'price', 'paid', 'remaining', 'date']);
+    }
+  });
+  it('40×30: رقم الصيانة أكبر سطر، والفلوس باسمها', async () => {
+    const { stickerLayout } = await import('./printPlan');
+    const f = Object.fromEntries(stickerLayout({ w: 40, h: 30 }).fields!.map((x) => [x.key, x]));
+    expect(f.orderNo).toMatchObject({ x: 1.2, y: 1.2, w: 37.6, font: 'mono', bold: true });
+    expect(f.orderNo.pt).toBeGreaterThan(f.customer.pt);
+    expect([f.price.cap, f.paid.cap, f.remaining.cap]).toEqual([true, true, true]);
+    expect(f.customer.cap).toBeUndefined();
+  });
+});

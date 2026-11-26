@@ -4032,5 +4032,31 @@
       "itemName": "20W charger",
       "code": "6221234567890"
     }
+  },
+  "printCap": {
+    "orderNo": "No.",
+    "entryNo": "No.",
+    "date": "Date",
+    "customer": "Customer",
+    "phone": "Mobile",
+    "device": "Device",
+    "imei": "IMEI",
+    "issue": "Issue",
+    "warranty": "Warranty",
+    "terms": "Terms",
+    "parts": "Parts",
+    "lines": "Items",
+    "price": "Cost",
+    "itemPrice": "Price",
+    "paid": "Paid",
+    "remaining": "Due",
+    "party": "Name",
+    "amount": "Amount",
+    "method": "Method",
+    "memo": "Memo",
+    "itemName": "Item",
+    "code": "Code",
+    "shopPhone": "Phone",
+    "shopAddress": "Address"
   }
 }

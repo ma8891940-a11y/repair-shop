@@ -5,7 +5,7 @@ import { useBackground } from '../app/stage';
 import { useMe } from '../app/auth';
 import { useBranch } from '../app/branch';
 import { useLoad } from '../app/useLoad';
-import { FreePage, Guides, Offset, PageStyle, loadTemplate, useBgUrl } from '../app/print/engine';
+import { FreePage, Guides, Offset, PageStyle, fieldCaps, loadTemplate, useBgUrl } from '../app/print/engine';
 import { DOC_PAGE, pagePlan } from '../lib/printEngine';
 import { PRINT_DOCS, type FreeField, type PrintDoc } from '../lib/printLayout';
 import { readPrint } from '../lib/printPlan';
@@ -36,7 +36,9 @@ export function TestPrint() {
   const sticker = readPrint(shop.extras).sticker;
   // الاستيكر من غير قالب: مقاسه من الإعدادات ← الطباعة (زي الطباعة الفعلية)
   const fallback = doc === 'sticker' ? { w: sticker.w, h: sticker.h, margin: 0 } : (DOC_PAGE[doc] ?? DOC_PAGE.receipt);
-  const plan = pagePlan(data?.mode ?? 'flow', data?.layout, data?.printer, fallback, i18n.language);
+  const base = pagePlan(data?.mode ?? 'flow', data?.layout, data?.printer, fallback, i18n.language);
+  // الاستيكر من غير ملف طابعة: الإزاحة من الإعدادات ← الطباعة (زي StickerLabel)
+  const plan = doc === 'sticker' && !data?.printer ? { ...base, dx: sticker.dx, dy: sticker.dy } : base;
   const bgUrl = useBgUrl(shop.id, plan.bg?.file);
   const ready = data !== undefined && (!plan.bg || !!bgUrl);
   useEffect(() => {
@@ -84,7 +86,7 @@ export function TestPrint() {
       ) : (
         <div className="mx-auto my-4 w-fit print:m-0" data-testid="test-print" data-doc={doc} data-size={`${plan.w}x${plan.h ?? 'auto'}`}>
           {data?.mode === 'free' && plan.h ? (
-            <FreePage plan={plan} fields={(data.layout.fields ?? []) as FreeField[]} values={Object.fromEntries((data.layout.fields ?? []).map((x) => [x.key, sample(x.key)]))} bgUrl={bgUrl} guides />
+            <FreePage plan={plan} fields={(data.layout.fields ?? []) as FreeField[]} values={Object.fromEntries((data.layout.fields ?? []).map((x) => [x.key, sample(x.key)]))} caps={fieldCaps(doc, tl)} bgUrl={bgUrl} guides />
           ) : (
             <Offset plan={plan}>
               <article style={{ position: 'relative', width: `${plan.w}mm`, height: `${height}mm`, background: '#fff', color: '#000', boxSizing: 'border-box' }}>

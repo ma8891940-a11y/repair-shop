@@ -1,4 +1,5 @@
 // الطباعة: الإعدادات (الإعدادات ← الطباعة)، ومقاس الاستيكر، واللي بيتعمل تلقائي بعد الاستلام
+import type { FreeField, PrintLayout } from './printLayout';
 export type PrintDoc = 'sticker' | 'receipt' | 'receipt-a4' | 'invoice' | 'label';
 /** أزرار "طباعة وإرسال" في الاستلام وصفحة الجهاز */
 export const ACTIONS = ['thermal', 'paper', 'sticker', 'qr', 'whatsapp'] as const;
@@ -124,4 +125,41 @@ export function printUrl(doc: PrintDoc, deviceId: string, o: { embed?: boolean; 
   if (o.no) q.set('no', o.no);
   const qs = q.toString();
   return `/print/${doc}/${deviceId}${qs ? `?${qs}` : ''}`;
+}
+
+const r1 = (n: number) => Math.round(n * 10) / 10;
+const clampInt = (n: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(n)));
+/**
+ * 50.8: نقطة البداية لقالب الستيكر في المصمم: نفس سطور الاستيكر الحالي بمقاسه وخطوطه (أقرب pt صحيح).
+ * من غير قالب محفوظ، الاستيكر بيتطبع بـ StickerLabel زي ما هو بالظبط.
+ */
+export function stickerLayout(st: Pick<StickerSettings, 'w' | 'h'>): PrintLayout {
+  const w = clampInt(st.w, 20, 120);
+  const h = clampInt(st.h, 10, 120);
+  const fs = stickerFont({ w, h });
+  const inner = r1(w - STICKER_PAD_MM * 2);
+  const pt = (mm: number) => clampInt((mm * 72) / 25.4, 5, 72);
+  let y = STICKER_PAD_MM;
+  const fields: FreeField[] = [];
+  const line = (size: number, parts: { key: string; x: number; w: number; font?: FreeField['font']; bold?: boolean; cap?: boolean }[]) => {
+    const lh = Math.max(1, Math.floor(size * LINE_HEIGHT * 10) / 10);
+    for (const p of parts)
+      fields.push({ key: p.key, x: r1(STICKER_PAD_MM + p.x), y: r1(y), w: r1(p.w), h: lh, font: p.font ?? 'sans', pt: pt(size), align: 'start', bold: !!p.bold, ...(p.cap ? { cap: true } : {}) });
+    y += lh;
+  };
+  const full = (key: string, o: { font?: FreeField['font']; bold?: boolean } = {}) => [{ key, x: 0, w: inner, ...o }];
+  // من اليمين (عربي): الجهاز ثم العطل، والتكلفة ثم المقدم ثم الباقي
+  const dev = r1(inner * 0.45);
+  const third = r1(inner / 3);
+  line(fs.order, full('orderNo', { font: 'mono', bold: true }));
+  line(fs.name, full('customer', { bold: true }));
+  line(fs.phone, full('phone', { font: 'mono', bold: true }));
+  line(fs.issue, [{ key: 'device', x: r1(inner - dev), w: dev }, { key: 'issue', x: 0, w: r1(inner - dev) }]);
+  line(fs.money, [
+    { key: 'price', x: r1(inner - third), w: third, bold: true, cap: true },
+    { key: 'paid', x: third, w: r1(inner - 2 * third), bold: true, cap: true },
+    { key: 'remaining', x: 0, w: third, bold: true, cap: true },
+  ]);
+  line(fs.date, full('date'));
+  return { paper: { kind: 'custom', w, h }, fields };
 }

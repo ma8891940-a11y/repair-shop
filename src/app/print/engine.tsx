@@ -84,11 +84,16 @@ export function Guides({ plan, height }: { plan: PagePlan; height: number }) {
   );
 }
 
+/** أسماء الحقول قبل قيمها (cap) بلغة القالب */
+export const fieldCaps = (doc: string, t: (k: string) => string): Record<string, string> =>
+  Object.fromEntries(CAP_KEYS.map((k) => [k, t(`printCap.${k === 'price' && doc === 'barcode' ? 'itemPrice' : k}`)]));
+const CAP_KEYS = ['orderNo', 'entryNo', 'date', 'customer', 'phone', 'device', 'imei', 'issue', 'warranty', 'terms', 'parts', 'lines', 'price', 'paid', 'remaining', 'party', 'amount', 'method', 'memo', 'itemName', 'code', 'shopPhone', 'shopAddress'];
+
 /**
  * صفحة القالب الحر: كل حقل في مكانه بالمللي من حافة الورقة، والخلفية تحتهم (بتتطبع مع الورق الفاضي بس).
  * guides = الطباعة التجريبية: خطوط الإرشاد وإطار كل حقل.
  */
-export function FreePage({ plan, fields, values, bgUrl, guides, testid = 'print-free' }: { plan: PagePlan; fields: FreeField[]; values: Partial<Record<string, ReactNode>>; bgUrl?: string | null; guides?: boolean; testid?: string }) {
+export function FreePage({ plan, fields, values, caps, bgUrl, guides, testid = 'print-free' }: { plan: PagePlan; fields: FreeField[]; values: Partial<Record<string, ReactNode>>; caps?: Partial<Record<string, string>>; bgUrl?: string | null; guides?: boolean; testid?: string }) {
   const h = plan.h ?? 0;
   return (
     <Offset plan={plan}>
@@ -97,6 +102,7 @@ export function FreePage({ plan, fields, values, bgUrl, guides, testid = 'print-
         {guides && <Guides plan={plan} height={h} />}
         {fields.map((f, i) => (
           <div key={`${f.key}-${i}`} data-field={f.key} style={{ ...freeStyle(f), ...(guides ? { outline: '0.2mm dotted #000' } : {}) }}>
+            {f.cap && caps?.[f.key] ? `${caps[f.key]}: ` : null}
             {f.key === 'text' ? f.text : values[f.key]}
           </div>
         ))}

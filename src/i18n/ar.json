@@ -4048,5 +4048,31 @@
       "itemName": "شاحن 20 وات",
       "code": "6221234567890"
     }
+  },
+  "printCap": {
+    "orderNo": "رقم",
+    "entryNo": "رقم",
+    "date": "التاريخ",
+    "customer": "العميل",
+    "phone": "الموبايل",
+    "device": "الجهاز",
+    "imei": "IMEI",
+    "issue": "العطل",
+    "warranty": "الضمان",
+    "terms": "الشروط",
+    "parts": "القطع",
+    "lines": "الأصناف",
+    "price": "التكلفة",
+    "itemPrice": "السعر",
+    "paid": "المقدم",
+    "remaining": "الباقي",
+    "party": "الاسم",
+    "amount": "المبلغ",
+    "method": "الطريقة",
+    "memo": "البيان",
+    "itemName": "الصنف",
+    "code": "الكود",
+    "shopPhone": "تليفون",
+    "shopAddress": "العنوان"
   }
 }

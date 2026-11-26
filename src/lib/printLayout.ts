@@ -23,7 +23,7 @@ const DEVICE = [...SHOP, 'orderNo', 'date', 'customer', 'phone', 'device', 'imei
 export const FREE_FIELDS: Record<PrintDoc, readonly string[]> = {
   receipt: [],
   statement: [],
-  sticker: DEVICE,
+  sticker: [...DEVICE, 'price', 'paid', 'remaining'],
   label: DEVICE,
   'receipt-a4': [...DEVICE, 'price', 'paid', 'remaining'],
   invoice: [...DEVICE, 'price', 'paid', 'remaining', 'parts'],
@@ -57,6 +57,8 @@ export interface FreeField {
   bold: boolean;
   /** للحقل "text" بس */
   text?: string;
+  /** 50.8: اسم الحقل قبل قيمته ("العميل: أحمد") */
+  cap?: boolean;
 }
 export interface PrintLayout {
   lang?: (typeof LANGS)[number];
@@ -135,11 +137,11 @@ export function templateError(doc: string, mode: string, blocks: unknown, layout
   const seen = new Set<unknown>();
   for (const x of fields) {
     if (!isObj(x)) return 'type';
-    if (!onlyKeys(x, ['key', 'x', 'y', 'w', 'h', 'font', 'pt', 'align', 'bold', 'text'])) return 'key';
+    if (!onlyKeys(x, ['key', 'x', 'y', 'w', 'h', 'font', 'pt', 'align', 'bold', 'text', 'cap'])) return 'key';
     if (typeof x.key !== 'string' || !FREE_FIELDS[d].includes(x.key)) return 'field';
     if (x.key !== 'text' && seen.has(x.key)) return 'duplicate';
     seen.add(x.key);
-    if (typeof x.bold !== 'boolean' || !ALIGNS.includes(x.align as string)) return 'value';
+    if (typeof x.bold !== 'boolean' || !ALIGNS.includes(x.align as string) || ('cap' in x && typeof x.cap !== 'boolean')) return 'value';
     if (!(FONTS as readonly unknown[]).includes(x.font)) return 'font';
     if (!isInt(x.pt, PT.min, PT.max)) return 'pt';
     const [l, t, w, h] = [tenths(x.x), tenths(x.y), tenths(x.w), tenths(x.h)];
