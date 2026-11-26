@@ -5,7 +5,9 @@ import { trackingUrl, waLink } from '../lib/messages';
 import { appBase } from '../lib/publicUrl';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { pageSize, readPrint, type PrintDoc } from '../lib/printPlan';
-import { defaultBlocks, normalizeBlocks, pageCss, type Block, type BlockKey, type Size, type TemplateDoc } from '../lib/printTemplate';
+import { defaultBlocks, normalizeBlocks, type Block, type BlockKey, type Size, type TemplateDoc } from '../lib/printTemplate';
+import { blockStyle } from '../lib/printEngine';
+import { FlowBg, FreePage, Offset, PageStyle, loadForPrint, useDocPlan, type LoadedTemplate } from '../app/print/engine';
 import { readVat } from '../lib/vat';
 import { cn } from '../ui/cn';
 import { StickerLabel, StickerTest } from '../app/print/StickerLabel';
@@ -68,43 +70,44 @@ export function PrintScreen() {
     ]);
     const parts = kind === 'invoice' ? ((await supabase.rpc('device_parts', { p_device: id })).data ?? []) as { item_id: string; name: string; qty: number }[] : [];
     // المدفوع والفاضل (الاستيكر والفاتورة)
-    const money = kind === 'sticker' || kind === 'invoice' ? ((await supabase.rpc('device_money', { p_device: id })).data as { final: number | null; paid: number; due: number } | null) : null;
+    const money = kind === 'sticker' || kind === 'invoice' || kind === 'receipt-a4' ? ((await supabase.rpc('device_money', { p_device: id })).data as { final: number | null; paid: number; due: number } | null) : null;
     // R5: الضريبة من قيد التسليم نفسه (لو المحل مسجّل والجهاز اتسلّم)
     const vat = kind === 'invoice' ? ((await supabase.rpc('device_vat', { p_device: id })).data as { vat: number; gross: number; net: number } | null) : null;
     // U5: قالب الفرع (أو المحل) الافتراضي لنوع الورقة ده، وملف الطابعة بتاعه
     let tpl: Block[] | null = null;
-    let printer: { width_mm: number; height_mm: number | null; margin_mm: number } | null = null;
+    let tmpl: LoadedTemplate | null = null;
     if (kind === 'receipt' || kind === 'receipt-a4' || kind === 'invoice') {
-      const { data: ts } = await supabase.from('print_templates').select('branch_id, blocks, printer_id').eq('doc', kind).eq('is_default', true).is('deleted_at', null);
-      const list = (ts ?? []) as { branch_id: string | null; blocks: unknown; printer_id: string | null }[];
-      const pick = list.find((x) => x.branch_id && x.branch_id === (d as { branch_id?: string }).branch_id) ?? list.find((x) => !x.branch_id);
-      let draft: unknown = null;
-      if (preview) {
-        try {
-          draft = JSON.parse(sessionStorage.getItem(`tpl-preview:${kind}`) ?? 'null');
-        } catch {
-          draft = null;
-        }
+      // 50.6: الفاتورة بشكلها من أول طباعة (آخر فاتورة مش متلغية)، والمعاينة من غير ما تتجمّد
+      let ref: string | undefined;
+      if (kind === 'invoice' && !preview && params.get('test') !== '1') {
+        const inv = ((await supabase.rpc('repair_invoices_of', { p_device: id })).data ?? []) as { id: string; reversed: boolean }[];
+        ref = [...inv].reverse().find((x) => !x.reversed)?.id;
       }
-      if (draft) tpl = normalizeBlocks(kind, draft);
-      else if (pick) tpl = normalizeBlocks(kind, pick.blocks);
-      // مقاس الصفحة من ملف الطابعة (في المعاينة كمان)
-      if (pick?.printer_id) printer = ((await supabase.from('printers').select('width_mm, height_mm, margin_mm').eq('id', pick.printer_id).is('deleted_at', null).maybeSingle()).data as typeof printer) ?? null;
+      tmpl = await loadForPrint(kind, (d as { branch_id?: string }).branch_id, ref, preview);
+      if (tmpl?.mode === 'flow' && tmpl.blocks != null) tpl = normalizeBlocks(kind, tmpl.blocks);
     }
-    return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null, parts, money, vat, tpl, printer };
+    return { d, c: (c.data as Customer | null) ?? null, k: (k.data as DeviceCost | null) ?? null, parts, money, vat, tpl, tmpl };
   }, [id, kind, preview, previewV]);
 
+  // 50.6: المقاس والإزاحة والخلفية واللغة من القالب والطابعة (الإيصالات والفاتورة)
+  const isDoc = isReceipt || kind === 'invoice';
+  const tmpl = data?.tmpl ?? null;
+  const { plan, free, fields, bgUrl, bgReady, t: tl } = useDocPlan(kind, tmpl);
+  const needQr = isLabel || isReceipt || fields.some((x) => x.key === 'qr');
   // الـ QR بيفتح صفحة تتبع العميل بالرمز السري بتاع الجهاز (الإيصال وملصق الـ QR بس، الاستيكر من غيره)
   useEffect(() => {
-    if (!data || (!isLabel && !isReceipt)) return;
+    if (!data || !needQr) return;
     void QRCode.toDataURL(trackingUrl(appBase(shop.extras, window.location.href), data.d.tracking_token), { margin: 0, width: 360, errorCorrectionLevel: 'M' }).then(setQr);
-  }, [data, isLabel, isReceipt, shop.extras]);
+  }, [data, needQr, shop.extras]);
 
   // B: تليفون وعنوان فرع الجهاز على الإيصال والفاتورة (لو اتكتبوا)، واسم المحل ولوجوه زي ما هم
   const dev = data?.d as { branch_id?: string } | undefined;
   const branchRow = br.multi ? br.all.find((x) => x.id === dev?.branch_id) : undefined;
-  const shopFor = branchRow ? { ...shopRow, phone: branchRow.phone || shopRow.phone, address: branchRow.address || shopRow.address } : shopRow;
-  const ready = isTest || (!!data && !branding.loading && (!(isLabel || isReceipt) || !!qr));
+  const shopLive = branchRow ? { ...shopRow, phone: branchRow.phone || shopRow.phone, address: branchRow.address || shopRow.address } : shopRow;
+  const fz = tmpl?.shop as { name?: string; phone?: string | null; address?: string | null; terms?: string; logo_color?: string | null; logo_thermal?: string | null } | undefined;
+  const shopFor = fz ? { ...shopLive, name: fz.name ?? shopLive.name, phone: fz.phone ?? '', address: fz.address ?? '', receipt_terms: fz.terms ?? shopLive.receipt_terms } : shopLive;
+  const bFor = fz && b ? { ...b, logo_color: fz.logo_color ?? null, logo_thermal: fz.logo_thermal ?? null } : b;
+  const ready = isTest || (!!data && !branding.loading && (!needQr || !!qr) && bgReady);
   useEffect(() => {
     if (!ready || preview) return;
     const tm = setTimeout(() => {
@@ -141,7 +144,33 @@ export function PrintScreen() {
         )
       : null;
   const cur = f.currency(shop.currency);
-  const terms = shop.receipt_terms
+  const freeValues = (): Partial<Record<string, ReactNode>> => {
+    if (!data) return {};
+    const money = (n: number | null | undefined) => (n == null ? '' : <span className="num" dir="ltr">{f.money(Number(n))} {cur}</span>);
+    const logo = (thermal ? bFor?.logo_thermal : (bFor?.logo_color ?? bFor?.logo_thermal)) ?? null;
+    const total = data.vat && Number(data.vat.vat) > 0 ? Number(data.vat.gross) : (data.k?.final_cost ?? null);
+    return {
+      shopName: shopFor.name,
+      shopPhone: shopFor.phone,
+      shopAddress: shopFor.address,
+      logo: logo ? <img src={logo} alt={shopFor.name} style={{ height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain' }} /> : null,
+      orderNo: <span dir="ltr">{data.d.order_no}</span>,
+      date: f.dateTime(isReceipt ? data.d.received_at : (data.d.delivered_at ?? new Date())),
+      customer: data.c ? <bdi>{data.c.name}</bdi> : '',
+      phone: data.c ? <span dir="ltr">{data.c.phone}</span> : '',
+      device: `${data.d.brand} ${data.d.model}`,
+      imei: data.d.imei ? <span dir="ltr">{data.d.imei}</span> : '',
+      issue: data.d.issue,
+      warranty: shop.warranty_days > 0 ? tl('print.warrantyDays', { n: shop.warranty_days }) : '',
+      terms: terms.join(' - '),
+      qr: qr ? <img src={qr} alt="" style={{ height: '100%', width: 'auto' }} /> : null,
+      price: isReceipt ? money(data.k?.estimated_cost) : money(total),
+      paid: money(data.money?.paid),
+      remaining: money(data.money?.due),
+      parts: data.parts.map((x) => `${x.name} × ${Number(x.qty)}`).join(tl('common.sep')),
+    };
+  };
+  const terms = shopFor.receipt_terms
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
@@ -149,8 +178,7 @@ export function PrintScreen() {
   return (
     <div className="min-h-dvh bg-white text-black">
       {/* الاستيكر: الصفحة بالمقاس بالظبط والهوامش صفر، وكل نسخة في صفحة لوحدها */}
-      {data?.printer && <style>{pageCss(data.printer)}</style>}
-      <style>{`@page { size: ${pageSize(isTest ? 'sticker' : (kind as PrintDoc), st)}; margin: ${isSticker || isTest ? '0' : isLabel ? '1mm' : thermal ? '3mm' : '14mm'}; }${isSticker || isTest ? ' @media print { html, body { margin: 0 !important; padding: 0 !important; } .sticker-page { break-after: page; page-break-after: always; } .sticker-page:last-child { break-after: auto; page-break-after: auto; } }' : ''}`}</style>
+      {isDoc ? <PageStyle plan={plan} /> : <style>{`@page { size: ${pageSize(isTest ? 'sticker' : (kind as PrintDoc), st)}; margin: ${isSticker || isTest ? '0' : isLabel ? '1mm' : thermal ? '3mm' : '14mm'}; }${isSticker || isTest ? ' @media print { html, body { margin: 0 !important; padding: 0 !important; } .sticker-page { break-after: page; page-break-after: always; } .sticker-page:last-child { break-after: auto; page-break-after: auto; } }' : ''}`}</style>}
       <div className={`flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 print:hidden${embed ? ' hidden' : ''}`}>
         <button type="button" onClick={() => window.print()} className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-on-accent">
           {t('print.print')}
@@ -216,16 +244,23 @@ export function PrintScreen() {
             <div className="mt-0.5 text-[9px] text-neutral-600">{t('label.scan')}</div>
           </div>
         </article>
+      ) : free ? (
+        <FreePage plan={plan} fields={fields} bgUrl={bgUrl} testid={`print-${kind}`} values={freeValues()} />
       ) : (
-        <article className={thermal ? 'mx-auto w-[76mm] p-[2mm] text-[12px] print:w-full print:p-0' : 'mx-auto max-w-[190mm] p-[10mm] text-[14px] print:max-w-none print:p-0'} data-testid={`print-${kind}`}>
+        <Offset plan={plan}>
+        <div style={{ position: 'relative' }}>
+        <FlowBg plan={plan} bgUrl={bgUrl} />
+        <article dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang} style={{ position: 'relative' }} className={thermal ? 'mx-auto w-[76mm] p-[2mm] text-[12px] print:w-full print:p-0' : 'mx-auto max-w-[190mm] p-[10mm] text-[14px] print:max-w-none print:p-0'} data-testid={`print-${kind}`}>
           {/* U5: الخانات بترتيب القالب (المبالغ والبيانات دايمًا من البرنامج، والقالب بيتحكم في الشكل بس) */}
           {(() => {
+            // نصوص المستند بلغة القالب (الشريط اللي فوق بلغة البرنامج)
+            const t = tl;
             const doc = kind as TemplateDoc;
             const blocks = data.tpl ?? defaultBlocks(doc);
             const fs: Record<Size, string> = thermal ? { sm: 'text-[10px]', md: 'text-[12px]', lg: 'text-[18px]' } : { sm: 'text-[12px]', md: 'text-[14px]', lg: 'text-[20px]' };
             const cls = (x: Block) => cn(fs[x.size], x.bold && 'font-bold', x.align === 'center' ? 'text-center' : x.align === 'end' ? 'text-end' : 'text-start');
             const row = (x: Block, label: ReactNode, value: ReactNode, extra?: { testid?: string; mono?: boolean; ltr?: boolean; pre?: boolean }) => (
-              <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} data-block={x.key}>
+              <div key={x.key} className={cn('flex gap-2 border-b border-dotted border-neutral-400 px-1 py-1', fs[x.size], x.bold && 'font-bold', x.align === 'center' && 'justify-center', x.align === 'end' && 'justify-end')} style={blockStyle(x)} data-block={x.key}>
                 <span className="w-[36%] shrink-0 font-semibold">{label}</span>
                 <span className={cn('min-w-0', extra?.mono && 'font-mono', extra?.pre && 'whitespace-pre-wrap')} dir={extra?.ltr ? 'ltr' : undefined} data-testid={extra?.testid}>
                   {value}
@@ -236,19 +271,19 @@ export function PrintScreen() {
               switch (x.key) {
                 case 'header':
                   return thermal ? (
-                    <header key={x.key} className={cn('border-b border-dashed border-black pb-2', cls(x))} data-block="header">
-                      <ThermalHeader shop={shopFor} b={b} />
+                    <header key={x.key} className={cn('border-b border-dashed border-black pb-2', cls(x))} style={blockStyle(x)} data-block="header">
+                      <ThermalHeader shop={shopFor} b={bFor} />
                     </header>
                   ) : (
-                    <div key={x.key} data-block="header">
-                      <ColorHeader shop={shopFor} b={b} title={isPaperReceipt ? t('print.receiptA4') : t('print.invoice')} sub={data.d.order_no} />
+                    <div key={x.key} style={blockStyle(x)} data-block="header">
+                      <ColorHeader shop={shopFor} b={bFor} title={isPaperReceipt ? t('print.receiptA4') : t('print.invoice')} sub={data.d.order_no} />
                     </div>
                   );
                 case 'title':
-                  return thermal ? <div key={x.key} className={cn('mt-1', cls(x))} data-block="title">{t(isReceipt ? 'print.receipt' : 'print.invoice')}</div> : null;
+                  return thermal ? <div key={x.key} className={cn('mt-1', cls(x))} style={blockStyle(x)} data-block="title">{t(isReceipt ? 'print.receipt' : 'print.invoice')}</div> : null;
                 case 'orderNo':
                   return thermal ? (
-                    <div key={x.key} className={cn('font-mono tracking-wide', cls(x))} dir="ltr" data-block="orderNo">
+                    <div key={x.key} className={cn('font-mono tracking-wide', cls(x))} dir="ltr" style={blockStyle(x)} data-block="orderNo">
                       {data.d.order_no}
                     </div>
                   ) : null;
@@ -295,7 +330,7 @@ export function PrintScreen() {
                   return !isReceipt ? row(x, t('print.warranty'), shop.warranty_days > 0 ? t('print.warrantyDays', { n: shop.warranty_days }) : t('print.noWarranty')) : null;
                 case 'terms':
                   return isReceipt && terms.length > 0 ? (
-                    <section key={x.key} className={cn(thermal ? 'mt-2 border-t border-dashed border-black pt-1.5' : 'mt-6 border-t border-neutral-300 pt-3', cls(x))} data-testid="print-terms" data-block="terms">
+                    <section key={x.key} className={cn(thermal ? 'mt-2 border-t border-dashed border-black pt-1.5' : 'mt-6 border-t border-neutral-300 pt-3', cls(x))} data-testid="print-terms" style={blockStyle(x)} data-block="terms">
                       <b>{t('print.terms')}</b>
                       <ol className="mt-1 list-decimal ps-4">
                         {terms.map((tx, i) => (
@@ -309,40 +344,40 @@ export function PrintScreen() {
                   if (!isReceipt) {
                     const sig = (data.d as { delivery_signature?: string | null }).delivery_signature;
                     return sig ? (
-                      <div key={x.key} className={cn('mt-3 border-t border-neutral-300 pt-2', cls(x))} data-block="signature" data-testid="invoice-signature">
+                      <div key={x.key} className={cn('mt-3 border-t border-neutral-300 pt-2', cls(x))} style={blockStyle(x)} data-block="signature" data-testid="invoice-signature">
                         <b>{t('signature.delivery')}</b>
                         <img src={sig} alt="" className="mt-1 h-[16mm] w-auto" />
                       </div>
                     ) : null;
                   }
                   return isReceipt && data.d.intake_signature ? (
-                    <div key={x.key} className={cn('mt-2 border-t border-dashed border-black pt-1.5', cls(x))} data-block="signature">
+                    <div key={x.key} className={cn('mt-2 border-t border-dashed border-black pt-1.5', cls(x))} style={blockStyle(x)} data-block="signature">
                       <b>{t('signature.title')}</b>
                       <img src={data.d.intake_signature} alt="" className="mt-1 h-[16mm] w-auto" />
                     </div>
                   ) : null;
                 case 'qr':
                   return isReceipt && qr ? (
-                    <div key={x.key} className={cn(thermal ? 'mt-2 flex items-center gap-2 border-t border-dashed border-black pt-2' : 'mt-6 flex items-center gap-3', x.align === 'center' ? 'justify-center' : x.align === 'end' ? 'justify-end' : '')} data-block="qr">
+                    <div key={x.key} className={cn(thermal ? 'mt-2 flex items-center gap-2 border-t border-dashed border-black pt-2' : 'mt-6 flex items-center gap-3', x.align === 'center' ? 'justify-center' : x.align === 'end' ? 'justify-end' : '')} style={blockStyle(x)} data-block="qr">
                       <img src={qr} alt="" className={thermal ? 'size-[22mm]' : 'size-[28mm]'} />
                       <span className="text-[10px]">{t('label.scan')}</span>
                     </div>
                   ) : null;
                 case 'sign':
                   return (
-                    <div key={x.key} className={cn('mt-3', cls(x))} data-block="sign">
+                    <div key={x.key} className={cn('mt-3', cls(x))} style={blockStyle(x)} data-block="sign">
                       {t('print.sign')}: ..............................
                     </div>
                   );
                 case 'thanks':
                   return (
-                    <div key={x.key} className={cn('mt-2 text-neutral-600', cls(x))} data-block="thanks">
+                    <div key={x.key} className={cn('mt-2 text-neutral-600', cls(x))} style={blockStyle(x)} data-block="thanks">
                       {t('print.thanks')}
                     </div>
                   );
                 case 'text':
                   return x.text ? (
-                    <p key={`text-${blocks.indexOf(x)}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} data-block="text">
+                    <p key={`text-${blocks.indexOf(x)}`} className={cn('mt-2 whitespace-pre-wrap', cls(x))} style={blockStyle(x)} data-block="text">
                       {x.text}
                     </p>
                   ) : null;
@@ -354,6 +389,8 @@ export function PrintScreen() {
           })()}
           <PoweredBy b={b} />
         </article>
+        </div>
+        </Offset>
       )}
     </div>
   );

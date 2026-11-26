@@ -42,6 +42,7 @@ const TeamScreen = lazyScreen(() => import('./screens/TeamScreen').then((m) => m
 const AuditScreen = lazyScreen(() => import('./screens/AuditScreen').then((m) => m.AuditScreen));
 const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen').then((m) => m.SettingsScreen));
 const PrintScreen = lazyScreen(() => import('./screens/PrintScreen').then((m) => m.PrintScreen));
+const TestPrint = lazyScreen(() => import('./screens/TestPrint').then((m) => m.TestPrint));
 const CategoriesScreen = lazyScreen(() => import('./screens/CategoriesScreen').then((m) => m.CategoriesScreen));
 const UsedDevicesScreen = lazyScreen(() => import('./screens/UsedDevicesScreen').then((m) => m.UsedDevicesScreen));
 const ChecklistPrint = lazyScreen(() => import('./screens/ChecklistPrint').then((m) => m.ChecklistPrint));
@@ -74,7 +75,7 @@ const AdminScreen = lazyScreen(() => import('./screens/AdminScreen').then((m) =>
 
 /** الأساسية: لوحة التحكم، والأجهزة وتفاصيل الجهاز، والاستلام، والخزنة (الوضع المالي والدرج)، وشاشة الفني */
 const CORE = [AppShell, DashboardScreen, DevicesScreen, DeviceDetailScreen, IntakeScreen, FinanceScreen, DrawerScreen, WorkScreen];
-const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, ChequesScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AttendanceScreen, AdminScreen];
+const REST = [CustomersScreen, CustomerProfileScreen, InventoryScreen, SettingsScreen, PrintScreen, TestPrint, StatementScreen, EntryScreen, BarcodePrint, OpeningScreen, PartnersScreen, AssistantScreen, BalancesScreen, ProfitScreen, VatReportScreen, ChequesScreen, TrialBalanceScreen, AnalyticsScreen, ReportsScreen, TeamScreen, AuditScreen, DayReportPrint, StatementPrint, VoucherPrint, SaleInvoicePrint, TablePrint, VideosScreen, CommunityScreen, AttendanceScreen, AdminScreen];
 let preloaded = false;
 /** بعد الافتتاحية على طول: الأساسية مع بعض، وبعدها الباقي واحدة واحدة لما الجهاز يفضى (عشان كله يشتغل من غير نت كمان) */
 function preloadAll() {
@@ -225,6 +226,7 @@ function AppRoutes({ role, admin }: { role: Role; admin: boolean }) {
         {/* 6ب: فاتورة البيع (الصلاحية والفرع بيتأكدوا في sale_invoice) */}
         {front && <Route path="print/sale/:id" element={<SaleInvoicePrint />} />}
         {front && <Route path="print/checklist/:id" element={<ChecklistPrint />} />}
+        {front && <Route path="print/test/:doc" element={<TestPrint />} />}
         {front && <Route path="print/:kind/:id" element={<PrintScreen />} />}
         <Route element={<AppShell />}>
           <Route index element={<DashboardScreen />} />
