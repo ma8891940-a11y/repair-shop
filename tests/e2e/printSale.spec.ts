@@ -79,9 +79,10 @@ test('فاتورة البيع: 3 أصناف بأسعارها الفعلية ← 
   await expect(d.getByTestId('tpl-preview')).toBeVisible();
   await d.getByTestId('tpl-save').click();
   await expect(page.getByText('اتحفظ القالب')).toBeVisible();
+  // 50.4: الفاتورة اللي اتطبعت قبل كده بشكلها الأول (تعديل القالب ما يغيّرش المطبوع)
   await page.goto(`/#/print/sale/${entry}?preview=0`);
   await expect(page.getByTestId('print-sale')).toBeVisible();
-  await expect(page.getByTestId('sale-paid')).toHaveCount(0);
+  await expect(page.getByTestId('sale-paid')).toContainText('3,130.50');
   await expect(page.getByTestId('sale-total')).toContainText('3,130.50');
 
   // 3) بيع من شاشة المخزون ← "اطبع الفاتورة" من رسالة البيع على طول
@@ -99,4 +100,6 @@ test('فاتورة البيع: 3 أصناف بأسعارها الفعلية ← 
   // سعر البيع = سعر الصنف المسجل (111)، والإجمالي من الدفتر نفس المجموع
   await expect(page.getByTestId('sale-line-amount')).toHaveText('111');
   await expect(page.getByTestId('sale-total')).toContainText('111');
+  // الفاتورة الجديدة بالقالب الجديد: من غير "المدفوع"
+  await expect(page.getByTestId('sale-paid')).toHaveCount(0);
 });

@@ -298,7 +298,7 @@ export function VoucherPrint() {
     const rev = must(await supabase.from('journal_entries').select('entry_no').eq('reverses_id', id).maybeSingle()) as { entry_no: number } | null;
     // صرف شيك العميل (0065) بيسجل دفعة برضه
     const pay = e.source_type === 'payment' || e.source_type === 'cheque_clear' ? ((await supabase.from('payments').select('method').eq('entry_id', id).maybeSingle()).data as { method: string } | null) : null;
-    const tmpl = await loadForPrint('voucher', e.branch_id ?? br.working?.id, id, preview);
+    const tmpl = await loadForPrint('voucher', e.branch_id ?? br.working?.id, params.get('test') === '1' ? undefined : id, preview);
     const tpl = tmpl?.mode === 'flow' && tmpl.blocks != null ? normalizeBlocks('voucher', tmpl.blocks) : null;
     return { e, receipt, amount, party, cashbox: accName(cash), method: pay?.method ?? null, tpl, tmpl, cancelledBy: rev?.entry_no ?? null };
   }, [id, preview, previewV, br.working?.id]);
@@ -368,9 +368,9 @@ export function VoucherPrint() {
   return (
     <PrintFrame ready={!!data && br.ready && bgReady} plan={plan} bgUrl={bgUrl} free={free}>
       {data && (
-        <div data-testid="print-voucher" data-kind={data.receipt ? 'receipt' : 'payment'} data-cancelled={data.cancelledBy ? 'true' : 'false'} dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang}>
+        <div className="relative" data-testid="print-voucher" data-kind={data.receipt ? 'receipt' : 'payment'} data-cancelled={data.cancelledBy ? 'true' : 'false'} dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang}>
           {data.cancelledBy != null && (
-            <div className="mb-3 border-2 border-black px-3 py-2 text-center text-[18px] font-extrabold" data-testid="voucher-cancelled">
+            <div className={cn('border-2 border-black bg-white px-3 py-2 text-center text-[18px] font-extrabold', free ? 'absolute inset-x-0 top-0 z-10' : 'mb-3')} data-testid="voucher-cancelled">
               {t('voucher.cancelled', { no: data.cancelledBy })}
             </div>
           )}
@@ -430,7 +430,7 @@ export function SaleInvoicePrint() {
   const previewV = params.get('v');
   const { data, error } = useLoad(async () => {
     const inv = (await rpc('sale_invoice', { p_entry: id })) as SaleInvoice;
-    const tmpl = await loadForPrint('sale', inv.branch_id ?? br.working?.id, id, preview);
+    const tmpl = await loadForPrint('sale', inv.branch_id ?? br.working?.id, params.get('test') === '1' ? undefined : id, preview);
     const tpl = tmpl?.mode === 'flow' && tmpl.blocks != null ? normalizeBlocks('sale', tmpl.blocks) : null;
     return { inv, tpl, tmpl };
   }, [id, preview, previewV, br.working?.id]);
@@ -548,9 +548,9 @@ export function SaleInvoicePrint() {
   return (
     <PrintFrame ready={!!data && br.ready && bgReady} plan={plan} bgUrl={bgUrl} free={free}>
       {data && (
-        <div dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang} data-testid="print-sale" data-legacy={data.inv.legacy ? 'true' : 'false'} data-cancelled={data.inv.cancelled_by != null ? 'true' : 'false'}>
+        <div className="relative" dir={plan.lang === 'en' ? 'ltr' : 'rtl'} lang={plan.lang} data-testid="print-sale" data-legacy={data.inv.legacy ? 'true' : 'false'} data-cancelled={data.inv.cancelled_by != null ? 'true' : 'false'}>
           {data.inv.cancelled_by != null && (
-            <div className="mb-3 border-2 border-black px-3 py-2 text-center text-[18px] font-extrabold" data-testid="sale-cancelled">
+            <div className={cn('border-2 border-black bg-white px-3 py-2 text-center text-[18px] font-extrabold', free ? 'absolute inset-x-0 top-0 z-10' : 'mb-3')} data-testid="sale-cancelled">
               {t('voucher.cancelled', { no: data.inv.cancelled_by })}
             </div>
           )}
@@ -575,7 +575,7 @@ export function SaleInvoicePrint() {
           ) : (
             blocks.map(render)
           )}
-          {data.inv.legacy && <p className="mt-2 text-[11px] text-neutral-600">{t('saleInv.legacy')}</p>}
+          {data.inv.legacy && !free && <p className="mt-2 text-[11px] text-neutral-600">{t('saleInv.legacy')}</p>}
         </div>
       )}
     </PrintFrame>

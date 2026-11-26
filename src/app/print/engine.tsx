@@ -62,7 +62,7 @@ export function useDocPlan(doc: string, tmpl: LoadedTemplate | null | undefined)
   const free = tmpl?.mode === 'free' && !!plan.h;
   const fields = (free ? (tmpl?.layout.fields ?? []) : []) as FreeField[];
   const bgUrl = useBgUrl(shop.id, plan.bg?.file);
-  return { plan, free, fields, bgUrl, bgReady: !plan.bg || !!bgUrl, t: i18n.getFixedT(plan.lang) };
+  return { plan, free, fields, bgUrl, bgReady: !plan.bg || bgUrl !== null, t: i18n.getFixedT(plan.lang) };
 }
 
 /** خلفية المستند بالترتيب (flow): من حافة الورقة (ورا الهامش)، وبتتطبع مع الورق الفاضي بس */
@@ -71,7 +71,7 @@ export const FlowBg = ({ plan, bgUrl }: { plan: PagePlan; bgUrl: string | null }
     <img src={bgUrl} alt="" data-testid="print-bg" className={plan.bg.print ? undefined : 'print:hidden'} style={{ position: 'absolute', top: `-${plan.margin}mm`, left: `-${plan.margin}mm`, width: `${plan.w}mm`, height: `${plan.h}mm`, maxWidth: 'none' }} />
   ) : null;
 
-/** رابط مؤقت لصورة الخلفية (المكان خاص بالمحل، 0089) */
+/** رابط مؤقت لصورة الخلفية (المكان خاص بالمحل، 0089): null = لسه بيحمّل، و'' = ما اتفتحتش (من غير خلفية) */
 export function useBgUrl(shopId: string, file: string | null | undefined): string | null {
   const [url, setUrl] = useState<{ file: string; url: string } | null>(null);
   useEffect(() => {
@@ -80,9 +80,14 @@ export function useBgUrl(shopId: string, file: string | null | undefined): strin
     void supabase.storage
       .from('print-backgrounds')
       .createSignedUrl(`${shopId}/${file}`, 3600)
-      .then(({ data }) => {
-        if (live && data) setUrl({ file, url: data.signedUrl });
-      });
+      .then(
+        ({ data }) => {
+          if (live) setUrl({ file, url: data?.signedUrl ?? '' });
+        },
+        () => {
+          if (live) setUrl({ file, url: '' });
+        },
+      );
     return () => {
       live = false;
     };

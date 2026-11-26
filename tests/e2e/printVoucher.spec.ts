@@ -40,6 +40,7 @@ test('السندات: سند قبض لدفعة العميل وسند صرف لل
     (await db.query(`select e.id from journal_entries e join profiles p on p.shop_id = e.shop_id where p.email = $1 and e.source_type = $2 order by e.created_at desc limit 1`, [email, src])).rows[0].id as string;
   const payE = await entry('payment');
   const expE = await entry('expense');
+  const capE = await entry('capital');
   await db.end();
 
   // سند القبض: من شاشة القيد
@@ -70,10 +71,15 @@ test('السندات: سند قبض لدفعة العميل وسند صرف لل
   await expect(d.getByTestId('tpl-preview')).toBeVisible();
   await d.getByTestId('tpl-save').click();
   await expect(page.getByText('اتحفظ القالب')).toBeVisible();
+  // 50.4: السند اللي اتطبع قبل كده بشكله الأول، وأول طباعة لسند رأس المال بالقالب الجديد
   await page.goto(`/#/print/voucher/${expE}?preview=0`);
   await expect(page.getByTestId('print-voucher')).toBeVisible();
-  await expect(page.getByTestId('voucher-cashbox')).toHaveCount(0);
+  await expect(page.getByTestId('voucher-cashbox')).toBeVisible();
   await expect(page.getByTestId('voucher-amount')).toContainText('1,500.25');
+  await page.goto(`/#/print/voucher/${capE}?preview=0`);
+  await expect(page.getByTestId('print-voucher')).toBeVisible();
+  await expect(page.getByTestId('voucher-cashbox')).toHaveCount(0);
+  await expect(page.getByTestId('voucher-amount')).toContainText('5,000');
 
   // رجّع الافتراضي (المحفوظ في قاعدة البيانات)
   await page.goto('/#/settings?tab=printers');
@@ -82,6 +88,10 @@ test('السندات: سند قبض لدفعة العميل وسند صرف لل
   await page.getByTestId('print-designer').getByTestId('tpl-doc').selectOption('voucher');
   await page.getByTestId('print-designer').getByTestId('tpl-reset').click();
   await expect(page.getByText('رجع القالب الافتراضي')).toBeVisible();
+  // ورجوع القالب ما يغيّرش السند اللي اتطبع بالقالب المعدّل
+  await page.goto(`/#/print/voucher/${capE}?preview=0`);
+  await expect(page.getByTestId('print-voucher')).toBeVisible();
+  await expect(page.getByTestId('voucher-cashbox')).toHaveCount(0);
   await page.goto(`/#/print/voucher/${expE}?preview=0`);
   await expect(page.getByTestId('voucher-cashbox')).toBeVisible();
   await expect(page.getByTestId('voucher-cancelled')).toHaveCount(0);

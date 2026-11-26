@@ -312,7 +312,7 @@ function Designer({ printers, templates, lastDevice, cashbox, lastVoucher, lastS
               {t('printers.save')}
             </Button>
             {sample && (
-              <a href={`#/${sample}`} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent" data-testid="tpl-test-print">
+              <a href={`#/${sample}?test=1`} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line px-3 text-sm text-fg-2 hover:border-accent" data-testid="tpl-test-print">
                 <Printer className="size-4" aria-hidden /> {t('printers.testPrint')}
               </a>
             )}

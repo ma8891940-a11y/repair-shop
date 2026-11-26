@@ -79,7 +79,7 @@ export function PrintScreen() {
     if (kind === 'receipt' || kind === 'receipt-a4' || kind === 'invoice') {
       // 50.6: الفاتورة بشكلها من أول طباعة (آخر فاتورة مش متلغية)، والمعاينة من غير ما تتجمّد
       let ref: string | undefined;
-      if (kind === 'invoice' && !preview) {
+      if (kind === 'invoice' && !preview && params.get('test') !== '1') {
         const inv = ((await supabase.rpc('repair_invoices_of', { p_device: id })).data ?? []) as { id: string; reversed: boolean }[];
         ref = [...inv].reverse().find((x) => !x.reversed)?.id;
       }
@@ -167,7 +167,7 @@ export function PrintScreen() {
       price: isReceipt ? money(data.k?.estimated_cost) : money(total),
       paid: money(data.money?.paid),
       remaining: money(data.money?.due),
-      parts: data.parts.map((x) => `${x.name} × ${Number(x.qty)}`).join(t('common.sep')),
+      parts: data.parts.map((x) => `${x.name} × ${Number(x.qty)}`).join(tl('common.sep')),
     };
   };
   const terms = shopFor.receipt_terms

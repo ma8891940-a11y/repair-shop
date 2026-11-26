@@ -38,7 +38,7 @@ export function TestPrint() {
   const fallback = doc === 'sticker' ? { w: sticker.w, h: sticker.h, margin: 0 } : (DOC_PAGE[doc] ?? DOC_PAGE.receipt);
   const plan = pagePlan(data?.mode ?? 'flow', data?.layout, data?.printer, fallback, i18n.language);
   const bgUrl = useBgUrl(shop.id, plan.bg?.file);
-  const ready = data !== undefined && (!plan.bg || !!bgUrl);
+  const ready = data !== undefined && (!plan.bg || bgUrl !== null);
   useEffect(() => {
     if (!ready || !embed) return;
     const tm = setTimeout(() => window.print(), 150);

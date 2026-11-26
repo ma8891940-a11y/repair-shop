@@ -46,7 +46,8 @@ export function BarcodePrint() {
       printer = pid ? ((await supabase.from('printers').select('kind, width_mm, height_mm, margin_mm, offset_x, offset_y').eq('id', pid).is('deleted_at', null).maybeSingle()).data as PrinterRow | null) : null;
     }
     // طابعة الملصقات بس (الحرارية أو الورق مالهمش مقاس ملصق)
-    return { item, tpl, tmpl: tmpl ? { ...tmpl, printer: printer?.kind === 'label' && printer.height_mm ? printer : null } : null };
+    const label = printer?.kind === 'label' && printer.height_mm ? printer : null;
+    return { item, tpl, tmpl: tmpl || label ? { ...(tmpl ?? { mode: 'flow' as const, blocks: null, layout: {} }), printer: label } : null };
   }, [id, preview, previewV, br.working?.id, sp.get('printer')]);
   const item = data?.item ?? null;
   const ok = !!item?.barcode && isEan13(item.barcode);
